@@ -1,2 +1,11 @@
-# Guffs-Gauntlet
-Solo Commander RPG - Dungeons made for real Magic The Gathering - commander decks, just play against this board game with your own real deck! For fuck's sake, how can I say it more clearly? Use your damn deck against this stupid board game! I trust your integrity since you'll actually be doing most of the actions...
+# Guff's Gauntlet
+
+A solo Commander-style RPG that runs entirely in the browser — no install, no server.
+
+## Play
+Download `guffs-gauntlet-level1.html` and double-click it. That's the whole game.
+
+## Notes
+- Single self-contained HTML file (logic + styling all inside).
+- `/art` holds the boss card illustrations.
+- Difficulty: Easy / Standard / Brutal, selectable in-game.
