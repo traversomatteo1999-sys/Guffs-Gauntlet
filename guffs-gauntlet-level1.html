@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guff's Gauntlet — Level I: The Warren of Embers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@500;700;900&family=Spectral:ital,wght@0,400;0,600;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#14161d;--ink-2:#1d2029;--ink-3:#252934;--bone:#e8e1cf;--bone-dim:#a7a293;--azor:#4da8da;--ember:#e0533d;--gold:#d9a441;--line:#2c303c;--ok:#7bb274;--purp:#9a86c4;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:radial-gradient(1100px 560px at 75% -10%,rgba(224,83,61,.10),transparent 60%),radial-gradient(900px 500px at -5% 110%,rgba(77,168,218,.10),transparent 60%),var(--ink);color:var(--bone);font-family:"Spectral",Georgia,serif;line-height:1.5;padding:clamp(12px,3vw,28px);min-height:100vh}
+  .wrap{max-width:1140px;margin:0 auto}
+  header{border:1px solid var(--line);border-radius:14px;padding:clamp(16px,3vw,24px);background:linear-gradient(180deg,rgba(217,164,65,.06),transparent 70%),var(--ink-2);position:relative;overflow:hidden}
+  header::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.012) 0 2px,transparent 2px 9px);pointer-events:none}
+  .eyebrow{font-family:"Space Mono",monospace;font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;color:var(--gold)}
+  h1{font-family:"Grenze Gotisch",serif;font-weight:900;font-size:clamp(2rem,5.5vw,3.2rem);line-height:1;margin:.16em 0 .1em} h1 .lvl{color:var(--ember)}
+  .subtitle{color:var(--bone-dim);font-style:italic;max-width:66ch}
+  .track{display:flex;align-items:center;gap:0;margin-top:14px;flex-wrap:wrap}
+  .node{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:96px}
+  .node .dot{width:34px;height:34px;border-radius:50%;border:2px solid var(--line);background:var(--ink-3);display:flex;align-items:center;justify-content:center;font-family:"Space Mono",monospace;font-weight:700;color:var(--bone-dim)}
+  .node.cur .dot{border-color:var(--ember);color:var(--ember);box-shadow:0 0 0 4px rgba(224,83,61,.15)} .node.done .dot{border-color:var(--ok);color:var(--ok)}
+  .node .nm{font-family:"Space Mono",monospace;font-size:.62rem;text-align:center;color:var(--bone-dim)} .node.cur .nm{color:var(--bone)}
+  .link{flex:1;height:2px;background:var(--line);min-width:18px;margin-top:-18px} .link.done{background:var(--ok)}
+  .grid{display:grid;gap:12px;margin-top:12px} @media(min-width:780px){.duo{grid-template-columns:1fr 1fr}}
+  .panel{border:1px solid var(--line);border-radius:14px;background:var(--ink-2);padding:clamp(12px,2.2vw,18px)}
+  .panel h2{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:1.24rem;letter-spacing:.02em;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .tag{font-family:"Space Mono",monospace;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--bone-dim)}
+  .tag.live{color:var(--ember);border-color:rgba(224,83,61,.5)} .tag.prep{color:var(--azor);border-color:rgba(77,168,218,.5)}
+  .dial{display:flex;align-items:baseline;gap:9px;margin:8px 0 4px} .dial .num{font-family:"Space Mono",monospace;font-weight:700;font-size:2.2rem;line-height:1}
+  .you .num{color:var(--azor)} .boss .num{color:var(--ember)} .pw .num{color:var(--gold)} .dial .of{color:var(--bone-dim);font-family:"Space Mono",monospace;font-size:.9rem}
+  .bar{height:8px;border-radius:6px;background:var(--ink-3);overflow:hidden;border:1px solid var(--line)} .bar>i{display:block;height:100%;transition:width .4s ease}
+  .you .bar>i{background:linear-gradient(90deg,#2f6f93,var(--azor))} .boss .bar>i{background:linear-gradient(90deg,#7e2b1e,var(--ember))} .pw .bar>i{background:linear-gradient(90deg,#8a6a22,var(--gold))}
+  .pips{display:flex;gap:5px;align-items:center;margin:7px 0;flex-wrap:wrap} .pip{width:13px;height:13px;border-radius:50%;background:var(--gold);border:1px solid rgba(0,0,0,.4)} .pip.off{background:var(--ink-3);opacity:.4}
+  .manaline{font-family:"Space Mono",monospace;font-size:.72rem;color:var(--bone-dim)} .manaline b{color:var(--gold)}
+  .btnrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;align-items:center}
+  button{font-family:"Space Mono",monospace;font-size:.74rem;background:var(--ink-3);color:var(--bone);border:1px solid var(--line);padding:7px 11px;border-radius:9px;cursor:pointer;transition:.15s}
+  button:hover{border-color:var(--bone-dim);transform:translateY(-1px)} button:disabled{opacity:.36;cursor:not-allowed;transform:none}
+  button.mini{padding:4px 8px;font-size:.66rem} button.tiny{padding:3px 6px;font-size:.6rem}
+  button.gold{border-color:var(--gold);color:var(--gold)} button.ember{border-color:var(--ember);color:var(--ember)} button.azor{border-color:var(--azor);color:var(--azor)} button.ok{border-color:var(--ok);color:var(--ok)} button.on{background:var(--gold);color:var(--ink);font-weight:700;border-color:var(--gold)}
+  button.atk{border-color:var(--azor)} button.atk.sel{background:var(--azor);color:var(--ink);font-weight:700}
+  .big{width:100%;padding:14px;font-size:.9rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:linear-gradient(180deg,#2a2d38,#1a1d26);border-color:var(--ember);color:var(--bone)} .big:hover{box-shadow:0 0 0 1px var(--ember),0 8px 22px -10px rgba(224,83,61,.6)} .big:disabled{border-color:var(--line);box-shadow:none}
+  .setbtns{display:flex;gap:4px;flex-wrap:wrap}
+  input[type=number]{font-family:"Space Mono",monospace;font-size:.88rem;width:54px;padding:5px 7px;background:var(--ink);color:var(--bone);border:1px solid var(--line);border-radius:7px}
+  input[type=text]{font-family:Spectral;font-size:.85rem;padding:5px 8px;background:var(--ink);color:var(--bone);border:1px solid var(--line);border-radius:7px}
+  select{font-family:"Space Mono",monospace;font-size:.66rem;padding:4px 6px;background:var(--ink);color:var(--bone);border:1px solid var(--line);border-radius:7px}
+  .cmdbox{border:1px solid var(--ember);border-radius:11px;background:linear-gradient(180deg,rgba(224,83,61,.07),var(--ink-3));padding:10px 12px;margin-top:10px} .cmdbox.dormant{border-color:var(--line);background:var(--ink-3);opacity:.92}
+  .cmdbox .cn{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:1.05rem} .cmdbox .cpt{font-family:"Space Mono",monospace;font-weight:700;font-size:1.35rem;margin:3px 0} .cmdbox .cstat{font-size:.8rem;color:var(--bone-dim)} .cmdbox .acts{display:flex;gap:4px;margin-top:7px;flex-wrap:wrap}
+  .gstate{font-size:.82rem;color:var(--bone-dim);border-left:2px solid var(--ember);padding-left:10px;margin-top:9px} .gstate b{color:var(--ember);font-family:"Space Mono",monospace;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:2px}
+  .creatures{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:9px;margin-top:10px}
+  .crea{border:1px solid var(--line);border-radius:11px;background:var(--ink-3);padding:9px 10px;position:relative;animation:spawn .3s ease} @keyframes spawn{from{opacity:0}to{opacity:1}}
+  .crea.sick{opacity:.75} .crea.tapped{background:repeating-linear-gradient(135deg,var(--ink-3) 0 6px,#20242e 6px 12px)}
+  .crea .cn{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:.86rem;line-height:1;padding-right:34px}
+  .crea .cpt{font-family:"Space Mono",monospace;font-weight:700;font-size:1.1rem;margin:3px 0} .crea .cpt .buff{color:var(--gold)} .crea .cpt .deb{color:var(--ember)}
+  .crea .slay{position:absolute;top:6px;right:6px;padding:2px 6px;font-size:.55rem}
+  .badges{display:flex;gap:3px;flex-wrap:wrap;margin-top:3px} .badge{font-family:"Space Mono",monospace;font-size:.52rem;padding:1px 5px;border-radius:5px;border:1px solid var(--line);color:var(--bone-dim);cursor:pointer} .badge.tap{color:var(--gold)} .badge.no{color:var(--ember)} .badge.kw{color:var(--azor);border-color:rgba(77,168,218,.4)}
+  .crea .ctr{display:flex;gap:3px;margin-top:5px;flex-wrap:wrap} .crea .ctr button{padding:2px 5px;font-size:.54rem} .crea select{font-size:.58rem;padding:2px 4px;margin-top:4px}
+  .empty{color:var(--bone-dim);font-style:italic;margin-top:8px}
+  .brow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:9px;padding:7px 9px;margin-top:6px;background:var(--ink-3)} .brow.tapped{opacity:.7} .brow .lab{font-family:"Space Mono",monospace;font-size:.58rem;color:var(--bone-dim)}
+  .subh{font-family:"Space Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-top:12px;display:flex;justify-content:space-between;align-items:center}
+  .rules{display:grid;gap:8px;margin-top:10px} .ruleperm{border:1px solid rgba(154,134,196,.45);border-radius:10px;background:rgba(154,134,196,.06);padding:9px 11px} .ruleperm.bossr{border-color:rgba(224,83,61,.45);background:rgba(224,83,61,.06)} .ruleperm .rn{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:.92rem;color:var(--purp)} .ruleperm.bossr .rn{color:var(--ember)} .ruleperm .rt{font-size:.78rem;color:var(--bone-dim);margin-top:2px} .ruleperm .acts{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+  .inv{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:9px;margin-top:10px} .item{border:1px solid var(--line);border-radius:11px;background:var(--ink-3);padding:9px 11px} .item.rare{border-color:rgba(217,164,65,.6)} .item .in{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:.92rem;display:flex;justify-content:space-between;gap:6px} .item .ir{font-family:"Space Mono",monospace;font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)} .item .it{font-size:.76rem;color:var(--bone-dim);margin:4px 0 6px}
+  .plays,.resolver,.atkpanel{border:1px dashed var(--ember);border-radius:12px;padding:12px;margin-top:12px;background:rgba(224,83,61,.05);display:none} .plays.show,.resolver.show,.atkpanel.show{display:block}
+  .atkpanel{border-color:var(--azor);background:rgba(77,168,218,.05)}
+  .plays h3,.resolver h3,.atkpanel h3{font-family:"Grenze Gotisch",serif;font-size:1.12rem;margin-bottom:4px}
+  .playcard{border:1px solid var(--line);border-radius:10px;background:var(--ink-2);padding:10px 12px;margin:7px 0} .playcard.resolved{border-color:rgba(123,178,116,.4)} .playcard.countered{opacity:.4;text-decoration:line-through}
+  .playcard .ph{display:flex;align-items:center;gap:8px;flex-wrap:wrap} .playcard .pn{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:1rem}
+  .cost{font-family:"Space Mono",monospace;font-size:.62rem;color:var(--gold);border:1px solid rgba(217,164,65,.4);border-radius:6px;padding:1px 6px}
+  .typechip{font-family:"Space Mono",monospace;font-size:.54rem;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:6px;border:1px solid var(--line);color:var(--bone-dim)} .typechip.creature{color:var(--ok)} .typechip.instant{color:var(--azor)} .typechip.sorcery{color:var(--ember)} .typechip.enchant{color:var(--purp)}
+  .playcard .pt{font-size:.86rem;color:var(--bone-dim);margin:6px 0} .playcard .flav{font-size:.76rem;font-style:italic;color:#7d7869;margin-top:3px} .playcard .die{font-family:"Space Mono",monospace;color:var(--gold);font-size:.8rem} .playcard .pacts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .blockrow{border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin:7px 0;background:var(--ink-2)} .blockrow .ba{font-family:"Grenze Gotisch",serif;font-weight:700} .blockrow .assigned{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+  .chip{font-family:"Space Mono",monospace;font-size:.64rem;padding:3px 7px;border:1px solid var(--azor);border-radius:7px;color:var(--azor);background:rgba(77,168,218,.07)} .chip b{cursor:pointer;margin-left:5px;color:var(--ember)}
+  .log{margin-top:12px;border:1px solid var(--line);border-radius:14px;background:#101218;padding:12px clamp(12px,2.2vw,18px);max-height:300px;overflow-y:auto}
+  .entry{font-size:.85rem;padding:6px 0;border-bottom:1px solid rgba(44,48,60,.6);display:flex;gap:10px} .entry:last-child{border-bottom:none} .entry .t{font-family:"Space Mono",monospace;font-size:.56rem;color:var(--bone-dim);min-width:40px;padding-top:3px}
+  .entry.dm .x{color:var(--ember)} .entry.you .x{color:var(--azor)} .entry.sys .x{color:var(--gold)} .entry.loot .x{color:var(--gold)} .entry.cbt .x{color:var(--bone)} .entry .x b{font-family:"Grenze Gotisch",serif;font-weight:700}
+  details summary{cursor:pointer;font-family:"Space Mono",monospace;font-size:.76rem;color:var(--gold);list-style:none} details summary::-webkit-details-marker{display:none} details[open] summary{margin-bottom:9px} .help ol{margin-left:18px;font-size:.86rem;color:var(--bone-dim)} .help li{margin:6px 0} .help b{color:var(--bone)}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px} .controls .seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden} .controls .seg button{border:none;border-radius:0;border-right:1px solid var(--line)} .controls .seg button:last-child{border-right:none} .controls .seg button.on{background:var(--gold);color:var(--ink);font-weight:700} .controls .lab{font-family:"Space Mono",monospace;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--bone-dim)}
+  .banner{display:none;text-align:center;padding:16px;border-radius:14px;margin-top:12px;font-family:"Grenze Gotisch",serif} .banner.show{display:block;animation:spawn .4s ease} .banner.victory{border:1px solid var(--gold);background:rgba(217,164,65,.08)} .banner.defeat{border:1px solid var(--ember);background:rgba(224,83,61,.08)} .banner.clear{border:1px solid var(--ok);background:rgba(123,178,116,.08)} .banner h2{font-size:1.85rem} .banner.victory h2{color:var(--gold)} .banner.defeat h2{color:var(--ember)} .banner.clear h2{color:var(--ok)} .loot{font-family:Spectral;color:var(--gold);font-size:1.05rem;margin:8px 0;font-style:italic}
+  /* (census removed — fresh game each dungeon) */
+  /* phase engine */
+  .phasebar{border:1px solid var(--line);border-radius:12px;background:linear-gradient(180deg,rgba(224,83,61,.05),var(--ink-3));padding:10px 12px;margin-bottom:10px}
+  .turnlabel{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:1.05rem;letter-spacing:.02em} .turnlabel.vael{color:var(--ember)} .turnlabel.you{color:var(--azor)} .turnlabel.pre{color:var(--bone-dim)}
+  .phasechips{display:flex;gap:4px;flex-wrap:wrap;margin:8px 0} .phasechip{font-family:"Space Mono",monospace;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--bone-dim);opacity:.55} .phasechip.past{opacity:.85;color:var(--ok);border-color:rgba(123,178,116,.4)} .phasechip.on{opacity:1;color:var(--ink);background:var(--gold);border-color:var(--gold);font-weight:700}
+  .flowmana{font-family:"Space Mono",monospace;font-size:.74rem;color:var(--bone-dim);margin-bottom:6px} .flowmana b{color:var(--gold);font-size:1.05rem}
+  .zones{display:grid;gap:9px;margin-top:10px} @media(min-width:680px){.zones.duoz{grid-template-columns:1fr 1fr}}
+  .zone{border:1px solid var(--line);border-radius:10px;background:var(--ink-3);padding:8px 10px} .zone .zh{font-family:"Space Mono",monospace;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--bone-dim);display:flex;justify-content:space-between;margin-bottom:5px} .zone.ex .zh{color:var(--purp)}
+  .zchips{display:flex;gap:4px;flex-wrap:wrap} .zchip{font-family:"Space Mono",monospace;font-size:.58rem;padding:2px 7px;border-radius:6px;border:1px solid var(--line);color:var(--bone-dim);display:inline-flex;align-items:center;gap:5px} .zchip.ex{border-color:rgba(154,134,196,.45);color:var(--purp)} .zchip .zx{cursor:pointer;color:var(--purp)} .zchip .zg{cursor:pointer;color:var(--bone-dim)}
+  .deckmeta{display:flex;gap:14px;font-family:"Space Mono",monospace;font-size:.66rem;color:var(--bone-dim);margin-bottom:2px} .deckmeta b{color:var(--azor)}
+  .crea.cmdcard{border-color:var(--ember);background:linear-gradient(180deg,rgba(224,83,61,.10),var(--ink-3))}
+  /* ===== PHASE 2 ===== */
+  .deckcolors{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:10px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--ink-2)} .deckcolors .hint{font-size:.66rem;color:var(--bone-dim);flex:1;min-width:160px}
+  .manapip{font-family:"Space Mono",monospace;font-size:.62rem;font-weight:700;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--mc,var(--line));background:var(--ink-2);color:var(--bone-dim);cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;transition:.12s} .manapip:hover{color:var(--bone)} .manapip.on{background:var(--mc);color:#16120a;border-color:var(--mc);box-shadow:0 0 7px -1px var(--mc)}
+  .cdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-left:3px;border:1px solid rgba(0,0,0,.35);vertical-align:middle}
+  .drawer{margin-top:7px;border-top:1px dashed var(--line);padding-top:7px;display:flex;flex-direction:column;gap:5px} .drow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:.66rem;color:var(--bone-dim)} .dlab{font-family:"Space Mono",monospace;font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:var(--bone-dim);min-width:84px} .drawer .setbtns{display:flex;gap:4px;flex-wrap:wrap}
+  .drawtoggle{margin-top:7px;width:100%;background:var(--ink-2);color:var(--bone-dim);border:1px solid var(--line)} .drawtoggle:hover{color:var(--bone)}
+  .crea.phased{opacity:.5;border-style:dashed} .brow.tapped{opacity:.55}
+  .taxnote{color:var(--azor);font-size:.78rem}
+  .badge.cmd{color:var(--gold);border-color:rgba(217,164,65,.5)} .badge.leg{color:var(--purp);border-color:rgba(154,134,196,.45)} .badge.tok{color:var(--bone-dim)} .badge.ph{color:var(--azor);border-color:rgba(77,168,218,.45)} .badge.ex{color:var(--purp);border-color:rgba(154,134,196,.45)} .badge.prot{color:var(--azor);border-color:rgba(77,168,218,.45)} .badge.mana{color:var(--gold)} .badge.tax{color:var(--ember);border-color:rgba(224,83,61,.45)}
+  .overlay{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(6,7,10,.78);backdrop-filter:blur(3px)}
+  #overlay{z-index:60}
+  .overlay.show{display:flex;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .modal{position:relative;max-width:640px;width:100%;max-height:86vh;overflow:auto;background:var(--ink-2);border:1px solid var(--line);border-radius:16px;padding:22px 22px 26px;box-shadow:0 24px 80px rgba(0,0,0,.6)}
+  .modalx{position:absolute;top:12px;right:12px;background:var(--ink-3);color:var(--bone-dim);border:1px solid var(--line);border-radius:8px;width:30px;height:30px;cursor:pointer;font-family:'Space Mono'}
+  .modalx:hover{color:var(--bone)}
+  .modal h2{font-family:'Grenze Gotisch',serif;font-size:1.5rem;margin:0 0 4px}
+  .modal h3{font-family:'Grenze Gotisch',serif;color:var(--gold);font-size:1.08rem;margin:16px 0 6px}
+  .modal p,.modal li{font-family:Spectral;color:var(--bone);line-height:1.5;font-size:.93rem}
+  .modal ol,.modal ul{padding-left:20px;margin:6px 0} .modal li{margin:5px 0}
+  .loreh{color:var(--gold)}
+  .loreent{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0;background:var(--ink)}
+  .loreent.cur{border-color:var(--gold);background:rgba(217,164,65,.06)}
+  .loretitle{font-family:'Grenze Gotisch',serif;font-size:1.16rem;color:var(--bone)}
+  .lorecol{font-family:'Space Mono';font-size:.7rem;color:var(--bone-dim)}
+  .lorenow{font-family:'Space Mono';font-size:.66rem;color:var(--gold);margin-left:4px}
+  .loredom{font-family:'Space Mono';font-size:.68rem;color:var(--bone-dim);letter-spacing:.05em;text-transform:uppercase;margin:1px 0 7px}
+  .loretext{font-family:Spectral;color:var(--bone);line-height:1.55;font-size:.92rem;font-style:italic}
+  .cutbox{max-width:560px;width:100%;text-align:center;background:var(--ink-2);border:1px solid var(--gold);border-radius:18px;padding:30px 26px;box-shadow:0 24px 90px rgba(0,0,0,.7);animation:spawn .45s ease}
+  .cuteyebrow{font-family:'Space Mono';font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--ember)}
+  .cutbox h2{font-family:'Grenze Gotisch',serif;font-size:1.7rem;color:var(--gold);margin:6px 0 14px}
+  .cutbox p{font-family:Spectral;color:var(--bone);line-height:1.6;font-size:1rem;margin:10px 0;font-style:italic}
+  .cutsigil{display:inline-flex;align-items:center;justify-content:center;width:62px;height:62px;border-radius:50%;font-size:1.7rem;margin:2px auto 8px;border:2px solid var(--acc,var(--gold));color:var(--acc,var(--gold));background:var(--ink-3);box-shadow:0 0 28px -6px var(--acc,var(--gold)),inset 0 0 20px -12px var(--acc,var(--gold));animation:sigilPulse 3.4s ease-in-out infinite}
+  @keyframes sigilPulse{0%,100%{box-shadow:0 0 22px -8px var(--acc,var(--gold)),inset 0 0 20px -12px var(--acc,var(--gold))}50%{box-shadow:0 0 38px -4px var(--acc,var(--gold)),inset 0 0 20px -10px var(--acc,var(--gold))}}
+  .cutquote{font-family:'Grenze Gotisch',serif;font-weight:500;font-size:1.2rem;line-height:1.45;color:var(--bone);border-left:3px solid var(--acc,var(--ember));background:linear-gradient(90deg,rgba(255,255,255,.04),transparent 80%);padding:11px 16px;margin:16px auto 2px;max-width:48ch;text-align:left;border-radius:0 10px 10px 0}
+  .cutquote .cq-mark{color:var(--acc,var(--ember));font-size:1.5rem;line-height:0;vertical-align:-.18em;opacity:.85}
+  .cutquote .cq-by{font-family:'Space Mono',monospace;font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--acc,var(--ember));margin-top:9px;text-align:right}
+  .goldpill{font-family:'Space Mono',monospace;font-weight:700;font-size:.7rem;color:var(--gold);border:1px solid rgba(217,164,65,.45);border-radius:999px;padding:3px 11px;background:rgba(217,164,65,.09)}
+  .storecat{font-family:'Space Mono',monospace;font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:15px 0 7px;border-bottom:1px solid var(--line);padding-bottom:5px;display:flex;align-items:center;gap:7px}
+  .storecat::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold)}
+  .storegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(224px,1fr));gap:10px}
+  .storeitem{display:flex;gap:10px;border:1px solid var(--line);border-radius:13px;background:var(--ink-3);padding:10px 11px;transition:.15s}
+  .storeitem:hover{border-color:var(--bone-dim);transform:translateY(-1px)}
+  .storeitem.uncommon{border-color:rgba(77,168,218,.32)}
+  .storeitem.rare{border-color:rgba(217,164,65,.6);background:linear-gradient(180deg,rgba(217,164,65,.07),var(--ink-3))}
+  .si-ic{font-size:1.55rem;width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex:none;border-radius:10px;background:var(--ink);border:1px solid var(--line)}
+  .si-body{flex:1;min-width:0}
+  .si-n{font-family:'Grenze Gotisch',serif;font-weight:700;font-size:.98rem;line-height:1.1}
+  .si-r{font-family:'Space Mono',monospace;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--bone-dim);border:1px solid var(--line);border-radius:5px;padding:1px 5px;margin-left:5px}
+  .si-t{font-size:.78rem;color:var(--bone-dim);margin:4px 0 7px;line-height:1.36}
+  .si-foot{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .you .bar>i,.boss .bar>i,.pw .bar>i{position:relative}
+  .you .bar>i::after,.boss .bar>i::after,.pw .bar>i::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.22),transparent 55%);border-radius:6px}
+  .pwabil{display:flex;flex-direction:column;gap:5px;margin:9px 0}
+  .pwrow{display:flex;gap:8px;align-items:flex-start;font-family:Spectral;font-size:.82rem;color:var(--bone-dim);line-height:1.4}
+  .pwrow b{color:var(--bone)} .pwrow.ult{color:var(--bone)} .pwrow.ult.ready .pwsign{background:var(--ember);color:#fff;border-color:var(--ember)}
+  .pwsign{flex:none;min-width:26px;text-align:center;font-family:'Space Mono';font-size:.72rem;background:var(--ink-3);border:1px solid var(--line);border-radius:6px;padding:1px 0;color:var(--bone)}
+  .pwthr{font-family:'Space Mono';font-size:.66rem;color:var(--ember)}
+  .playcard.mine{border-color:rgba(77,168,218,.55);background:linear-gradient(180deg,rgba(77,168,218,.06),var(--ink-2))}
+  .topbadge{font-family:'Space Mono';font-size:.56rem;letter-spacing:.08em;color:var(--ember);border:1px solid rgba(224,83,61,.5);border-radius:5px;padding:1px 5px}
+  .castgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;margin-top:10px}
+  .castgrid label{display:flex;flex-direction:column;gap:3px;font-family:'Space Mono';font-size:.6rem;letter-spacing:.04em;text-transform:uppercase;color:var(--bone-dim)}
+  .castgrid input,.castgrid select{font-family:Spectral;font-size:.85rem;width:100%}
+  .redir{max-width:180px}
+  .overlay.menu{background:var(--ink);align-items:flex-start;overflow:auto;z-index:40}
+  .menubox{max-width:780px;width:100%;margin:auto;background:linear-gradient(180deg,rgba(217,164,65,.06),transparent 60%),var(--ink-2);border:1px solid var(--line);border-radius:16px;padding:clamp(18px,4vw,34px)}
+  .menugrid{display:grid;gap:12px;margin-top:14px}@media(min-width:640px){.menugrid{grid-template-columns:1fr 1fr}}
+  .menucard{border:1px solid var(--line);border-radius:12px;background:var(--ink-3);padding:12px 14px}
+  .menurec{font-family:'Space Mono';font-size:.82rem;margin-top:10px}
+  .libmodal{max-width:780px}
+  .liblist{display:grid;gap:8px;margin-top:8px}
+  .libitem{border:1px solid var(--line);border-radius:10px;background:var(--ink-3);padding:8px 10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .libitem .li-h{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .libitem .li-n{font-family:'Grenze Gotisch',serif;font-weight:700}
+  .libitem .li-a{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+  /* ===== Touch targets — applies to touch devices only; a desktop mouse (pointer:fine) is unaffected ===== */
+  @media (pointer:coarse){
+    button{padding:10px 13px;font-size:.8rem;min-height:40px}
+    button.mini{padding:8px 11px;font-size:.72rem;min-height:36px}
+    button.tiny{padding:7px 10px;font-size:.7rem;min-height:34px}
+    .crea .ctr{gap:6px} .crea .ctr button{padding:8px 10px;font-size:.72rem;min-height:36px;min-width:36px}
+    select,.crea select{font-size:.78rem;padding:7px 8px;min-height:36px;margin-top:5px}
+    input[type=number],input[type=text]{font-size:16px;min-height:38px;padding:7px 9px} /* 16px avoids iOS zoom-on-focus */
+    .badge{font-size:.62rem;padding:3px 7px} .badge.kw{padding:4px 8px}
+    .chip{font-size:.7rem;padding:5px 9px}
+    .pip{width:15px;height:15px}
+    details summary{font-size:.84rem;padding:5px 0}
+    .modalx{width:38px;height:38px}
+  }
+  /* ===== Narrow screens — reflow for phones (does not touch the desktop layout) ===== */
+  @media (max-width:560px){
+    body{padding:10px}
+    .overlay{padding:10px}
+    .modal{padding:18px 15px}
+    .castgrid{grid-template-columns:1fr}
+    .btnrow{gap:8px}
+    .btnrow .big{width:100%!important}
+    .manaline,.lab{font-size:.7rem}
+    .crea .cn{font-size:.92rem} .crea .cpt{font-size:1.06rem}
+    .menubox{padding:18px 15px}
+    input[type=text]#bossDmgIn,input#dieN{width:100%}
+  }
+  @media (max-width:480px){
+    .creatures{grid-template-columns:1fr}
+    .inv{grid-template-columns:1fr}
+  }
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Guff's Gauntlet · Solo Commander RPG · Engine v31</div>
+    <h1><span class="lvl">Level I</span> — The Warren of Embers</h1>
+    <p class="subtitle">Three enemy generals, one descent. Log your board; declare attacks and the enemy blocks; the enemy attacks and you block. Each room is a fresh game against a new foe — only your life and loot carry deeper.</p>
+    <div class="track" id="track"></div>
+  </header>
+
+  <details class="help panel" style="margin-top:12px">
+    <summary>▸ How it plays — read me first</summary>
+    <ol>
+      <li><b>Set your deck colors</b> up top (the mana symbols). This is your commander's color identity — it powers protection-from-color and tells the enemy what it's facing.</li>
+      <li><b>Log your board</b> below. Each creature, artifact, enchantment and walker has a <b>⚙ properties</b> drawer: color, legendary/token, abilities (passive/active), mana it taps for, <b>dies to graveyard or exile</b>, <b>phase out</b>, <b>protection from a color</b>, an <b>attack tax</b> (mana/life the enemy owes to attack), and <b>set as commander</b>.</li>
+      <li><b>Designate your commander</b> from any creature or planeswalker. It lives in your <b>command zone</b>; deploy it (you pay its cost), and if it dies it returns to the zone with rising tax — just like the enemy's.</li>
+      <li><b>Phase flow:</b> the enemy takes its turn, then you take yours, through every step (untap → upkeep → draw → main → combat → main → end). One <b>Continue</b> button walks the phases; the enemy spends visible mana, draws from its deck, and casts.</li>
+      <li><b>Your attack:</b> pick attackers, Swing — the enemy assigns blocks by AI; the engine resolves trample, deathtouch, strikes, lifelink, protection, etc. <b>Enemy attack:</b> its attackers appear and you assign blockers.</li>
+      <li><b>Resolve or counter</b> each spell the enemy draws and casts. Removal auto-applies to your board but skips hexproof, phased-out, and protected creatures (protection-from-red stops red sources, protection-from-black stops black ones); what it destroys goes to <b>your graveyard or exile</b> per the card's setting.</li>
+      <li><b>The descent:</b> you face <b>three generals</b> — Grakk (mono-red aggro), Murglax (mono-black attrition), and finally Vael (red-black, and the only one with a planeswalker). Between rooms your <b>life and loot carry over</b>; the battlefield, counters, and the enemy reset to a fresh game, and your commander waits in the command zone. Tap <b>📖 Lore</b> or <b>❓ Tutorial</b> any time.</li>
+    </ol>
+  </details>
+
+  <div class="controls">
+    <span class="lab">Difficulty</span>
+    <div class="seg" id="diffSeg"><button data-d="easy">Easy</button><button data-d="standard" class="on">Standard</button><button data-d="brutal">Brutal</button></div>
+    <button class="mini" id="resetBtn">↺ Restart Dungeon</button><button class="mini azor" onclick="undo()">↩ Undo</button><button class="mini gold" onclick="openTutorial()">❓ Tutorial</button><button class="mini" onclick="openLore()">📖 Lore</button><button class="mini gold" onclick="openLibrary()">🃏 Library</button><button class="mini azor" onclick="showMenu()">☰ Menu</button><span class="goldpill" id="goldNote" style="align-self:center">💰 0</span><span class="lab" id="diffNote">standard</span>
+  </div>
+
+  <div class="deckcolors">
+    <span class="lab">Your deck colors</span><div class="setbtns" id="deckColorRow"></div>
+    <span class="hint">tap the mana symbols for your commander identity — sets up protection-from-color and informs the enemy</span>
+  </div>
+
+  <div class="grid duo">
+    <div class="panel you">
+      <h2>⟡ You <span class="tag">carries between rooms</span></h2>
+      <div class="dial"><span class="num" id="youLife">40</span><span class="of">/ <span id="youMax">40</span> life</span></div>
+      <div class="bar"><i id="youBar" style="width:100%"></i></div>
+      <div class="btnrow"><div class="setbtns"><button class="mini" onclick="adjLife('you',-5)">−5</button><button class="mini" onclick="adjLife('you',-1)">−1</button><button class="mini" onclick="adjLife('you',1)">+1</button><button class="mini" onclick="adjLife('you',5)">+5</button><button class="mini azor" onclick="setLife()">Set…</button></div></div>
+    </div>
+    <div class="panel boss">
+      <h2>☠ <span id="bossName">—</span> <span class="cdots" id="bossColors"></span> <span class="tag live" id="bossTag">enemy general</span></h2>
+      <div class="dial"><span class="num" id="bossLife">0</span><span class="of">/ <span id="bossMax">0</span> life</span></div>
+      <div class="bar"><i id="bossBar" style="width:100%"></i></div>
+      <div class="pips" id="manaPips"></div><div class="manaline" id="manaLine">Mana: <b>0</b></div>
+      <div class="btnrow"><button class="ember" onclick="dmgBoss()">Direct damage</button><input type="number" id="bossDmgIn" min="1" placeholder="dmg"><div class="setbtns"><button class="mini" onclick="adjBoss(-1)">−1</button><button class="mini" onclick="adjBoss(1)">+1</button><button class="mini" onclick="adjBoss(5)">+5</button><button class="mini gold" onclick="setBossLife()">Set…</button></div></div>
+      <div class="btnrow"><span class="manaline">Max attackers (Silent Arbiter → 1):</span><input type="number" id="maxAtk" min="0" value="0" onchange="render()"></div>
+      <div class="btnrow"><span class="manaline">Enemy mana now:</span><button class="mini" onclick="bossManaAdj(-5)">−5</button><button class="mini" onclick="bossManaAdj(-1)">−1</button><b id="bossPoolVal" class="manaline" style="color:var(--gold);min-width:42px;text-align:center">0</b><button class="mini" onclick="bossManaAdj(1)">+1</button><button class="mini" onclick="bossManaAdj(5)">+5</button><button class="mini azor" onclick="bossManaSet()">Set…</button><button class="mini ember" onclick="bossManaEmpty()">empty</button></div>
+      <div class="btnrow"><span class="manaline">Per-turn modifier (ritual + / stax −):</span><button class="mini" onclick="bossManaModAdj(-1)">−1</button><b id="bossManaModVal" class="manaline" style="color:var(--gold);min-width:24px;text-align:center">0</b><button class="mini" onclick="bossManaModAdj(1)">+1</button><button class="mini azor" onclick="bossManaModSet()">Set…</button></div>
+      <div class="cmdbox" id="cmdBox"></div>
+      <div class="gstate"><b>Note</b> Direct damage (burn, walker abilities) hits the boss's life. Creature damage reaches it through combat below.</div>
+    </div>
+  </div>
+
+  <div class="panel pw" id="pwPanel" style="margin-top:12px;display:none">
+    <h2>✦ <span id="pwName">—</span> <span class="tag" id="pwTag"></span></h2>
+    <div class="dial"><span class="num" id="pwLoy">—</span><span class="of">loyalty</span></div>
+    <div class="bar"><i id="pwBar" style="width:0%"></i></div>
+    <div class="pwabil" id="pwAbil"></div>
+    <div class="btnrow"><button class="gold mini" onclick="damagePW()">Attack walker</button><input type="number" id="pwDmgIn" min="1" placeholder="dmg"><div class="setbtns"><button class="mini" onclick="adjLoy(-1)">−1</button><button class="mini" onclick="adjLoy(1)">+1</button></div></div>
+  </div>
+
+  <div class="panel" style="margin-top:12px">
+    <h2>⚔ <span id="enemyName1">Enemy</span>'s creatures <span class="tag" id="creaCount">0</span></h2>
+    <div class="creatures" id="creaField"></div>
+    <p class="empty" id="creaEmpty">No tokens yet.</p>
+  </div>
+
+  <div class="panel" style="margin-top:12px">
+    <h2>🂠 Enemy's zones <span class="tag">deck · graveyard · exile</span></h2>
+    <div class="deckmeta"><span>Library: <b id="libCount">0</b></span><span>Hand: <b id="handCount">0</b></span></div>
+    <div class="btnrow" style="margin-top:2px"><button class="tiny azor" onclick="openDeckTools()">🂠 Manipulate enemy deck</button><span class="manaline">scry · look · mill · exile · discard · shuffle</span></div>
+    <div class="zones duoz" id="vaelZones">
+      <div class="zone"><div class="zh"><span>Graveyard</span><span>black can interact</span></div><div class="zchips" id="gyList"></div></div>
+      <div class="zone ex"><div class="zh"><span>Exile</span><span>out of the game</span></div><div class="zchips" id="exList"></div></div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:12px">
+    <h2>🛡 Your board <span class="tag">the enemy reads &amp; fights this</span></h2>
+    <div class="btnrow" style="margin-top:4px"><button class="azor" style="padding:11px 20px;font-size:.88rem;font-weight:700;letter-spacing:.03em" onclick="openCast()">✦ Cast a spell</button><span class="manaline">→ onto the Stack; permanents resolve onto this board</span></div>
+    <div class="btnrow" style="margin-top:4px"><span class="lab">Deploy token</span><select id="boardTokSel" style="max-width:180px"></select><input type="number" id="boardTokQty" min="1" value="1" style="width:48px"><button class="ok" style="padding:8px 14px;font-weight:700" onclick="deploySavedToken()">Deploy ×N</button><button class="tiny" onclick="openLibrary()">＋ make / manage</button></div>
+    <div class="cmdbox" id="pcmdBox" style="display:none"></div>
+    <div class="subh"><span>Creatures</span><button class="tiny ok" onclick="addC()">+ creature</button></div>
+    <div class="creatures" id="myCrea"></div>
+    <div class="subh"><span>Artifacts</span><button class="tiny ok" onclick="addP('artifacts')">+ artifact</button></div><div id="myArt"></div>
+    <div class="subh"><span>Enchantments</span><button class="tiny ok" onclick="addP('enchants')">+ enchantment</button></div><div id="myEnch"></div>
+    <div class="subh"><span>Planeswalkers</span><button class="tiny ok" onclick="addW()">+ planeswalker</button></div><div id="myWalk"></div>
+    <div class="subh"><span>Emblems</span><button class="tiny ok" onclick="addEm()">+ emblem</button></div><div id="myEmb"></div>
+  </div>
+
+  <!-- YOUR ATTACK -->
+  <div class="panel" style="margin-top:12px">
+    <h2>🗡 Your attack <span class="tag">pick attackers · enemy blocks</span></h2>
+    <p class="manaline" id="atkHint">Tap an attacker to select it, then Swing. Tapped/defender creatures can't attack.</p>
+    <div class="creatures" id="atkPick"></div>
+    <div class="btnrow"><button class="big azor" style="width:auto;padding:11px 16px" onclick="swing()">⚔ Swing! (enemy declares blocks)</button></div>
+  </div>
+
+  <div class="panel" id="myZonesPanel" style="margin-top:12px;display:none">
+    <h2>⚰ Your zones <span class="tag">graveyard · exile</span></h2>
+    <div class="zones duoz">
+      <div class="zone"><div class="zh"><span>Graveyard</span><span>↑ return to play · ⊘ exile</span></div><div class="zchips" id="myGyList"></div></div>
+      <div class="zone ex"><div class="zh"><span>Exile</span><span>out of the game</span></div><div class="zchips" id="myExList"></div></div>
+    </div>
+  </div>
+
+  <div class="panel" id="rulesPanel" style="margin-top:12px;display:none">
+    <h2>♾ Enchantments in play <span class="tag">persist until destroyed</span></h2><div class="rules" id="rulesField"></div>
+  </div>
+  <div class="panel" id="invPanel" style="margin-top:12px;display:none">
+    <h2>🎒 Satchel <span class="tag" id="invCount">empty</span> <span class="tag">spent at the end of each descent</span></h2><div class="inv" id="invField"></div>
+  </div>
+  <div class="panel" style="margin-top:12px">
+    <h2>🧰 Tools <span class="tag">dice · coin · counters · notes</span></h2>
+    <div class="btnrow"><span class="lab">Dice</span><button class="mini" onclick="rollDie(4)">d4</button><button class="mini" onclick="rollDie(6)">d6</button><button class="mini" onclick="rollDie(8)">d8</button><button class="mini" onclick="rollDie(10)">d10</button><button class="mini" onclick="rollDie(12)">d12</button><button class="mini" onclick="rollDie(20)">d20</button><input type="number" id="dieN" min="2" placeholder="N"><button class="mini gold" onclick="rollDie(parseInt($('dieN').value,10)||6)">roll dN</button><button class="mini" onclick="coinFlip()">🪙 coin</button><span id="diceOut" class="manaline"></span></div>
+    <div class="btnrow"><span class="lab">Boardwipe</span>
+      <select id="bwMode"><option value="all">destroy all creatures</option><option value="toughLE">toughness ≤ N</option><option value="powGE">power ≥ N</option><option value="dmgAll">deal N to all</option></select>
+      <input type="number" id="bwN" min="0" value="2" style="width:48px"><span class="lab">N</span>
+      <button class="mini ${''}" id="bwTok" onclick="this.classList.toggle('on')">skip tokens</button>
+      <button class="mini" id="bwLeg" onclick="this.classList.toggle('on')">skip legendary</button>
+      <select id="bwScope"><option value="mine">your board</option><option value="enemy">enemy tokens</option><option value="both">both boards</option></select>
+      <button class="mini ember" onclick="boardWipe()">⚡ Wipe</button></div>
+    <div class="btnrow"><span class="lab">Counters</span>
+      <span class="chip">poison <b id="cPoison" style="cursor:default">0</b>/10 <button class="tiny" onclick="cnt('poison',-1)">−</button><button class="tiny" onclick="cnt('poison',1)">+</button></span>
+      <span class="chip">cmd-dmg <b id="cCmd" style="cursor:default">0</b>/21 <button class="tiny" onclick="cnt('cmdDmg',-1)">−</button><button class="tiny" onclick="cnt('cmdDmg',1)">+</button></span>
+      <span class="chip">energy <b id="cEnergy" style="cursor:default">0</b> <button class="tiny" onclick="cnt('energy',-1)">−</button><button class="tiny" onclick="cnt('energy',1)">+</button></span>
+      <span class="chip">exp <b id="cExp" style="cursor:default">0</b> <button class="tiny" onclick="cnt('experience',-1)">−</button><button class="tiny" onclick="cnt('experience',1)">+</button></span>
+    </div>
+    <textarea id="notes" placeholder="Scratchpad — anything you want to remember between turns…" style="width:100%;min-height:54px;margin-top:8px;font-family:Spectral;background:var(--ink);color:var(--bone);border:1px solid var(--line);border-radius:8px;padding:8px" oninput="S.notes=this.value"></textarea>
+  </div>
+
+  <div class="panel" style="margin-top:12px">
+    <h2>🜂 Turn flow <span class="tag" id="turnTag">Turn 0</span></h2>
+    <div class="phasebar">
+      <div class="turnlabel pre" id="turnLabel">Pre-game — set up your board</div>
+      <div class="phasechips" id="phaseChips"></div>
+      <div class="flowmana" id="flowMana"></div>
+      <button class="big" id="dmBtn" onclick="flowClick()">▶ Begin the first turn</button>
+      <div class="btnrow" style="justify-content:center;margin-top:10px"><button class="azor" style="padding:11px 20px;font-size:.88rem;font-weight:700;letter-spacing:.03em" onclick="openCast()">✦ Cast a spell</button></div>
+    </div>
+    <div class="plays" id="plays">
+      <h3>🜟 The Stack <span class="tag">resolves top-down</span></h3>
+      <p style="font-size:.82rem;color:var(--bone-dim)">Your casts and the enemy's responses pile up here — the <b>TOP</b> resolves first. Enemy targeted spells auto-hit your tracked board on resolve; your permanents auto-enter your board.</p>
+      <div id="playCards"></div>
+      <div class="btnrow"><button class="big ember" style="width:auto;padding:11px 16px" onclick="toAssault()">Resolve remaining & continue ▸</button></div>
+    </div>
+    <div class="resolver" id="resolver">
+      <h3 id="combatTitle">Combat</h3>
+      <div id="combatBox"></div>
+      <div class="incoming" id="combatPred"></div>
+      <div class="btnrow"><button class="big ember" style="width:auto;padding:11px 16px" onclick="approveCombat()">Approve &amp; apply</button><button class="mini" onclick="cancelCombat()">Cancel</button></div>
+    </div>
+  </div>
+
+  <div class="banner clear" id="clearBanner">
+    <h2>⚜ Encounter Cleared ⚜</h2><p style="font-family:Spectral;color:var(--bone-dim)" id="clearText"></p><div class="loot" id="lootText"></div>
+    <div class="btnrow" style="justify-content:center"><button class="big ok" style="width:auto;padding:11px 18px" onclick="advance()">Descend →</button></div>
+  </div>
+  <div class="banner victory" id="victory"><h2>⚜ Vael Falls ⚜</h2><p style="font-family:Spectral;color:var(--bone-dim)">The Warren of Embers is conquered. The Drowned Conclave waits below…</p><div class="loot" id="winLoot"></div></div>
+  <div class="banner defeat" id="defeat"><h2>The Warren Consumes You</h2><p style="font-family:Spectral;color:var(--bone-dim)">The enemy wins this time. Restart and descend again.</p></div>
+
+  <div class="log"><h2 style="font-family:'Grenze Gotisch'">📜 Dungeon Log</h2><div id="log"></div></div>
+
+  <div class="overlay" id="overlay" onclick="if(event.target===this)closeOverlay()">
+    <div class="modal"><button class="modalx" onclick="closeOverlay()">✕</button><div id="modalBody"></div></div>
+  </div>
+  <div class="overlay cut" id="cutscene">
+    <div class="cutbox"><div id="cutSigil"></div><div class="cuteyebrow" id="cutEyebrow"></div><h2 id="cutTitle"></h2><div id="cutLines"></div><div id="cutQuote"></div><button class="big ok" style="width:auto;padding:11px 18px" id="cutBtn" onclick="closeCutscene()">Continue ▸</button></div>
+  </div>
+
+  <div class="overlay menu" id="menu">
+    <div class="menubox">
+      <div class="eyebrow">Guff's Gauntlet · Solo Commander RPG · Engine v31</div>
+      <h1 style="margin:.08em 0 .18em"><span class="lvl">Level I</span> — The Warren of Embers</h1>
+      <p class="subtitle">A solo Commander dungeon crawl. Choose a profile, build a library of your own cards, then descend to face three generals — Grakk, Murglax, and Vael.</p>
+      <div class="menugrid">
+        <div class="menucard">
+          <div class="subh"><span>Profile</span></div>
+          <div class="btnrow"><select id="menuProfileSel" onchange="switchProfile(this.value)"></select><button class="tiny ember" onclick="deleteProfile(DB.active)">✕</button></div>
+          <div class="btnrow"><input type="text" id="menuNewName" placeholder="new profile name"><button class="tiny ok" onclick="newProfile($('menuNewName').value);$('menuNewName').value=''">+ create</button></div>
+          <div class="menurec" id="menuRecord"></div>
+        </div>
+        <div class="menucard">
+          <div class="subh"><span>Difficulty</span></div>
+          <div class="seg" id="menuDiff"><button data-d="easy" onclick="menuSetDiff('easy')">Easy</button><button data-d="standard" onclick="menuSetDiff('standard')">Standard</button><button data-d="brutal" onclick="menuSetDiff('brutal')">Brutal</button></div>
+          <div class="subh" style="margin-top:14px"><span>Saves (offline)</span></div>
+          <div class="btnrow"><button class="tiny" onclick="exportSave()">⬇ Export save</button><label class="tiny" style="cursor:pointer;font-family:'Space Mono';border:1px solid var(--line);border-radius:9px;padding:7px 11px">⬆ Import<input type="file" accept="application/json" style="display:none" onchange="importSave(this)"></label></div>
+        </div>
+      </div>
+      <div class="btnrow" style="margin-top:14px;flex-wrap:wrap"><button class="mini gold" onclick="openLibrary()">🃏 Card Library</button><button class="mini gold" onclick="openStore()">🛒 Store</button><span class="goldpill" id="menuGold" style="align-self:center">💰 0 gold</span><button class="mini" onclick="openTutorial()">❓ How to play</button><button class="mini" onclick="openLore()">📖 Lore</button></div>
+      <button class="big ok" style="margin-top:16px" onclick="startGame()">Descend ▸</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="library" onclick="if(event.target===this)closeLibrary()">
+    <div class="modal libmodal"><button class="modalx" onclick="closeLibrary()">✕</button>
+      <h2 class="loreh">🃏 Card Library <span class="lorecol">— <b id="libWho">—</b></span></h2>
+      <p style="color:var(--bone-dim);font-style:italic">Build a card in “✦ Cast a spell” and hit ★ Save to keep it here. <b>Deploy</b> drops it onto your board; <b>Cast</b> puts it on the stack. Tokens use the quick-make below and deploy in bulk.</p>
+      <div class="subh"><span>Cards</span><button class="tiny ok" onclick="openCast()">✦ New card</button></div>
+      <div id="libCards" class="liblist"></div>
+      <div class="subh" style="margin-top:14px"><span>Tokens</span></div>
+      <div id="libTokens" class="liblist"></div>
+      <div class="menucard" style="margin-top:12px">
+        <div class="subh"><span>Quick-make a token</span></div>
+        <div class="castgrid">
+          <label>Name<input type="text" id="tokName" placeholder="Goblin"></label>
+          <label>Power<input type="number" id="tokP" value="1"></label>
+          <label>Toughness<input type="number" id="tokT" value="1"></label>
+          <label>Colors<input type="text" id="tokColor" placeholder="R" style="text-transform:uppercase"></label>
+          <label style="grid-column:1/-1">Keywords (comma-sep)<input type="text" id="tokKw" placeholder="haste"></label>
+          <label>Quantity<input type="number" id="tokQty" value="1" min="1"></label>
+        </div>
+        <div class="btnrow" style="margin-top:8px"><button class="tiny ok" onclick="quickDeployToken()">Deploy ×N now</button><button class="tiny gold" onclick="saveTokenToLibrary()">★ Save token</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="store" onclick="if(event.target===this)closeStore()">
+    <div class="modal libmodal"><button class="modalx" onclick="closeStore()">✕</button>
+      <h2 class="loreh">🛒 The Wandering Merchant <span class="lorecol">— <span class="goldpill" id="storeGold">0</span> gold</span></h2>
+      <p style="color:var(--bone-dim);font-style:italic">A hooded figure and a cart that shouldn't fit on these stairs. The Merchant trades the gold of the slain for supplies — and asks no questions. Your <b>gold endures</b> between games; everything you buy here serves a <b>single descent</b>, so spend it freely and spend it often.</p>
+      <div id="storeList" class="liblist"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DIFF={easy:{hpMult:0.8,manaBonus:-1,note:"easy",goldMult:0.8},standard:{hpMult:1,manaBonus:0,note:"standard",goldMult:1},brutal:{hpMult:1.3,manaBonus:1,note:"brutal",goldMult:1.3}};
+const KW_LIST=["flying","reach","trample","menace","deathtouch","first strike","double strike","lifelink","vigilance","indestructible","defender","hexproof","can't block","must attack","lure"];
+const PHASES=["untap","upkeep","draw","main1","combat","main2","end"];
+const PHASE_LABEL={untap:"Untap",upkeep:"Upkeep",draw:"Draw",main1:"Main 1",combat:"Combat",main2:"Main 2",end:"End"};
+const CMD_TAX_BASE=2, CMD_TAX_DOUBLE=true; // doubling increments (+2,+4,+8...) per your spec; set CMD_TAX_DOUBLE=false for flat +2 (standard MTG: 2,4,6,8)
+function deckCopies(k){const c=FX[k].cost;return c<=2?4:c===3?3:c===4?2:1;} // Vael's library copy count by cost
+const COLORS=["W","U","B","R","G","C"];
+const COLOR_HEX={W:"#e9e3c8",U:"#3b82c4",B:"#6b6470",R:"#d9492f",G:"#3f9b5a",C:"#b9b2a0"};
+const VAEL_COLORS=["R"]; // Vael's deck is mono-red; protection from red ≈ protection from Vael
+const FX={
+  /* red — aggro & burn */
+  whelp:{n:"Goblin Whelp",cost:1,type:"creature",color:"R",text:"Create a 1/1 Goblin.",run:["spawn","Goblin Whelp",1,1,[],"R"]},
+  raider:{n:"Goblin Raider",cost:1,type:"creature",color:"R",text:"Create a 2/1 Goblin with haste.",run:["spawn","Goblin Raider",2,1,["haste"],"R"]},
+  warband:{n:"Goblin Warband",cost:2,type:"sorcery",color:"R",text:"Create two 1/1 Goblins.",flav:"They come in tides.",run:[["spawn","Goblin Whelp",1,1,[],"R"],["spawn","Goblin Whelp",1,1,[],"R"]]},
+  brute:{n:"Emberfist Brute",cost:2,type:"creature",color:"R",text:"Create a 3/2.",run:["spawn","Emberfist Brute",3,2,[],"R"]},
+  drake:{n:"Ember Drake",cost:2,type:"creature",color:"R",text:"Create a 2/2 with flying.",run:["spawn","Ember Drake",2,2,["flying"],"R"]},
+  ogre:{n:"Warren Ogre",cost:3,type:"creature",color:"R",text:"Create a 4/3 with trample.",run:["spawn","Warren Ogre",4,3,["trample"],"R"]},
+  nightmare:{n:"Cinder Nightmare",cost:3,type:"creature",color:"R",text:"Create a 3/3 with flying.",run:["spawn","Cinder Nightmare",3,3,["flying"],"R"]},
+  colossus:{n:"Spark Colossus",cost:5,type:"creature",color:"R",text:"Create a 6/5 with trample.",flav:"A furnace given legs.",run:["spawn","Spark Colossus",6,5,["trample"],"R"]},
+  bolt:{n:"Ember Bolt",cost:1,type:"instant",color:"R",text:"You take 3 damage.",selfLoss:3},
+  storm:{n:"Ember Storm",cost:4,type:"sorcery",color:"R",text:"You take 5 damage.",selfLoss:5},
+  lash:{n:"Cinder Lash",cost:2,type:"sorcery",color:"R",text:"Roll a d6 — you lose that much life.",die:6,dieLoss:true},
+  warcry:{n:"War-Cry",cost:2,type:"sorcery",color:"R",text:"The enemy commander gains +2/+0.",flav:"\u201CBurn brighter, or burn.\u201D",run:["cmdBuff",2]},
+  pyro:{n:"Pyroclasm",cost:3,type:"sorcery",color:"R",text:"Destroy your creatures with toughness \u22642.",target:"destroyToughLE2"},
+  aura:{n:"Ember Aura",cost:2,type:"enchant",color:"R",text:"Each of your upkeeps, lose 1 life. (Destroy to stop.)",run:["rule","Ember Aura","Your upkeep: lose 1 life.",0]},
+  furnace:{n:"Slag Furnace",cost:3,type:"enchant",color:"R",text:"Each of your upkeeps, roll d6; on 1\u20132 lose 4. (Destroy to stop.)",run:["rule","Slag Furnace","Your upkeep: d6, on 1\u20132 lose 4.",6]},
+  /* black — attrition & drain */
+  gnaw:{n:"Bone Gnawer",cost:2,type:"creature",color:"B",text:"Create a 2/2 with deathtouch.",run:["spawn","Bone Gnawer",2,2,["deathtouch"],"B"]},
+  crawler:{n:"Pit Crawler",cost:3,type:"creature",color:"B",text:"Create a 3/2 with menace.",run:["spawn","Pit Crawler",3,2,["menace"],"B"]},
+  leech:{n:"Soul Leech",cost:2,type:"creature",color:"B",text:"Create a 2/2 with lifelink.",run:["spawn","Soul Leech",2,2,["lifelink"],"B"]},
+  hulk:{n:"Graverot Hulk",cost:4,type:"creature",color:"B",text:"Create a 5/4.",run:["spawn","Graverot Hulk",5,4,[],"B"]},
+  swarm:{n:"Carrion Bats",cost:2,type:"sorcery",color:"B",text:"Create two 1/1 fliers.",flav:"The Pit exhales.",run:[["spawn","Carrion Bat",1,1,["flying"],"B"],["spawn","Carrion Bat",1,1,["flying"],"B"]]},
+  raise:{n:"Shamble Forth",cost:3,type:"sorcery",color:"B",text:"Create a 3/3 Zombie.",run:["spawn","Shambling Zombie",3,3,[],"B"]},
+  smother:{n:"Smother",cost:2,type:"instant",color:"B",text:"Destroy your greatest-power creature.",target:"destroyMaxPow"},
+  edict:{n:"Pit Edict",cost:2,type:"sorcery",color:"B",text:"You sacrifice your lowest-power creature.",target:"destroyMinPow"},
+  wither:{n:"Withering Touch",cost:2,type:"instant",color:"B",text:"Your highest-power creature gets \u22123/\u22123.",target:"wither3"},
+  wrath2:{n:"Grave Reckoning",cost:4,type:"sorcery",color:"B",text:"Destroy your two greatest-power creatures.",target:"destroyTop2"},
+  plague:{n:"Plague Wind",cost:4,type:"sorcery",color:"B",text:"Your creatures get \u22122/\u22122.",target:"minusAll2"},
+  drain:{n:"Drain Pulse",cost:2,type:"sorcery",color:"B",text:"You lose 2 life; the enemy gains 2 life.",selfLoss:2,run:["bossHeal",2]},
+  bleed:{n:"Exsanguinate",cost:3,type:"sorcery",color:"B",text:"You lose 3 life; the enemy gains 3 life.",selfLoss:3,run:["bossHeal",3]},
+  voidcall:{n:"Voidcall",cost:2,type:"instant",color:"B",text:"Your least-loyal planeswalker loses 3 loyalty.",flav:"It knows your name.",target:"walkerMinLoy3"},
+  idol:{n:"Emberheart Idol",cost:3,type:"enchant",color:"B",text:"Each enemy upkeep, the enemy gains 2 life. (Destroy to stop.)",run:["bossrule","Emberheart Idol","Enemy upkeep: gains 2 life.",2]},
+};
+const DUNGEON=[
+  {name:"Ember Gate",villain:"Grakk the Gatewarden",colors:["R"],life:14,landStart:0,
+   cmd:{n:"Ashmaw",p:3,t:3,kw:["haste"],cost:3,colors:["R"]},
+   pool:["whelp","raider","warband","brute","drake","bolt","lash","warcry","aura"],
+   lore:"Grakk holds the only road into the Warren, and he holds it the way a goblin holds anything \u2014 by setting it alight. He does not parley; every challenger is fresh kindling for the gate-fires. Fast, gleeful, and utterly without patience. If Grakk has a plan, the plan is more fire, sooner.",
+   intro:["Smoke coils up out of the gorge. At its mouth squats the Ember Gate, and atop the wall a goblin warlord grins through the heat-haze.","\u201CDown there's where the dead things live,\u201D Grakk calls, hefting a torch. \u201CYou want past? Then burn \u2014 or be burned.\u201D"],
+   sigil:"\uD83D\uDD25",quote:"Burn bright, little walker. It's the only way anybody leaves my gate.",deathQuote:"...cold... when did... the fire get so... cold..."},
+  {name:"The Slag Pit",villain:"Murglax, Pit-Tyrant",colors:["B"],life:24,landStart:2,
+   cmd:{n:"Slagmaw",p:5,t:5,kw:["trample"],cost:4,colors:["B"]},
+   pool:["gnaw","crawler","leech","hulk","swarm","raise","smother","edict","wither","drain","bleed","plague","idol"],
+   lore:"Below the gate, the Warren throws its dead into the Slag Pit \u2014 and the Pit answers with Murglax. He does not kill you quickly; he spends you, a wound and a year at a time, feeding what he takes back into himself. The longer you last, the stronger he grows on your losses. Patience is his only weapon, and he has all the patience of the grave.",
+   intro:["The gate-fires gutter out behind you. The air turns wet and cold and sweet with rot.","Something vast shifts in the dark of the Slag Pit, and a voice like settling gravel says: \u201CGrakk burned bright. Bright things burn out. I will take my time with you.\u201D"],
+   sigil:"\u2620",quote:"I am in no hurry. The dead never are. Bleed for me a while \u2014 I'll grow fat on it.",deathQuote:"Spent... at last... even the Pit... runs... dry..."},
+  {name:"Vael's Throne",villain:"Vael, the Ember Tyrant",colors:["R","B"],life:36,landStart:3,isVael:true,
+   cmd:{n:"Vael's Avatar",p:5,t:5,kw:["trample"],cost:5,colors:["R","B"]},
+   pw:{name:"Nyx, Voice of Cinders",loy:3,colors:["R","B"],ultThreshold:7,
+       plus:{sign:1,n:"Ember Whisper",text:"You lose 2 life.",selfLoss:2,color:"R"},
+       minus:{sign:-3,n:"Grasping Ash",text:"Destroy your greatest-power creature.",target:"destroyMaxPow",color:"B"},
+       ult:{sign:-7,n:"Voice of Cinders",text:"You lose 8 life; the Tyrant creates a 5/5 Cinder Wraith with trample and haste.",selfLoss:8,run:["spawn","Cinder Wraith",5,5,["trample","haste"],"RB"],color:"B",ult:true}},
+   pool:["ogre","nightmare","colossus","crawler","hulk","storm","bleed","drain","edict","wrath2","voidcall","pyro","warcry","idol","plague"],
+   lore:"Grakk was the spark; Murglax was the ash. Vael is the fire that learned to feed on its own ashes and never go out. Tyrant of the Warren, Vael wields flame and decay as a single art \u2014 burning what cannot be drained, draining what cannot be burned \u2014 and when the body finally fails, the embers merely choose a new shape. To put Vael down you must do it twice, and mean it both times.",
+   intro:["The Pit narrows to a stair, and the stair to a throne of cooling slag. Heat and cold war in the same breath.","Vael does not rise. \u201CTwo of my wardens, undone,\u201D the Tyrant muses, almost fond. \u201CYou've come far enough to matter. Good. Ash should have witnesses.\u201D"],
+   sigil:"\u265B",quote:"Ash should have witnesses. Kneel, and I will let you be one. Refuse, and you will be the ash.",deathQuote:"Embers... do not... choose... twice...",
+   epilogue:["The last ember winks out, and for the first time in an age the Warren is dark and silent and cold.","Far below, water drips into a deeper black. The Drowned Conclave is waiting \u2014 but that is a descent for another day."]},
+];
+const BOONS={heal5:{n:"Healing Draught",r:"common",kind:"consumable",t:"Restore 5 life."},heal10:{n:"Greater Draught",r:"uncommon",kind:"consumable",t:"Restore 10 life."},ward:{n:"Ward Stone",r:"uncommon",kind:"passive",t:"Prevent the first 2 damage of every enemy assault."},phoenix:{n:"Phoenix Charm",r:"rare",kind:"passive",t:"The first time you'd hit 0 life, survive at 1 instead."},ember:{n:"Ember Sigil",r:"common",kind:"reminder",t:"Your direct damage to the boss deals +1 (apply yourself)."},spark:{n:"Spark of Vigor",r:"uncommon",kind:"instant",t:"+5 maximum life, heal 5."},map:{n:"Sapper's Map",r:"common",kind:"passive",t:"The next villain enters with 4 less life."},scholar:{n:"Scholar's Token",r:"common",kind:"reminder",t:"Draw an extra card each turn (apply yourself)."},elixir:{n:"Grand Elixir",r:"rare",kind:"consumable",t:"Restore 15 life."},tonic:{n:"Tonic of Vigor",r:"uncommon",kind:"consumable",t:"+5 maximum life, then heal 5."},antidote:{n:"Cleansing Antidote",r:"common",kind:"consumable",t:"Remove all of your poison counters."},bomb:{n:"Cinder Bomb",r:"uncommon",kind:"consumable",t:"Hurl it for 4 damage to the enemy's life."},aegis:{n:"Aegis Charm",r:"rare",kind:"passive",t:"Prevent the first 4 damage of every enemy assault (stacks with Ward Stone)."},whet:{n:"Whetstone",r:"common",kind:"reminder",t:"Your commander may enter with a +1/+1 counter (apply it yourself)."}};
+/* ===== Store: utilities bought with gold earned by clearing dungeons. "Potions for now" — modest, journey-focused. ===== */
+const STORE=[
+  {id:"heal5",cost:6,cat:"Potions",icon:"\uD83E\uDDEA"},
+  {id:"heal10",cost:12,cat:"Potions",icon:"\uD83C\uDF76"},
+  {id:"elixir",cost:20,cat:"Potions",icon:"\uD83C\uDFFA"},
+  {id:"tonic",cost:16,cat:"Potions",icon:"\uD83C\uDF75"},
+  {id:"antidote",cost:8,cat:"Potions",icon:"\uD83D\uDC9A"},
+  {id:"bomb",cost:14,cat:"Utility",icon:"\uD83D\uDCA3"},
+  {id:"map",cost:10,cat:"Utility",icon:"\uD83D\uDDFA\uFE0F"},
+  {id:"whet",cost:10,cat:"Utility",icon:"\u2692\uFE0F"},
+  {id:"ward",cost:18,cat:"Relics",icon:"\uD83D\uDEE1\uFE0F"},
+  {id:"aegis",cost:30,cat:"Relics",icon:"\uD83D\uDD30"},
+  {id:"phoenix",cost:44,cat:"Relics",icon:"\uD83E\uDEB6"},
+];
+function goldReward(roomIdx){const base=12+roomIdx*10;return Math.max(1,Math.round(base*((DIFF[S.diff]&&DIFF[S.diff].goldMult)||1)));}
+let _dt={};
+const LOOT_D20=[[1,2,"map"],[3,6,"heal5"],[7,9,"ember"],[10,11,"scholar"],[12,14,"heal10"],[15,16,"ward"],[17,18,"spark"],[19,19,"phoenix"],[20,20,"jackpot"]];
+
+let S;
+function fresh(){histReset();S={diff:"standard",youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
+function enterRoom(i,first){S.roomIndex=i;const room=DUNGEON[i];const m=DIFF[S.diff].hpMult*(S.balanceScale||1);let life=Math.max(1,Math.round(room.life*m));if(S.weakenNext){life=Math.max(1,life-4);S.weakenNext=false;}
+  S.boss={name:room.villain,life,max:life,isVael:!!room.isVael,colors:(room.colors||["R"]).slice()};
+  S.enemy={name:room.villain,colors:(room.colors||["R"]).slice(),lore:room.lore||"",isFinal:!!room.isVael};
+  S.cmd={id:'cmd',n:room.cmd.n,p:room.cmd.p,t:room.cmd.t,kw:[...room.cmd.kw],color:(room.cmd.colors||room.colors||["R"]).slice(),baseCost:room.cmd.cost,cost:room.cmd.cost,tax:0,deaths:0,inPlay:false,sick:false,tapped:false,plus:0,minus:0,other:[],_cmd:true};
+  S.tokens=[];S.rules=[];S.turn=0;S.phase2done=false;S.balanceScale=1;
+  S.pw=room.pw?{name:room.pw.name,loy:room.pw.loy,baseLoy:room.pw.loy,colors:(room.pw.colors||room.colors||[]).slice(),ultThreshold:room.pw.ultThreshold||7,plus:room.pw.plus,minus:room.pw.minus,ult:room.pw.ult}:null;
+  S.activeTurn=null;S.phase=0;S.bossMana=0;S.bossManaMax=0;S.bossManaMod=0;S.plays=[];S.combat=null;S.paused=false;S.lib=buildDeck(room.pool);S.hand=[];S.gy=[];S.exile=[];vaelDraw(4);
+  if(!first)log("sys",`— You descend into <b>${room.name}</b>. ${S.boss.name} [${S.boss.colors.join("/")}]: ${life} life. Commander ${S.cmd.n} (${S.cmd.cost} mana). Deck: ${S.lib.length} cards. —`);}
+function buildDeck(pool){const lib=[];pool.forEach(k=>{const n=deckCopies(k);for(let j=0;j<n;j++)lib.push({id:S.nextId++,key:k});});for(let a=lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[lib[a],lib[b]]=[lib[b],lib[a]];}return lib;}
+function vaelDraw(n){for(let i=0;i<n;i++){if(!S.lib.length){if(!S.gy.length)break;S.lib=S.gy.splice(0);for(let a=S.lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[S.lib[a],S.lib[b]]=[S.lib[b],S.lib[a]];}log("dm",`${EN()} shuffles its graveyard into a fresh library.`);}if(S.lib.length)S.hand.push(S.lib.shift());}}
+
+/* ===== ENEMY DECK MANIPULATION =====
+   The dungeon models the enemy deck as a known, ordered pile of cards (top = front). You can look,
+   reorder, mill, exile, shuffle, and force discards — i.e. move cards between library / hand / graveyard
+   / exile. Anything fancier (tutoring a card into play, casting from their deck, transforming cards) the
+   abstract model can't represent, so those effects simply don't apply. */
+function libNames(arr){return arr.map(c=>(FX[c.key]&&FX[c.key].n)||'card');}
+function deckShuffle(){histCapture();for(let a=S.lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[S.lib[a],S.lib[b]]=[S.lib[b],S.lib[a]];}log("you",`You shuffle ${ENs()}'s library (${S.lib.length} cards).`);}
+function deckMill(n){histCapture();n=Math.max(0,n|0);const moved=[];for(let i=0;i<n&&S.lib.length;i++)moved.push(S.lib.shift());moved.forEach(c=>S.gy.push(c));if(moved.length)log("you",`You mill the top ${moved.length} of ${ENs()}'s library: ${libNames(moved).join(", ")} → graveyard.`);else log("you",`${ENs()}'s library is empty — nothing to mill.`);return moved;}
+function deckExileTop(n){histCapture();n=Math.max(0,n|0);const moved=[];for(let i=0;i<n&&S.lib.length;i++)moved.push(S.lib.shift());moved.forEach(c=>S.exile.push(c));if(moved.length)log("you",`You exile the top ${moved.length}: ${libNames(moved).join(", ")}.`);else log("you",`${ENs()}'s library is empty — nothing to exile.`);return moved;}
+function deckScryApply(decisions){histCapture();const n=decisions.length;const top=S.lib.slice(0,n),rest=S.lib.slice(n),keep=[],bottom=[];top.forEach((c,i)=>{(decisions[i]==='bottom'?bottom:keep).push(c);});S.lib=[...keep,...rest,...bottom];log("you",`You scry ${n} on ${ENs()}'s library${bottom.length?` — ${libNames(bottom).join(", ")} to the bottom`:' — all kept on top'}.`);}
+function deckDiscard(indices){histCapture();const sorted=indices.slice().filter(i=>S.hand[i]).sort((a,b)=>b-a);const moved=[];sorted.forEach(i=>{moved.push(S.hand[i]);S.hand.splice(i,1);});moved.forEach(c=>S.gy.push(c));if(moved.length)log("you",`${ENs()} discards ${libNames(moved).join(", ")}.`);return moved;}
+function deckDiscardRandom(n){n=Math.max(0,n|0);const pool=S.hand.map((_,i)=>i),idx=[];for(let k=0;k<n&&pool.length;k++)idx.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);return deckDiscard(idx);}
+
+function openDeckTools(){if(S.over)return;_dt={mode:'main',n:3,reveal:null,scry:null};$("modalBody").innerHTML=deckToolsHTML();$("overlay").classList.add("show");}
+function dtRender(){$("modalBody").innerHTML=deckToolsHTML();}
+function deckToolsHTML(){
+  const disc=`<p class="manaline" style="margin:2px 0 8px;line-height:1.5">The dungeon keeps ${ENs()}'s deck as a known, ordered pile (top first). You can look, reorder, mill, exile, shuffle, and force discards. Anything fancier — tutoring a specific card into play, casting from their deck, transforming cards — the abstract model can't represent, so those effects simply don't apply.</p>`;
+  const fxItem=(c,actions)=>`<div class="libitem"><div class="li-h"><span class="li-n">${(FX[c.key]&&FX[c.key].n)||'card'}</span><span class="cost">${(FX[c.key]&&FX[c.key].cost)||0}</span></div>${actions?`<div class="li-a">${actions}</div>`:''}</div>`;
+  if(_dt.mode==='scry'){const s=_dt.scry;return `<h2>🔮 Scry ${s.cards.length}</h2>${disc}<p style="color:var(--bone-dim)">Top of library first. Send any card to the bottom; the rest stay on top in this order.</p>
+    ${s.cards.map((c,i)=>fxItem(c,`<button class="tiny ${s.dec[i]==='top'?'ok':''}" onclick="dtScryDec(${i},'top')">keep top</button><button class="tiny ${s.dec[i]==='bottom'?'ember':''}" onclick="dtScryDec(${i},'bottom')">→ bottom</button>`)).join('')}
+    <div class="btnrow" style="margin-top:10px"><button class="ok" onclick="dtScryApply()">Apply</button><button class="tiny" onclick="_dt.mode='main';dtRender()">Cancel</button></div>`;}
+  if(_dt.mode==='discard'){return `<h2>🗑 Make ${ENs()} discard</h2>${disc}
+    ${S.hand.length?S.hand.map((c,i)=>fxItem(c,`<button class="tiny ember" onclick="dtDiscardOne(${i})">discard</button>`)).join(''):'<p class="manaline">Their hand is empty.</p>'}
+    <div class="btnrow" style="margin-top:10px"><span class="lab">random</span><input type="number" id="dtDN" value="1" min="1" style="width:48px"><button class="tiny ember" onclick="dtDiscardRandom()">discard N at random</button><button class="tiny" onclick="_dt.mode='main';dtRender()">‹ back</button></div>`;}
+  return `<h2>🂠 Manipulate ${ENs()}'s deck</h2>${disc}
+    <div class="deckmeta" style="margin:6px 0">Library <b>${S.lib.length}</b> · Hand <b>${S.hand.length}</b> · Graveyard <b>${S.gy.length}</b> · Exile <b>${S.exile.length}</b></div>
+    <div class="btnrow"><span class="lab">N</span><input type="number" id="dtN" value="${_dt.n}" min="1" style="width:54px" onchange="_dt.n=Math.max(1,parseInt(this.value,10)||1)"></div>
+    <div class="btnrow" style="flex-wrap:wrap;gap:6px;margin-top:8px">
+      <button class="tiny azor" onclick="dtLook('top')">👁 Look top N</button>
+      <button class="tiny azor" onclick="dtLook('bottom')">👁 Look bottom N</button>
+      <button class="tiny" onclick="dtScryOpen()">🔮 Scry N</button>
+      <button class="tiny ember" onclick="dtMill()">⤓ Mill N</button>
+      <button class="tiny ember" onclick="dtExile()">✖ Exile top N</button>
+      <button class="tiny" onclick="deckShuffle();dtRender()">🔀 Shuffle</button>
+      <button class="tiny azor" onclick="dtReveal()">🤚 Reveal hand</button>
+      <button class="tiny ember" onclick="_dt.mode='discard';dtRender()">🗑 Force discard</button>
+    </div>
+    ${_dt.reveal?`<div class="menucard" style="margin-top:10px"><div class="subh"><span>${_dt.reveal.label}</span></div><div class="zchips">${_dt.reveal.cards.length?_dt.reveal.cards.map(c=>`<span class="chip">${(FX[c.key]&&FX[c.key].n)||'card'} <span class="manaline">${(FX[c.key]&&FX[c.key].cost)||0}</span></span>`).join(''):'<span class="manaline">(none)</span>'}</div></div>`:''}
+    <div class="btnrow" style="margin-top:12px"><button class="tiny" onclick="closeOverlay()">Done</button></div>`;}
+function dtN(){const f=$("dtN");const v=f?parseInt(f.value,10):NaN;return Math.max(1,isNaN(v)?(_dt.n||3):v);}
+function dtLook(where){const n=dtN();_dt.n=n;const cards=where==='top'?S.lib.slice(0,n):S.lib.slice(Math.max(0,S.lib.length-n));_dt.reveal={label:where==='top'?`Top ${cards.length} of library`:`Bottom ${cards.length} of library`,cards};log("you",`You look at the ${where} ${cards.length} of ${ENs()}'s library: ${cards.length?libNames(cards).join(", "):'(empty)'}.`);dtRender();}
+function dtReveal(){_dt.reveal={label:`${ENs()}'s hand`,cards:S.hand.slice()};log("you",`You reveal ${ENs()}'s hand: ${S.hand.length?libNames(S.hand).join(", "):'(empty)'}.`);dtRender();}
+function dtScryOpen(){const n=Math.min(dtN(),S.lib.length);if(!n){log("you",`${ENs()}'s library is empty — nothing to scry.`);return;}_dt.scry={cards:S.lib.slice(0,n),dec:Array(n).fill('top')};_dt.mode='scry';dtRender();}
+function dtScryDec(i,dec){_dt.scry.dec[i]=dec;dtRender();}
+function dtScryApply(){deckScryApply(_dt.scry.dec);_dt.scry=null;_dt.mode='main';_dt.reveal=null;render();dtRender();}
+function dtMill(){deckMill(dtN());_dt.reveal=null;render();dtRender();}
+function dtExile(){deckExileTop(dtN());_dt.reveal=null;render();dtRender();}
+function dtDiscardOne(i){deckDiscard([i]);render();dtRender();}
+function dtDiscardRandom(){const f=$("dtDN");deckDiscardRandom(f?parseInt(f.value,10)||1:1);render();dtRender();}
+
+const $=id=>document.getElementById(id);
+const d=n=>Math.floor(Math.random()*n)+1;
+function log(who,html){const e=document.createElement("div");e.className="entry "+who;e.innerHTML=`<span class="t">${who==='sys'||who==='loot'?'·':'T'+S.turn}</span><span class="x">${html}</span>`;$("log").prepend(e);}
+function bossMana(){return Math.max(0,(DUNGEON[S.roomIndex].landStart||0)+S.turn+DIFF[S.diff].manaBonus+(S.bossManaMod||0));}
+function effP(c){return Math.max(0,c.p+(c.plus||0)-(c.minus||0));}
+function effT(c){return c.t+(c.plus||0)-(c.minus||0);}
+function kw(c,k){return (c.kw||[]).some(x=>(''+x).toLowerCase()===k);}
+function threatScore(c){const s={low:-2,mid:0,top:3}[c.strength||'mid'];return effP(c)+(s||0);}
+function applyRun(run){if(!run)return;if(Array.isArray(run[0])){run.forEach(applyRun);return;}switch(run[0]){
+  case "spawn":S.tokens.push({id:S.nextId++,name:run[1],p:run[2],t:run[3],kw:[...run[4]],color:(run[5]?String(run[5]).split(''):((S.boss&&S.boss.colors)?S.boss.colors.slice():[])),sick:!run[4].includes("haste"),tapped:false,plus:0,minus:0,other:[]});break;
+  case "bossHeal":bossHealLife(run[1]);break;
+  case "cmdBuff":if(S.cmd)S.cmd.p+=run[1];break;
+  case "rule":if(!S.rules.some(r=>r.name===run[1]))S.rules.push({id:S.nextId++,name:run[1],text:run[2],die:run[3],side:"you"});break;
+  case "bossrule":if(!S.rules.some(r=>r.name===run[1]))S.rules.push({id:S.nextId++,name:run[1],text:run[2],heal:run[3],side:"boss"});break;
+}}
+function payWard(c){const w=c.cward;if(!w||!w.amt)return '';if(w.type==='mana'){if(S.bossMana>=w.amt){S.bossMana-=w.amt;return ` <span class="manaline">(paid ward ${w.amt} mana)</span>`;}return null;}if(S.boss.life>w.amt){S.boss.life-=w.amt;return ` <span class="manaline">(paid ward ${w.amt} life)</span>`;}return null;}
+function pickWardable(cands){for(const c of cands){const pr=payWard(c);if(pr!==null)return{victim:c,note:pr};}return null;}
+function applyTarget(t,sc,forceId){sc=(sc&&sc.length)?sc:((S.boss&&S.boss.colors)||[]);const safe=c=>!kw(c,'hexproof')&&!c.phased&&!(c.prot||[]).some(p=>sc.indexOf(p)>=0);const cr=S.my.creatures.filter(safe),crD=cr.filter(c=>!kw(c,'indestructible')),wk=S.my.walkers;const byT=a=>a.slice().sort((x,y)=>threatScore(y)-threatScore(x));const forced=forceId!=null?S.my.creatures.find(c=>c.id===forceId):null;
+  if(t==="destroyMaxPow"){if(forced){if(kw(forced,'indestructible'))return `can't destroy <b>${forced.name}</b> — it's indestructible`;killMy(forced);return `destroys your <b>${forced.name}</b> (${effP(forced)}/${effT(forced)})`;}if(!crD.length)return cr.length?"fizzles — your creatures are indestructible":null;const pick=pickWardable(byT(crD));if(!pick)return "is warded off — the enemy can't pay to target your creatures";killMy(pick.victim);return `destroys your <b>${pick.victim.name}</b> (${effP(pick.victim)}/${effT(pick.victim)})${pick.note}`;}
+  if(t==="destroyMinPow"){const v=forced||byT(crD).reverse()[0];if(!v)return crD.length?null:(cr.length?"fizzles — your creatures are indestructible":null);killMy(v);return `makes you sacrifice <b>${v.name}</b>`;}
+  if(t==="destroyTop2"){if(!crD.length)return cr.length?"fizzles — your creatures are indestructible":null;const vs=byT(crD).slice(0,2);vs.forEach(killMy);return `destroys <b>${vs.map(v=>v.name).join(", ")}</b>`;}
+  if(t==="destroyToughLE2"){const vs=crD.filter(c=>effT(c)<=2);if(!vs.length)return "finds no destructible toughness-2 creatures";vs.forEach(killMy);return `sweeps <b>${vs.map(v=>v.name).join(", ")}</b>`;}
+  if(t==="minusAll2"){if(!cr.length)return "finds no creatures to wither";const dead=[];cr.forEach(v=>{v.minus=(v.minus||0)+2;if(effT(v)<=0){dead.push(v.name);killMy(v);}});return `washes the board for −2/−2${dead.length?` — ${dead.join(", ")} die`:""}`;}
+  if(t==="wither3"){if(forced){forced.minus=(forced.minus||0)+3;const d=effT(forced)<=0;if(d)killMy(forced);return `gives <b>${forced.name}</b> −3/−3${d?' — it dies':` (now ${effP(forced)}/${effT(forced)})`}`;}if(!cr.length)return null;const pick=pickWardable(byT(cr));if(!pick)return "is warded off — the enemy can't pay to target";const v=pick.victim;v.minus=(v.minus||0)+3;const dead=effT(v)<=0;if(dead)killMy(v);return `gives <b>${v.name}</b> −3/−3${dead?' — it dies':` (now ${effP(v)}/${effT(v)})`}${pick.note}`;}
+  if(t==="walkerMinLoy3"){if(!wk.length)return null;const ordered=wk.slice().sort((a,b)=>a.loyalty-b.loyalty);let v=null,note='';for(const w of ordered){const pr=payWard(w);if(pr!==null){v=w;note=pr;break;}}if(!v)return "is warded off — the enemy can't pay to target your walker";v.loyalty-=3;const dead=v.loyalty<=0;if(dead)killMy(v);return `hits <b>${v.name}</b> for −3${dead?' — destroyed':` (now ${v.loyalty})`}${note}`;}
+  return null;}
+function protectedFromVael(c){return (c.prot||[]).some(col=>VAEL_COLORS.indexOf(col)>=0);}
+function rmMyById(cat,id){const i=S.my[cat].findIndex(x=>x.id===id);if(i>=0)S.my[cat].splice(i,1);}
+
+/* ===== COMBAT ENGINE ===== */
+function colorsOf(c){if(c.color&&c.color.length)return c.color;if(c._cmd||S.tokens.indexOf(c)>=0)return (S.boss&&S.boss.colors)||["R"];return [];}
+function EN(){return (S.enemy&&S.enemy.name)||(S.boss&&S.boss.name)||"the enemy";}
+function ENs(){return EN().split(/[ ,]/)[0];}
+function hasProtFrom(c,other){const oc=colorsOf(other);return (c.prot||[]).some(p=>oc.indexOf(p)>=0);}
+function legalBlock(att,b){if(b.phased)return false;if(kw(b,"can't block"))return false;if(b.tapped)return false;if(hasProtFrom(att,b))return false;if(kw(att,'flying')&&!(kw(b,'flying')||kw(b,'reach')))return false;return true;}
+function resolveAttack(attackers,assign){ // assign: {attId:[blockerObjs]}
+  let face=0,attLifelink=0,defLifelink=0;const deadAtt=[],deadBlk=[],perAtt=[];
+  attackers.forEach(att=>{
+    const bl=(assign[att.id]||[]).filter(Boolean);
+    const out=effP(att)*(kw(att,'double strike')?2:1);
+    if(!bl.length){face+=out;perAtt.push({att,toFace:out});if(kw(att,'lifelink'))attLifelink+=out;return;}
+    // attacker assigns to blockers (smallest toughness first); protected blockers take no damage
+    let left=out;const killed=[];
+    bl.slice().sort((a,b)=>effT(a)-effT(b)).forEach(b=>{if(hasProtFrom(b,att))return;const lethal=kw(att,'deathtouch')?1:effT(b);if(left>=lethal&&!kw(b,'indestructible')){left-=lethal;killed.push(b);}else{left-=Math.min(left,lethal);}});
+    const tramp=(kw(att,'trample')&&left>0)?left:0;if(tramp){face+=tramp;}perAtt.push({att,toFace:tramp});
+    if(kw(att,'lifelink'))attLifelink+=out; // total damage dealt
+    // blockers strike back (those not killed by attacker's first/double strike); an attacker protected from a blocker takes no damage from it
+    const attFirst=kw(att,'first strike')||kw(att,'double strike');
+    let blkPow=0,blkDT=false;
+    bl.forEach(b=>{if(hasProtFrom(att,b))return;const dies=killed.includes(b);const bFirst=kw(b,'first strike')||kw(b,'double strike');if(attFirst&&dies&&!bFirst)return;const bp=effP(b)*(kw(b,'double strike')?2:1);blkPow+=bp;if(kw(b,'deathtouch'))blkDT=true;if(kw(b,'lifelink'))defLifelink+=bp;});
+    if((blkPow>=effT(att)||blkDT)&&!kw(att,'indestructible'))deadAtt.push(att);
+    killed.forEach(b=>deadBlk.push(b));
+  });
+  return{face,deadAtt,deadBlk,attLifelink,defLifelink,perAtt};
+}
+function removeRef(obj){if(obj===S.cmd){S.cmd.deaths=(S.cmd.deaths||0)+1;const inc=CMD_TAX_DOUBLE?CMD_TAX_BASE*Math.pow(2,S.cmd.deaths-1):CMD_TAX_BASE;S.cmd.tax+=inc;S.cmd.inPlay=false;S.cmd.cost=S.cmd.baseCost+S.cmd.tax;S.cmd.plus=0;S.cmd.minus=0;S.cmd.tapped=false;S.cmd.sick=false;log("dm",`♛ ${S.cmd.n} dies (death #${S.cmd.deaths}) → command zone. Recast now costs <b>${S.cmd.cost}</b> (tax +${S.cmd.tax}).`);return;}let i=S.tokens.findIndex(c=>c===obj);if(i>=0){S.tokens.splice(i,1);return;}if(S.my.creatures.indexOf(obj)>=0)killMy(obj);}
+function killMy(c){/* route a destroyed player permanent: commander→command zone, else graveyard/exile per its setting */
+  if(c.isCmd){sendCmdToZone(c,true);return;}
+  let cat=null;["creatures","artifacts","enchants","walkers","emblems"].forEach(k=>{if(S.my[k].indexOf(c)>=0)cat=k;});
+  if(cat){c._cat=cat;S.my[cat].splice(S.my[cat].indexOf(c),1);}
+  if(c.dies==='exile'){S.myExile.push(c);log("you",`<b>${c.name}</b> is exiled.`);}else{S.myGy.push(c);log("you",`<b>${c.name}</b> goes to your graveyard.`);}
+}
+
+/* ===== YOUR ATTACK → VAEL BLOCKS (AI) ===== */
+function vaelDefenders(){const ds=[...S.tokens.filter(c=>!c.tapped&&!c.phased&&!kw(c,"can't block"))];if(S.cmd.inPlay&&!S.cmd.tapped&&!S.cmd.phased&&!kw(S.cmd,"can't block"))ds.push(S.cmd);return ds;}
+function aiBlocks(attackers){
+  const assign={};let avail=vaelDefenders();
+  attackers.slice().sort((a,b)=>threatScore(b)-threatScore(a)).forEach(att=>{
+    const need=kw(att,'menace')?2:1;let elig=avail.filter(b=>legalBlock(att,b));if(elig.length<need)return;
+    const kills=b=>effP(b)>=effT(att)||kw(b,'deathtouch');const survives=b=>(effT(b)>effP(att)&&!kw(att,'deathtouch'))||kw(b,'indestructible');const ts=threatScore(att);
+    if(need===1){
+      let pick=elig.filter(b=>!b._cmd&&kills(b)&&survives(b)).sort((a,b)=>effP(a)-effP(b))[0];
+      if(!pick&&ts>=4)pick=elig.filter(b=>!b._cmd&&kills(b)).sort((a,b)=>effP(a)-effP(b))[0];
+      if(!pick&&ts>=Math.max(5,S.boss.life*0.4))pick=elig.filter(b=>!b._cmd).sort((a,b)=>effP(a)-effP(b))[0];
+      if(!pick){const cb=elig.find(b=>b._cmd&&kills(b)&&survives(b));if(cb)pick=cb;}
+      if(pick){assign[att.id]=[pick];avail=avail.filter(b=>b!==pick);}
+    }else{const two=elig.filter(b=>!b._cmd).sort((a,b)=>effP(a)-effP(b)).slice(0,2);if(two.length>=2&&ts>=4){assign[att.id]=two;avail=avail.filter(b=>!two.includes(b));}}
+  });
+  return assign;
+}
+/* ===== COMBAT PROPOSAL (propose -> edit -> approve) ===== */
+function swing(){ // YOUR attack -> Vael proposes blocks
+  if(S.over)return;
+  if(S.activeTurn==='vael'){log("sys","Wait for your turn to attack.");return;}
+  if(S.combat){log("sys","Resolve the current combat first.");return;}
+  const attackers=S.my.creatures.filter(c=>c._atk&&!c.tapped&&!c.sick&&!c.phased&&!kw(c,'defender'));
+  if(!attackers.length){log("sys","Select at least one untapped, non-sick attacker.");return;}
+  openCombat('you',attackers,vaelDefenders(),aiBlocks(attackers));
+}
+function vaelAttackers(){let a=S.tokens.filter(c=>!c.sick&&!c.tapped&&!c.phased&&!kw(c,'defender'));if(S.cmd.inPlay&&!S.cmd.sick&&!S.cmd.tapped&&!S.cmd.phased&&!kw(S.cmd,'defender'))a.push(S.cmd);a=a.filter(c=>effP(c)>0||kw(c,'must attack'));a.sort((x,y)=>effP(y)-effP(x));const maxA=parseInt($("maxAtk").value,10)||0;if(maxA>0&&a.length>maxA)a=a.slice(0,maxA);return a;}
+function toAssault(){for(let i=S.plays.length-1;i>=0;i--){const p=S.plays[i];if(p&&p.status==='pending')resolvePlay(i);}advancePhase();}
+function openCombat(dir,attackers,pool,assign,target){S.combat={dir,attackers,pool,assign,target:target||{}};$("combatTitle").textContent=dir==='you'?`Your attack — ${ENs()} proposes blocks. Edit, then approve.`:`${ENs()} attacks — assign your blockers (and check targets), then approve.`;renderCombat();$("resolver").classList.add("show");$("resolver").scrollIntoView({block:"nearest"});}
+function cancelCombat(){S.combat=null;$("resolver").classList.remove("show");render();}
+function combatUsed(){const set=new Set();Object.values(S.combat.assign).forEach(arr=>arr.forEach(o=>set.add(o)));return set;}
+function renderCombat(){
+  if(!S.combat)return;const box=$("combatBox");box.innerHTML="";const used=combatUsed();const vael=S.combat.dir==='vael';const wks=vael?S.my.walkers.filter(w=>!w.phased):[];
+  S.combat.attackers.forEach(a=>{
+    const elig=S.combat.pool.filter(b=>!used.has(b)&&legalBlock(a,b));
+    const assigned=S.combat.assign[a.id]||[];
+    const tgt=(S.combat.target&&S.combat.target[a.id])||'you';
+    const tsel=(vael&&wks.length)?`<div class="btnrow"><span class="lab">target</span><select onchange="combatTarget('${a.id}',this.value)"><option value="you" ${tgt==='you'?'selected':''}>you</option>${wks.map(w=>`<option value="${w.id}" ${''+tgt===''+w.id?'selected':''}>↳ ${w.name} (${w.loyalty})</option>`).join("")}</select></div>`:'';
+    const el=document.createElement("div");el.className="blockrow";
+    el.innerHTML=`<div class="ba">${a.name} ${effP(a)}/${effT(a)} ${(a.kw||[]).length?'<span class="manaline">['+a.kw.join(', ')+']</span>':''}</div>
+      ${tsel}
+      <div class="assigned">${assigned.length?assigned.map((b,bi)=>`<span class="chip">${b.name} ${effP(b)}/${effT(b)}<b onclick="combatDel('${a.id}',${bi})">x</b></span>`).join(""):'<span class="manaline">unblocked</span>'}</div>
+      <div class="btnrow"><select id="cbsel_${a.id}"><option value="">+ blocker...</option>${elig.map((c,ci)=>`<option value="${ci}">${c.name} ${effP(c)}/${effT(c)}</option>`).join("")}</select><button class="tiny azor" onclick="combatAdd('${a.id}')">assign</button></div>`;
+    box.appendChild(el);
+  });
+  predictCombat();
+}
+function combatTarget(attId,val){if(!S.combat)return;S.combat.target=S.combat.target||{};S.combat.target[attId]=val;renderCombat();}
+function combatAdd(attId){const sel=$("cbsel_"+attId);const ci=parseInt(sel.value,10);if(isNaN(ci))return;const a=S.combat.attackers.find(x=>''+x.id===''+attId);const used=combatUsed();const elig=S.combat.pool.filter(b=>!used.has(b)&&legalBlock(a,b));const obj=elig[ci];if(!obj)return;S.combat.assign[attId]=S.combat.assign[attId]||[];S.combat.assign[attId].push(obj);renderCombat();}
+function combatDel(attId,bi){(S.combat.assign[attId]||[]).splice(bi,1);renderCombat();}
+function predictCombat(){const r=resolveAttack(S.combat.attackers,S.combat.assign);const dead=[...r.deadAtt,...r.deadBlk];let s;
+  if(S.combat.dir==='you'){s=`<b>Prediction:</b> ${r.face} damage to ${S.boss.name}'s life.`;}
+  else{let toYou=0;const wmap={};r.perAtt.forEach(({att,toFace})=>{const tg=(S.combat.target&&S.combat.target[att.id])||'you';if(tg==='you')toYou+=toFace;else wmap[tg]=(wmap[tg]||0)+toFace;});
+    const parts=[`${toYou} to your life`];Object.keys(wmap).forEach(wid=>{const w=S.my.walkers.find(x=>''+x.id===wid);if(w)parts.push(`${wmap[wid]} to ${w.name}`);});s=`<b>Prediction:</b> ${parts.join(", ")}.`;}
+  if(dead.length)s+=` Dies: ${dead.map(c=>c.name).join(", ")}.`;
+  if(r.attLifelink)s+=` Lifelink ${S.combat.dir==='you'?'you':ENs()} +${r.attLifelink}.`;
+  if(r.defLifelink)s+=` Lifelink ${S.combat.dir==='you'?ENs():'you'} +${r.defLifelink}.`;
+  $("combatPred").innerHTML=s;}
+function approveCombat(){
+  if(!S.combat)return;const dir=S.combat.dir,attackers=S.combat.attackers,assign=S.combat.assign;
+  attackers.forEach(a=>{const bl=assign[a.id]||[];log("cbt",`${dir==='you'?'attack':ENs()}: ${a.name} (${effP(a)}/${effT(a)}) ${bl.length?'blocked by '+bl.map(b=>b.name).join(" & "):'is unblocked'}.`);});
+  const r=resolveAttack(attackers,assign);
+  if(dir==='you'){
+    if(r.face>0){S.boss.life-=r.face;log("you",`<b>${r.face}</b> to ${S.boss.name}'s life. (${Math.max(0,S.boss.life)})`);}
+    if(r.attLifelink){S.youLife+=r.attLifelink;log("you",`Lifelink: you +${r.attLifelink}.`);}
+    if(r.defLifelink){bossHealLife(r.defLifelink);log("dm",`${ENs()} lifelink: +${r.defLifelink}.`);}
+    r.deadBlk.forEach(removeRef);r.deadAtt.forEach(removeRef);
+    attackers.forEach(a=>{if(!kw(a,'vigilance')&&S.my.creatures.includes(a))a.tapped=true;a._atk=false;});
+    if(r.deadAtt.length)log("cbt",`Your losses: ${r.deadAtt.map(c=>c.name).join(", ")}.`);
+    if(r.deadBlk.length)log("cbt",`${ENs()} loses: ${r.deadBlk.map(c=>c.name).join(", ")}.`);
+    S.combat=null;$("resolver").classList.remove("show");
+    if(S.boss.life<=0)bossDown();render();
+  }else{
+    const tmap=S.combat.target||{};
+    let toYou=0;const wHits={};r.perAtt.forEach(({att,toFace})=>{const tg=tmap[att.id]||'you';if(tg==='you')toYou+=toFace;else wHits[tg]=(wHits[tg]||0)+toFace;});
+    const ward=(S.inv.some(it=>it.id==="ward")?2:0)+(S.inv.some(it=>it.id==="aegis")?4:0);const face=Math.max(0,toYou-ward);if(ward&&toYou>0)log("you",`Your charms soak ${Math.min(ward,toYou)}.`);
+    if(face>0){S.youLife-=face;log("dm",`<b>${face}</b> to your life. (${S.youLife})`);}
+    Object.keys(wHits).forEach(wid=>{const w=S.my.walkers.find(x=>''+x.id===wid);if(w&&wHits[wid]>0){w.loyalty-=wHits[wid];log("dm",`${ENs()} hits <b>${w.name}</b> for ${wHits[wid]} (loyalty ${Math.max(0,w.loyalty)}).`);if(w.loyalty<=0){log("dm",`<b>${w.name}</b> is destroyed.`);killMy(w);}}});
+    const cmdToYou=S.cmd.inPlay&&attackers.includes(S.cmd)&&!((assign[S.cmd.id]||[]).length)&&(tmap[S.cmd.id]||'you')==='you';
+    if(cmdToYou){S.counters.cmdDmg+=effP(S.cmd);log("dm",`Commander damage: ${S.counters.cmdDmg}/21.`);}
+    if(r.attLifelink){bossHealLife(r.attLifelink);log("dm",`${ENs()} lifelink: +${r.attLifelink}.`);}
+    if(r.defLifelink){S.youLife+=r.defLifelink;log("you",`Your lifelink: +${r.defLifelink}.`);}
+    r.deadBlk.forEach(removeRef);r.deadAtt.forEach(removeRef);
+    if(r.deadAtt.length)log("cbt",`${ENs()} loses: ${r.deadAtt.map(c=>c.name).join(", ")}.`);
+    if(r.deadBlk.length)log("cbt",`Your losses: ${r.deadBlk.map(c=>c.name).join(", ")}.`);
+    S.combat=null;$("resolver").classList.remove("show");
+    checkLose();render();
+  }
+}
+
+
+/* ===== RENDER ===== */
+function renderTrack(){const tr=$("track");tr.innerHTML="";DUNGEON.forEach((r,i)=>{if(i>0){const l=document.createElement("div");l.className="link"+(i<=S.roomIndex?" done":"");tr.appendChild(l);}const n=document.createElement("div");n.className="node"+(i===S.roomIndex?" cur":"")+(i<S.roomIndex?" done":"");n.innerHTML=`<div class="dot">${i<S.roomIndex?'✓':i+1}</div><div class="nm">${r.name}</div>`;tr.appendChild(n);});}
+function kwSelect(scope,id){const cur=getCre(scope,id);const opts=KW_LIST.filter(k=>!(cur.kw||[]).includes(k));return `<select onchange="addKw('${scope}',${id===null?'null':id},this.value);this.value=''"><option value="">＋kw</option>${opts.map(k=>`<option>${k}</option>`).join("")}</select>`;}
+function getCre(scope,id){if(scope==='cmd')return S.cmd;if(scope==='token')return S.tokens.find(c=>c.id===id);return S.my.creatures.find(c=>c.id===id);}
+function kwBadges(scope,id,c){return (c.kw||[]).map(k=>`<span class="badge kw" onclick="delKw('${scope}',${id===null?'null':id},'${k}')">${k} ✕</span>`).join("");}
+function enemyCard(c){const buff=c.plus||0,deb=c.minus||0;return `<button class="slay mini ember" onclick="slay(${c.id})">Slay</button>
+  <div class="cn">${c.name}${c.sick?' <span class="tag">sick</span>':''}</div>
+  <div class="cpt">${effP(c)}/${effT(c)}${buff?` <span class="buff">+${buff}</span>`:''}${deb?` <span class="deb">−${deb}</span>`:''} ${colorDots(c)}</div>
+  <div class="badges">${c.tapped?'<span class="badge tap">tapped</span>':''}${c.phased?'<span class="badge ph">phased out</span>':''}${c.legendary?'<span class="badge leg">legendary</span>':''}${c.token?'<span class="badge tok">token</span>':''}${(c.prot||[]).length?`<span class="badge prot">prot ${c.prot.join("")}</span>`:''}${c.noAbil?'<span class="badge no">no-abil</span>':''}${kwBadges('token',c.id,c)}${(c.other||[]).map((o,oi)=>`<span class="badge" style="cursor:pointer" title="click to remove" onclick="remCtrOther('token',${c.id},${oi})">${o} ✕</span>`).join("")}</div>
+  <div class="ctr"><button class="${c.tapped?'on':''}" onclick="tapT(${c.id})">tap</button><button class="${c.noAbil?'on':''}" onclick="noAbilT('token',${c.id})">no-abil</button><button onclick="cctr(${c.id},'plus',1)">+1/+1</button><button onclick="cctr(${c.id},'minus',1)">−1/−1</button><button onclick="cctrCustom(${c.id})">＋ctr</button><button onclick="remCtr('token',${c.id})">⊖ ctr</button><button onclick="cp(${c.id},'p',1)">P+</button><button onclick="cp(${c.id},'p',-1)">P−</button><button onclick="cp(${c.id},'t',1)">T+</button><button onclick="cp(${c.id},'t',-1)">T−</button></div>
+  ${kwSelect('token',c.id)}
+  <button class="drawtoggle tiny" onclick="toggleDrawer('token',${c.id})">${c._drawer?'▾ properties':'▸ properties'}</button>
+  ${c._drawer?enemyDrawer('token',c.id,c):''}`;}
+function renderCmd(){const box=$("cmdBox"),c=S.cmd,mana=S.activeTurn==='vael'?S.bossMana:bossMana();
+  if(!c.inPlay){box.className="cmdbox dormant";box.innerHTML=`<div class="cn">${c.n} <span class="tag prep">in hand</span></div><div class="cpt">${effP(c)}/${effT(c)}</div><div class="cstat">Needs <b style="color:var(--gold)">${c.cost}</b> mana${c.tax?` (base ${c.baseCost} + tax ${c.tax})`:''}. ${ENs()} ${S.activeTurn==='vael'?'has':'will have'} ${mana}.${c.deaths?` · deaths ${c.deaths}`:''}</div>`;}
+  else{box.className="cmdbox";box.innerHTML=`<div class="cn">${c.n} ♛ <span class="tag">on ${ENs()}'s battlefield ↑</span></div><div class="cstat">Recast if it dies: <b style="color:var(--ember)">${c.baseCost}+${c.tax}=${c.baseCost+c.tax}</b> · deaths ${c.deaths||0}. Controls are on its card under the enemy's creatures.</div>`;}}
+let _hist=[],_committed=null;
+function histCapture(){const cur=JSON.stringify(S);if(_committed===null){_committed=cur;return;}if(cur!==_committed){_hist.push(_committed);if(_hist.length>60)_hist.shift();_committed=cur;}}
+function histReset(){_hist=[];_committed=null;}
+function undo(){if(!_hist.length){log("sys","Nothing to undo.");return;}const prev=_hist.pop();try{S=JSON.parse(prev);}catch(e){return;}S.combat=null;_committed=JSON.stringify(S);const rz=$("resolver");if(rz)rz.classList.remove("show");log("you","↩ Undid the last action.");render();}
+function render(){
+  histCapture();
+  renderTrack();
+  $("youLife").textContent=S.youLife;$("youMax").textContent=S.youMax;$("youBar").style.width=Math.max(0,Math.min(100,S.youLife/S.youMax*100))+"%";
+  $("bossName").textContent=S.boss.name+(S.phase2done?" · ENRAGED":"");$("bossLife").textContent=Math.max(0,S.boss.life);$("bossMax").textContent=S.boss.max;$("bossBar").style.width=Math.max(0,Math.min(100,S.boss.life/S.boss.max*100))+"%";
+  const bc=$("bossColors");if(bc)bc.innerHTML=(S.boss.colors||[]).map(col=>`<span class="cdot" title="${col}" style="background:${COLOR_HEX[col]||'#888'}"></span>`).join("");
+  const bt=$("bossTag");if(bt)bt.textContent=S.boss.isVael?"FINAL BOSS · fights via commander":"enemy general · fights via commander";
+  ["enemyName1","enemyName2","turnEnemyName"].forEach(id=>{const e=$(id);if(e)e.textContent=ENs();});
+  const manaShow=S.activeTurn==='vael'?S.bossMana:bossMana();const pips=$("manaPips");pips.innerHTML="";for(let i=0;i<Math.max(manaShow,3);i++){const el=document.createElement("span");el.className="pip"+(i<manaShow?"":" off");pips.appendChild(el);}
+  $("manaLine").innerHTML=S.activeTurn==='vael'?`Mana remaining: <b>${S.bossMana}</b> / ${S.bossManaMax}`:`Mana next turn: <b>${bossMana()}</b>`;
+  {const bmm=$("bossManaModVal");if(bmm)bmm.textContent=(S.bossManaMod>=0?'+':'')+(S.bossManaMod||0);const bp=$("bossPoolVal");if(bp)bp.textContent=`${S.bossMana||0} / ${S.bossManaMax||0}`;}
+  renderCmd();
+  if(S.pw){const pw=S.pw;$("pwPanel").style.display="";$("pwName").textContent=pw.name;$("pwTag").textContent="["+(pw.colors||[]).join("/")+"] · loyalty "+pw.loy;$("pwLoy").textContent=pw.loy;$("pwBar").style.width=Math.min(100,pw.loy/(pw.ultThreshold||8)*100)+"%";
+    const pa=$("pwAbil");if(pa)pa.innerHTML=[pw.plus,pw.minus,pw.ult].filter(Boolean).map(a=>`<div class="pwrow${a.ult?' ult':''}${a.ult&&pw.loy>=(pw.ultThreshold||99)?' ready':''}"><span class="pwsign">${a.sign>0?'+':''}${a.sign}</span><span><b>${a.n}</b> — ${a.text}${a.ult?` <span class="pwthr">needs ${pw.ultThreshold} loyalty${pw.loy>=(pw.ultThreshold||99)?' — READY':''}</span>`:''}</span></div>`).join("");
+  }else $("pwPanel").style.display="none";
+  const cf=$("creaField");cf.innerHTML="";const creaN=S.tokens.length+(S.cmd.inPlay?1:0);$("creaCount").textContent=creaN;$("creaEmpty").style.display=creaN?"none":"block";
+  if(S.cmd.inPlay){const el=document.createElement("div");el.className="crea cmdcard"+(S.cmd.sick?" sick":"")+(S.cmd.tapped?" tapped":"");el.innerHTML=cmdFieldCard();cf.appendChild(el);}
+  S.tokens.forEach(c=>{const el=document.createElement("div");el.className="crea"+(c.sick?" sick":"")+(c.tapped?" tapped":"");el.innerHTML=enemyCard(c);cf.appendChild(el);});
+  renderMy();renderAtkPick();renderCounters();
+  const rp=$("rulesPanel"),rf=$("rulesField");if(S.rules.length){rp.style.display="";rf.innerHTML="";S.rules.forEach(r=>{const el=document.createElement("div");el.className="ruleperm"+(r.side==="boss"?" bossr":"");el.innerHTML=`<div class="rn">${r.name}</div><div class="rt">${r.text}</div><div class="acts">${r.die?`<button class="mini gold" onclick="rollRule(${r.id})">Roll d${r.die}</button>`:''}<button class="mini ember" onclick="destroyRule(${r.id})">Destroy</button></div>`;rf.appendChild(el);});}else rp.style.display="none";
+  const ip=$("invPanel"),inf=$("invField");if(S.inv.length){ip.style.display="";$("invCount").textContent=S.inv.length+" item"+(S.inv.length===1?"":"s");inf.innerHTML="";S.inv.forEach((it,i)=>{const b=BOONS[it.id];const el=document.createElement("div");el.className="item"+(b.r==="rare"?" rare":"");el.innerHTML=`<div class="in">${b.n}<span class="ir">${b.r}</span></div><div class="it">${b.t}</div>${b.kind==="consumable"?`<button class="mini ok" onclick="useBoon(${i})">Use</button>`:`<span class="ir" style="color:var(--bone-dim)">${b.kind==="reminder"?"reminder":"passive · auto"}</span>`}`;inf.appendChild(el);});}else ip.style.display="none";
+  $("turnTag").textContent="Turn "+S.turn+" · "+DUNGEON[S.roomIndex].name;renderFlow();renderZones();renderMyZones();renderDeckColors();renderBoardTokens();const gn=$("goldNote");if(gn)gn.textContent="💰 "+getGold();
+  if(S.combat)renderCombat();
+}
+function renderAtkPick(){const box=$("atkPick");box.innerHTML="";const av=S.my.creatures.filter(c=>!c.tapped&&!c.sick&&!c.phased&&!kw(c,'defender'));if(!av.length){box.innerHTML='<span class="empty">No untapped creatures to attack with. Log your board above.</span>';return;}
+  av.forEach(c=>{const el=document.createElement("div");el.className="crea";el.innerHTML=`<div class="cn">${c.name}</div><div class="cpt">${effP(c)}/${effT(c)}</div><div class="badges">${(c.kw||[]).map(k=>`<span class="badge kw">${k}</span>`).join("")}</div><button class="atk mini ${c._atk?'sel':''}" style="margin-top:6px;width:100%" onclick="toggleAtk(${c.id})">${c._atk?'attacking ✓':'attack'}</button>`;box.appendChild(el);});}
+function renderMy(){
+  const mc=$("myCrea");mc.innerHTML="";if(!S.my.creatures.length)mc.innerHTML='<span class="empty">none logged</span>';
+  S.my.creatures.forEach(c=>{const el=document.createElement("div");el.className="crea"+(c.tapped?" tapped":"")+(c.phased?" phased":"")+(c.isCmd?" cmdcard":"");const buff=c.plus||0,deb=c.minus||0;
+    el.innerHTML=`<button class="slay mini ember" onclick="rmMy('creatures',${c.id})">✕</button>
+      <input type="text" value="${c.name}" style="width:100%;font-size:.8rem" onchange="setMy('creatures',${c.id},'name',this.value)">
+      <div class="cpt">${effP(c)}/${effT(c)}${buff?` <span class="buff">+${buff}</span>`:''}${deb?` <span class="deb">−${deb}</span>`:''}${colorDots(c)}</div>
+      <div class="badges">${c.tapped?'<span class="badge tap">tapped</span>':''}${c.sick?'<span class="badge tap">sick</span>':''}${c.noAbil?'<span class="badge no">no-abil</span>':''}${propBadges(c)}${kwBadges('my',c.id,c)}${(c.other||[]).map((o,oi)=>`<span class="badge" style="cursor:pointer" title="click to remove" onclick="remCtrOther('creatures',${c.id},${oi})">${o} ✕</span>`).join("")}</div>
+      <div class="ctr"><button class="${c.tapped?'on':''}" onclick="tapMy(${c.id})">tap</button><button class="${c.sick?'on':''}" onclick="sickMy(${c.id})">sick</button><button class="${c.noAbil?'on':''}" onclick="noAbilT('my',${c.id})">no-abil</button><button onclick="myctr(${c.id},'plus',1)">+1/+1</button><button onclick="myctr(${c.id},'minus',1)">−1/−1</button><button onclick="myctrCustom(${c.id})">＋ctr</button><button onclick="remCtr('creatures',${c.id})">⊖ ctr</button><button onclick="mp(${c.id},'p',1)">P+</button><button onclick="mp(${c.id},'p',-1)">P−</button><button onclick="mp(${c.id},'t',1)">T+</button><button onclick="mp(${c.id},'t',-1)">T−</button></div>
+      ${kwSelect('my',c.id)}
+      <button class="drawtoggle tiny" onclick="toggleDrawer('creatures',${c.id})">${c._drawer?'▾ properties':'▸ properties'}</button><button class="tiny" onclick="dupMy('creatures',${c.id})">⧉ copy</button><button class="tiny gold" onclick="saveBoardToLibrary('creatures',${c.id})">★ save</button>
+      ${c._drawer?creatureDrawer(c):''}`;
+    mc.appendChild(el);});
+  const fillPerm=(box,cat)=>{const b=$(box);b.innerHTML=S.my[cat].length?"":'<span class="empty">none logged</span>';S.my[cat].forEach(p=>{const wrap=document.createElement("div");wrap.innerHTML=`<div class="brow${p.phased?' tapped':''}"><input type="text" value="${p.name}" style="width:110px" onchange="setMy('${cat}',${p.id},'name',this.value)"><select onchange="setMy('${cat}',${p.id},'kind',this.value)"><option ${p.kind==='passive'?'selected':''}>passive</option><option ${p.kind==='active'?'selected':''}>active</option></select><span class="lab">mana</span><input type="number" value="${p.mana||0}" style="width:42px" onchange="setMy('${cat}',${p.id},'mana',+this.value)"><span class="lab">dmg</span><input type="number" value="${p.dmg||0}" style="width:42px" onchange="setMy('${cat}',${p.id},'dmg',+this.value)"><input type="text" placeholder="note" value="${p.note||''}" style="width:84px" onchange="setMy('${cat}',${p.id},'note',this.value)">${colorDots(p)}${p.legendary?'<span class="badge leg">L</span>':''}${p.token?'<span class="badge tok">tok</span>':''}${p.dies==='exile'?'<span class="badge ex">⊘</span>':''}${p.catk?'<span class="badge tax">tax</span>':''}<button class="tiny" onclick="toggleDrawer('${cat}',${p.id})">⚙</button><button class="tiny gold" onclick="saveBoardToLibrary('${cat}',${p.id})">★</button><button class="tiny ember" onclick="rmMy('${cat}',${p.id})">✕</button></div>${p._drawer?permDrawer(cat,p):''}`;b.appendChild(wrap);});};
+  fillPerm("myArt","artifacts");fillPerm("myEnch","enchants");
+  const mw=$("myWalk");mw.innerHTML=S.my.walkers.length?"":'<span class="empty">none logged</span>';S.my.walkers.forEach(w=>{const wrap=document.createElement("div");wrap.innerHTML=`<div class="brow"><input type="text" value="${w.name}" style="width:110px" onchange="setMy('walkers',${w.id},'name',this.value)">${w.isCmd?'<span class="badge cmd">♛</span>':''}<span class="lab">loy</span><button class="tiny" onclick="adjMy('walkers',${w.id},'loyalty',-1)">−</button><b style="font-family:Space Mono">${w.loyalty}</b><button class="tiny" onclick="adjMy('walkers',${w.id},'loyalty',1)">+</button><span class="lab">base</span><input type="number" value="${w.baseLoy!=null?w.baseLoy:w.loyalty}" style="width:42px" onchange="setMy('walkers',${w.id},'baseLoy',+this.value)"><span class="lab">abil</span><input type="number" value="${w.abilities||0}" style="width:42px" onchange="setMy('walkers',${w.id},'abilities',+this.value)">${colorDots(w)}<button class="tiny" onclick="toggleDrawer('walkers',${w.id})">⚙</button><button class="tiny gold" onclick="saveBoardToLibrary('walkers',${w.id})">★</button><button class="tiny ember" onclick="rmMy('walkers',${w.id})">✕</button></div>${w._drawer?walkerDrawer(w):''}`;mw.appendChild(wrap);});
+  const me=$("myEmb");me.innerHTML=S.my.emblems.length?"":'<span class="empty">none logged</span>';S.my.emblems.forEach(em=>{const el=document.createElement("div");el.className="brow";el.innerHTML=`<input type="text" value="${em.name}" style="width:140px" onchange="setMy('emblems',${em.id},'name',this.value)"><input type="text" placeholder="effect" value="${em.note||''}" style="width:170px" onchange="setMy('emblems',${em.id},'note',this.value)"><button class="tiny ember" onclick="rmMy('emblems',${em.id})">✕</button>`;me.appendChild(el);});
+  renderPlayerCmd();
+}
+/* ===== PHASE 2: card properties, commander, zones, deck colors ===== */
+function getMy(cat,id){return S.my[cat].find(x=>x.id===id);}
+function getObj(scope,id){if(scope==='cmd')return S.cmd;if(scope==='token')return S.tokens.find(c=>c.id===id);return (S.my[scope]||[]).find(x=>x.id===id);}
+function flagMy(scope,id,f){const o=getObj(scope,id);if(o){o[f]=!o[f];render();}}
+const flagObj=flagMy;
+function toggleKwMy(cat,id,k){const o=getMy(cat,id);if(!o)return;o.kw=o.kw||[];const i=o.kw.indexOf(k);if(i>=0)o.kw.splice(i,1);else o.kw.push(k);render();}
+function toggleColorField(scope,id,field,col){const o=getObj(scope,id);if(!o)return;o[field]=o[field]||[];const i=o[field].indexOf(col);if(i>=0)o[field].splice(i,1);else o[field].push(col);render();}
+function toggleDrawer(scope,id){const o=getObj(scope,id);if(o){o._drawer=!o._drawer;render();}}
+function setCatk(cat,id,f,v){const o=getMy(cat,id);if(!o)return;o.catk=o.catk||{amt:0,type:'mana',tgt:false};o.catk[f]=v;if(!(o.catk.amt>0))o.catk=null;render();}
+function setCward(cat,id,f,v){const o=getMy(cat,id);if(!o)return;o.cward=o.cward||{amt:0,type:'mana'};o.cward[f]=v;if(!(o.cward.amt>0))o.cward=null;render();}
+function colorDots(c){return (c.color||[]).map(col=>`<span class="cdot" style="background:${COLOR_HEX[col]}" title="${col}"></span>`).join("");}
+function colorToggles(scope,id,field){const o=getObj(scope,id)||{};const cur=o[field]||[];const idl=id===null?'null':id;return COLORS.map(col=>`<button class="manapip ${cur.indexOf(col)>=0?'on':''}" style="--mc:${COLOR_HEX[col]}" onclick="toggleColorField('${scope}',${idl},'${field}','${col}')">${col}</button>`).join("");}
+function enemyDrawer(scope,id,c){const idl=id===null?'null':id;return `<div class="drawer">
+  <div class="drow"><span class="dlab">flags</span><button class="tiny ${c.legendary?'on':''}" onclick="flagObj('${scope}',${idl},'legendary')">legendary</button><button class="tiny ${c.token?'on':''}" onclick="flagObj('${scope}',${idl},'token')">token</button><button class="tiny ${c.phased?'on':''}" onclick="flagObj('${scope}',${idl},'phased')">phase out</button></div>
+  <div class="drow"><span class="dlab">color</span><div class="setbtns">${colorToggles(scope,id,'color')}</div></div>
+  <div class="drow"><span class="dlab">protection from</span><div class="setbtns">${colorToggles(scope,id,'prot')}</div></div></div>`;}
+function propBadges(c){let b="";if(c.isCmd)b+='<span class="badge cmd">♛ cmd</span>';if(c.legendary)b+='<span class="badge leg">legendary</span>';if(c.token)b+='<span class="badge tok">token</span>';if(c.phased)b+='<span class="badge ph">phased out</span>';if(c.dies==='exile')b+='<span class="badge ex">→exile</span>';if((c.prot||[]).length)b+=`<span class="badge prot">prot ${c.prot.join("")}</span>`;if(c.abilP||c.abilA)b+=`<span class="badge">${c.abilP||0}P/${c.abilA||0}A</span>`;if(c.mana)b+=`<span class="badge mana">⛁${c.mana}</span>`;if(c.catk)b+=`<span class="badge tax">atk: ${c.catk.amt} ${c.catk.type}${c.catk.tgt?'·tgt':''}</span>`;if(c.cward)b+=`<span class="badge tax">ward ${c.cward.amt} ${c.cward.type}</span>`;return b;}
+function creatureDrawer(c){const id=c.id;return `<div class="drawer">
+  <div class="drow"><span class="dlab">flags</span><button class="tiny ${c.legendary?'on':''}" onclick="flagMy('creatures',${id},'legendary')">legendary</button><button class="tiny ${c.token?'on':''}" onclick="flagMy('creatures',${id},'token')">token</button><button class="tiny ${c.phased?'on':''}" onclick="flagMy('creatures',${id},'phased')">phase out</button><button class="tiny ${kw(c,'defender')?'on':''}" onclick="toggleKwMy('creatures',${id},'defender')">defender</button></div>
+  <div class="drow"><span class="dlab">color</span><div class="setbtns">${colorToggles('creatures',id,'color')}</div></div>
+  <div class="drow"><span class="dlab">protection from</span><div class="setbtns">${colorToggles('creatures',id,'prot')}</div></div>
+  <div class="drow"><span class="dlab">abilities</span><span class="lab">passive</span><input type="number" min="0" value="${c.abilP||0}" style="width:42px" onchange="setMy('creatures',${id},'abilP',+this.value)"><span class="lab">active</span><input type="number" min="0" value="${c.abilA||0}" style="width:42px" onchange="setMy('creatures',${id},'abilA',+this.value)"></div>
+  <div class="drow"><span class="dlab">taps for mana</span><input type="number" min="0" value="${c.mana||0}" style="width:42px" onchange="setMy('creatures',${id},'mana',+this.value)"></div>
+  <div class="drow"><span class="dlab">dies to</span><select onchange="setMy('creatures',${id},'dies',this.value)"><option value="graveyard" ${c.dies!=='exile'?'selected':''}>graveyard</option><option value="exile" ${c.dies==='exile'?'selected':''}>exile</option></select></div>
+  <div class="drow"><span class="dlab">threat (AI hint)</span><select onchange="setMy('creatures',${id},'strength',this.value)"><option value="low" ${c.strength==='low'?'selected':''}>low</option><option value="mid" ${!c.strength||c.strength==='mid'?'selected':''}>mid</option><option value="top" ${c.strength==='top'?'selected':''}>top</option></select></div>
+  <div class="drow"><span class="dlab">attack tax (enemy pays)</span><input type="number" min="0" value="${c.catk?c.catk.amt:0}" style="width:42px" onchange="setCatk('creatures',${id},'amt',+this.value)"><select onchange="setCatk('creatures',${id},'type',this.value)"><option value="mana" ${!c.catk||c.catk.type==='mana'?'selected':''}>mana</option><option value="life" ${c.catk&&c.catk.type==='life'?'selected':''}>life</option></select><button class="tiny ${c.catk&&c.catk.tgt?'on':''}" onclick="setCatk('creatures',${id},'tgt',${!(c.catk&&c.catk.tgt)})">targeted</button></div>
+  <div class="drow"><span class="dlab">ward (enemy pays to target)</span><input type="number" min="0" value="${c.cward?c.cward.amt:0}" style="width:42px" onchange="setCward('creatures',${id},'amt',+this.value)"><select onchange="setCward('creatures',${id},'type',this.value)"><option value="mana" ${!c.cward||c.cward.type==='mana'?'selected':''}>mana</option><option value="life" ${c.cward&&c.cward.type==='life'?'selected':''}>life</option></select></div>
+  <div class="drow"><span class="dlab">commander</span><button class="tiny gold ${c.isCmd?'on':''}" onclick="setCommander('creatures',${id})">${c.isCmd?'✓ your commander':'set as commander'}</button></div></div>`;}
+function permDrawer(cat,p){const id=p.id;return `<div class="drawer">
+  <div class="drow"><span class="dlab">flags</span><button class="tiny ${p.legendary?'on':''}" onclick="flagMy('${cat}',${id},'legendary')">legendary</button><button class="tiny ${p.token?'on':''}" onclick="flagMy('${cat}',${id},'token')">token</button><button class="tiny ${p.phased?'on':''}" onclick="flagMy('${cat}',${id},'phased')">phase out</button></div>
+  <div class="drow"><span class="dlab">color</span><div class="setbtns">${colorToggles(cat,id,'color')}</div></div>
+  <div class="drow"><span class="dlab">dies to</span><select onchange="setMy('${cat}',${id},'dies',this.value)"><option value="graveyard" ${p.dies!=='exile'?'selected':''}>graveyard</option><option value="exile" ${p.dies==='exile'?'selected':''}>exile</option></select></div>
+  <div class="drow"><span class="dlab">attack tax (enemy pays)</span><input type="number" min="0" value="${p.catk?p.catk.amt:0}" style="width:42px" onchange="setCatk('${cat}',${id},'amt',+this.value)"><select onchange="setCatk('${cat}',${id},'type',this.value)"><option value="mana" ${!p.catk||p.catk.type==='mana'?'selected':''}>mana</option><option value="life" ${p.catk&&p.catk.type==='life'?'selected':''}>life</option></select></div>
+  <div class="drow"><span class="dlab">ward (enemy pays to target)</span><input type="number" min="0" value="${p.cward?p.cward.amt:0}" style="width:42px" onchange="setCward('${cat}',${id},'amt',+this.value)"><select onchange="setCward('${cat}',${id},'type',this.value)"><option value="mana" ${!p.cward||p.cward.type==='mana'?'selected':''}>mana</option><option value="life" ${p.cward&&p.cward.type==='life'?'selected':''}>life</option></select></div></div>`;}
+function walkerDrawer(w){const id=w.id;return `<div class="drawer">
+  <div class="drow"><span class="dlab">flags</span><button class="tiny ${w.legendary?'on':''}" onclick="flagMy('walkers',${id},'legendary')">legendary</button></div>
+  <div class="drow"><span class="dlab">color</span><div class="setbtns">${colorToggles('walkers',id,'color')}</div></div>
+  <div class="drow"><span class="dlab">dies to</span><select onchange="setMy('walkers',${id},'dies',this.value)"><option value="graveyard" ${w.dies!=='exile'?'selected':''}>graveyard</option><option value="exile" ${w.dies==='exile'?'selected':''}>exile</option></select></div>
+  <div class="drow"><span class="dlab">attack tax (enemy pays)</span><input type="number" min="0" value="${w.catk?w.catk.amt:0}" style="width:42px" onchange="setCatk('walkers',${id},'amt',+this.value)"><select onchange="setCatk('walkers',${id},'type',this.value)"><option value="mana" ${!w.catk||w.catk.type==='mana'?'selected':''}>mana</option><option value="life" ${w.catk&&w.catk.type==='life'?'selected':''}>life</option></select></div>
+  <div class="drow"><span class="dlab">ward (enemy pays to target)</span><input type="number" min="0" value="${w.cward?w.cward.amt:0}" style="width:42px" onchange="setCward('walkers',${id},'amt',+this.value)"><select onchange="setCward('walkers',${id},'type',this.value)"><option value="mana" ${!w.cward||w.cward.type==='mana'?'selected':''}>mana</option><option value="life" ${w.cward&&w.cward.type==='life'?'selected':''}>life</option></select></div>
+  <div class="drow"><span class="dlab">commander</span><button class="tiny gold ${w.isCmd?'on':''}" onclick="setCommander('walkers',${id})">${w.isCmd?'✓ your commander':'set as commander'}</button></div></div>`;}
+function setCommander(cat,id){const o=getMy(cat,id);if(!o)return;const on=!o.isCmd;S.my.creatures.forEach(c=>c.isCmd=false);S.my.walkers.forEach(w=>w.isCmd=false);if(S.pcmd){S.pcmd.isCmd=false;S.pcmd=null;}if(on){o.isCmd=true;o.kind=cat;o.cmdTax=o.cmdTax||0;o.cmdDeaths=o.cmdDeaths||0;log("you",`<b>${o.name}</b> is now your commander.`);}else log("you",`${o.name} is no longer your commander.`);render();}
+function cmdToZone(){const c=S.my.creatures.find(x=>x.isCmd)||S.my.walkers.find(x=>x.isCmd);if(c)sendCmdToZone(c,false);}
+function sendCmdToZone(c,died){let cat=null;["creatures","walkers"].forEach(k=>{if(S.my[k].indexOf(c)>=0)cat=k;});if(cat)S.my[cat].splice(S.my[cat].indexOf(c),1);c.kind=cat||c.kind||'creatures';c.tapped=false;c.sick=false;c.phased=false;c._atk=false;c.plus=0;c.minus=0;c.other=[];if(c.baseLoy!=null)c.loyalty=c.baseLoy;if(died){c.cmdDeaths=(c.cmdDeaths||0)+1;const inc=CMD_TAX_DOUBLE?CMD_TAX_BASE*Math.pow(2,c.cmdDeaths-1):CMD_TAX_BASE;c.cmdTax=(c.cmdTax||0)+inc;log("you",`♛ ${c.name} dies (death #${c.cmdDeaths}) → your command zone. Recast tax now +${c.cmdTax}.`);}else log("you",`♛ ${c.name} returns to your command zone.`);S.pcmd=c;render();}
+function deployCmd(){const c=S.pcmd;if(!c)return;c.sick=true;c.tapped=false;(c.kind==='walkers'?S.my.walkers:S.my.creatures).push(c);S.pcmd=null;log("you",`♛ ${c.name} enters the battlefield, summoning-sick. Pay its cost yourself (base + tax ${c.cmdTax||0}).`);render();}
+function renderPlayerCmd(){const box=$("pcmdBox");if(!box)return;const onBoard=S.my.creatures.find(c=>c.isCmd)||S.my.walkers.find(w=>w.isCmd);
+  if(S.pcmd){const c=S.pcmd;box.style.display="";box.className="cmdbox";box.innerHTML=`<div class="cn">♛ ${c.name} <span class="tag prep">command zone</span></div><div class="cstat">${c.kind==='walkers'?`loyalty ${c.loyalty}`:`${c.p}/${c.t}`} · recast tax +${c.cmdTax||0} (deaths ${c.cmdDeaths||0}) — you pay its cost.</div><div class="acts"><button class="tiny gold" onclick="deployCmd()">Deploy to battlefield</button></div>`;}
+  else if(onBoard){box.style.display="";box.className="cmdbox";box.innerHTML=`<div class="cn">♛ ${onBoard.name} <span class="tag">your commander · on battlefield</span></div><div class="cstat">If it dies it returns to your command zone with tax.${onBoard.cmdTax?` Current tax +${onBoard.cmdTax}.`:''}</div><div class="acts"><button class="tiny" onclick="cmdToZone()">→ command zone</button></div>`;}
+  else box.style.display="none";}
+function renderMyZones(){const p=$("myZonesPanel");if(!p)return;if(!(S.myGy.length||S.myExile.length)){p.style.display="none";return;}p.style.display="";
+  $("myGyList").innerHTML=S.myGy.length?S.myGy.map((c,i)=>`<span class="zchip">${colorDots(c)}${c.name}<b class="zg" title="return to battlefield" onclick="myGyReturn(${i})">↑</b><b class="zx" title="exile" onclick="myGyToExile(${i})">⊘</b></span>`).join(""):'<span class="empty">empty</span>';
+  $("myExList").innerHTML=S.myExile.length?S.myExile.map(c=>`<span class="zchip ex">${colorDots(c)}${c.name}</span>`).join(""):'<span class="empty">empty</span>';}
+function myGyReturn(i){const c=S.myGy.splice(i,1)[0];if(!c)return;const cat=c._cat||'creatures';if(cat==='creatures')c.sick=true;c.tapped=false;S.my[cat].push(c);log("you",`Returned <b>${c.name}</b> from graveyard to the battlefield.`);render();}
+function myGyToExile(i){const c=S.myGy.splice(i,1)[0];if(c){S.myExile.push(c);render();}}
+function attackTax(){let mana=0,life=0;[...S.my.creatures,...S.my.artifacts,...S.my.enchants,...S.my.walkers].forEach(o=>{if(o.catk&&!o.phased){if(o.catk.type==='life')life+=o.catk.amt;else mana+=o.catk.amt;}});return{mana,life};}
+function payAttackTax(cands){const tx=attackTax();if(!tx.mana&&!tx.life)return{kept:cands,skipped:[],pm:0,pl:0,tx};
+  const ranked=cands.slice().sort((a,b)=>effP(b)-effP(a));let manaLeft=S.bossMana,lifeLeft=Math.max(0,S.boss.life-1),pm=0,pl=0;const kept=[],skipped=[];
+  ranked.forEach(a=>{if(manaLeft>=tx.mana&&lifeLeft>=tx.life){manaLeft-=tx.mana;lifeLeft-=tx.life;pm+=tx.mana;pl+=tx.life;kept.push(a);}else skipped.push(a);});
+  S.bossMana=manaLeft;if(pl){S.boss.life-=pl;}
+  return{kept,skipped,pm,pl,tx};}
+function aiTargets(attackers){const t={};attackers.forEach(a=>t[a.id]='you');const wks=S.my.walkers.filter(w=>!w.phased);if(!wks.length)return t;
+  const target=wks.slice().sort((x,y)=>y.loyalty-x.loyalty)[0];const totalP=attackers.reduce((s,a)=>s+effP(a),0);
+  if(totalP<target.loyalty)return t; // can't kill it this turn — go for the face
+  let need=target.loyalty;attackers.slice().sort((a,b)=>effP(b)-effP(a)).forEach(a=>{if(need>0){t[a.id]=''+target.id;need-=effP(a);}});
+  return t;}
+function renderDeckColors(){const box=$("deckColorRow");if(!box)return;box.innerHTML=["W","U","B","R","G"].map(col=>`<button class="manapip ${S.deckColors.indexOf(col)>=0?'on':''}" style="--mc:${COLOR_HEX[col]}" onclick="toggleDeckColor('${col}')">${col}</button>`).join("");}
+function toggleDeckColor(col){const i=S.deckColors.indexOf(col);if(i>=0)S.deckColors.splice(i,1);else S.deckColors.push(col);render();}
+
+/* ===== EDITS ===== */
+function addKw(scope,id,k){if(!k)return;const c=getCre(scope,id);if(!c)return;c.kw=c.kw||[];if(!c.kw.includes(k))c.kw.push(k);render();}
+function delKw(scope,id,k){const c=getCre(scope,id);if(!c)return;c.kw=(c.kw||[]).filter(x=>x!==k);render();}
+function addC(){S.my.creatures.push({id:S.nextId++,name:"Creature",p:2,t:2,tapped:false,plus:0,minus:0,other:[],kw:[],color:[],legendary:false,token:false,dies:"graveyard",phased:false,abilP:0,abilA:0,mana:0,prot:[],catk:null,isCmd:false,_drawer:false});render();}
+function addP(cat){S.my[cat].push({id:S.nextId++,name:cat==='artifacts'?"Artifact":"Enchantment",kind:"passive",mana:0,dmg:0,note:"",color:[],legendary:false,token:false,dies:"graveyard",phased:false,prot:[],catk:null,_drawer:false});render();}
+function addW(){S.my.walkers.push({id:S.nextId++,name:"Planeswalker",loyalty:3,baseLoy:3,abilities:3,note:"",color:[],legendary:true,dies:"graveyard",isCmd:false,_drawer:false});render();}
+function addEm(){S.my.emblems.push({id:S.nextId++,name:"Emblem",note:""});render();}
+function setMy(cat,id,f,v){const o=S.my[cat].find(x=>x.id===id);if(o){o[f]=v;render();}}
+function adjMy(cat,id,f,n){const o=S.my[cat].find(x=>x.id===id);if(o){o[f]=Math.max(0,(o[f]||0)+n);render();}}
+function rmMy(cat,id){const i=S.my[cat].findIndex(x=>x.id===id);if(i>=0)S.my[cat].splice(i,1);render();}
+function mp(id,s,n){const c=S.my.creatures.find(x=>x.id===id);if(c){c[s]=Math.max(0,c[s]+n);render();}}
+function myctr(id,w,n){const c=S.my.creatures.find(x=>x.id===id);if(c){c[w]=(c[w]||0)+n;render();}}
+function myctrCustom(id){const c=S.my.creatures.find(x=>x.id===id);if(!c)return;const t=prompt("Counter type:");if(!t)return;c.other=c.other||[];c.other.push(t);render();}
+function tapMy(id){const c=S.my.creatures.find(x=>x.id===id);if(c){c.tapped=!c.tapped;render();}}
+function toggleAtk(id){const c=S.my.creatures.find(x=>x.id===id);if(c){c._atk=!c._atk;render();}}
+function cp(id,s,n){const c=S.tokens.find(x=>x.id===id);if(c){c[s]=Math.max(0,c[s]+n);render();}}
+function cctr(id,w,n){const c=S.tokens.find(x=>x.id===id);if(c){c[w]=(c[w]||0)+n;render();}}
+function cctrCustom(id){const c=S.tokens.find(x=>x.id===id);if(!c)return;const t=prompt("Counter type:");if(!t)return;c.other=c.other||[];c.other.push(t);render();}
+function remCtr(scope,id){const o=getObj(scope,id);if(!o)return;if((o.other||[]).length)o.other.pop();else if((o.minus||0)>0)o.minus--;else if((o.plus||0)>0)o.plus--;else{render();return;}render();}
+function remCtrOther(scope,id,idx){const o=getObj(scope,id);if(!o||!o.other)return;o.other.splice(idx,1);render();}
+function tapT(id){const c=S.tokens.find(x=>x.id===id);if(c){c.tapped=!c.tapped;render();}}
+function cmdCtr(w,n){S.cmd[w]=(S.cmd[w]||0)+n;render();}
+function tapCmd(){S.cmd.tapped=!S.cmd.tapped;render();}
+function slayCmdBtn(){if(!S.cmd.inPlay)return;removeRef(S.cmd);render();}
+function adjLife(who,n){if(who==='you'){S.youLife+=n;if(S.youLife>S.youMax)S.youMax=S.youLife;checkLose();}render();}
+function setLife(){const v=prompt("Set your life:",S.youLife);if(v===null)return;const x=parseInt(v,10);if(isNaN(x))return;S.youLife=x;if(x>S.youMax)S.youMax=x;render();}
+function bossHealLife(n){S.boss.life+=n;if(S.boss.life>S.boss.max)S.boss.max=S.boss.life;}
+function adjBoss(n){S.boss.life+=n;if(S.boss.life>S.boss.max)S.boss.max=S.boss.life;if(S.boss.life<=0)bossDown();render();}
+function setBossLife(){const v=prompt("Set enemy life (can exceed its starting total):",S.boss.life);if(v===null)return;const x=parseInt(v,10);if(isNaN(x))return;S.boss.life=x;if(x>S.boss.max)S.boss.max=x;log("you",`Enemy life set to <b>${x}</b>.`);if(S.boss.life<=0)bossDown();render();}
+function bossManaModAdj(n){S.bossManaMod=(S.bossManaMod||0)+n;log("sys",`Enemy per-turn mana modifier now ${S.bossManaMod>=0?'+':''}${S.bossManaMod}.`);render();}
+function bossManaModSet(){const v=prompt("Enemy per-turn mana modifier:",S.bossManaMod||0);if(v===null)return;const x=parseInt(v,10);if(isNaN(x))return;S.bossManaMod=x;log("sys",`Enemy per-turn mana modifier set to ${x>=0?'+':''}${x}.`);render();}
+function bossManaAdj(n){S.bossMana=Math.max(0,(S.bossMana||0)+n);if(S.bossMana>S.bossManaMax)S.bossManaMax=S.bossMana;log("sys",`Enemy mana pool now <b>${S.bossMana}</b>.`);render();}
+function bossManaSet(){const v=prompt("Set enemy mana pool (this turn):",S.bossMana||0);if(v===null)return;const x=parseInt(v,10);if(isNaN(x)||x<0)return;S.bossMana=x;if(x>S.bossManaMax)S.bossManaMax=x;log("sys",`Enemy mana pool set to <b>${x}</b>.`);render();}
+function bossManaEmpty(){S.bossMana=0;log("sys",`Enemy mana pool emptied.`);render();}
+function boardWipe(){const mode=$("bwMode").value,N=parseInt($("bwN").value,10)||0,skipTok=$("bwTok").classList.contains("on"),skipLeg=$("bwLeg").classList.contains("on"),scope=$("bwScope").value;
+  const hit=c=>{if(skipTok&&c.token)return false;if(skipLeg&&c.legendary)return false;if(mode==='all')return true;if(mode==='toughLE')return effT(c)<=N;if(mode==='powGE')return effP(c)>=N;return true;/*dmgAll handled separately*/};
+  let mine=0,foe=0;const dmg=mode==='dmgAll';
+  if(scope==='mine'||scope==='both'){S.my.creatures.slice().forEach(c=>{if(skipTok&&c.token)return;if(skipLeg&&c.legendary)return;if(dmg){c.minus=(c.minus||0)+N;if(effT(c)<=0){mine++;killMy(c);}}else if(hit(c)){mine++;killMy(c);}});}
+  if(scope==='enemy'||scope==='both'){
+    S.tokens.slice().forEach(c=>{if(skipTok&&c.token)return;if(dmg){c.minus=(c.minus||0)+N;if(effT(c)<=0){foe++;const i=S.tokens.indexOf(c);if(i>=0)S.tokens.splice(i,1);}}else if(mode==='all'||(mode==='toughLE'&&effT(c)<=N)||(mode==='powGE'&&effP(c)>=N)){foe++;const i=S.tokens.indexOf(c);if(i>=0)S.tokens.splice(i,1);}});
+    if(S.cmd.inPlay&&!(skipLeg)){const c=S.cmd;if(dmg){c.minus=(c.minus||0)+N;if(effT(c)<=0){foe++;removeRef(c);}}else if(mode==='all'||(mode==='toughLE'&&effT(c)<=N)||(mode==='powGE'&&effP(c)>=N)){foe++;removeRef(c);}}
+  }
+  const label=mode==='all'?'destroys all creatures':mode==='toughLE'?`destroys toughness ≤ ${N}`:mode==='powGE'?`destroys power ≥ ${N}`:`deals ${N} to all creatures`;
+  log("sys",`🌊 Boardwipe — ${label}${skipTok?' (sparing tokens)':''}${skipLeg?' (sparing legendaries)':''}: ${mine} of yours, ${foe} enemy.`);
+  checkLose();render();}
+function adjLoy(n){if(!S.pw)return;S.pw.loy+=n;if(S.pw.loy<=0){log("sys",`${S.pw.name} destroyed.`);S.pw=null;}render();}
+function slay(id){const i=S.tokens.findIndex(c=>c.id===id);if(i<0)return;log("you",`Removed <b>${S.tokens[i].name}</b>.`);S.tokens.splice(i,1);render();}
+function destroyRule(id){const i=S.rules.findIndex(r=>r.id===id);if(i<0)return;log("you",`Destroyed <b>${S.rules[i].name}</b>.`);S.rules.splice(i,1);render();}
+function rollRule(id){const r=S.rules.find(x=>x.id===id);if(!r)return;log("sys",`${r.name}: rolled <b>${d(r.die)}</b> on d${r.die}.`);}
+function dmgBoss(){const q=$("bossDmgIn");const v=parseInt(q.value,10);if(isNaN(v)||v<=0){log("sys","Enter direct damage.");return;}S.boss.life-=v;log("you",`Direct damage <b>${v}</b>. (${Math.max(0,S.boss.life)})`);q.value="";if(S.boss.life<=0)bossDown();render();}
+function damagePW(){if(!S.pw)return;const v=parseInt($("pwDmgIn").value,10);if(isNaN(v)||v<=0){log("sys","Enter damage.");return;}S.pw.loy-=v;log("you",`Hit ${S.pw.name} for <b>${v}</b>.`);$("pwDmgIn").value="";if(S.pw.loy<=0){log("you",`<b>${S.pw.name} destroyed.</b>`);S.pw=null;}render();}
+
+function useBoon(i){const it=S.inv[i];if(!it)return;const b=BOONS[it.id];if(b.kind!=="consumable")return;if(it.id==="heal5")adjLife('you',5);if(it.id==="heal10")adjLife('you',10);if(it.id==="elixir")adjLife('you',15);if(it.id==="tonic"){S.youMax+=5;adjLife('you',5);}if(it.id==="antidote"){S.counters.poison=0;renderCounters&&renderCounters();}if(it.id==="bomb"){S.boss.life-=4;log("you",`💣 Cinder Bomb hits ${S.boss.name} for <b>4</b>. (${Math.max(0,S.boss.life)})`);}log("loot",`Used <b>${b.n}</b>.`);S.inv.splice(i,1);if(it.id==="bomb"&&S.boss.life<=0)bossDown();render();}
+function grantBoon(id){const b=BOONS[id];if(!b)return;if(b.kind==="instant"){if(id==="spark"){S.youMax+=5;S.youLife+=5;}log("loot",`Gained <b>${b.n}</b>.`);return;}if(id==="map")S.weakenNext=true;S.inv.push({id});log("loot",`Looted <b>${b.n}</b> (${b.r}).`);}
+function lootRoll(){const roll=d(20);let id="heal5";for(const[a,z,bid]of LOOT_D20){if(roll>=a&&roll<=z){id=bid;break;}}let names=[];if(id==="jackpot"){grantBoon("heal10");grantBoon("phoenix");names=["Greater Draught","Phoenix Charm"];}else{grantBoon(id);names=[BOONS[id].n];}return{roll,names};}
+
+function bossDown(){if(S.over)return;if(S.boss.isVael&&!S.phase2done){S.phase2done=true;S.boss.life=Math.max(10,Math.round(S.boss.max*0.34));applyRun(["spawn","Pyre Revenant",4,3,["trample","haste"],"RB"]);log("dm",`🔥🔥 <b>UNDYING EMBERS!</b> Vael rises ENRAGED at ${S.boss.life} life and calls a Pyre Revenant.`);render();return;}if(S.boss.isVael){win();return;}S.paused=true;const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);log("sys",`🏳 <b>${S.boss.name} falls!</b>`);log("loot",`💰 You collect <b>${gold} gold</b> (account balance ${getGold()}). Spend it at the Merchant in the ☰ Menu.`);$("clearText").textContent=`${S.boss.name} is defeated. Your next encounter in ${DUNGEON[S.roomIndex+1].name} starts with an empty battlefield, but your life and loot carry over.`;$("lootText").textContent=`🎲 Loot roll ${lr.roll}/20 → ${lr.names.join(" + ")}!  ·  💰 +${gold} gold (account ${getGold()})`;$("clearBanner").classList.add("show");$("clearBanner").scrollIntoView({block:"nearest"});render();}
+function advance(){const next=S.roomIndex+1;$("clearBanner").classList.remove("show");freshGameForDungeon();enterRoom(next);S.paused=false;log("sys",`A fresh board awaits in <b>${DUNGEON[next].name}</b> — empty battlefield, but your life (${S.youLife}) and loot carry over.`);render();const nr=DUNGEON[next];showCutscene(nr.intro,nr.villain,`${nr.name} · descending`,nr.isVael?"Face the Tyrant ▸":"Descend ▸",villainCutOpts(nr));}
+
+/* ===== TURN / PHASE ENGINE ===== */
+function flowClick(){if(S.over||S.paused||S.combat)return;if(S.plays.some(p=>p.status==='pending'&&p._player)){log("sys","Resolve the spells on your stack first.");showPlays();return;}if(S.activeTurn===null){beginVaelTurn();return;}advancePhase();}
+function beginVaelTurn(){if(S.over)return;S.activeTurn='vael';S.turn++;S.phase=0;S.plays=[];log("sys",`— ${ENs()} · Turn ${S.turn} · ${DUNGEON[S.roomIndex].name} —`);enterPhase();}
+function beginYourTurn(){if(S.over)return;S.activeTurn='you';S.phase=0;log("sys",`— Your turn ·  ${DUNGEON[S.roomIndex].name} —`);enterPhase();}
+function advancePhase(){if(S.over||S.combat)return;const leaving=PHASES[S.phase];if(S.activeTurn==='vael'&&['upkeep','main1','main2'].includes(leaving))resolveLeftoverPlays();if(S.phase<PHASES.length-1){S.phase++;enterPhase();}else{if(S.activeTurn==='vael')beginYourTurn();else beginVaelTurn();}}
+function enterPhase(){const ph=PHASES[S.phase];if(!S.plays.some(p=>p.status==='pending'))$("plays").classList.remove("show");
+  if(S.activeTurn==='vael'){if(ph==='untap')vaelUntap();else if(ph==='upkeep')vaelUpkeep();else if(ph==='draw')vaelDrawStep();else if(ph==='main1')vaelMain(1);else if(ph==='combat')vaelCombat();else if(ph==='main2')vaelMain(2);else if(ph==='end')vaelEnd();}
+  else{if(ph==='untap')youUntap();else if(ph==='upkeep')youUpkeep();else if(ph==='draw')youDraw();else if(ph==='combat')youCombat();else if(ph==='end')youEnd();else youMain();}
+  render();}
+function resolveLeftoverPlays(){S.plays.forEach((p,i)=>{if(p.status==='pending'&&!p._player)resolvePlay(i);});}
+function showPlays(){renderPlays();$("plays").classList.add("show");$("plays").scrollIntoView({block:"nearest"});}
+
+/* --- Vael's phases --- */
+function vaelUntap(){S.tokens.forEach(c=>{c.tapped=false;c.sick=false;});if(S.cmd.inPlay){S.cmd.tapped=false;S.cmd.sick=false;}S.bossManaMax=bossMana();S.bossMana=S.bossManaMax;log("dm",`Untap. ${ENs()} has <b>${S.bossMana}</b> mana this turn.`);}
+function vaelUpkeep(){S.rules.filter(r=>r.side==="boss"&&r.heal).forEach(r=>{bossHealLife(r.heal);log("dm",`${r.name}: ${ENs()} gains ${r.heal}. (${S.boss.life})`);});
+  if(S.pw)pwAct();}
+function pwAct(){const pw=S.pw;let ab;
+  if(pw.loy>=pw.ultThreshold){ab=pw.ult;pw.loy+=ab.sign;}
+  else{const bigThreat=S.my.creatures.some(c=>effP(c)>=4&&!kw(c,'hexproof')&&!c.phased);
+    if(pw.minus&&bigThreat&&pw.loy+pw.minus.sign>=1&&Math.random()<0.55){ab=pw.minus;pw.loy+=ab.sign;}
+    else{ab=pw.plus;pw.loy+=ab.sign;}}
+  const p=mkPlay({n:`${pw.name}: ${ab.n} (${ab.sign>0?'+':''}${ab.sign})`,type:'instant',text:ab.text,selfLoss:ab.selfLoss,run:ab.run,target:ab.target,color:ab.color,cost:0});
+  S.plays.push(p);log("dm",`\u2726 ${pw.name} uses <b>${ab.n}</b>${ab.ult?' — ULTIMATE':''} (loyalty ${pw.loy}).`);showPlays();}
+function vaelDrawStep(){vaelDraw(1);log("dm",`${ENs()} draws. (hand ${S.hand.length} · library ${S.lib.length})`);}
+function vaelMain(which){
+  if(which===1&&!S.cmd.inPlay&&S.bossMana>=S.cmd.cost){S.bossMana-=S.cmd.cost;S.cmd.inPlay=true;S.cmd.sick=true;log("dm",`♛ ${ENs()} summons <b>${S.cmd.n}</b> (spent ${S.cmd.cost}, ${S.bossMana} left). Sick this turn.`);}
+  let cast=0,guard=24;
+  while(guard-->0){const idxs=S.hand.map((c,i)=>i).filter(i=>FX[S.hand[i].key].cost<=S.bossMana);if(!idxs.length)break;idxs.sort((a,b)=>FX[S.hand[b].key].cost-FX[S.hand[a].key].cost);const topCost=FX[S.hand[idxs[0]].key].cost;const top=idxs.filter(i=>FX[S.hand[i].key].cost===topCost);const pick=top[Math.floor(Math.random()*top.length)];const card=S.hand[pick],fx=FX[card.key];S.bossMana-=fx.cost;S.hand.splice(pick,1);const p=mkPlay(fx);p._card=card;S.plays.push(p);log("dm",`Casts <b>${fx.n}</b> (spent ${fx.cost}, ${S.bossMana} left).`);cast++;}
+  if(which===1&&S.tokens.length===0&&!S.cmd.inPlay){const rb=S.boss.colors||["R"];const rn=rb.includes('B')&&!rb.includes('R')?"Pit Spawn":(rb.includes('R')&&!rb.includes('B')?"Goblin Whelp":"Ember Servant");applyRun(["spawn",rn,1,1,[],rb.join('')]);log("dm",`🜂 <b>Resurgence</b> — a 1/1 ${rn}.`);}
+  if(S.plays.some(p=>p.status==='pending'))showPlays();
+  if(!cast&&which===1&&!S.cmd.inPlay)log("dm",`${ENs()} can't afford a cast — still ramping.`);
+  if(!cast&&which===2)log("dm",`${ENs()} holds — nothing more to cast.`);}
+function vaelCombat(){resolveLeftoverPlays();if(S.over)return;const cands=vaelAttackers();if(!cands.length){log("dm",`${ENs()} has no ready attackers this turn.`);return;}
+  const pay=payAttackTax(cands);
+  if(pay.pm||pay.pl)log("dm",`${ENs()} pays your attack tax — ${[pay.pm?pay.pl?(pay.pm+" mana"):(pay.pm+" mana"):"",pay.pl?(pay.pl+" life"):""].filter(Boolean).join(" + ")} for ${pay.kept.length} attacker(s).`);
+  if(pay.skipped.length)log("dm",`${ENs()} holds back ${pay.skipped.map(c=>c.name).join(", ")} — can't pay the tax.`);
+  const atk=pay.kept;if(!atk.length){log("dm",`${ENs()} can't afford to attack into your defenses.`);return;}
+  const pool=S.my.creatures.filter(c=>!c.tapped&&!kw(c,"can't block")&&!c.phased);const assign={};atk.forEach(a=>assign[a.id]=[]);
+  openCombat('vael',atk,pool,assign,aiTargets(atk));}
+function vaelEnd(){resolveLeftoverPlays();log("dm",`${ENs()} ends its turn.`);}
+
+/* --- Your phases --- */
+function youUntap(){S.my.creatures.forEach(c=>{c.tapped=false;c.sick=false;c._atk=false;});log("you",`Your untap — creatures untap, summoning sickness clears.`);}
+function youUpkeep(){if(S.rules.some(r=>r.side==='you'))log("you",`Your upkeep — resolve your enchantment triggers in “Enchantments in play.”`);else log("you",`Your upkeep.`);if(S.inv.some(it=>it.id==='scholar'))log("loot",`Scholar's Token: draw an extra card (apply yourself).`);}
+function youDraw(){log("you",`Draw step — draw your card for the turn.`);}
+function youMain(){/* freeform: use your board tools */}
+function youCombat(){log("you",`Combat — pick attackers in “Your attack,” hit Swing, or Continue to skip.`);enemyInstant("your combat");}
+function youEnd(){enemyInstant("your end step");log("you",`You end your turn.`);}
+function enemyInstant(win){if(S.over||S.activeTurn!=='you')return;
+  const idxs=S.hand.map((c,i)=>i).filter(i=>FX[S.hand[i].key].type==='instant'&&FX[S.hand[i].key].cost<=S.bossMana);
+  if(!idxs.length)return;if(Math.random()>0.6)return; // holds up mana, doesn't always fire
+  idxs.sort((a,b)=>FX[S.hand[b].key].cost-FX[S.hand[a].key].cost);const pick=idxs[0];const card=S.hand[pick],fx=FX[card.key];
+  S.bossMana-=fx.cost;S.hand.splice(pick,1);const p=mkPlay(fx);p._card=card;p._instant=true;S.plays.push(p);
+  log("dm",`⚡ ${ENs()} responds at instant speed — <b>${fx.n}</b> (${win}; ${S.bossMana} mana left).`);showPlays();}
+
+/* --- flow / zone render --- */
+function flowLabel(){if(S.over)return"— the descent has ended —";if(S.paused)return"Descend to continue ↓";if(S.activeTurn===null)return`▶ Begin ${ENs()}'s Turn 1`;const ph=PHASES[S.phase];if(ph==='end')return S.activeTurn==='vael'?`End ${ENs()}'s turn → Your turn ▸`:`End your turn → ${ENs()}'s turn ▸`;return `Continue ▸ ${PHASE_LABEL[PHASES[S.phase+1]]}`;}
+function renderFlow(){const chips=$("phaseChips");if(chips){chips.innerHTML="";PHASES.forEach((ph,i)=>{const el=document.createElement("span");el.className="phasechip"+(S.activeTurn&&i===S.phase?" on":"")+(S.activeTurn&&i<S.phase?" past":"");el.textContent=PHASE_LABEL[ph];chips.appendChild(el);});}
+  const lbl=$("turnLabel");if(lbl){lbl.className="turnlabel "+(S.activeTurn||'pre');lbl.textContent=S.activeTurn===null?"Pre-game — set up your board, then begin":(S.activeTurn==='vael'?`${ENs()}'s turn · ${PHASE_LABEL[PHASES[S.phase]]}`:`Your turn · ${PHASE_LABEL[PHASES[S.phase]]}`);}
+  const fm=$("flowMana");if(fm)fm.innerHTML=S.activeTurn==='vael'?`${ENs()}'s mana: <b>${S.bossMana}</b> / ${S.bossManaMax} · hand ${S.hand.length} · library ${S.lib.length}`:`${ENs()}'s mana next turn: <b>${bossMana()}</b> · hand ${S.hand.length} · library ${S.lib.length}`;
+  const btn=$("dmBtn");if(btn){btn.disabled=S.over||!!S.combat||S.paused;btn.textContent=flowLabel();}}
+function renderZones(){if(!$("vaelZones"))return;$("libCount").textContent=S.lib.length;$("handCount").textContent=S.hand.length;
+  const gy=$("gyList");gy.innerHTML=S.gy.length?S.gy.map((c,i)=>`<span class="zchip">${FX[c.key].n}<b class="zx" title="move to exile" onclick="gyToExile(${i})">⊘</b></span>`).join(""):'<span class="empty">empty</span>';
+  const ex=$("exList");ex.innerHTML=S.exile.length?S.exile.map((c,i)=>`<span class="zchip ex">${FX[c.key].n}<b class="zg" title="return to graveyard" onclick="exToGy(${i})">↩</b></span>`).join(""):'<span class="empty">empty</span>';}
+function gyToExile(i){const c=S.gy.splice(i,1)[0];if(c){S.exile.push(c);log("you",`Exiled <b>${FX[c.key].n}</b> from the enemy's graveyard.`);render();}}
+function exToGy(i){const c=S.exile.splice(i,1)[0];if(c){S.gy.push(c);render();}}
+function cmdPT(s,n){S.cmd[s]=Math.max(0,S.cmd[s]+n);render();}
+function cmdFieldCard(){const c=S.cmd,buff=c.plus||0,deb=c.minus||0;return `<button class="slay mini ember" onclick="slayCmdBtn()">Slay</button>
+  <div class="cn">♛ ${c.n}${c.sick?' <span class="tag">sick</span>':''}${c.tax?` <span class="tag" style="color:var(--ember)">tax +${c.tax}</span>`:''}</div>
+  <div class="cpt">${effP(c)}/${effT(c)}${buff?` <span class="buff">+${buff}</span>`:''}${deb?` <span class="deb">−${deb}</span>`:''} ${colorDots(c)}</div>
+  <div class="badges">${c.tapped?'<span class="badge tap">tapped</span>':''}${c.phased?'<span class="badge ph">phased out</span>':''}${(c.prot||[]).length?`<span class="badge prot">prot ${c.prot.join("")}</span>`:''}${c.noAbil?'<span class="badge no">no-abil</span>':''}${kwBadges('cmd',null,c)}${(c.other||[]).map((o,oi)=>`<span class="badge" style="cursor:pointer" title="click to remove" onclick="remCtrOther('cmd',null,${oi})">${o} ✕</span>`).join("")}</div>
+  <div class="ctr"><button class="${c.tapped?'on':''}" onclick="tapCmd()">tap</button><button class="${c.noAbil?'on':''}" onclick="noAbilT('cmd',null)">no-abil</button><button onclick="cmdCtr('plus',1)">+1/+1</button><button onclick="cmdCtr('minus',1)">−1/−1</button><button onclick="remCtr('cmd',null)">⊖ ctr</button><button onclick="cmdPT('p',1)">P+</button><button onclick="cmdPT('p',-1)">P−</button><button onclick="cmdPT('t',1)">T+</button><button onclick="cmdPT('t',-1)">T−</button></div>
+  ${kwSelect('cmd',null)}
+  <button class="drawtoggle tiny" onclick="toggleDrawer('cmd',null)">${c._drawer?'▾ properties':'▸ properties'}</button>
+  ${c._drawer?enemyDrawer('cmd',null,c):''}`;}
+function freshGameForDungeon(){/* Fresh board each dungeon; life is the carried RPG stat (only loot moves it). The board empties, per-game counters reset (commander damage must — Vael's commander is rebuilt), and your designated commander returns to the command zone with tax reset (a new game). Life, max life, and loot persist. */
+  let cmd=S.pcmd||S.my.creatures.find(c=>c.isCmd)||S.my.walkers.find(w=>w.isCmd);
+  if(cmd){cmd.kind=cmd.kind||(S.my.walkers.indexOf(cmd)>=0?'walkers':'creatures');cmd.plus=0;cmd.minus=0;cmd.other=[];cmd.tapped=false;cmd.sick=false;cmd.phased=false;cmd._atk=false;if(cmd.baseLoy!=null)cmd.loyalty=cmd.baseLoy;cmd.cmdTax=0;cmd.cmdDeaths=0;S.pcmd=cmd;}
+  S.my={creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]};S.myGy=[];S.myExile=[];S.counters={poison:0,energy:0,experience:0,cmdDmg:0};}
+function mkPlay(fx){const p={n:fx.n,type:fx.type,text:fx.text,flav:fx.flav,cost:fx.cost,color:fx.color,selfLoss:fx.selfLoss,die:fx.die,dieLoss:fx.dieLoss,run:fx.run,target:fx.target,status:"pending"};if(fx.die){p.roll=d(fx.die);if(fx.dieLoss)p.selfLoss=p.roll;}return p;}
+function playerItemDesc(p){if(p.ctype==='creature')return `Creature ${p.p}/${p.t}${(p.kw&&p.kw.length)?' — '+p.kw.join(', '):''}. Resolves to your board.`;if(p.ctype==='planeswalker')return `Planeswalker, loyalty ${p.loy}. Resolves to your board.`;if(p.ctype==='artifact'||p.ctype==='enchantment')return `${p.ctype}. Resolves to your board.`;if(p.auto)return p.auto.k==='dmgBoss'?`Deals ${p.auto.n} to the enemy on resolve.`:p.auto.k==='gainLife'?`You gain ${p.auto.n} life on resolve.`:`You lose ${p.auto.n} life on resolve.`;return 'Resolves — apply its effect with the controls as needed.';}
+function renderPlays(){const box=$("playCards");box.innerHTML="";if(!S.plays.length){box.innerHTML=`<div class="playcard"><div class="pt">The stack is empty. Cast a spell, or just develop your board with the + buttons.</div></div>`;return;}
+  let topIdx=-1;for(let k=S.plays.length-1;k>=0;k--){if(S.plays[k].status==='pending'){topIdx=k;break;}}
+  S.plays.forEach((p,i)=>{const mine=!!p._player;const nm=p.n||p.name;const ty=p.type||p.ctype||'spell';const txt=p.text||p.note||playerItemDesc(p);const single=['destroyMaxPow','destroyMinPow','wither3'].includes(p.target);
+    const pcols=Array.isArray(p.color)?p.color:(p.color||'').split('').filter(Boolean);const colChips=pcols.map(col=>`<span class="cdot" title="${col}" style="background:${COLOR_HEX[col]||'#888'}"></span>`).join("");
+    const el=document.createElement("div");el.className="playcard "+p.status+(mine?" mine":"");let acts="";
+    if(p.status==="pending"){acts=`<button class="mini ember" onclick="resolvePlay(${i})">${mine?'Resolve':'It resolves'}</button>`;
+      if(single)acts+=`<select class="redir" onchange="resolvePlayOn(${i},this.value)"><option value="">↪ redirect / fizzle…</option>${S.my.creatures.filter(c=>!c.phased).map(c=>`<option value="c${c.id}">→ ${c.name} ${effP(c)}/${effT(c)}</option>`).join("")}<option value="fizzle">✖ it fizzles (protected/hexproof)</option></select>`;
+      if(!mine)acts+=`<button class="mini azor" onclick="counterPlay(${i})">I countered it</button>`;
+      acts+=`<button class="mini" onclick="copyStackItem(${i})">⧉ copy</button><button class="mini" onclick="removeStackItem(${i})">✕</button>`;}
+    else if(p.status==="resolved")acts=`<span class="ir" style="color:var(--ok);font-family:Space Mono;font-size:.66rem">RESOLVED ✓</span><button class="mini" onclick="copyStackItem(${i})">⧉ copy</button>`;
+    else acts=`<span class="ir" style="color:var(--bone-dim);font-family:Space Mono;font-size:.66rem">COUNTERED ✕</span><button class="mini" onclick="undoPlay(${i})">undo</button>`;
+    if(mine)acts+=`<button class="mini gold" onclick="saveStackToLibrary(${i})">★ save</button>`;
+    el.innerHTML=`<div class="ph">${i===topIdx?'<span class="topbadge">TOP ▸</span>':''}<span class="pn">${nm}</span>${colChips?`<span style="margin-left:2px">${colChips}</span>`:''}${p.cost!=null?`<span class="cost">${p.cost}◇</span>`:''}<span class="typechip ${ty}">${ty}</span>${mine?'<span class="typechip" style="color:var(--azor)">your spell</span>':''}${p._instant?'<span class="typechip" style="color:var(--azor)">flash</span>':''}${p.cantCounter?'<span class="typechip" style="color:var(--gold)">uncounterable</span>':''}${p.target?'<span class="typechip" style="color:var(--ember)">targets you</span>':''}</div><div class="pt">${txt}${p.die?` <span class="die">→ rolled ${p.roll}/${p.die}</span>`:''}</div>${p.flav?`<div class="flav">${p.flav}</div>`:''}<div class="pacts">${acts}</div>`;box.appendChild(el);});}
+function resolvePlay(i){const p=S.plays[i];if(!p||p.status==="resolved")return;p.status="resolved";
+  if(p._player){resolvePlayerItem(p);checkLose();renderPlays();render();return;}
+  if(p.run)applyRun(p.run);if(p.target){const msg=applyTarget(p.target,(p.color||'').split('').filter(Boolean));if(msg)log("dm",`${p.n}: ${ENs()} ${msg}.`);else log("dm",`${p.n} — no valid target on your tracked board.`);}if(p.selfLoss){S.youLife-=p.selfLoss;log("dm",`${p.n} → you lose <b>${p.selfLoss}</b>. (${S.youLife})`);}else if(!p.target&&!p.run)log("dm",`${p.n} resolves.`);if(p._card&&!p._copy&&p.type!=='enchant')S.gy.push(p._card);checkLose();renderPlays();render();}
+function resolvePlayerItem(p){const t=p.ctype;const pr=p.props||{};const tok=!!p._copy||!!pr.token;
+  if(t==='creature'){const kwl=(p.kw||[]).slice();if(pr.defender&&kwl.indexOf('defender')<0)kwl.push('defender');S.my.creatures.push({id:S.nextId++,name:p.name,p:p.p||1,t:p.t||1,kw:kwl,color:(p.color||[]).slice(),plus:0,minus:0,other:[],tapped:false,sick:true,token:tok,legendary:!!pr.legendary,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',abilP:pr.abilP||0,abilA:pr.abilA||0,mana:pr.mana||0,strength:pr.strength||'mid',isCmd:false});log("you",`<b>${p.name}</b> resolves onto your board (${p.p}/${p.t}${tok?' · token':''}).`);}
+  else if(t==='artifact'||t==='enchantment'){const cat=t==='artifact'?'artifacts':'enchants';S.my[cat].push({id:S.nextId++,name:p.name,kind:'passive',mana:pr.mana||0,dmg:0,note:p.note||'',color:(p.color||[]).slice(),token:tok,legendary:!!pr.legendary,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard'});log("you",`<b>${p.name}</b> resolves into play.`);}
+  else if(t==='planeswalker'){S.my.walkers.push({id:S.nextId++,name:p.name,loyalty:p.loy||3,baseLoy:p.loy||3,abilities:0,note:p.note||'',color:(p.color||[]).slice(),legendary:pr.legendary!==false,token:tok,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard'});log("you",`<b>${p.name}</b> resolves (loyalty ${p.loy||3}).`);}
+  else{if(p.auto){if(p.auto.k==='dmgBoss'){S.boss.life-=p.auto.n;log("you",`<b>${p.name}</b> resolves — ${p.auto.n} to ${S.boss.name}. (${Math.max(0,S.boss.life)})`);if(S.boss.life<=0)bossDown();}else if(p.auto.k==='gainLife'){S.youLife+=p.auto.n;if(S.youLife>S.youMax)S.youMax=S.youLife;log("you",`<b>${p.name}</b> resolves — you gain ${p.auto.n}. (${S.youLife})`);}else if(p.auto.k==='loseLife'){S.youLife-=p.auto.n;log("you",`<b>${p.name}</b> resolves — you lose ${p.auto.n}. (${S.youLife})`);}}else log("you",`<b>${p.name}</b> resolves${p.note?` — ${p.note}`:''}. Apply its effect with the controls as needed.`);}}
+function resolvePlayOn(i,val){const p=S.plays[i];if(!p||p.status==="resolved"||!val)return;
+  if(val==='fizzle'){p.status="resolved";log("you",`<b>${p.n||p.name}</b> fizzles — no legal target (protected / hexproof / out of range).`);if(p._card&&!p._copy&&p.type!=='enchant')S.gy.push(p._card);renderPlays();render();return;}
+  const id=parseInt(val.replace('c',''),10);p.status="resolved";const msg=applyTarget(p.target,(p.color||'').split('').filter(Boolean),id);if(msg)log("dm",`${p.n}: ${ENs()} ${msg} <span class="manaline">(you redirected it)</span>.`);else log("dm",`${p.n} — redirect had no effect.`);if(p._card&&!p._copy&&p.type!=='enchant')S.gy.push(p._card);checkLose();renderPlays();render();}
+function copyStackItem(i){const o=S.plays[i];if(!o)return;const c=JSON.parse(JSON.stringify(o));c.id=S.nextId++;c._copy=true;c.status='pending';delete c._card;c.n=o.n?o.n+" (copy)":undefined;c.name=(o.name||o.n||'Spell')+" (copy)";S.plays.push(c);log(o._player?"you":"dm",`⧉ A copy of <b>${o.name||o.n}</b> is put on the stack.`);showPlays();render();}
+function removeStackItem(i){const o=S.plays[i];if(!o)return;log(o._player?"you":"dm",`✕ <b>${o.name||o.n}</b> leaves the stack.`);S.plays.splice(i,1);renderPlays();render();}
+function openCast(){if(S.over)return;$("modalBody").innerHTML=castFormHTML();$("overlay").classList.add("show");}
+function castFromLibSel(){const sel=$("castLibSel");if(!sel||sel.value===''){alert('Pick a saved card from the dropdown first.');return;}const i=parseInt(sel.value,10);closeOverlay();libCast(i);}
+function _setOn(el,on){if(!el)return;if(on)el.classList.add('on');else el.classList.remove('on');}
+function loadCastFromLibrary(idx){if(idx===''||idx==null)return;const p=prof();if(!p)return;const c=p.library[parseInt(idx,10)];if(!c)return;const pr=c.props||{};
+  $("castType").value=c.ctype||'creature';$("castName").value=c.name||'';$("castP").value=c.p!=null?c.p:2;$("castT").value=c.t!=null?c.t:2;$("castLoy").value=c.loy!=null?c.loy:3;
+  $("castColor").value=(c.color||[]).join('');$("castKw").value=(c.kw||[]).join(', ');$("castNote").value=c.note||'';
+  if(c.auto){$("castAutoEffect").value=c.auto.k;$("castAutoN").value=c.auto.n;}else{$("castAutoEffect").value='none';}
+  _setOn($("castNoCounter"),!!c.cantCounter);_setOn($("castLeg"),!!pr.legendary);_setOn($("castTok"),!!pr.token);_setOn($("castDef"),!!pr.defender);
+  $("castProt").value=(pr.prot||[]).join('');$("castDies").value=pr.dies||'graveyard';
+  $("castWardN").value=pr.cward?pr.cward.amt:0;$("castWardType").value=pr.cward?pr.cward.type:'mana';
+  $("castAtkN").value=pr.catk?pr.catk.amt:0;$("castAtkType").value=pr.catk?pr.catk.type:'mana';_setOn($("castAtkTgt"),!!(pr.catk&&pr.catk.tgt));
+  $("castAbilP").value=pr.abilP||0;$("castAbilA").value=pr.abilA||0;$("castMana").value=pr.mana||0;$("castStrength").value=pr.strength||'mid';
+  log("you",`Loaded <b>${c.name}</b> from your library into the cast form.`);}
+function castFormHTML(){const types=['creature','instant','sorcery','artifact','enchantment','planeswalker','ability'];return `
+<h2>✦ Cast a spell onto the stack</h2>
+<p style="color:var(--bone-dim);font-style:italic">Declare it; the enemy gets a window to respond; then you resolve it. Permanents auto-enter your board on resolution. For lands, tokens, or anything that should simply happen, use the board's + buttons instead.</p>
+${(()=>{const p=prof();const lib=p?p.library:[];return lib.length?`<div class="btnrow" style="margin:2px 0 8px"><span class="lab">From library</span><select id="castLibSel" onchange="loadCastFromLibrary(this.value)" style="max-width:220px"><option value="">— pick a saved card… —</option>${lib.map((c,i)=>`<option value="${i}">${c.name} · ${c.ctype}${c.ctype==='creature'?` ${c.p}/${c.t}`:''}</option>`).join("")}</select><button class="mini ok" onclick="castFromLibSel()">✦ Cast it</button><span class="manaline">(or it loads below to tweak)</span></div>`:'<p class="manaline" style="margin:2px 0 8px">Your library is empty — build a card below, or ★ Save it for next time.</p>';})()}
+<div class="castgrid">
+  <label>Type<select id="castType">${types.map(t=>`<option value="${t}">${t}</option>`).join("")}</select></label>
+  <label>Name<input type="text" id="castName" placeholder="Spell name"></label>
+  <label>Power<input type="number" id="castP" value="2"></label>
+  <label>Toughness<input type="number" id="castT" value="2"></label>
+  <label>Loyalty (walker)<input type="number" id="castLoy" value="3"></label>
+  <label>Colors<input type="text" id="castColor" placeholder="R / UB / …" style="text-transform:uppercase"></label>
+  <label style="grid-column:1/-1">Keywords — creature, comma-sep<input type="text" id="castKw" placeholder="flying, lifelink"></label>
+  <label>On resolve (one-shots)<select id="castAutoEffect"><option value="none">— manual —</option><option value="dmgBoss">deal N to enemy</option><option value="gainLife">you gain N life</option><option value="loseLife">you lose N life</option></select></label>
+  <label>N<input type="number" id="castAutoN" value="3"></label>
+  <label style="grid-column:1/-1;border-top:1px solid var(--line);padding-top:8px;color:var(--gold)">permanent properties — applied when a creature / artifact / enchantment / walker resolves</label>
+  <label style="grid-column:1/-1">flags<div class="setbtns"><button class="tiny" id="castLeg" onclick="this.classList.toggle('on')">legendary</button><button class="tiny" id="castTok" onclick="this.classList.toggle('on')">token</button><button class="tiny" id="castDef" onclick="this.classList.toggle('on')">defender</button></div></label>
+  <label>Protection from<input type="text" id="castProt" placeholder="R / UB" style="text-transform:uppercase"></label>
+  <label>Dies to<select id="castDies"><option value="graveyard">graveyard</option><option value="exile">exile</option></select></label>
+  <label>Ward — enemy pays<input type="number" id="castWardN" value="0"></label>
+  <label>ward type<select id="castWardType"><option value="mana">mana</option><option value="life">life</option></select></label>
+  <label>Attack tax — enemy pays<input type="number" id="castAtkN" value="0"></label>
+  <label>tax type<select id="castAtkType"><option value="mana">mana</option><option value="life">life</option></select></label>
+  <label style="grid-column:1/-1">attack tax applies to<div class="setbtns"><button class="tiny" id="castAtkTgt" onclick="this.classList.toggle('on')">targeted (single creature/walker)</button></div></label>
+  <label>Abilities — passive<input type="number" id="castAbilP" value="0"></label>
+  <label>active<input type="number" id="castAbilA" value="0"></label>
+  <label>Taps for mana<input type="number" id="castMana" value="0"></label>
+  <label>Threat (AI hint)<select id="castStrength"><option value="low">low</option><option value="mid" selected>mid</option><option value="top">top</option></select></label>
+  <label style="grid-column:1/-1">Note / effect (your reference)<input type="text" id="castNote" placeholder="what it does"></label>
+</div>
+<div class="btnrow" style="margin-top:12px"><button class="mini" id="castNoCounter" onclick="this.classList.toggle('on')">can't be countered</button><button class="big azor" style="width:auto;padding:10px 16px" onclick="submitCast()">✦ Put on the stack</button><button class="mini gold" onclick="saveCardToLibrary()">★ Save to library</button><button class="mini gold" onclick="castAsCommander()">♛ Set as commander</button><button class="mini" onclick="closeOverlay()">cancel</button></div>`;}
+function submitCast(){const cfg=readCastForm();const item=Object.assign({id:S.nextId++,_player:true,side:'you',status:'pending'},cfg);
+  S.plays.push(item);log("you",`✦ You cast <b>${item.name}</b> (${item.ctype})${item.cantCounter?" — can't be countered":""}. It's on the stack.`);
+  closeOverlay();render();enemyRespondToCast(item);showPlays();}
+function enemyRespondToCast(item){if(S.over)return;const idxs=S.hand.map((c,i)=>i).filter(i=>FX[S.hand[i].key].type==='instant'&&FX[S.hand[i].key].cost<=S.bossMana);if(!idxs.length)return;if(Math.random()>0.55)return;
+  idxs.sort((a,b)=>FX[S.hand[b].key].cost-FX[S.hand[a].key].cost);const pick=idxs[0];const card=S.hand[pick],fx=FX[card.key];S.bossMana-=fx.cost;S.hand.splice(pick,1);const p=mkPlay(fx);p._card=card;p._instant=true;p._respondingTo=item.id;S.plays.push(p);
+  log("dm",`⚡ ${ENs()} responds to your spell — <b>${fx.n}</b> (${S.bossMana} mana left). It's on top of the stack.`);}
+function counterPlay(i){const p=S.plays[i];p.status="countered";if(p._card)S.gy.push(p._card);log("you",`Countered <b>${p.n}</b> → ${ENs()}'s graveyard.`);renderPlays();render();}
+function undoPlay(i){const p=S.plays[i];p.status="pending";if(p._card){const gi=S.gy.indexOf(p._card);if(gi>=0)S.gy.splice(gi,1);}renderPlays();render();}
+
+function checkLose(){if(S.over)return;const poison=(S.counters&&S.counters.poison)||0,cmdd=(S.counters&&S.counters.cmdDmg)||0;if(S.youLife<=0||poison>=10||cmdd>=21){if(S.youLife<=0&&S.inv.some(it=>it.id==="phoenix")&&!S.phoenixUsed){S.phoenixUsed=true;S.inv=S.inv.filter(it=>it.id!=="phoenix");S.youLife=1;log("loot",`🔥 <b>Phoenix Charm</b> catches you at <b>1</b>!`);render();return;}if(poison>=10)log("sys","☠ 10 poison counters - you fall.");if(cmdd>=21)log("sys","☠ 21 commander damage - you fall.");lose();}}
+function win(){if(S.over)return;S.over=true;recordResult(true);S.boss.life=0;const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);$("winLoot").textContent=`🎲 Spoils: ${lr.names.join(" + ")}!  ·  💰 +${gold} gold (account ${getGold()})`;$("victory").classList.add("show");$("victory").scrollIntoView({block:"nearest"});log("loot",`💰 You claim <b>${gold} gold</b> from the Tyrant's hoard (account balance ${getGold()}).`);log("sys",`🏆 <b>VAEL FALLS.</b>`);render();showCutscene(DUNGEON[2].epilogue,"The Warren Falls","Victory · Level I complete","Rest ▸",villainCutOpts(DUNGEON[2],DUNGEON[2].deathQuote));}
+function lose(){if(S.over)return;S.over=true;recordResult(false);$("defeat").classList.add("show");$("defeat").scrollIntoView({block:"nearest"});log("sys",`☠ <b>You have fallen.</b>`);render();}
+function noAbilT(scope,id){const c=getCre(scope,id);if(c){c.noAbil=!c.noAbil;render();}}
+function sickMy(id){const c=S.my.creatures.find(x=>x.id===id);if(c){c.sick=!c.sick;render();}}
+function renderCounters(){if(!S.counters)return;const m={cPoison:'poison',cCmd:'cmdDmg',cEnergy:'energy',cExp:'experience'};for(const k in m){const el=$(k);if(el)el.textContent=S.counters[m[k]];}}
+function cnt(k,n){S.counters[k]=Math.max(0,(S.counters[k]||0)+n);renderCounters();checkLose();}
+function rollDie(n){n=Math.max(2,n|0);const r=Math.floor(Math.random()*n)+1;const o=$("diceOut");if(o)o.innerHTML=`🎲 d${n} -> <b style="color:var(--gold)">${r}</b>`;log("sys",`🎲 d${n} -> <b>${r}</b>.`);}
+function coinFlip(){const h=Math.random()<.5;const o=$("diceOut");if(o)o.innerHTML=`🪙 <b style="color:var(--gold)">${h?'Heads':'Tails'}</b>`;log("sys",`🪙 ${h?'Heads':'Tails'}.`);}
+function setDiff(df){S.diff=df;$("diffNote").textContent=DIFF[df].note;[...$("diffSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.d===df));}
+function restart(){const df=S.diff;["victory","defeat","clearBanner","plays","resolver"].forEach(id=>$(id).classList.remove("show"));$("log").innerHTML="";fresh();S.diff=df;enterRoom(0,true);setDiff(df);render();log("sys",`New descent · ${df.toUpperCase()}.`);showCutscene(DUNGEON[0].intro,DUNGEON[0].villain,"Ember Gate · Level I","Enter the gate ▸",villainCutOpts(DUNGEON[0]));}
+$("diffSeg").addEventListener("click",e=>{if(!e.target.dataset.d)return;if(S.turn===0&&S.roomIndex===0&&!S.inv.length){const df=e.target.dataset.d;fresh();S.diff=df;enterRoom(0,true);setDiff(df);render();}else log("sys","Restart to change difficulty.");});
+$("resetBtn").addEventListener("click",restart);
+$("bossDmgIn")&&$("bossDmgIn").addEventListener("keydown",e=>{if(e.key==="Enter")dmgBoss();});
+$("pwDmgIn").addEventListener("keydown",e=>{if(e.key==="Enter")damagePW();});
+
+/* ===== Lore / Tutorial / Cutscene overlays ===== */
+function closeOverlay(){if(_cmdChooseActive){chooseCommander();return;}$("overlay").classList.remove("show");}
+function openTutorial(){$("modalBody").innerHTML=TUTORIAL_HTML;$("overlay").classList.add("show");}
+function openLore(){const who=(prof()&&prof().name)||'Adventurer';let h=`<h2 class="loreh">📖 The Warren of Embers</h2>
+  <p style="color:var(--bone-dim);font-style:italic">You are <b>${who}</b> — a planeswalker far too curious for your own good. The Warren of Embers is a wound in the world that will not scar over: a downward maze of goblin-fire and grave-cold where something keeps relighting the dark. You came to see why. Now three wardens stand between you and the bottom of it, and you learn each one's name only by beating it out of them.</p>
+  <p class="manaline" style="margin:-2px 0 10px">Between the gates, a hooded merchant waits with a cart that should not fit there — turning the gold of the slain into draughts and charms. The wardens of the descent:</p>`;
+  DUNGEON.forEach((room,i)=>{const seen=i<=S.roomIndex,cur=i===S.roomIndex;h+=`<div class="loreent${cur?' cur':''}"><div class="loretitle">${seen?room.villain:'???'} <span class="lorecol">[${seen?(room.colors||[]).join("/"):'??'}]</span>${cur?'<span class="lorenow">— you are here</span>':''}</div><div class="loredom">${room.name}${room.isVael?' · final boss':''}</div><div class="loretext">${seen?room.lore:'A foe you have not yet faced. Descend to learn its name and its nature.'}</div></div>`;});
+  h+=`<div class="loreent"><div class="loretitle">The Wandering Merchant <span class="lorecol">[?]</span></div><div class="loredom">Between the gates</div><div class="loretext">No one sells torches to people walking into a fire — unless the torches are the point. The Merchant keeps no name and is always one step further down than you last saw them. Spend your gold; it is the only thing the Warren cannot take back from you.</div></div>`;
+  h+=`<p class="manaline" style="margin-top:12px">Beneath Vael's throne the slag turns wet underfoot. The <b>Drowned Conclave</b> — Level II — waits in colder water below. But that is a descent for another day.</p>`;
+  $("modalBody").innerHTML=h;$("overlay").classList.add("show");}
+function villainAccent(room){const c=((room&&room.colors)||[])[0];return c==='B'?'var(--purp)':c==='R'?'var(--ember)':c==='U'?'var(--azor)':c==='G'?'var(--ok)':'var(--gold)';}
+function villainCutOpts(room,quote){return room?{sigil:room.sigil||'\u2620',speaker:room.villain,quote:quote!==undefined?quote:(room.quote||''),accent:villainAccent(room)}:{};}
+function showCutscene(lines,title,eyebrow,btn,opts){if(!lines||!lines.length)return;opts=opts||{};
+  $("cutSigil").innerHTML=opts.sigil?`<div class="cutsigil" style="--acc:${opts.accent||'var(--gold)'}">${opts.sigil}</div>`:"";
+  $("cutEyebrow").textContent=eyebrow||"";$("cutTitle").textContent=title||"";
+  $("cutLines").innerHTML=lines.map(l=>`<p>${l}</p>`).join("");
+  $("cutQuote").innerHTML=opts.quote?`<div class="cutquote" style="--acc:${opts.accent||'var(--ember)'}"><span class="cq-mark">\u201C</span>${opts.quote}<span class="cq-mark">\u201D</span><div class="cq-by">\u2014 ${opts.speaker||''}</div></div>`:"";
+  $("cutBtn").textContent=btn||"Continue \u25B8";$("cutscene").classList.add("show");}
+function closeCutscene(){$("cutscene").classList.remove("show");}
+const TUTORIAL_HTML=`
+<h2>❓ How Guff's Gauntlet works</h2>
+<p style="color:var(--bone-dim);font-style:italic">You play a real Commander game in your head or on the table. This app is your <b>opponent and your bookkeeper</b> — it runs the enemy and holds the shared state, but it never hides math and never changes your side without showing you.</p>
+<h3>The descent</h3>
+<p>Three encounters, each a fresh game against a different general: <b>Grakk</b> (mono-red aggro), <b>Murglax</b> (mono-black attrition), and <b>Vael</b> (red-black, the final boss and the only one with a planeswalker). Between rooms the board, the enemy, and your counters reset — but your <b>life and loot carry over</b>. Life is the through-line that makes the crawl a campaign.</p>
+<h3>Setting up your board</h3>
+<p>When you <b>Descend</b>, the first thing you're asked is to <b>choose a commander</b> — pick one of your saved cards or build a new one on the spot. It starts in your <b>command zone</b>; you deploy it when you actually cast it. Then set the table:</p>
+<ol>
+<li><b>Difficulty</b> (Easy / Standard / Brutal) scales enemy life and mana — set it before the first turn, from the menu or the controls bar.</li>
+<li><b>Your deck colors</b> — tap the mana symbols at the top of the board. This is your identity, and it drives protection-from-color.</li>
+<li><b>Log your board</b> in “Your board” as you play cards: use <b>+ creature / artifact / enchantment / planeswalker / emblem</b>, type a name, and set power/toughness. Open the <b>⚙ properties</b> drawer for everything else (below).</li>
+<li><b>Each card's buttons:</b> <b>tap</b>, <b>sick</b>, the counter controls (<b>+1/+1</b>, <b>−1/−1</b>, <b>＋ctr</b> to add a named counter, <b>⊖ ctr</b> or a tap on a counter badge to remove one), <b>P/T ±</b>, <b>⧉ copy</b> to duplicate, and <b>★ save</b> to store the card in your library.</li>
+<li><b>Library</b> (🃏, in the controls bar or the menu) holds your saved cards and tokens per profile. <b>Cast</b> puts one on the Stack, <b>Deploy</b> drops it straight onto your board, <b>✦ New card</b> builds one from scratch, and tokens <b>Deploy ×N</b> in bulk.</li>
+</ol>
+<h3>The card drawer (⚙)</h3>
+<p>Every permanent has a ⚙ drawer: color, legendary/token, passive/active abilities, mana it taps for, whether it <b>dies to graveyard or exile</b>, <b>phase out</b>, <b>protection from a color</b>, and an <b>attack tax</b> (mana or life the enemy must pay to attack into it). Set these once and the engine respects them.</p>
+<h3>Your commander</h3>
+<p>You choose it at the start — from your library or freshly built — or mark any creature/planeswalker as commander (♛) later via its ⚙ drawer. It lives in the <b>command zone</b>; hit <b>Deploy to battlefield</b> when you cast it, and if it dies it returns there with a rising recast tax (2 → 6 → 14). It persists across rooms; the tax resets each game.</p>
+<h3>Taking turns</h3>
+<p>The enemy goes first, then you, each through all seven phases (untap, upkeep, draw, main 1, combat, main 2, end). One <b>Continue ▸</b> button walks the steps. On the enemy's turn it untaps, draws from a real library, spends visible mana, and casts — each spell appears in its <b>plays</b> for you to <b>resolve</b> or mark <b>countered</b>. Targeted removal auto-applies to your tracked board but skips hexproof, phased-out, and protected creatures.</p>
+<h3>Combat</h3>
+<p><b>Your attack:</b> tap attackers, hit Swing; the enemy proposes blocks (you can edit them), then approve to resolve trample, deathtouch, first/double strike, lifelink, menace, and protection. <b>Enemy attack:</b> its attackers appear and you assign your blockers. Direct damage (burn, walker abilities) hits enemy life directly via the boss panel.</p>
+<h3>The enemy planeswalker (Vael only)</h3>
+<p>Vael fields a planeswalker with a loyalty suite: a repeatable <b>+1</b>, a stronger <b>minus</b>, and an <b>ultimate</b> that only fires once loyalty climbs to its threshold — so it takes several turns. Attack the walker (Attack walker) to push its loyalty down and deny the finisher.</p>
+<h3>Zones, life & loot</h3>
+<p>Destroyed permanents route to <b>your graveyard or exile</b> per the card's setting; from the graveyard you can return them to play or exile them. Clear a room to roll loot (boons that move life, add max life, or grant passives). Reach 0 life and the descent ends — restart to try again.</p>
+<p style="color:var(--bone-dim);font-style:italic">Tip: the engine trusts your inputs. If a corner case comes up that it doesn't model, use the manual adjusters (±life, ±loyalty, counters, dice) to keep the real game state honest.</p>`;
+
+/* ===== PHASE 5 — profiles, library, persistence ===== */
+const SKEY='guffsGauntlet.v1';
+let DB={profiles:{},active:null};
+function storageGet(){try{if(typeof localStorage==='undefined')return null;const r=localStorage.getItem(SKEY);return r?JSON.parse(r):null;}catch(e){return null;}}
+function storageSet(o){try{if(typeof localStorage==='undefined')return false;localStorage.setItem(SKEY,JSON.stringify(o));return true;}catch(e){return false;}}
+function blankProfile(name){return {name,wins:0,losses:0,gold:0,library:[],tokens:[],created:Date.now()};}
+function loadDB(){const d=storageGet();DB=(d&&d.profiles)?d:{profiles:{},active:null};if(!DB.active||!DB.profiles[DB.active]){const names=Object.keys(DB.profiles);if(names.length)DB.active=names[0];else{DB.profiles['Adventurer']=blankProfile('Adventurer');DB.active='Adventurer';}}saveDB();}
+function saveDB(){storageSet(DB);}
+function prof(){return DB.profiles[DB.active]||null;}
+function newProfile(name){name=(name||'').trim();if(!name)return;if(!DB.profiles[name])DB.profiles[name]=blankProfile(name);DB.active=name;saveDB();renderMenu();}
+function switchProfile(name){if(DB.profiles[name]){DB.active=name;saveDB();renderMenu();}}
+function deleteProfile(name){if(!name||!DB.profiles[name])return;if(!confirm('Delete profile "'+name+'" and its library?'))return;delete DB.profiles[name];const names=Object.keys(DB.profiles);DB.active=names[0]||null;if(!DB.active){DB.profiles['Adventurer']=blankProfile('Adventurer');DB.active='Adventurer';}saveDB();renderMenu();}
+function recordResult(won){const p=prof();if(!p)return;if(won)p.wins=(p.wins||0)+1;else p.losses=(p.losses||0)+1;saveDB();renderMenu();}
+/* ===== Gold lives on the account (profile), accumulating across runs and sessions. ===== */
+function getGold(){const p=prof();return p?(p.gold||0):0;}
+function addGold(n){const p=prof();if(!p)return;p.gold=(p.gold||0)+n;saveDB();}
+function spendGold(n){const p=prof();if(!p||(p.gold||0)<n)return false;p.gold=(p.gold||0)-n;saveDB();return true;}
+
+function showMenu(){renderMenu();$("menu").classList.add("show");}
+function startGame(){$("menu").classList.remove("show");if(S._introShown)return;chooseCommander();}
+function menuSetDiff(df){setDiff(df);renderMenu();}
+function renderMenu(){
+  const p=prof();const sel=$("menuProfileSel");if(sel){const names=Object.keys(DB.profiles);sel.innerHTML=names.map(n=>`<option value="${n}" ${n===DB.active?'selected':''}>${n}</option>`).join("");}
+  const rec=$("menuRecord");if(rec)rec.innerHTML=p?`<b>${p.name}</b> — <span style="color:var(--ok)">${p.wins||0} W</span> · <span style="color:var(--ember)">${p.losses||0} L</span> · <span style="color:var(--gold)">💰 ${p.gold||0}</span><br><span class="manaline">${(p.library||[]).length} saved card${(p.library||[]).length===1?'':'s'} · ${(p.tokens||[]).length} token${(p.tokens||[]).length===1?'':'s'}</span>`:'no profile';
+  const ds=$("menuDiff");if(ds)[...ds.children].forEach(b=>b.classList.toggle("on",b.dataset.d===S.diff));
+  const mg=$("menuGold");if(mg)mg.textContent=`💰 ${getGold()} gold`;
+}
+
+/* ----- read the cast form into a reusable card config ----- */
+function readCastForm(){const type=$("castType").value;const defName={creature:'Creature',instant:'Instant',sorcery:'Sorcery',artifact:'Artifact',enchantment:'Enchantment',planeswalker:'Planeswalker',ability:'Ability'}[type];const name=(($("castName").value||'').trim())||defName;
+  const colors=($("castColor").value||'').toUpperCase().split('').filter(c=>'WUBRGC'.indexOf(c)>=0);const wn=parseInt($("castWardN").value,10)||0,an=parseInt($("castAtkN").value,10)||0;
+  const cfg={name,ctype:type,note:($("castNote").value||'').trim(),color:colors,cantCounter:$("castNoCounter").classList.contains('on'),p:parseInt($("castP").value,10)||1,t:parseInt($("castT").value,10)||1,loy:parseInt($("castLoy").value,10)||3,kw:($("castKw").value||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean),
+    props:{legendary:$("castLeg").classList.contains('on'),token:$("castTok").classList.contains('on'),defender:$("castDef").classList.contains('on'),prot:($("castProt").value||'').toUpperCase().split('').filter(c=>'WUBRGC'.indexOf(c)>=0),cward:wn>0?{amt:wn,type:$("castWardType").value}:null,catk:an>0?{amt:an,type:$("castAtkType").value,tgt:$("castAtkTgt").classList.contains('on')}:null,dies:$("castDies").value,abilP:parseInt($("castAbilP").value,10)||0,abilA:parseInt($("castAbilA").value,10)||0,mana:parseInt($("castMana").value,10)||0,strength:$("castStrength").value}};
+  const ae=$("castAutoEffect").value,n=parseInt($("castAutoN").value,10)||0;if(ae!=='none')cfg.auto={k:ae,n};return cfg;}
+
+/* ----- library ----- */
+function openLibrary(){renderLibrary();$("library").classList.add("show");}
+function closeLibrary(){$("library").classList.remove("show");}
+function openStore(){renderStore();$("store").classList.add("show");}
+function closeStore(){$("store").classList.remove("show");}
+function renderStore(){const g=$("storeGold");if(g)g.textContent=getGold();const box=$("storeList");if(!box)return;const cats=[];STORE.forEach(s=>{if(!cats.includes(s.cat))cats.push(s.cat);});
+  box.innerHTML=cats.map(cat=>{const items=STORE.filter(s=>s.cat===cat);return `<div class="storecat">${cat}</div><div class="storegrid">${items.map(s=>{const b=BOONS[s.id];const aff=getGold()>=s.cost;return `<div class="storeitem ${b.r}"><div class="si-ic">${s.icon||'\uD83E\uDDEA'}</div><div class="si-body"><div class="si-n">${b.n}<span class="si-r">${b.r}</span></div><div class="si-t">${b.t}</div><div class="si-foot"><span class="cost">\uD83D\uDCB0 ${s.cost}</span><button class="tiny ${aff?'ok':''}" ${aff?'':'disabled style="opacity:.45;cursor:not-allowed"'} onclick="buyStore('${s.id}')">${aff?'Buy':'Need gold'}</button></div></div></div>`;}).join('')}</div>`;}).join('');}
+function buyStore(id){const item=STORE.find(s=>s.id===id);if(!item)return;if(!spendGold(item.cost)){log("sys","Not enough gold for that.");renderStore();return;}grantBoon(id);log("loot",`🛒 Bought <b>${BOONS[id].n}</b> for ${item.cost} gold (account ${getGold()}).`);renderStore();renderMenu();render();}
+function saveCardToLibrary(){const p=prof();if(!p){alert('Open the Menu and create a profile first.');return;}const cfg=readCastForm();cfg.lid='L'+Date.now()+Math.floor(Math.random()*1000);p.library.push(cfg);saveDB();log("loot",`★ Saved <b>${cfg.name}</b> to your library.`);renderLibrary();}
+function lidStamp(){return 'L'+Date.now()+Math.floor(Math.random()*1000);}
+function saveBoardToLibrary(cat,id){const p=prof();if(!p){alert('Create a profile first (open the Menu).');return;}const o=S.my[cat].find(x=>x.id===id);if(!o)return;let cfg;
+  if(cat==='creatures'){cfg={name:o.name,ctype:'creature',p:o.p,t:o.t,loy:3,color:(o.color||[]).slice(),note:'',kw:(o.kw||[]).filter(k=>k!=='defender'),props:{legendary:!!o.legendary,token:!!o.token,defender:(o.kw||[]).indexOf('defender')>=0,prot:(o.prot||[]).slice(),cward:o.cward||null,catk:o.catk||null,dies:o.dies||'graveyard',abilP:o.abilP||0,abilA:o.abilA||0,mana:o.mana||0,strength:o.strength||'mid'}};}
+  else if(cat==='artifacts'||cat==='enchants'){cfg={name:o.name,ctype:cat==='artifacts'?'artifact':'enchantment',color:(o.color||[]).slice(),note:o.note||'',kw:[],props:{legendary:!!o.legendary,token:!!o.token,defender:false,prot:(o.prot||[]).slice(),cward:o.cward||null,catk:o.catk||null,dies:o.dies||'graveyard',abilP:0,abilA:0,mana:o.mana||0,strength:'mid'}};}
+  else if(cat==='walkers'){cfg={name:o.name,ctype:'planeswalker',loy:o.loyalty||o.baseLoy||3,color:(o.color||[]).slice(),note:o.note||'',kw:[],props:{legendary:o.legendary!==false,token:!!o.token,defender:false,prot:(o.prot||[]).slice(),cward:o.cward||null,catk:o.catk||null,dies:o.dies||'graveyard',abilP:0,abilA:0,mana:0,strength:'mid'}};}
+  else return;
+  cfg.lid=lidStamp();p.library.push(cfg);saveDB();log("loot",`★ Saved <b>${o.name}</b> to your library.`);render();}
+function saveStackToLibrary(i){const it=S.plays[i];if(!it||!it._player){return;}const p=prof();if(!p){alert('Create a profile first (open the Menu).');return;}const cfg=JSON.parse(JSON.stringify(it));['id','_player','side','status','_copy','_instant','_respondingTo'].forEach(k=>delete cfg[k]);cfg.lid=lidStamp();p.library.push(cfg);saveDB();log("loot",`★ Saved <b>${it.name||it.n}</b> to your library.`);renderPlays();}
+function cfgToItem(cfg){const it=JSON.parse(JSON.stringify(cfg));delete it.lid;return it;}
+let _cmdChooseActive=false;
+function cmdObjFromCfg(cfg){const pr=cfg.props||{};
+  if(cfg.ctype==='creature'){const kwl=(cfg.kw||[]).slice();if(pr.defender&&kwl.indexOf('defender')<0)kwl.push('defender');return {id:S.nextId++,name:cfg.name,p:cfg.p||1,t:cfg.t||1,kw:kwl,color:(cfg.color||[]).slice(),plus:0,minus:0,other:[],tapped:false,sick:true,token:!!pr.token,legendary:!!pr.legendary,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',abilP:pr.abilP||0,abilA:pr.abilA||0,mana:pr.mana||0,strength:pr.strength||'mid',isCmd:true,kind:'creatures',cmdTax:0,cmdDeaths:0};}
+  if(cfg.ctype==='planeswalker'){return {id:S.nextId++,name:cfg.name,loyalty:cfg.loy||3,baseLoy:cfg.loy||3,abilities:0,note:cfg.note||'',color:(cfg.color||[]).slice(),legendary:pr.legendary!==false,token:!!pr.token,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',isCmd:true,kind:'walkers',cmdTax:0,cmdDeaths:0};}
+  return null;}
+function setStartCommander(cfg){const o=cmdObjFromCfg(cfg);if(!o){alert('A commander must be a creature or a planeswalker.');return false;}S.my.creatures.forEach(c=>c.isCmd=false);S.my.walkers.forEach(w=>w.isCmd=false);S.pcmd=o;log("you",`♛ <b>${o.name}</b> begins in your command zone — deploy it when you cast it.`);render();return true;}
+function chooseCommander(){_cmdChooseActive=true;$("modalBody").innerHTML=cmdChooseHTML();$("overlay").classList.add("show");}
+function cmdChooseHTML(){const p=prof();const elig=(p?p.library:[]).map((c,i)=>({c,i})).filter(x=>x.c.ctype==='creature'||x.c.ctype==='planeswalker');
+  const list=elig.length?elig.map(({c,i})=>{const stat=c.ctype==='creature'?`${c.p}/${c.t}`:`loy ${c.loy}`;const dots=(c.color||[]).map(col=>`<span class="cdot" style="background:${COLOR_HEX[col]||'#888'}"></span>`).join("");return `<div class="libitem"><div class="li-h"><span class="li-n">${c.name}</span><span class="typechip ${c.ctype}">${c.ctype}</span><span class="cost">${stat}</span>${dots}</div><div class="li-a"><button class="tiny ok" onclick="pickCommanderFromLib(${i})">♛ Choose</button></div></div>`;}).join(""):'<span class="empty">No commander-eligible cards saved yet — build one below.</span>';
+  return `<h2>♛ Choose your commander</h2>
+  <p style="color:var(--bone-dim);font-style:italic">Pick a saved creature or planeswalker, or build a brand-new card. Your commander starts in the <b>command zone</b> — deploy it when you cast it. You can also skip and set one later from any card's ⚙ drawer.</p>
+  <div class="subh"><span>From your library</span></div>
+  <div class="liblist">${list}</div>
+  <div class="btnrow" style="margin-top:12px"><button class="big azor" style="width:auto;padding:10px 16px" onclick="newCommander()">✦ Create a new commander</button><button class="mini" onclick="skipCommander()">Skip — set one later</button></div>`;}
+function pickCommanderFromLib(i){const p=prof();if(!p)return;const cfg=p.library[i];if(!cfg)return;if(setStartCommander(cfg))proceedAfterCommander();}
+function newCommander(){openCast();}
+function castAsCommander(){const cfg=readCastForm();if(setStartCommander(cfg)){if(_cmdChooseActive)proceedAfterCommander();else closeOverlay();}}
+function skipCommander(){proceedAfterCommander();}
+function proceedAfterCommander(){_cmdChooseActive=false;$("overlay").classList.remove("show");if(!S._introShown){S._introShown=true;if(DUNGEON[0].intro)showCutscene(DUNGEON[0].intro,DUNGEON[0].villain,"Ember Gate · Level I","Enter the gate ▸",villainCutOpts(DUNGEON[0]));}}
+function libCast(i){const p=prof();if(!p)return;const cfg=p.library[i];if(!cfg)return;if(S.over){alert('The game is over — restart to cast.');return;}const item=Object.assign({id:S.nextId++,_player:true,side:'you',status:'pending'},cfgToItem(cfg));S.plays.push(item);log("you",`✦ Cast <b>${item.name}</b> from your library. It's on the stack.`);closeLibrary();render();enemyRespondToCast(item);showPlays();}
+function libDeploy(i){const p=prof();if(!p)return;const cfg=p.library[i];if(!cfg)return;resolvePlayerItem(cfgToItem(cfg));log("loot",`Deployed <b>${cfg.name}</b> from your library.`);closeLibrary();render();}
+function libCopy(i){const p=prof();if(!p)return;const c=JSON.parse(JSON.stringify(p.library[i]));c.lid='L'+Date.now()+Math.floor(Math.random()*1000);c.name=c.name+" (copy)";p.library.push(c);saveDB();renderLibrary();}
+function libDelete(i){const p=prof();if(!p)return;p.library.splice(i,1);saveDB();renderLibrary();}
+
+/* ----- tokens ----- */
+function readTokenForm(){const name=(($("tokName").value||'').trim())||'Token';return {tid:'T'+Date.now()+Math.floor(Math.random()*1000),name,p:parseInt($("tokP").value,10)||1,t:parseInt($("tokT").value,10)||1,kw:($("tokKw").value||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean),color:($("tokColor").value||'').toUpperCase().split('').filter(c=>'WUBRGC'.indexOf(c)>=0)};}
+function deployTokenCfg(cfg,n){n=Math.max(1,n|0);for(let i=0;i<n;i++)S.my.creatures.push({id:S.nextId++,name:cfg.name,p:cfg.p,t:cfg.t,kw:(cfg.kw||[]).slice(),color:(cfg.color||[]).slice(),plus:0,minus:0,other:[],tapped:false,sick:true,token:true,legendary:false,phased:false,prot:[],catk:null,cward:null,dies:'graveyard',abilP:0,abilA:0,mana:0,strength:'mid',isCmd:false});log("loot",`Deployed <b>${n}× ${cfg.name}</b> (${cfg.p}/${cfg.t}) to your board.`);render();}
+function renderBoardTokens(){const sel=$("boardTokSel");if(!sel)return;const cur=sel.value;const p=prof();const toks=p?p.tokens:[];sel.innerHTML=toks.length?toks.map((t,i)=>`<option value="${i}" ${''+i===cur?'selected':''}>${t.name} ${t.p}/${t.t}</option>`).join(""):'<option value="">(no saved tokens — make one in Library)</option>';}
+function deploySavedToken(){const p=prof();if(!p||!p.tokens.length){alert('No saved tokens yet — open the Library (🃏) to quick-make one.');return;}const sel=$("boardTokSel");const i=parseInt(sel.value,10);if(isNaN(i)||!p.tokens[i]){alert('Pick a saved token first.');return;}const n=parseInt($("boardTokQty").value,10)||1;deployTokenCfg(p.tokens[i],n);}
+function quickDeployToken(){deployTokenCfg(readTokenForm(),parseInt($("tokQty").value,10)||1);closeLibrary();}
+function saveTokenToLibrary(){const p=prof();if(!p){alert('Open the Menu and create a profile first.');return;}p.tokens.push(readTokenForm());saveDB();log("loot",`★ Saved token <b>${p.tokens[p.tokens.length-1].name}</b>.`);renderLibrary();}
+function libDeployToken(i){const p=prof();if(!p)return;const cfg=p.tokens[i];if(!cfg)return;const n=parseInt($("tokqty_"+i).value,10)||1;deployTokenCfg(cfg,n);closeLibrary();}
+function libCopyToken(i){const p=prof();if(!p)return;const c=JSON.parse(JSON.stringify(p.tokens[i]));c.tid='T'+Date.now()+Math.floor(Math.random()*1000);c.name=c.name+" (copy)";p.tokens.push(c);saveDB();renderLibrary();}
+function libDeleteToken(i){const p=prof();if(!p)return;p.tokens.splice(i,1);saveDB();renderLibrary();}
+function renderLibrary(){const p=prof();const who=$("libWho");if(who)who.textContent=p?p.name:'—';
+  const lc=$("libCards");if(lc){lc.innerHTML="";if(!p||!p.library.length)lc.innerHTML='<span class="empty">No saved cards yet. Build one in “✦ Cast a spell”, then ★ Save to library.</span>';else p.library.forEach((c,i)=>{const stat=c.ctype==='creature'?`${c.p}/${c.t}`:c.ctype==='planeswalker'?`loy ${c.loy}`:'';const dots=(c.color||[]).map(col=>`<span class="cdot" style="background:${COLOR_HEX[col]||'#888'}"></span>`).join("");const el=document.createElement("div");el.className="libitem";el.innerHTML=`<div class="li-h"><span class="li-n">${c.name}</span><span class="typechip ${c.ctype}">${c.ctype}</span>${stat?`<span class="cost">${stat}</span>`:''}${dots}</div><div class="li-a"><button class="tiny ember" onclick="libCast(${i})">Cast</button><button class="tiny ok" onclick="libDeploy(${i})">Deploy</button><button class="tiny" onclick="libCopy(${i})">⧉</button><button class="tiny" onclick="libDelete(${i})">✕</button></div>`;lc.appendChild(el);});}
+  const lt=$("libTokens");if(lt){lt.innerHTML="";if(!p||!p.tokens.length)lt.innerHTML='<span class="empty">No saved tokens. Use the quick-make below (or ★ Save a token).</span>';else p.tokens.forEach((c,i)=>{const dots=(c.color||[]).map(col=>`<span class="cdot" style="background:${COLOR_HEX[col]||'#888'}"></span>`).join("");const el=document.createElement("div");el.className="libitem";el.innerHTML=`<div class="li-h"><span class="li-n">${c.name}</span><span class="cost">${c.p}/${c.t}</span>${(c.kw||[]).map(k=>`<span class="badge kw">${k}</span>`).join("")}${dots}</div><div class="li-a"><input type="number" id="tokqty_${i}" min="1" value="1" style="width:46px"><button class="tiny ok" onclick="libDeployToken(${i})">Deploy ×N</button><button class="tiny" onclick="libCopyToken(${i})">⧉</button><button class="tiny" onclick="libDeleteToken(${i})">✕</button></div>`;lt.appendChild(el);});}
+}
+
+/* ----- board duplicate (copy on every spell) ----- */
+function dupMy(cat,id){const o=S.my[cat].find(x=>x.id===id);if(!o)return;const c=JSON.parse(JSON.stringify(o));c.id=S.nextId++;c.isCmd=false;c._drawer=false;c._atk=false;if(cat==='creatures'){c.sick=true;c.tapped=false;c.token=true;}log("you",`⧉ Duplicated <b>${o.name}</b>.`);S.my[cat].push(c);render();}
+
+/* ----- save export / import ----- */
+function exportSave(){try{const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='guffs-gauntlet-save.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){alert('Export is not available in this browser context.');}}
+function importSave(input){const f=input.files&&input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);if(o&&o.profiles){DB=o;if(!DB.active||!DB.profiles[DB.active])DB.active=Object.keys(DB.profiles)[0]||null;if(!DB.active){DB.profiles['Adventurer']=blankProfile('Adventurer');DB.active='Adventurer';}saveDB();renderMenu();alert('Save loaded.');}else alert('That file is not a valid save.');}catch(e){alert('Could not read that save file.');}};r.readAsText(f);input.value='';}
+
+loadDB();
+fresh();setDiff("standard");render();
+log("sys",`Welcome to the Warren of Embers. Pick a profile and build your card library from the menu, then <b>Descend</b>. In-game: set your deck colors, log your board, and walk the phases with <b>Continue ▸</b>. Tap <b>☰ Menu</b> any time to return here.`);
+showMenu();
+
+</script>
+</body>
+</html>
