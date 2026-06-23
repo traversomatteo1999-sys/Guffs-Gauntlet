@@ -413,10 +413,13 @@
           <div class="seg" id="menuDiff"><button data-d="easy" onclick="menuSetDiff('easy')">Easy</button><button data-d="standard" onclick="menuSetDiff('standard')">Standard</button><button data-d="brutal" onclick="menuSetDiff('brutal')">Brutal</button></div>
           <div class="subh" style="margin-top:14px"><span>Saves (offline)</span></div>
           <div class="btnrow"><button class="tiny" onclick="exportSave()">⬇ Export save</button><label class="tiny" style="cursor:pointer;font-family:'Space Mono';border:1px solid var(--line);border-radius:9px;padding:7px 11px">⬆ Import<input type="file" accept="application/json" style="display:none" onchange="importSave(this)"></label></div>
+          <div class="btnrow" style="margin-top:6px"><button class="tiny gold" onclick="exportLibrary()">⬇ Export library</button><label class="tiny gold" style="cursor:pointer;font-family:'Space Mono';border:1px solid var(--gold);border-radius:9px;padding:7px 11px">⬆ Import library<input type="file" accept="application/json" style="display:none" onchange="importLibrary(this)"></label></div>
+          <p class="manaline" style="margin:6px 0 0;font-size:.62rem">Full save = everything (profiles, gold, in-progress game). Library = only your cards &amp; tokens, to share between profiles.</p>
         </div>
       </div>
       <div class="btnrow" style="margin-top:14px;flex-wrap:wrap"><button class="mini gold" onclick="openLibrary()">🃏 Card Library</button><button class="mini gold" onclick="openStore()">🛒 Store</button><span class="goldpill" id="menuGold" style="align-self:center">💰 0 gold</span><button class="mini" onclick="openTutorial()">❓ How to play</button><button class="mini" onclick="openLore()">📖 Lore</button></div>
-      <button class="big ok" style="margin-top:16px" onclick="startGame()">Descend ▸</button>
+      <button class="big azor" id="continueBtn" style="margin-top:16px;display:none" onclick="continueLastGame()">▶ Continue last game</button>
+      <button class="big ok" style="margin-top:10px" onclick="startGame()">Descend ▸</button>
     </div>
   </div>
 
@@ -541,12 +544,12 @@ let _dt={};
 const LOOT_D20=[[1,2,"map"],[3,6,"heal5"],[7,9,"ember"],[10,11,"scholar"],[12,14,"heal10"],[15,16,"ward"],[17,18,"spark"],[19,19,"phoenix"],[20,20,"jackpot"]];
 
 let S;
-function fresh(){histReset();S={diff:"standard",youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
+function fresh(){histReset();S={diff:"standard",youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,bossManaFrozen:0,emblemsEnemy:[],battles:[],plane:null,ui:{tabs:{}},my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
 function enterRoom(i,first){S.roomIndex=i;const room=DUNGEON[i];const m=DIFF[S.diff].hpMult*(S.balanceScale||1);let life=Math.max(1,Math.round(room.life*m));if(S.weakenNext){life=Math.max(1,life-4);S.weakenNext=false;}
   S.boss={name:room.villain,life,max:life,isVael:!!room.isVael,colors:(room.colors||["R"]).slice()};
   S.enemy={name:room.villain,colors:(room.colors||["R"]).slice(),lore:room.lore||"",isFinal:!!room.isVael};
-  S.cmd={id:'cmd',n:room.cmd.n,p:room.cmd.p,t:room.cmd.t,kw:[...room.cmd.kw],color:(room.cmd.colors||room.colors||["R"]).slice(),baseCost:room.cmd.cost,cost:room.cmd.cost,tax:0,deaths:0,inPlay:false,sick:false,tapped:false,plus:0,minus:0,other:[],_cmd:true};
-  S.tokens=[];S.rules=[];S.turn=0;S.phase2done=false;S.balanceScale=1;
+  S.cmd={id:'cmd',n:room.cmd.n,p:room.cmd.p,t:room.cmd.t,baseP:room.cmd.p,baseT:room.cmd.t,kw:[...room.cmd.kw],color:(room.cmd.colors||room.colors||["R"]).slice(),baseCost:room.cmd.cost,cost:room.cmd.cost,tax:0,deaths:0,inPlay:false,sick:false,tapped:false,plus:0,minus:0,other:[],_cmd:true};
+  S.tokens=[];S.rules=[];S.turn=0;S.phase2done=false;S.balanceScale=1;S.emblemsEnemy=[];S.battles=[];S.plane=null;S.bossManaFrozen=0;
   S.pw=room.pw?{name:room.pw.name,loy:room.pw.loy,baseLoy:room.pw.loy,colors:(room.pw.colors||room.colors||[]).slice(),ultThreshold:room.pw.ultThreshold||7,plus:room.pw.plus,minus:room.pw.minus,ult:room.pw.ult}:null;
   S.activeTurn=null;S.phase=0;S.bossMana=0;S.bossManaMax=0;S.bossManaMod=0;S.plays=[];S.combat=null;S.paused=false;S.lib=buildDeck(room.pool);S.hand=[];S.gy=[];S.exile=[];vaelDraw(4);
   if(!first)log("sys",`— You descend into <b>${room.name}</b>. ${S.boss.name} [${S.boss.colors.join("/")}]: ${life} life. Commander ${S.cmd.n} (${S.cmd.cost} mana). Deck: ${S.lib.length} cards. —`);}
@@ -559,11 +562,11 @@ function vaelDraw(n){for(let i=0;i<n;i++){if(!S.lib.length){if(!S.gy.length)brea
    / exile. Anything fancier (tutoring a card into play, casting from their deck, transforming cards) the
    abstract model can't represent, so those effects simply don't apply. */
 function libNames(arr){return arr.map(c=>(FX[c.key]&&FX[c.key].n)||'card');}
-function deckShuffle(){histCapture();for(let a=S.lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[S.lib[a],S.lib[b]]=[S.lib[b],S.lib[a]];}log("you",`You shuffle ${ENs()}'s library (${S.lib.length} cards).`);}
-function deckMill(n){histCapture();n=Math.max(0,n|0);const moved=[];for(let i=0;i<n&&S.lib.length;i++)moved.push(S.lib.shift());moved.forEach(c=>S.gy.push(c));if(moved.length)log("you",`You mill the top ${moved.length} of ${ENs()}'s library: ${libNames(moved).join(", ")} → graveyard.`);else log("you",`${ENs()}'s library is empty — nothing to mill.`);return moved;}
-function deckExileTop(n){histCapture();n=Math.max(0,n|0);const moved=[];for(let i=0;i<n&&S.lib.length;i++)moved.push(S.lib.shift());moved.forEach(c=>S.exile.push(c));if(moved.length)log("you",`You exile the top ${moved.length}: ${libNames(moved).join(", ")}.`);else log("you",`${ENs()}'s library is empty — nothing to exile.`);return moved;}
-function deckScryApply(decisions){histCapture();const n=decisions.length;const top=S.lib.slice(0,n),rest=S.lib.slice(n),keep=[],bottom=[];top.forEach((c,i)=>{(decisions[i]==='bottom'?bottom:keep).push(c);});S.lib=[...keep,...rest,...bottom];log("you",`You scry ${n} on ${ENs()}'s library${bottom.length?` — ${libNames(bottom).join(", ")} to the bottom`:' — all kept on top'}.`);}
-function deckDiscard(indices){histCapture();const sorted=indices.slice().filter(i=>S.hand[i]).sort((a,b)=>b-a);const moved=[];sorted.forEach(i=>{moved.push(S.hand[i]);S.hand.splice(i,1);});moved.forEach(c=>S.gy.push(c));if(moved.length)log("you",`${ENs()} discards ${libNames(moved).join(", ")}.`);return moved;}
+function deckShuffle(){for(let a=S.lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[S.lib[a],S.lib[b]]=[S.lib[b],S.lib[a]];}log("you",`You shuffle ${ENs()}'s library (${S.lib.length} cards).`);render();}
+function deckMill(n){n=Math.max(0,n|0);const moved=[];for(let i=0;i<n&&S.lib.length;i++)moved.push(S.lib.shift());moved.forEach(c=>S.gy.push(c));if(moved.length)log("you",`You mill the top ${moved.length} of ${ENs()}'s library: ${libNames(moved).join(", ")} → graveyard.`);else log("you",`${ENs()}'s library is empty — nothing to mill.`);return moved;}
+function deckExileTop(n){n=Math.max(0,n|0);const moved=[];for(let i=0;i<n&&S.lib.length;i++)moved.push(S.lib.shift());moved.forEach(c=>S.exile.push(c));if(moved.length)log("you",`You exile the top ${moved.length}: ${libNames(moved).join(", ")}.`);else log("you",`${ENs()}'s library is empty — nothing to exile.`);return moved;}
+function deckScryApply(decisions){const n=decisions.length;const top=S.lib.slice(0,n),rest=S.lib.slice(n),keep=[],bottom=[];top.forEach((c,i)=>{(decisions[i]==='bottom'?bottom:keep).push(c);});S.lib=[...keep,...rest,...bottom];log("you",`You scry ${n} on ${ENs()}'s library${bottom.length?` — ${libNames(bottom).join(", ")} to the bottom`:' — all kept on top'}.`);}
+function deckDiscard(indices){const sorted=indices.slice().filter(i=>S.hand[i]).sort((a,b)=>b-a);const moved=[];sorted.forEach(i=>{moved.push(S.hand[i]);S.hand.splice(i,1);});moved.forEach(c=>S.gy.push(c));if(moved.length)log("you",`${ENs()} discards ${libNames(moved).join(", ")}.`);return moved;}
 function deckDiscardRandom(n){n=Math.max(0,n|0);const pool=S.hand.map((_,i)=>i),idx=[];for(let k=0;k<n&&pool.length;k++)idx.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);return deckDiscard(idx);}
 
 function openDeckTools(){if(S.over)return;_dt={mode:'main',n:3,reveal:null,scry:null};$("modalBody").innerHTML=deckToolsHTML();$("overlay").classList.add("show");}
@@ -605,16 +608,16 @@ function dtDiscardRandom(){const f=$("dtDN");deckDiscardRandom(f?parseInt(f.valu
 
 const $=id=>document.getElementById(id);
 const d=n=>Math.floor(Math.random()*n)+1;
-function log(who,html){const e=document.createElement("div");e.className="entry "+who;e.innerHTML=`<span class="t">${who==='sys'||who==='loot'?'·':'T'+S.turn}</span><span class="x">${html}</span>`;$("log").prepend(e);}
+function log(who,html){_lastLog=(''+html).replace(/<[^>]*>/g,'').trim().slice(0,80);const e=document.createElement("div");e.className="entry "+who;e.innerHTML=`<span class="t">${who==='sys'||who==='loot'?'·':'T'+S.turn}</span><span class="x">${html}</span>`;$("log").prepend(e);}
 function bossMana(){return Math.max(0,(DUNGEON[S.roomIndex].landStart||0)+S.turn+DIFF[S.diff].manaBonus+(S.bossManaMod||0));}
 function effP(c){return Math.max(0,c.p+(c.plus||0)-(c.minus||0));}
 function effT(c){return c.t+(c.plus||0)-(c.minus||0);}
 function kw(c,k){return (c.kw||[]).some(x=>(''+x).toLowerCase()===k);}
 function threatScore(c){const s={low:-2,mid:0,top:3}[c.strength||'mid'];return effP(c)+(s||0);}
 function applyRun(run){if(!run)return;if(Array.isArray(run[0])){run.forEach(applyRun);return;}switch(run[0]){
-  case "spawn":S.tokens.push({id:S.nextId++,name:run[1],p:run[2],t:run[3],kw:[...run[4]],color:(run[5]?String(run[5]).split(''):((S.boss&&S.boss.colors)?S.boss.colors.slice():[])),sick:!run[4].includes("haste"),tapped:false,plus:0,minus:0,other:[]});break;
-  case "bossHeal":bossHealLife(run[1]);break;
-  case "cmdBuff":if(S.cmd)S.cmd.p+=run[1];break;
+  case "spawn":S.tokens.push({id:S.nextId++,name:run[1],p:run[2],t:run[3],baseP:run[2],baseT:run[3],kw:[...run[4]],color:(run[5]?String(run[5]).split(''):((S.boss&&S.boss.colors)?S.boss.colors.slice():[])),sick:!run[4].includes("haste"),tapped:false,plus:0,minus:0,other:[],expires:false});break;
+  case "bossHeal":bossHealLife(run[1]);log("dm",`${ENs()} gains <b>${run[1]}</b> life. (${S.boss.life})`);break;
+  case "cmdBuff":if(S.cmd){S.cmd.p+=run[1];log("dm",`${S.cmd.n} gets +${run[1]}/+0 (now ${effP(S.cmd)}/${effT(S.cmd)}).`);}break;
   case "rule":if(!S.rules.some(r=>r.name===run[1]))S.rules.push({id:S.nextId++,name:run[1],text:run[2],die:run[3],side:"you"});break;
   case "bossrule":if(!S.rules.some(r=>r.name===run[1]))S.rules.push({id:S.nextId++,name:run[1],text:run[2],heal:run[3],side:"boss"});break;
 }}
@@ -773,12 +776,30 @@ function enemyCard(c){const buff=c.plus||0,deb=c.minus||0;return `<button class=
 function renderCmd(){const box=$("cmdBox"),c=S.cmd,mana=S.activeTurn==='vael'?S.bossMana:bossMana();
   if(!c.inPlay){box.className="cmdbox dormant";box.innerHTML=`<div class="cn">${c.n} <span class="tag prep">in hand</span></div><div class="cpt">${effP(c)}/${effT(c)}</div><div class="cstat">Needs <b style="color:var(--gold)">${c.cost}</b> mana${c.tax?` (base ${c.baseCost} + tax ${c.tax})`:''}. ${ENs()} ${S.activeTurn==='vael'?'has':'will have'} ${mana}.${c.deaths?` · deaths ${c.deaths}`:''}</div>`;}
   else{box.className="cmdbox";box.innerHTML=`<div class="cn">${c.n} ♛ <span class="tag">on ${ENs()}'s battlefield ↑</span></div><div class="cstat">Recast if it dies: <b style="color:var(--ember)">${c.baseCost}+${c.tax}=${c.baseCost+c.tax}</b> · deaths ${c.deaths||0}. Controls are on its card under the enemy's creatures.</div>`;}}
-let _hist=[],_committed=null;
-function histCapture(){const cur=JSON.stringify(S);if(_committed===null){_committed=cur;return;}if(cur!==_committed){_hist.push(_committed);if(_hist.length>60)_hist.shift();_committed=cur;}}
-function histReset(){_hist=[];_committed=null;}
-function undo(){if(!_hist.length){log("sys","Nothing to undo.");return;}const prev=_hist.pop();try{S=JSON.parse(prev);}catch(e){return;}S.combat=null;_committed=JSON.stringify(S);const rz=$("resolver");if(rz)rz.classList.remove("show");log("you","↩ Undid the last action.");render();}
+let _hist=[],_committed=null,_settleScheduled=false,_actLabel='',_lastLog='';
+/* ===== UNDO — one step per user action (P0.1), self-labelled (P0.5) =====
+   Capture-after-render / store-previous: each settled action pushes the PRIOR
+   committed state onto _hist. settle runs at most once per synchronous action
+   (microtask-deduped), so multi-render actions and a whole phase-advance — incl.
+   the enemy's casts that happen in it — collapse to a SINGLE undo step. Pure-UI
+   churn (⚙ drawers, attacker selection, the live combat proposal) is stripped
+   from the change-compare so it never creates undo noise. The action's own log
+   line (or an explicit actionLabel) names the undone step. Checklist for new
+   mutating actions: just call render() at the end (every action already does) —
+   no per-action checkpoint bookkeeping needed. */
+function stripJSON(s){return JSON.stringify(s,(k,v)=>(k==='_drawer'||k==='_atk'||k==='combat')?undefined:v);}
+function settleHistory(){if(typeof S==='undefined'||!S)return;const fullNow=JSON.stringify(S),stripNow=stripJSON(S);
+  if(_committed===null){_committed={full:fullNow,strip:stripNow};return;}
+  if(stripNow!==_committed.strip){_hist.push({s:_committed.full,label:_actLabel||_lastLog||'an action'});if(_hist.length>80)_hist.shift();_committed={full:fullNow,strip:stripNow};scheduleAutosave();}
+  _actLabel='';}
+function scheduleSettle(){if(_settleScheduled)return;_settleScheduled=true;Promise.resolve().then(()=>{_settleScheduled=false;settleHistory();});}
+function actionLabel(l){_actLabel=l;}
+function histReset(){_hist=[];_committed=null;_actLabel='';}
+function histCapture(){/* legacy no-op: undo now settles via render()→scheduleSettle (P0.1) */}
+function undo(){if(!_hist.length){log("sys","Nothing to undo.");return;}const ent=_hist.pop();let snap;try{snap=JSON.parse(ent.s);}catch(e){return;}S=snap;S.combat=null;closeTransientUI();_committed={full:JSON.stringify(S),strip:stripJSON(S)};_actLabel='';log("you",`↩ Undid: ${ent.label||'last action'}.`);scheduleAutosave();render();}
+function closeTransientUI(){const rz=$("resolver");if(rz)rz.classList.remove("show");const pl=$("plays");if(pl&&!(S.plays||[]).some(p=>p&&p.status==='pending'))pl.classList.remove("show");}
 function render(){
-  histCapture();
+  scheduleSettle();
   renderTrack();
   $("youLife").textContent=S.youLife;$("youMax").textContent=S.youMax;$("youBar").style.width=Math.max(0,Math.min(100,S.youLife/S.youMax*100))+"%";
   $("bossName").textContent=S.boss.name+(S.phase2done?" · ENRAGED":"");$("bossLife").textContent=Math.max(0,S.boss.life);$("bossMax").textContent=S.boss.max;$("bossBar").style.width=Math.max(0,Math.min(100,S.boss.life/S.boss.max*100))+"%";
@@ -876,7 +897,7 @@ function renderMyZones(){const p=$("myZonesPanel");if(!p)return;if(!(S.myGy.leng
   $("myGyList").innerHTML=S.myGy.length?S.myGy.map((c,i)=>`<span class="zchip">${colorDots(c)}${c.name}<b class="zg" title="return to battlefield" onclick="myGyReturn(${i})">↑</b><b class="zx" title="exile" onclick="myGyToExile(${i})">⊘</b></span>`).join(""):'<span class="empty">empty</span>';
   $("myExList").innerHTML=S.myExile.length?S.myExile.map(c=>`<span class="zchip ex">${colorDots(c)}${c.name}</span>`).join(""):'<span class="empty">empty</span>';}
 function myGyReturn(i){const c=S.myGy.splice(i,1)[0];if(!c)return;const cat=c._cat||'creatures';if(cat==='creatures')c.sick=true;c.tapped=false;S.my[cat].push(c);log("you",`Returned <b>${c.name}</b> from graveyard to the battlefield.`);render();}
-function myGyToExile(i){const c=S.myGy.splice(i,1)[0];if(c){S.myExile.push(c);render();}}
+function myGyToExile(i){const c=S.myGy.splice(i,1)[0];if(c){S.myExile.push(c);log("you",`Exiled <b>${c.name}</b> from your graveyard.`);render();}}
 function attackTax(){let mana=0,life=0;[...S.my.creatures,...S.my.artifacts,...S.my.enchants,...S.my.walkers].forEach(o=>{if(o.catk&&!o.phased){if(o.catk.type==='life')life+=o.catk.amt;else mana+=o.catk.amt;}});return{mana,life};}
 function payAttackTax(cands){const tx=attackTax();if(!tx.mana&&!tx.life)return{kept:cands,skipped:[],pm:0,pl:0,tx};
   const ranked=cands.slice().sort((a,b)=>effP(b)-effP(a));let manaLeft=S.bossMana,lifeLeft=Math.max(0,S.boss.life-1),pm=0,pl=0;const kept=[],skipped=[];
@@ -894,10 +915,10 @@ function toggleDeckColor(col){const i=S.deckColors.indexOf(col);if(i>=0)S.deckCo
 /* ===== EDITS ===== */
 function addKw(scope,id,k){if(!k)return;const c=getCre(scope,id);if(!c)return;c.kw=c.kw||[];if(!c.kw.includes(k))c.kw.push(k);render();}
 function delKw(scope,id,k){const c=getCre(scope,id);if(!c)return;c.kw=(c.kw||[]).filter(x=>x!==k);render();}
-function addC(){S.my.creatures.push({id:S.nextId++,name:"Creature",p:2,t:2,tapped:false,plus:0,minus:0,other:[],kw:[],color:[],legendary:false,token:false,dies:"graveyard",phased:false,abilP:0,abilA:0,mana:0,prot:[],catk:null,isCmd:false,_drawer:false});render();}
-function addP(cat){S.my[cat].push({id:S.nextId++,name:cat==='artifacts'?"Artifact":"Enchantment",kind:"passive",mana:0,dmg:0,note:"",color:[],legendary:false,token:false,dies:"graveyard",phased:false,prot:[],catk:null,_drawer:false});render();}
-function addW(){S.my.walkers.push({id:S.nextId++,name:"Planeswalker",loyalty:3,baseLoy:3,abilities:3,note:"",color:[],legendary:true,dies:"graveyard",isCmd:false,_drawer:false});render();}
-function addEm(){S.my.emblems.push({id:S.nextId++,name:"Emblem",note:""});render();}
+function addC(){S.my.creatures.push({id:S.nextId++,name:"Creature",p:2,t:2,baseP:2,baseT:2,tapped:false,plus:0,minus:0,other:[],kw:[],color:[],legendary:false,token:false,dies:"graveyard",phased:false,abilP:0,abilA:0,mana:0,prot:[],catk:null,isCmd:false,_drawer:false});log("you","Added a creature to your board.");render();}
+function addP(cat){S.my[cat].push({id:S.nextId++,name:cat==='artifacts'?"Artifact":"Enchantment",kind:"passive",mana:0,dmg:0,note:"",color:[],legendary:false,token:false,dies:"graveyard",phased:false,prot:[],catk:null,_drawer:false});log("you",`Added ${cat==='artifacts'?'an artifact':'an enchantment'} to your board.`);render();}
+function addW(){S.my.walkers.push({id:S.nextId++,name:"Planeswalker",loyalty:3,baseLoy:3,abilities:3,note:"",color:[],legendary:true,dies:"graveyard",isCmd:false,_drawer:false});log("you","Added a planeswalker to your board.");render();}
+function addEm(){S.my.emblems.push({id:S.nextId++,name:"Emblem",note:""});log("you","Added an emblem.");render();}
 function setMy(cat,id,f,v){const o=S.my[cat].find(x=>x.id===id);if(o){o[f]=v;render();}}
 function adjMy(cat,id,f,n){const o=S.my[cat].find(x=>x.id===id);if(o){o[f]=Math.max(0,(o[f]||0)+n);render();}}
 function rmMy(cat,id){const i=S.my[cat].findIndex(x=>x.id===id);if(i>=0)S.my[cat].splice(i,1);render();}
@@ -915,10 +936,10 @@ function tapT(id){const c=S.tokens.find(x=>x.id===id);if(c){c.tapped=!c.tapped;r
 function cmdCtr(w,n){S.cmd[w]=(S.cmd[w]||0)+n;render();}
 function tapCmd(){S.cmd.tapped=!S.cmd.tapped;render();}
 function slayCmdBtn(){if(!S.cmd.inPlay)return;removeRef(S.cmd);render();}
-function adjLife(who,n){if(who==='you'){S.youLife+=n;if(S.youLife>S.youMax)S.youMax=S.youLife;checkLose();}render();}
-function setLife(){const v=prompt("Set your life:",S.youLife);if(v===null)return;const x=parseInt(v,10);if(isNaN(x))return;S.youLife=x;if(x>S.youMax)S.youMax=x;render();}
+function adjLife(who,n){if(who==='you'){S.youLife+=n;if(S.youLife>S.youMax)S.youMax=S.youLife;log("you",`Life ${n>=0?'+':''}${n} → <b>${S.youLife}</b>.`);checkLose();}render();}
+function setLife(){const v=prompt("Set your life:",S.youLife);if(v===null)return;const x=parseInt(v,10);if(isNaN(x))return;S.youLife=x;if(x>S.youMax)S.youMax=x;log("you",`Life set to <b>${x}</b>.`);render();}
 function bossHealLife(n){S.boss.life+=n;if(S.boss.life>S.boss.max)S.boss.max=S.boss.life;}
-function adjBoss(n){S.boss.life+=n;if(S.boss.life>S.boss.max)S.boss.max=S.boss.life;if(S.boss.life<=0)bossDown();render();}
+function adjBoss(n){S.boss.life+=n;if(S.boss.life>S.boss.max)S.boss.max=S.boss.life;log("you",`${S.boss.name} life ${n>=0?'+':''}${n} → <b>${Math.max(0,S.boss.life)}</b>.`);if(S.boss.life<=0)bossDown();render();}
 function setBossLife(){const v=prompt("Set enemy life (can exceed its starting total):",S.boss.life);if(v===null)return;const x=parseInt(v,10);if(isNaN(x))return;S.boss.life=x;if(x>S.boss.max)S.boss.max=x;log("you",`Enemy life set to <b>${x}</b>.`);if(S.boss.life<=0)bossDown();render();}
 function bossManaModAdj(n){S.bossManaMod=(S.bossManaMod||0)+n;log("sys",`Enemy per-turn mana modifier now ${S.bossManaMod>=0?'+':''}${S.bossManaMod}.`);render();}
 function bossManaModSet(){const v=prompt("Enemy per-turn mana modifier:",S.bossManaMod||0);if(v===null)return;const x=parseInt(v,10);if(isNaN(x))return;S.bossManaMod=x;log("sys",`Enemy per-turn mana modifier set to ${x>=0?'+':''}${x}.`);render();}
@@ -1016,7 +1037,7 @@ function renderZones(){if(!$("vaelZones"))return;$("libCount").textContent=S.lib
   const gy=$("gyList");gy.innerHTML=S.gy.length?S.gy.map((c,i)=>`<span class="zchip">${FX[c.key].n}<b class="zx" title="move to exile" onclick="gyToExile(${i})">⊘</b></span>`).join(""):'<span class="empty">empty</span>';
   const ex=$("exList");ex.innerHTML=S.exile.length?S.exile.map((c,i)=>`<span class="zchip ex">${FX[c.key].n}<b class="zg" title="return to graveyard" onclick="exToGy(${i})">↩</b></span>`).join(""):'<span class="empty">empty</span>';}
 function gyToExile(i){const c=S.gy.splice(i,1)[0];if(c){S.exile.push(c);log("you",`Exiled <b>${FX[c.key].n}</b> from the enemy's graveyard.`);render();}}
-function exToGy(i){const c=S.exile.splice(i,1)[0];if(c){S.gy.push(c);render();}}
+function exToGy(i){const c=S.exile.splice(i,1)[0];if(c){S.gy.push(c);log("you",`Returned <b>${FX[c.key].n}</b> from exile to ${ENs()}'s graveyard.`);render();}}
 function cmdPT(s,n){S.cmd[s]=Math.max(0,S.cmd[s]+n);render();}
 function cmdFieldCard(){const c=S.cmd,buff=c.plus||0,deb=c.minus||0;return `<button class="slay mini ember" onclick="slayCmdBtn()">Slay</button>
   <div class="cn">♛ ${c.n}${c.sick?' <span class="tag">sick</span>':''}${c.tax?` <span class="tag" style="color:var(--ember)">tax +${c.tax}</span>`:''}</div>
@@ -1050,7 +1071,7 @@ function resolvePlay(i){const p=S.plays[i];if(!p||p.status==="resolved")return;p
   if(p._enemyCmd){S.cmd.inPlay=true;S.cmd.sick=true;log("dm",`♛ <b>${S.cmd.n}</b> resolves onto ${ENs()}'s battlefield, summoning-sick.`);checkLose();renderPlays();render();return;}
   if(p.run)applyRun(p.run);if(p.target){const msg=applyTarget(p.target,(p.color||'').split('').filter(Boolean));if(msg)log("dm",`${p.n}: ${ENs()} ${msg}.`);else log("dm",`${p.n} — no valid target on your tracked board.`);}if(p.selfLoss){S.youLife-=p.selfLoss;log("dm",`${p.n} → you lose <b>${p.selfLoss}</b>. (${S.youLife})`);}else if(!p.target&&!p.run)log("dm",`${p.n} resolves.`);if(p._card&&!p._copy&&p.type!=='enchant')S.gy.push(p._card);checkLose();renderPlays();render();}
 function resolvePlayerItem(p){const t=p.ctype;const pr=p.props||{};const tok=!!p._copy||!!pr.token;
-  if(t==='creature'){const kwl=(p.kw||[]).slice();if(pr.defender&&kwl.indexOf('defender')<0)kwl.push('defender');S.my.creatures.push({id:S.nextId++,name:p.name,p:(p.p==null?1:p.p),t:(p.t==null?1:p.t),kw:kwl,color:(p.color||[]).slice(),plus:0,minus:0,other:[],tapped:false,sick:true,token:tok,legendary:!!pr.legendary,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',abilP:pr.abilP||0,abilA:pr.abilA||0,mana:pr.mana||0,strength:pr.strength||'mid',isCmd:false});log("you",`<b>${p.name}</b> resolves onto your board (${p.p}/${p.t}${tok?' · token':''}).`);}
+  if(t==='creature'){const kwl=(p.kw||[]).slice();if(pr.defender&&kwl.indexOf('defender')<0)kwl.push('defender');S.my.creatures.push({id:S.nextId++,name:p.name,p:(p.p==null?1:p.p),t:(p.t==null?1:p.t),baseP:(p.p==null?1:p.p),baseT:(p.t==null?1:p.t),kw:kwl,color:(p.color||[]).slice(),plus:0,minus:0,other:[],tapped:false,sick:true,token:tok,expires:false,legendary:!!pr.legendary,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',abilP:pr.abilP||0,abilA:pr.abilA||0,mana:pr.mana||0,strength:pr.strength||'mid',isCmd:false});log("you",`<b>${p.name}</b> resolves onto your board (${p.p}/${p.t}${tok?' · token':''}).`);}
   else if(t==='artifact'||t==='enchantment'){const cat=t==='artifact'?'artifacts':'enchants';S.my[cat].push({id:S.nextId++,name:p.name,kind:'passive',mana:pr.mana||0,dmg:0,note:p.note||'',color:(p.color||[]).slice(),token:tok,legendary:!!pr.legendary,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard'});log("you",`<b>${p.name}</b> resolves into play.`);}
   else if(t==='planeswalker'){S.my.walkers.push({id:S.nextId++,name:p.name,loyalty:p.loy||3,baseLoy:p.loy||3,abilities:0,note:p.note||'',color:(p.color||[]).slice(),legendary:pr.legendary!==false,token:tok,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard'});log("you",`<b>${p.name}</b> resolves (loyalty ${p.loy||3}).`);}
   else{if(p.auto){if(p.auto.k==='dmgBoss'){S.boss.life-=p.auto.n;log("you",`<b>${p.name}</b> resolves — ${p.auto.n} to ${S.boss.name}. (${Math.max(0,S.boss.life)})`);if(S.boss.life<=0)bossDown();}else if(p.auto.k==='gainLife'){S.youLife+=p.auto.n;if(S.youLife>S.youMax)S.youMax=S.youLife;log("you",`<b>${p.name}</b> resolves — you gain ${p.auto.n}. (${S.youLife})`);}else if(p.auto.k==='loseLife'){S.youLife-=p.auto.n;log("you",`<b>${p.name}</b> resolves — you lose ${p.auto.n}. (${S.youLife})`);}}else log("you",`<b>${p.name}</b> resolves${p.note?` — ${p.note}`:''}. Apply its effect with the controls as needed.`);}}
@@ -1059,14 +1080,14 @@ function resolvePlayOn(i,val){const p=S.plays[i];if(!p||p.status==="resolved"||!
   const id=parseInt(val.replace('c',''),10);p.status="resolved";const msg=applyTarget(p.target,(p.color||'').split('').filter(Boolean),id);if(msg)log("dm",`${p.n}: ${ENs()} ${msg} <span class="manaline">(you redirected it)</span>.`);else log("dm",`${p.n} — redirect had no effect.`);if(p._card&&!p._copy&&p.type!=='enchant')S.gy.push(p._card);checkLose();renderPlays();render();}
 function copyStackItem(i){const o=S.plays[i];if(!o)return;if(o._pcmd||o._enemyCmd){log(o._player?"you":"dm",`A commander spell can't be copied onto the stack.`);return;}const c=JSON.parse(JSON.stringify(o));c.id=S.nextId++;c._copy=true;c.status='pending';delete c._card;c.n=o.n?o.n+" (copy)":undefined;c.name=(o.name||o.n||'Spell')+" (copy)";S.plays.push(c);log(o._player?"you":"dm",`⧉ A copy of <b>${o.name||o.n}</b> is put on the stack.`);showPlays();render();}
 function removeStackItem(i){const o=S.plays[i];if(!o)return;if(o._pcmd&&o._pcmdObj){S.pcmd=o._pcmdObj;log("you",`✕ <b>${o._pcmdObj.name}</b> leaves the stack → back to your command zone.`);S.plays.splice(i,1);renderPlays();render();return;}if(o._enemyCmd){log("dm",`✕ <b>${o.n||o.name}</b> leaves the stack → ${ENs()}'s command zone.`);S.plays.splice(i,1);renderPlays();render();return;}log(o._player?"you":"dm",`✕ <b>${o.name||o.n}</b> leaves the stack.`);S.plays.splice(i,1);renderPlays();render();}
-function openCast(){if(S.over)return;_editLid=null;$("modalBody").innerHTML=castFormHTML();$("overlay").classList.add("show");}
+function openCast(){if(S.over)return;_editLid=null;_castCommander=false;$("modalBody").innerHTML=castFormHTML();$("overlay").classList.add("show");}
 function castFromLibSel(){const sel=$("castLibSel");if(!sel||sel.value===''){alert('Pick a saved card from the dropdown first.');return;}const i=parseInt(sel.value,10);closeOverlay();libCast(i);}
 function _setOn(el,on){if(!el)return;if(on)el.classList.add('on');else el.classList.remove('on');}
 function loadCastFromLibrary(idx){if(idx===''||idx==null)return;const p=prof();if(!p)return;const c=p.library[parseInt(idx,10)];if(!c)return;const pr=c.props||{};
   $("castType").value=c.ctype||'creature';$("castName").value=c.name||'';$("castP").value=c.p!=null?c.p:2;$("castT").value=c.t!=null?c.t:2;$("castLoy").value=c.loy!=null?c.loy:3;
   $("castColor").value=(c.color||[]).join('');$("castKw").value=(c.kw||[]).join(', ');$("castNote").value=c.note||'';
   if(c.auto){$("castAutoEffect").value=c.auto.k;$("castAutoN").value=c.auto.n;}else{$("castAutoEffect").value='none';}
-  _setOn($("castNoCounter"),!!c.cantCounter);_setOn($("castLeg"),!!pr.legendary);_setOn($("castTok"),!!pr.token);_setOn($("castDef"),!!pr.defender);
+  _castCommander=!!c.commander;_setOn($("castCommander"),!!c.commander);_setOn($("castNoCounter"),!!c.cantCounter);_setOn($("castLeg"),!!pr.legendary);_setOn($("castTok"),!!pr.token);_setOn($("castDef"),!!pr.defender);
   $("castProt").value=(pr.prot||[]).join('');$("castDies").value=pr.dies||'graveyard';
   $("castWardN").value=pr.cward?pr.cward.amt:0;$("castWardType").value=pr.cward?pr.cward.type:'mana';
   $("castAtkN").value=pr.catk?pr.catk.amt:0;$("castAtkType").value=pr.catk?pr.catk.type:'mana';_setOn($("castAtkTgt"),!!(pr.catk&&pr.catk.tgt));
@@ -1121,7 +1142,7 @@ function cnt(k,n){S.counters[k]=Math.max(0,(S.counters[k]||0)+n);renderCounters(
 function rollDie(n){n=Math.max(2,n|0);const r=Math.floor(Math.random()*n)+1;const o=$("diceOut");if(o)o.innerHTML=`🎲 d${n} -> <b style="color:var(--gold)">${r}</b>`;log("sys",`🎲 d${n} -> <b>${r}</b>.`);}
 function coinFlip(){const h=Math.random()<.5;const o=$("diceOut");if(o)o.innerHTML=`🪙 <b style="color:var(--gold)">${h?'Heads':'Tails'}</b>`;log("sys",`🪙 ${h?'Heads':'Tails'}.`);}
 function setDiff(df){S.diff=df;$("diffNote").textContent=DIFF[df].note;[...$("diffSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.d===df));}
-function restart(){const df=S.diff;["victory","defeat","clearBanner","plays","resolver"].forEach(id=>$(id).classList.remove("show"));$("log").innerHTML="";fresh();S.diff=df;enterRoom(0,true);setDiff(df);render();log("sys",`New descent · ${df.toUpperCase()}.`);showCutscene(DUNGEON[0].intro,DUNGEON[0].villain,"Ember Gate · Level I","Enter the gate ▸",villainCutOpts(DUNGEON[0]));}
+function restart(){const df=S.diff;["victory","defeat","clearBanner","plays","resolver"].forEach(id=>$(id).classList.remove("show"));$("log").innerHTML="";fresh();S.diff=df;enterRoom(0,true);setDiff(df);_liveGame=true;render();log("sys",`New descent · ${df.toUpperCase()}.`);showCutscene(DUNGEON[0].intro,DUNGEON[0].villain,"Ember Gate · Level I","Enter the gate ▸",villainCutOpts(DUNGEON[0]));}
 $("diffSeg").addEventListener("click",e=>{if(!e.target.dataset.d)return;if(S.turn===0&&S.roomIndex===0&&!S.inv.length){const df=e.target.dataset.d;fresh();S.diff=df;enterRoom(0,true);setDiff(df);render();}else log("sys","Restart to change difficulty.");});
 $("resetBtn").addEventListener("click",restart);
 $("bossDmgIn")&&$("bossDmgIn").addEventListener("keydown",e=>{if(e.key==="Enter")dmgBoss();});
@@ -1192,6 +1213,39 @@ function blankProfile(name){return {name,wins:0,losses:0,gold:0,library:[],token
 function loadDB(){const d=storageGet();DB=(d&&d.profiles)?d:{profiles:{},active:null};if(!DB.active||!DB.profiles[DB.active]){const names=Object.keys(DB.profiles);if(names.length)DB.active=names[0];else{DB.profiles['Adventurer']=blankProfile('Adventurer');DB.active='Adventurer';}}saveDB();}
 function saveDB(){storageSet(DB);}
 function prof(){return DB.profiles[DB.active]||null;}
+/* ===== SAVE SYSTEM — continuous autosave + exact resume (P0.2, D1) =====
+   The live game S is JSON-serialisable (undo proves it), so we persist it whole
+   under DB.save and restore it verbatim. autosave() is debounced and only fires
+   once a game is actually live (so the menu/initial render never clobber a real
+   save), and never while S.over (a defeat/victory keeps the last good save).
+   migrate() backfills fields missing on older saves so they never throw. */
+const SAVE_V=38;
+let _liveGame=false,_autosaveT=null;
+function scheduleAutosave(){if(_autosaveT)return;try{_autosaveT=setTimeout(()=>{_autosaveT=null;doAutosave();},600);}catch(e){_autosaveT=null;doAutosave();}}
+function doAutosave(){try{if(!_liveGame||typeof S==='undefined'||!S||S.over)return;DB.save={v:SAVE_V,ts:Date.now(),profile:DB.active,room:S.roomIndex,turn:S.turn,S:JSON.parse(JSON.stringify(S))};saveDB();}catch(e){}}
+function hasSave(){return !!(DB.save&&DB.save.S&&!DB.save.S.over);}
+function migrate(s){if(!s||typeof s!=='object')return s;
+  ['tokens','rules','plays','inv','lib','hand','gy','exile','deckColors','myGy','myExile','battles','emblemsEnemy'].forEach(k=>{if(!Array.isArray(s[k]))s[k]=[];});
+  if(!s.my||typeof s.my!=='object')s.my={};['creatures','artifacts','enchants','walkers','emblems'].forEach(k=>{if(!Array.isArray(s.my[k]))s.my[k]=[];});
+  if(!s.counters||typeof s.counters!=='object')s.counters={};['poison','energy','experience','cmdDmg'].forEach(k=>{if(typeof s.counters[k]!=='number')s.counters[k]=0;});
+  if(!s.ui||typeof s.ui!=='object')s.ui={tabs:{}};if(!s.ui.tabs)s.ui.tabs={};
+  ['over','paused','phase2done','phoenixUsed','weakenNext'].forEach(k=>{s[k]=!!s[k];});
+  if(typeof s.bossManaMod!=='number')s.bossManaMod=0;if(typeof s.bossManaFrozen!=='number')s.bossManaFrozen=0;
+  if(typeof s.balanceScale!=='number')s.balanceScale=1;if(s.plane===undefined)s.plane=null;
+  if(typeof s.nextId!=='number')s.nextId=1;if(typeof s.phase!=='number')s.phase=0;if(typeof s.turn!=='number')s.turn=0;
+  const bp=c=>{if(!c)return;if(c.p!=null&&c.baseP==null)c.baseP=c.p;if(c.t!=null&&c.baseT==null)c.baseT=c.t;if(c.loyalty!=null&&c.baseLoy==null)c.baseLoy=c.loyalty;if(c.token&&c.expires==null)c.expires=false;};
+  (s.my.creatures||[]).forEach(bp);(s.my.walkers||[]).forEach(bp);(s.tokens||[]).forEach(t=>{bp(t);if(t.expires==null)t.expires=false;});if(s.cmd)bp(s.cmd);if(s.pcmd)bp(s.pcmd);
+  // defensive scalar backfills so a partial/corrupt save never throws in render()
+  if(typeof s.youLife!=='number')s.youLife=40;if(typeof s.youMax!=='number')s.youMax=Math.max(40,s.youLife||40);
+  if(typeof s.roomIndex!=='number'||!DUNGEON[s.roomIndex])s.roomIndex=0;if(typeof s.diff!=='string'||!DIFF[s.diff])s.diff='standard';
+  if(typeof s.notes!=='string')s.notes='';if(typeof s.bossMana!=='number')s.bossMana=0;if(typeof s.bossManaMax!=='number')s.bossManaMax=0;
+  s.combat=null;return s;}
+function continueLastGame(){const sv=DB.save;if(!sv||!sv.S){log("sys","No saved game to continue.");return;}
+  S=migrate(JSON.parse(JSON.stringify(sv.S)));if(!DUNGEON[S.roomIndex])S.roomIndex=0;S._introShown=true;_liveGame=true;histReset();
+  ['victory','defeat','clearBanner','plays','resolver','overlay','library','store','cutscene','menu'].forEach(id=>{const e=$(id);if(e)e.classList.remove("show");});
+  setDiff(S.diff||'standard');setWarrenArt();render();
+  log("sys",`▶ Resumed your descent — <b>${DUNGEON[S.roomIndex].name}</b>, Turn ${S.turn}.`);}
+function saveFileName(kind){const p=prof();const nm=(((p&&p.name)||'profile').replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,''))||'profile';let ts='save';try{const d=new Date();const pad=n=>String(n).padStart(2,'0');ts=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;}catch(e){}return `guffs-gauntlet${kind==='library'?'-library':''}_${nm}_${ts}.json`;}
 function newProfile(name){name=(name||'').trim();if(!name)return;if(!DB.profiles[name])DB.profiles[name]=blankProfile(name);DB.active=name;saveDB();renderMenu();}
 function switchProfile(name){if(DB.profiles[name]){DB.active=name;saveDB();renderMenu();}}
 function deleteProfile(name){if(!name||!DB.profiles[name])return;if(!confirm('Delete profile "'+name+'" and its library?'))return;delete DB.profiles[name];const names=Object.keys(DB.profiles);DB.active=names[0]||null;if(!DB.active){DB.profiles['Adventurer']=blankProfile('Adventurer');DB.active='Adventurer';}saveDB();renderMenu();}
@@ -1202,20 +1256,21 @@ function addGold(n){const p=prof();if(!p)return;p.gold=(p.gold||0)+n;saveDB();}
 function spendGold(n){const p=prof();if(!p||(p.gold||0)<n)return false;p.gold=(p.gold||0)-n;saveDB();return true;}
 
 function showMenu(){renderMenu();$("menu").classList.add("show");}
-function startGame(){$("menu").classList.remove("show");if(S._introShown)return;chooseCommander();}
+function startGame(){$("menu").classList.remove("show");_liveGame=true;if(S._introShown)return;chooseCommander();}
 function menuSetDiff(df){setDiff(df);renderMenu();}
 function renderMenu(){
   const p=prof();const sel=$("menuProfileSel");if(sel){const names=Object.keys(DB.profiles);sel.innerHTML=names.map(n=>`<option value="${n}" ${n===DB.active?'selected':''}>${n}</option>`).join("");}
   const rec=$("menuRecord");if(rec)rec.innerHTML=p?`<b>${p.name}</b> — <span style="color:var(--ok)">${p.wins||0} W</span> · <span style="color:var(--ember)">${p.losses||0} L</span> · <span style="color:var(--gold)">💰 ${p.gold||0}</span><br><span class="manaline">${(p.library||[]).length} saved card${(p.library||[]).length===1?'':'s'} · ${(p.tokens||[]).length} token${(p.tokens||[]).length===1?'':'s'}</span>`:'no profile';
   const ds=$("menuDiff");if(ds)[...ds.children].forEach(b=>b.classList.toggle("on",b.dataset.d===S.diff));
   const mg=$("menuGold");if(mg)mg.textContent=`💰 ${getGold()} gold`;
+  const cb=$("continueBtn");if(cb){if(hasSave()){const sv=DB.save;const rn=(DUNGEON[sv.room!=null?sv.room:(sv.S&&sv.S.roomIndex)||0]||{}).name||'your descent';cb.style.display="";cb.innerHTML=`▶ Continue last game <span style="font-weight:400;opacity:.7">${rn} · T${sv.turn!=null?sv.turn:(sv.S&&sv.S.turn)||0}</span>`;}else cb.style.display="none";}
 }
 
 /* ----- read the cast form into a reusable card config ----- */
 function _int(v,d){const n=parseInt(v,10);return isNaN(n)?d:n;}
 function readCastForm(){const type=$("castType").value;const defName={creature:'Creature',instant:'Instant',sorcery:'Sorcery',artifact:'Artifact',enchantment:'Enchantment',planeswalker:'Planeswalker',ability:'Ability'}[type];const name=(($("castName").value||'').trim())||defName;
   const colors=($("castColor").value||'').toUpperCase().split('').filter(c=>'WUBRGC'.indexOf(c)>=0);const wn=parseInt($("castWardN").value,10)||0,an=parseInt($("castAtkN").value,10)||0;
-  const cfg={name,ctype:type,note:($("castNote").value||'').trim(),color:colors,cantCounter:$("castNoCounter").classList.contains('on'),p:_int($("castP").value,1),t:_int($("castT").value,1),loy:parseInt($("castLoy").value,10)||3,kw:($("castKw").value||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean),
+  const cfg={name,ctype:type,note:($("castNote").value||'').trim(),color:colors,cantCounter:$("castNoCounter").classList.contains('on'),commander:($("castCommander")?$("castCommander").classList.contains('on'):_castCommander),p:_int($("castP").value,1),t:_int($("castT").value,1),loy:parseInt($("castLoy").value,10)||3,kw:($("castKw").value||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean),
     props:{legendary:$("castLeg").classList.contains('on'),token:$("castTok").classList.contains('on'),defender:$("castDef").classList.contains('on'),prot:($("castProt").value||'').toUpperCase().split('').filter(c=>'WUBRGC'.indexOf(c)>=0),cward:wn>0?{amt:wn,type:$("castWardType").value}:null,catk:an>0?{amt:an,type:$("castAtkType").value,tgt:$("castAtkTgt").classList.contains('on')}:null,dies:$("castDies").value,abilP:parseInt($("castAbilP").value,10)||0,abilA:parseInt($("castAbilA").value,10)||0,mana:parseInt($("castMana").value,10)||0,strength:$("castStrength").value}};
   const ae=$("castAutoEffect").value,n=parseInt($("castAutoN").value,10)||0;if(ae!=='none')cfg.auto={k:ae,n};return cfg;}
 
@@ -1232,16 +1287,16 @@ function editLibrary(i){const p=prof();if(!p)return;const c=p.library[i];if(!c)r
 function saveCardEdits(){const p=prof();if(!p){alert('Open the Menu and create a profile first.');return;}const cfg=readCastForm();const idx=p.library.findIndex(c=>c.lid===_editLid);if(idx>=0){cfg.lid=_editLid;p.library[idx]=cfg;log("loot",`✎ Updated <b>${cfg.name}</b> in your library.`);}else{cfg.lid=lidStamp();p.library.push(cfg);log("loot",`★ Saved <b>${cfg.name}</b> to your library.`);}saveDB();_editLid=null;$("overlay").classList.remove("show");renderLibrary();}
 function lidStamp(){return 'L'+Date.now()+Math.floor(Math.random()*1000);}
 function saveBoardToLibrary(cat,id){const p=prof();if(!p){alert('Create a profile first (open the Menu).');return;}const o=S.my[cat].find(x=>x.id===id);if(!o)return;let cfg;
-  if(cat==='creatures'){cfg={name:o.name,ctype:'creature',p:o.p,t:o.t,loy:3,color:(o.color||[]).slice(),note:'',kw:(o.kw||[]).filter(k=>k!=='defender'),props:{legendary:!!o.legendary,token:!!o.token,defender:(o.kw||[]).indexOf('defender')>=0,prot:(o.prot||[]).slice(),cward:o.cward||null,catk:o.catk||null,dies:o.dies||'graveyard',abilP:o.abilP||0,abilA:o.abilA||0,mana:o.mana||0,strength:o.strength||'mid'}};}
+  if(cat==='creatures'){cfg={name:o.name,ctype:'creature',p:o.p,t:o.t,loy:3,color:(o.color||[]).slice(),note:'',commander:!!o.isCmd,kw:(o.kw||[]).filter(k=>k!=='defender'),props:{legendary:!!o.legendary,token:!!o.token,defender:(o.kw||[]).indexOf('defender')>=0,prot:(o.prot||[]).slice(),cward:o.cward||null,catk:o.catk||null,dies:o.dies||'graveyard',abilP:o.abilP||0,abilA:o.abilA||0,mana:o.mana||0,strength:o.strength||'mid'}};}
   else if(cat==='artifacts'||cat==='enchants'){cfg={name:o.name,ctype:cat==='artifacts'?'artifact':'enchantment',color:(o.color||[]).slice(),note:o.note||'',kw:[],props:{legendary:!!o.legendary,token:!!o.token,defender:false,prot:(o.prot||[]).slice(),cward:o.cward||null,catk:o.catk||null,dies:o.dies||'graveyard',abilP:0,abilA:0,mana:o.mana||0,strength:'mid'}};}
   else if(cat==='walkers'){cfg={name:o.name,ctype:'planeswalker',loy:o.loyalty||o.baseLoy||3,color:(o.color||[]).slice(),note:o.note||'',kw:[],props:{legendary:o.legendary!==false,token:!!o.token,defender:false,prot:(o.prot||[]).slice(),cward:o.cward||null,catk:o.catk||null,dies:o.dies||'graveyard',abilP:0,abilA:0,mana:0,strength:'mid'}};}
   else return;
   cfg.lid=lidStamp();p.library.push(cfg);saveDB();log("loot",`★ Saved <b>${o.name}</b> to your library.`);render();}
 function saveStackToLibrary(i){const it=S.plays[i];if(!it||!it._player){return;}const p=prof();if(!p){alert('Create a profile first (open the Menu).');return;}const cfg=JSON.parse(JSON.stringify(it));['id','_player','side','status','_copy','_instant','_respondingTo','_pcmd','_pcmdObj','_enemyCmd'].forEach(k=>delete cfg[k]);cfg.lid=lidStamp();p.library.push(cfg);saveDB();log("loot",`★ Saved <b>${it.name||it.n}</b> to your library.`);renderPlays();}
 function cfgToItem(cfg){const it=JSON.parse(JSON.stringify(cfg));delete it.lid;return it;}
-let _cmdChooseActive=false;let _editLid=null;
+let _cmdChooseActive=false;let _editLid=null;let _castCommander=false;
 function cmdObjFromCfg(cfg){const pr=cfg.props||{};
-  if(cfg.ctype==='creature'){const kwl=(cfg.kw||[]).slice();if(pr.defender&&kwl.indexOf('defender')<0)kwl.push('defender');return {id:S.nextId++,name:cfg.name,p:(cfg.p==null?1:cfg.p),t:(cfg.t==null?1:cfg.t),kw:kwl,color:(cfg.color||[]).slice(),plus:0,minus:0,other:[],tapped:false,sick:true,token:!!pr.token,legendary:!!pr.legendary,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',abilP:pr.abilP||0,abilA:pr.abilA||0,mana:pr.mana||0,strength:pr.strength||'mid',isCmd:true,kind:'creatures',cmdTax:0,cmdDeaths:0};}
+  if(cfg.ctype==='creature'){const kwl=(cfg.kw||[]).slice();if(pr.defender&&kwl.indexOf('defender')<0)kwl.push('defender');return {id:S.nextId++,name:cfg.name,p:(cfg.p==null?1:cfg.p),t:(cfg.t==null?1:cfg.t),baseP:(cfg.p==null?1:cfg.p),baseT:(cfg.t==null?1:cfg.t),kw:kwl,color:(cfg.color||[]).slice(),plus:0,minus:0,other:[],tapped:false,sick:true,token:!!pr.token,expires:false,legendary:!!pr.legendary,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',abilP:pr.abilP||0,abilA:pr.abilA||0,mana:pr.mana||0,strength:pr.strength||'mid',isCmd:true,kind:'creatures',cmdTax:0,cmdDeaths:0};}
   if(cfg.ctype==='planeswalker'){return {id:S.nextId++,name:cfg.name,loyalty:cfg.loy||3,baseLoy:cfg.loy||3,abilities:0,note:cfg.note||'',color:(cfg.color||[]).slice(),legendary:pr.legendary!==false,token:!!pr.token,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',isCmd:true,kind:'walkers',cmdTax:0,cmdDeaths:0};}
   return null;}
 function setStartCommander(cfg){const o=cmdObjFromCfg(cfg);if(!o){alert('A commander must be a creature or a planeswalker.');return false;}S.my.creatures.forEach(c=>c.isCmd=false);S.my.walkers.forEach(w=>w.isCmd=false);S.pcmd=o;log("you",`♛ <b>${o.name}</b> begins in your command zone — deploy it when you cast it.`);render();return true;}
@@ -1265,7 +1320,7 @@ function libDelete(i){const p=prof();if(!p)return;p.library.splice(i,1);saveDB()
 
 /* ----- tokens ----- */
 function readTokenForm(){const name=(($("tokName").value||'').trim())||'Token';return {tid:'T'+Date.now()+Math.floor(Math.random()*1000),name,p:parseInt($("tokP").value,10)||1,t:parseInt($("tokT").value,10)||1,kw:($("tokKw").value||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean),color:($("tokColor").value||'').toUpperCase().split('').filter(c=>'WUBRGC'.indexOf(c)>=0)};}
-function deployTokenCfg(cfg,n){n=Math.max(1,n|0);for(let i=0;i<n;i++)S.my.creatures.push({id:S.nextId++,name:cfg.name,p:cfg.p,t:cfg.t,kw:(cfg.kw||[]).slice(),color:(cfg.color||[]).slice(),plus:0,minus:0,other:[],tapped:false,sick:true,token:true,legendary:false,phased:false,prot:[],catk:null,cward:null,dies:'graveyard',abilP:0,abilA:0,mana:0,strength:'mid',isCmd:false});log("loot",`Deployed <b>${n}× ${cfg.name}</b> (${cfg.p}/${cfg.t}) to your board.`);render();}
+function deployTokenCfg(cfg,n){n=Math.max(1,n|0);for(let i=0;i<n;i++)S.my.creatures.push({id:S.nextId++,name:cfg.name,p:cfg.p,t:cfg.t,baseP:cfg.p,baseT:cfg.t,kw:(cfg.kw||[]).slice(),color:(cfg.color||[]).slice(),plus:0,minus:0,other:[],tapped:false,sick:true,token:true,expires:false,legendary:false,phased:false,prot:[],catk:null,cward:null,dies:'graveyard',abilP:0,abilA:0,mana:0,strength:'mid',isCmd:false});log("loot",`Deployed <b>${n}× ${cfg.name}</b> (${cfg.p}/${cfg.t}) to your board.`);render();}
 function renderBoardTokens(){const sel=$("boardTokSel");if(!sel)return;const cur=sel.value;const p=prof();const toks=p?p.tokens:[];sel.innerHTML=toks.length?toks.map((t,i)=>`<option value="${i}" ${''+i===cur?'selected':''}>${t.name} ${t.p}/${t.t}</option>`).join(""):'<option value="">(no saved tokens — make one in Library)</option>';}
 function deploySavedToken(){const p=prof();if(!p||!p.tokens.length){alert('No saved tokens yet — open the Library (🃏) to quick-make one.');return;}const sel=$("boardTokSel");const i=parseInt(sel.value,10);if(isNaN(i)||!p.tokens[i]){alert('Pick a saved token first.');return;}const n=parseInt($("boardTokQty").value,10)||1;deployTokenCfg(p.tokens[i],n);}
 function quickDeployToken(){deployTokenCfg(readTokenForm(),parseInt($("tokQty").value,10)||1);closeLibrary();}
@@ -1279,11 +1334,17 @@ function renderLibrary(){const p=prof();const who=$("libWho");if(who)who.textCon
 }
 
 /* ----- board duplicate (copy on every spell) ----- */
-function dupMy(cat,id){const o=S.my[cat].find(x=>x.id===id);if(!o)return;const c=JSON.parse(JSON.stringify(o));c.id=S.nextId++;c.isCmd=false;c._drawer=false;c._atk=false;if(cat==='creatures'){c.sick=true;c.tapped=false;c.token=true;}log("you",`⧉ Duplicated <b>${o.name}</b>.`);S.my[cat].push(c);render();}
+function dupMy(cat,id){const o=S.my[cat].find(x=>x.id===id);if(!o)return;const c=JSON.parse(JSON.stringify(o));c.id=S.nextId++;c.isCmd=false;c._drawer=false;c._atk=false;if(cat==='creatures'){c.sick=true;c.tapped=false;c.token=true;if(c.expires==null)c.expires=false;if(c.baseP==null)c.baseP=c.p;if(c.baseT==null)c.baseT=c.t;}log("you",`⧉ Duplicated <b>${o.name}</b>.`);S.my[cat].push(c);render();}
 
 /* ----- save export / import ----- */
-function exportSave(){try{const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='guffs-gauntlet-save.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){alert('Export is not available in this browser context.');}}
-function importSave(input){const f=input.files&&input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);if(o&&o.profiles){DB=o;if(!DB.active||!DB.profiles[DB.active])DB.active=Object.keys(DB.profiles)[0]||null;if(!DB.active){DB.profiles['Adventurer']=blankProfile('Adventurer');DB.active='Adventurer';}saveDB();renderMenu();alert('Save loaded.');}else alert('That file is not a valid save.');}catch(e){alert('Could not read that save file.');}};r.readAsText(f);input.value='';}
+function exportSave(){try{const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=saveFileName('save');document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){alert('Export is not available in this browser context.');}}
+function importSave(input){const f=input.files&&input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);if(o&&o.kind==='library'){alert('That is a library file — use “⬆ Import library” instead.');return;}if(o&&o.profiles){DB=o;if(!DB.active||!DB.profiles[DB.active])DB.active=Object.keys(DB.profiles)[0]||null;if(!DB.active){DB.profiles['Adventurer']=blankProfile('Adventurer');DB.active='Adventurer';}saveDB();renderMenu();alert('Save loaded'+(hasSave()?' — “Continue last game” is now available.':'.'));}else alert('That file is not a valid save.');}catch(e){alert('Could not read that save file.');}};r.readAsText(f);input.value='';}
+/* ===== LIBRARY EXPORT / IMPORT — carries only Player name + library + tokens (P0.3) ===== */
+function exportLibrary(){try{const p=prof();if(!p){alert('Open the Menu and create a profile first.');return;}const data={v:SAVE_V,kind:'library',name:p.name,library:JSON.parse(JSON.stringify(p.library||[])),tokens:JSON.parse(JSON.stringify(p.tokens||[]))};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=saveFileName('library');document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){alert('Export is not available in this browser context.');}}
+function importLibrary(input){const f=input.files&&input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);if(!o||o.kind!=='library'||!Array.isArray(o.library)){alert(o&&o.profiles?'That is a full save — use “⬆ Import” under Saves instead.':'That file is not a library export.');return;}const p=prof();if(!p){alert('Open the Menu and create a profile first.');return;}
+    const seen=new Set((p.library||[]).map(c=>c.lid).filter(Boolean));let added=0;(o.library||[]).forEach(c=>{if(!c||typeof c!=='object')return;if(!c.lid||!seen.has(c.lid)){if(!c.lid)c.lid=lidStamp();p.library.push(c);seen.add(c.lid);added++;}});
+    const tseen=new Set((p.tokens||[]).map(t=>t.tid).filter(Boolean));let tadded=0;(o.tokens||[]).forEach(t=>{if(!t||typeof t!=='object')return;if(!t.tid||!tseen.has(t.tid)){if(!t.tid)t.tid='T'+Date.now()+Math.floor(Math.random()*1000);p.tokens.push(t);tseen.add(t.tid);tadded++;}});
+    saveDB();renderMenu();try{renderLibrary();}catch(e){}alert(`Imported ${added} card${added===1?'':'s'} and ${tadded} token${tadded===1?'':'s'} into ${p.name}. (Gold and record unchanged.)`);}catch(e){alert('Could not read that library file.');}};r.readAsText(f);input.value='';}
 
 loadDB();
 fresh();setDiff("standard");render();setWarrenArt();
