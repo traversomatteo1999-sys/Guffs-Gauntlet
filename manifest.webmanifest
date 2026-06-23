@@ -1,0 +1,17 @@
+{
+  "name": "Guff's Gauntlet",
+  "short_name": "Gauntlet",
+  "description": "A solo Magic: the Gathering Commander gauntlet. You play your own side; the app is the opponent and the bookkeeper. Descend through three wardens to Vael, the Ember Tyrant.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b0c10",
+  "theme_color": "#0b0c10",
+  "categories": ["games"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
