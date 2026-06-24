@@ -22,7 +22,8 @@
 | &nbsp;&nbsp;P1.4 cinematic intro + menu drop | ✅ **DONE** (user-confirmed) |
 | &nbsp;&nbsp;P1.5 victory/defeat/cleared popups | ✅ **DONE** |
 | &nbsp;&nbsp;P1.6 parchment log restyle | ✅ **DONE** |
-| &nbsp;&nbsp;P1.7–P1.9 visual polish | ⬜ (P1.7 next) |
+| &nbsp;&nbsp;P1.7 player commander box mirrors enemy | ✅ **DONE** |
+| &nbsp;&nbsp;P1.8–P1.9 visual polish | ⬜ (P1.8 next) |
 | &nbsp;&nbsp;**P1.10 Stack-as-popup** (NEW) | ⬜ |
 | **Phase 2 — Card creation & library UX** | ⬜ |
 | **Phase 3 — Commander & emblems** | ⬜ |
@@ -131,8 +132,9 @@ Replace inline `.banner` victory/defeat with big modal popups (reuse `.cutbox`):
 Pure CSS: aged-parchment surface + inked serif for entries, keep `Space Mono` timestamp as a faint stamp; channel colours stay AA-legible. Touchpoints: `.log`/`.entry`.
 **Done** (revised twice per playtest: dimmer, then darker & fire-consumed — not a bright scroll). `.log` is now an **old, fire-consumed parchment** dark enough to sit deep in the dark UI — a `#c2ad74→#a8945c` field with **charred/scorched corners** (near-black radial burns eating inward), a faint fibre grain, a near-black `#2e2210` worn border, and a strong vignette + inner-char inset shadow; `.log h2` is sepia `#4a3410` with a hairline rule. Entries use **IM Fell English** (an authentic inked-print serif, added to the font link) at `.95rem`, inked `#241b0f`; the `Space Mono` timestamp stays a faint stamp `#6e5c36`. Channel inks re-tuned for the darker field and **contrast-checked**: on the central reading column all clear AA / AA-large (body ink `#241b0f` ≥ AA; dm `#5e1a0c`, you `#123a52`, sys `#523609`, loot `#56340a` ≥3:1), with the charred corners intentionally dark — a deliberate trade for the consumed look. Extra padding keeps the text column off the burnt corners. Also **fixed the boot log copy**: the menu-style "Welcome… pick a profile… ☰ Menu" line (which read wrong inside the in-level Dungeon Log) is now an in-world chronicle opener. id-set diff & syntax gate unchanged; 49-assertion jsdom driver still green.
 
-### P1.7 — Player commander box mirrors the enemy's
+### P1.7 — Player commander box mirrors the enemy's ✅ DONE
 Render the player commander into the You panel with the **same `.cmdbox` UI** as the enemy (name, P/T or loyalty, tax/deaths, Deploy when in command zone). Relocation already done in P1.1 (`pcmdBox` lives in You); finish the mirror + verify death-return repopulates it. Touchpoints: `renderCmd`/`renderPlayerCmd`, `sendCmdToZone`. Depends: P1.1, P3.1.
+**Done.** `renderPlayerCmd` rewritten to mirror the enemy `.cmdbox`: a big `.cpt` shows **P/T (creatures) or loyalty (walkers)** like the enemy's dormant box, with recast **tax/deaths** in `.cstat` and the **Cast to Stack / Deploy direct** actions when in the command zone (on-battlefield state mirrors the enemy's "controls on the card" line). Added a **`.cmdbox.mine`** azor variant (+ `.cptsub` loyalty label) so the player's box reads blue against the enemy's ember — same layout, player identity. The empty state now hides *and clears* the box. **Death-return verified**: `killMy`→`sendCmdToZone(c,true)`→`S.pcmd=c` repopulates the box with `deaths+1` and the new recast tax (jsdom TEST H drives deploy→kill→return for both creature and walker commanders). CSS + one function; id-set diff & syntax gate unchanged; 62-assertion jsdom driver green. **Adversarially reviewed** (3 dimensions): 1 nit — the on-battlefield recast line was tightened to a compact, azor-bolded mirror of the enemy box — fixed. *(Noted pre-existing, out-of-scope: countering the player's own commander on the stack drops `_pcmdObj` instead of returning it to the zone — a `counterPlay` gap for the P4.x stack work.)*
 
 ### P1.8 — ⓘ info popups beside labels
 One `infoBtn(key)` helper + `INFO_TEXT` map + shared modal. Place on tab labels and tricky controls (stack, freeze mana, ward/tax, threat hint, commander, battles).
