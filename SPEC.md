@@ -20,7 +20,8 @@
 | &nbsp;&nbsp;P1.2 background covers viewport | ✅ **DONE** (user-confirmed) |
 | &nbsp;&nbsp;P1.3 kill white image edge | ✅ **DONE** (user-confirmed) |
 | &nbsp;&nbsp;P1.4 cinematic intro + menu drop | ✅ **DONE** (user-confirmed) |
-| &nbsp;&nbsp;P1.5–P1.9 visual polish | ⬜ (P1.5 next) |
+| &nbsp;&nbsp;P1.5 victory/defeat/cleared popups | ✅ **DONE** |
+| &nbsp;&nbsp;P1.6–P1.9 visual polish | ⬜ (P1.6 next) |
 | &nbsp;&nbsp;**P1.10 Stack-as-popup** (NEW) | ⬜ |
 | **Phase 2 — Card creation & library UX** | ⬜ |
 | **Phase 3 — Commander & emblems** | ⬜ |
@@ -121,8 +122,9 @@ Diagnose & remove the white sliver on lore art / `openArt` popup (`display:block
 Menu falls from the top and opens up (keyframe on `.menubox` when `#menu` gains `.show`; respect reduced-motion). Touchpoints: `.overlay.menu`/`.menubox`, `showMenu`.
 **Done — expanded into a full first-boot cinematic** (per playtest feedback): (1) a black `#intro` curtain in the markup so the board never flashes on load; (2) a **center-out canvas fire** (`runBurn` + `buildFbm`, `#introfire`) — a fiery hole ignites mid-screen and burns outward with a ragged fbm edge, ember sparks, and additive bloom — turning transparent to reveal (3) the **warren art as the menu backdrop** (`menuBgCss`/`setMenuArt`, lighter scrim than `#bgart`, replacing the flat ink); then (4) the menubox **drops from above with a double rebound** (`menuBounce`). Orchestrated by `beginIntro()` (called at init instead of `showMenu`); `#menu.bootdrop` delays the drop until the burn clears (cleared in `startGame`). Reduced-motion path skips the curtain/fire and shows the menu instantly (guards against the global `animation:none` freezing the curtain). Tunables live as constants in `runBurn` (DUR/RMAX/RAGGED/MAXW/col ramp) + the bootdrop `animation-delay`.
 
-### P1.5 — Victory & defeat as animated popups
+### P1.5 — Victory & defeat as animated popups ✅ DONE
 Replace inline `.banner` victory/defeat with big modal popups (reuse `.cutbox`): **encounter-cleared / victory / defeat** modes, the enemy's last quote (`deathQuote` on win, `quote` on loss), animate in, and a **"Save & quit to Menu"** button (`autosave()` then `showMenu`). Remove old banner markup. Touchpoints: banners, `bossDown`/`win`/`lose`, `showCutscene`. Depends: P0.2, P1.4.
+**Done.** Deleted the three `.banner` divs (`clearBanner`/`victory`/`defeat`) + their dead CSS; the `#cutscene`/`.cutbox` overlay is now the single end-state vehicle. Generalised `showCutscene` with `opts.spoils` (a `.loot` line, `#cutSpoils`) and `opts.buttons` (a rebuilt `#cutBtns` row → `renderCutButtons`/`cutAct`/`_cutActs`; first button keeps id `cutBtn` so intros are byte-identical). New helpers: `quitToMenu()` (`doAutosave`→`closeCutscene`→`showMenu`), `showEncounterClear()`. `bossDown` (non-Vael) stashes the loot summary on **`S._spoils`** (init in `fresh()`+`migrate()`) and shows the cleared popup [Descend → / Save & quit]; `win` folds the old `#victory` banner into one epilogue popup [↻ Descend again / Quit to Menu] with `deathQuote`+spoils; `lose` shows a defeat popup [↻ Try again / Quit to Menu] with the villain's living `quote`. **Resume fix:** quitting from a cleared (paused, not-over) state autosaves and `continueLastGame` re-surfaces the cleared popup (`if(S.paused&&!S.over)`), so the player is never stranded mid-descent. "Save" label kept only where a save actually persists (cleared); the two terminal popups say "Quit". Positive popups get a gold eyebrow (`opts.eyebrowAcc`); defeat keeps ember. Verified: JS syntax gate, id-set diff (only the 6 banner ids removed, `cutSpoils`/`cutBtns` added), and a 49-assertion **jsdom** boot+end-state driver (clear/win/lose popups, advance, quit-saves, resume, restart, turn-cycle+undo+autosave — zero console errors). **Adversarially reviewed** (4 dimensions × verify): 3 findings, all nits, all fixed.
 
 ### P1.6 — Parchment log restyle
 Pure CSS: aged-parchment surface + inked serif for entries, keep `Space Mono` timestamp as a faint stamp; channel colours stay AA-legible. Touchpoints: `.log`/`.entry`.

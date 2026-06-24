@@ -86,7 +86,7 @@
   .entry.dm .x{color:var(--ember)} .entry.you .x{color:var(--azor)} .entry.sys .x{color:var(--gold)} .entry.loot .x{color:var(--gold)} .entry.cbt .x{color:var(--bone)} .entry .x b{font-family:"Grenze Gotisch",serif;font-weight:700}
   details summary{cursor:pointer;font-family:"Space Mono",monospace;font-size:.76rem;color:var(--gold);list-style:none} details summary::-webkit-details-marker{display:none} details[open] summary{margin-bottom:9px} .help ol{margin-left:18px;font-size:.86rem;color:var(--bone-dim)} .help li{margin:6px 0} .help b{color:var(--bone)}
   .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px} .controls .seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden} .controls .seg button{border:none;border-radius:0;border-right:1px solid var(--line)} .controls .seg button:last-child{border-right:none} .controls .seg button.on{background:var(--gold);color:var(--ink);font-weight:700} .controls .lab{font-family:"Space Mono",monospace;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--bone-dim)}
-  .banner{display:none;text-align:center;padding:16px;border-radius:14px;margin-top:12px;font-family:"Grenze Gotisch",serif} .banner.show{display:block;animation:spawn .4s ease} .banner.victory{border:1px solid var(--gold);background:rgba(217,164,65,.08)} .banner.defeat{border:1px solid var(--ember);background:rgba(224,83,61,.08)} .banner.clear{border:1px solid var(--ok);background:rgba(123,178,116,.08)} .banner h2{font-size:1.85rem} .banner.victory h2{color:var(--gold)} .banner.defeat h2{color:var(--ember)} .banner.clear h2{color:var(--ok)} .loot{font-family:Spectral;color:var(--gold);font-size:1.05rem;margin:8px 0;font-style:italic}
+  .loot{font-family:Spectral;color:var(--gold);font-size:1.05rem;margin:8px 0;font-style:italic}
   /* (census removed — fresh game each dungeon) */
   /* phase engine */
   .phasebar{border:1px solid var(--line);border-radius:12px;background:linear-gradient(180deg,rgba(224,83,61,.05),var(--ink-3));padding:10px 12px;margin-bottom:10px}
@@ -413,20 +413,13 @@
     </div>
   </div>
 
-  <div class="banner clear" id="clearBanner">
-    <h2>⚜ Encounter Cleared ⚜</h2><p style="font-family:Spectral;color:var(--bone-dim)" id="clearText"></p><div class="loot" id="lootText"></div>
-    <div class="btnrow" style="justify-content:center"><button class="big ok" style="width:auto;padding:11px 18px" onclick="advance()">Descend →</button></div>
-  </div>
-  <div class="banner victory" id="victory"><h2>⚜ Vael Falls ⚜</h2><p style="font-family:Spectral;color:var(--bone-dim)">The Warren of Embers is conquered. The Drowned Conclave waits below…</p><div class="loot" id="winLoot"></div></div>
-  <div class="banner defeat" id="defeat"><h2>The Warren Consumes You</h2><p style="font-family:Spectral;color:var(--bone-dim)">The enemy wins this time. Restart and descend again.</p></div>
-
   <div class="log"><h2 style="font-family:'Grenze Gotisch'">📜 Dungeon Log</h2><div id="log"></div></div>
 
   <div class="overlay" id="overlay" onclick="if(event.target===this)closeOverlay()">
     <div class="modal"><button class="modalx" onclick="closeOverlay()">✕</button><div id="modalBody"></div></div>
   </div>
   <div class="overlay cut" id="cutscene">
-    <div class="cutbox"><div id="cutSigil"></div><div class="cuteyebrow" id="cutEyebrow"></div><h2 id="cutTitle"></h2><div id="cutLines"></div><div id="cutQuote"></div><button class="big ok" style="width:auto;padding:11px 18px" id="cutBtn" onclick="closeCutscene()">Continue ▸</button></div>
+    <div class="cutbox"><div id="cutSigil"></div><div class="cuteyebrow" id="cutEyebrow"></div><h2 id="cutTitle"></h2><div id="cutLines"></div><div id="cutQuote"></div><div class="loot" id="cutSpoils" style="display:none"></div><div class="btnrow" id="cutBtns" style="justify-content:center;flex-wrap:wrap"><button class="big ok" id="cutBtn" style="width:auto;padding:11px 18px" onclick="closeCutscene()">Continue ▸</button></div></div>
   </div>
 
   <div class="overlay menu" id="menu">
@@ -578,7 +571,7 @@ let _dt={};
 const LOOT_D20=[[1,2,"map"],[3,6,"heal5"],[7,9,"ember"],[10,11,"scholar"],[12,14,"heal10"],[15,16,"ward"],[17,18,"spark"],[19,19,"phoenix"],[20,20,"jackpot"]];
 
 let S;
-function fresh(){histReset();S={diff:"standard",youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,bossManaFrozen:0,emblemsEnemy:[],battles:[],plane:null,ui:{tabs:{}},my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
+function fresh(){histReset();S={diff:"standard",youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,bossManaFrozen:0,emblemsEnemy:[],battles:[],plane:null,ui:{tabs:{}},my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",_spoils:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
 function enterRoom(i,first){S.roomIndex=i;const room=DUNGEON[i];const m=DIFF[S.diff].hpMult*(S.balanceScale||1);let life=Math.max(1,Math.round(room.life*m));if(S.weakenNext){life=Math.max(1,life-4);S.weakenNext=false;}
   S.boss={name:room.villain,life,max:life,isVael:!!room.isVael,colors:(room.colors||["R"]).slice()};
   S.enemy={name:room.villain,colors:(room.colors||["R"]).slice(),lore:room.lore||"",isFinal:!!room.isVael};
@@ -1004,8 +997,8 @@ function useBoon(i){const it=S.inv[i];if(!it)return;const b=BOONS[it.id];if(b.ki
 function grantBoon(id){const b=BOONS[id];if(!b)return;if(b.kind==="instant"){if(id==="spark"){S.youMax+=5;S.youLife+=5;}log("loot",`Gained <b>${b.n}</b>.`);return;}if(id==="map")S.weakenNext=true;S.inv.push({id});log("loot",`Looted <b>${b.n}</b> (${b.r}).`);}
 function lootRoll(){const roll=d(20);let id="heal5";for(const[a,z,bid]of LOOT_D20){if(roll>=a&&roll<=z){id=bid;break;}}let names=[];if(id==="jackpot"){grantBoon("heal10");grantBoon("phoenix");names=["Greater Draught","Phoenix Charm"];}else{grantBoon(id);names=[BOONS[id].n];}return{roll,names};}
 
-function bossDown(){if(S.over)return;if(S.boss.isVael&&!S.phase2done){S.phase2done=true;S.boss.life=Math.max(10,Math.round(S.boss.max*0.34));applyRun(["spawn","Pyre Revenant",4,3,["trample","haste"],"RB"]);log("dm",`🔥🔥 <b>UNDYING EMBERS!</b> Vael rises ENRAGED at ${S.boss.life} life and calls a Pyre Revenant.`);render();return;}if(S.boss.isVael){win();return;}S.paused=true;const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);log("sys",`🏳 <b>${S.boss.name} falls!</b>`);log("loot",`💰 You collect <b>${gold} gold</b> (account balance ${getGold()}). Spend it at the Merchant in the ☰ Menu.`);$("clearText").textContent=`${S.boss.name} is defeated. Your next encounter in ${DUNGEON[S.roomIndex+1].name} starts with an empty battlefield, but your life and loot carry over.`;$("lootText").textContent=`🎲 Loot roll ${lr.roll}/20 → ${lr.names.join(" + ")}!  ·  💰 +${gold} gold (account ${getGold()})`;$("clearBanner").classList.add("show");$("clearBanner").scrollIntoView({block:"nearest"});render();}
-function advance(){const next=S.roomIndex+1;$("clearBanner").classList.remove("show");freshGameForDungeon();enterRoom(next);S.paused=false;log("sys",`A fresh board awaits in <b>${DUNGEON[next].name}</b> — empty battlefield, but your life (${S.youLife}) and loot carry over.`);render();const nr=DUNGEON[next];showCutscene(nr.intro,nr.villain,`${nr.name} · descending`,nr.isVael?"Face the Tyrant ▸":"Descend ▸",villainCutOpts(nr));}
+function bossDown(){if(S.over)return;if(S.boss.isVael&&!S.phase2done){S.phase2done=true;S.boss.life=Math.max(10,Math.round(S.boss.max*0.34));applyRun(["spawn","Pyre Revenant",4,3,["trample","haste"],"RB"]);log("dm",`🔥🔥 <b>UNDYING EMBERS!</b> Vael rises ENRAGED at ${S.boss.life} life and calls a Pyre Revenant.`);render();return;}if(S.boss.isVael){win();return;}S.paused=true;const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);log("sys",`🏳 <b>${S.boss.name} falls!</b>`);log("loot",`💰 You collect <b>${gold} gold</b> (account balance ${getGold()}). Spend it at the Merchant in the ☰ Menu.`);S._spoils=`🎲 Loot roll ${lr.roll}/20 → ${lr.names.join(" + ")}!  ·  💰 +${gold} gold (account ${getGold()})`;render();showEncounterClear();}
+function advance(){const next=S.roomIndex+1;closeCutscene();S._spoils="";freshGameForDungeon();enterRoom(next);S.paused=false;log("sys",`A fresh board awaits in <b>${DUNGEON[next].name}</b> — empty battlefield, but your life (${S.youLife}) and loot carry over.`);render();const nr=DUNGEON[next];showCutscene(nr.intro,nr.villain,`${nr.name} · descending`,nr.isVael?"Face the Tyrant ▸":"Descend ▸",villainCutOpts(nr));}
 
 /* ===== TURN / PHASE ENGINE ===== */
 function flowClick(){if(S.over||S.paused||S.combat)return;if(S.plays.some(p=>p.status==='pending'&&p._player)){log("sys","Resolve the spells on your stack first.");showPlays();return;}if(S.activeTurn===null){beginVaelTurn();return;}advancePhase();}
@@ -1169,8 +1162,8 @@ function counterPlay(i){const p=S.plays[i];p.status="countered";if(p._enemyCmd){
 function undoPlay(i){const p=S.plays[i];p.status="pending";if(p._card){const gi=S.gy.indexOf(p._card);if(gi>=0)S.gy.splice(gi,1);}renderPlays();render();}
 
 function checkLose(){if(S.over)return;const poison=(S.counters&&S.counters.poison)||0,cmdd=(S.counters&&S.counters.cmdDmg)||0;if(S.youLife<=0||poison>=10||cmdd>=21){if(S.youLife<=0&&S.inv.some(it=>it.id==="phoenix")&&!S.phoenixUsed){S.phoenixUsed=true;S.inv=S.inv.filter(it=>it.id!=="phoenix");S.youLife=1;log("loot",`🔥 <b>Phoenix Charm</b> catches you at <b>1</b>!`);render();return;}if(poison>=10)log("sys","☠ 10 poison counters - you fall.");if(cmdd>=21)log("sys","☠ 21 commander damage - you fall.");lose();}}
-function win(){if(S.over)return;S.over=true;recordResult(true);S.boss.life=0;const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);$("winLoot").textContent=`🎲 Spoils: ${lr.names.join(" + ")}!  ·  💰 +${gold} gold (account ${getGold()})`;$("victory").classList.add("show");$("victory").scrollIntoView({block:"nearest"});log("loot",`💰 You claim <b>${gold} gold</b> from the Tyrant's hoard (account balance ${getGold()}).`);log("sys",`🏆 <b>VAEL FALLS.</b>`);render();showCutscene(DUNGEON[2].epilogue,"The Warren Falls","Victory · Level I complete","Rest ▸",villainCutOpts(DUNGEON[2],DUNGEON[2].deathQuote));}
-function lose(){if(S.over)return;S.over=true;recordResult(false);$("defeat").classList.add("show");$("defeat").scrollIntoView({block:"nearest"});log("sys",`☠ <b>You have fallen.</b>`);render();}
+function win(){if(S.over)return;S.over=true;recordResult(true);S.boss.life=0;const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);log("loot",`💰 You claim <b>${gold} gold</b> from the Tyrant's hoard (account balance ${getGold()}).`);log("sys",`🏆 <b>VAEL FALLS.</b>`);render();const v=DUNGEON[2];showCutscene(v.epilogue,"The Warren Falls","Victory · Level I complete",null,{sigil:v.sigil||'☠',speaker:v.villain,quote:v.deathQuote||'',accent:villainAccent(v),eyebrowAcc:'var(--gold)',spoils:`🎲 Spoils: ${lr.names.join(" + ")}!  ·  💰 +${gold} gold (account ${getGold()})`,buttons:[{label:"↻ Descend again",on:restart,cls:"big ok"},{label:"Quit to Menu",on:quitToMenu,cls:"big"}]});}
+function lose(){if(S.over)return;S.over=true;recordResult(false);log("sys",`☠ <b>You have fallen.</b>`);render();const room=DUNGEON[S.roomIndex]||DUNGEON[0];showCutscene(["The enemy holds the field. The Warren keeps what it takes — but the gate opens again for those mad enough to return."],"The Warren Consumes You",`${room.name} · defeat`,null,{sigil:room.sigil||'☠',speaker:room.villain,quote:room.quote||'',accent:villainAccent(room),buttons:[{label:"↻ Try again",on:restart,cls:"big ember"},{label:"Quit to Menu",on:quitToMenu,cls:"big"}]});}
 function noAbilT(scope,id){const c=getCre(scope,id);if(c){c.noAbil=!c.noAbil;render();}}
 function sickMy(id){const c=S.my.creatures.find(x=>x.id===id);if(c){c.sick=!c.sick;render();}}
 function renderCounters(){if(!S.counters)return;const m={cPoison:'poison',cCmd:'cmdDmg',cEnergy:'energy',cExp:'experience'};for(const k in m){const el=$(k);if(el)el.textContent=S.counters[m[k]];}}
@@ -1178,7 +1171,7 @@ function cnt(k,n){S.counters[k]=Math.max(0,(S.counters[k]||0)+n);renderCounters(
 function rollDie(n){n=Math.max(2,n|0);const r=Math.floor(Math.random()*n)+1;const o=$("diceOut");if(o)o.innerHTML=`🎲 d${n} -> <b style="color:var(--gold)">${r}</b>`;log("sys",`🎲 d${n} -> <b>${r}</b>.`);}
 function coinFlip(){const h=Math.random()<.5;const o=$("diceOut");if(o)o.innerHTML=`🪙 <b style="color:var(--gold)">${h?'Heads':'Tails'}</b>`;log("sys",`🪙 ${h?'Heads':'Tails'}.`);}
 function setDiff(df){S.diff=df;$("diffNote").textContent=DIFF[df].note;[...$("diffSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.d===df));}
-function restart(){const df=S.diff;["victory","defeat","clearBanner","plays","resolver"].forEach(id=>$(id).classList.remove("show"));$("log").innerHTML="";fresh();S.diff=df;enterRoom(0,true);setDiff(df);_liveGame=true;render();log("sys",`New descent · ${df.toUpperCase()}.`);showCutscene(DUNGEON[0].intro,DUNGEON[0].villain,"Ember Gate · Level I","Enter the gate ▸",villainCutOpts(DUNGEON[0]));}
+function restart(){const df=S.diff;closeCutscene();["plays","resolver"].forEach(id=>{const e=$(id);if(e)e.classList.remove("show");});$("log").innerHTML="";fresh();S.diff=df;enterRoom(0,true);setDiff(df);_liveGame=true;render();log("sys",`New descent · ${df.toUpperCase()}.`);showCutscene(DUNGEON[0].intro,DUNGEON[0].villain,"Ember Gate · Level I","Enter the gate ▸",villainCutOpts(DUNGEON[0]));}
 $("diffSeg").addEventListener("click",e=>{if(!e.target.dataset.d)return;if(S.turn===0&&S.roomIndex===0&&!S.inv.length){const df=e.target.dataset.d;fresh();S.diff=df;enterRoom(0,true);setDiff(df);render();}else log("sys","Restart to change difficulty.");});
 $("resetBtn").addEventListener("click",restart);
 $("bossDmgIn")&&$("bossDmgIn").addEventListener("keydown",e=>{if(e.key==="Enter")dmgBoss();});
@@ -1213,11 +1206,24 @@ function setMenuArt(){const m=$("menu");const css=menuBgCss();if(m&&css)m.style.
 function villainCutOpts(room,quote){return room?{sigil:room.sigil||'\u2620',speaker:room.villain,quote:quote!==undefined?quote:(room.quote||''),accent:villainAccent(room)}:{};}
 function showCutscene(lines,title,eyebrow,btn,opts){if(!lines||!lines.length)return;opts=opts||{};
   $("cutSigil").innerHTML=opts.sigil?`<div class="cutsigil" style="--acc:${opts.accent||'var(--gold)'}">${opts.sigil}</div>`:"";
-  $("cutEyebrow").textContent=eyebrow||"";$("cutTitle").textContent=title||"";
+  $("cutEyebrow").textContent=eyebrow||"";$("cutEyebrow").style.color=opts.eyebrowAcc||"";$("cutTitle").textContent=title||"";
   $("cutLines").innerHTML=lines.map(l=>`<p>${l}</p>`).join("");
   $("cutQuote").innerHTML=opts.quote?`<div class="cutquote" style="--acc:${opts.accent||'var(--ember)'}"><span class="cq-mark">\u201C</span>${opts.quote}<span class="cq-mark">\u201D</span><div class="cq-by">\u2014 ${opts.speaker||''}</div></div>`:"";
-  $("cutBtn").textContent=btn||"Continue \u25B8";$("cutscene").classList.add("show");}
+  const sp=$("cutSpoils");if(opts.spoils){sp.innerHTML=opts.spoils;sp.style.display="";}else{sp.innerHTML="";sp.style.display="none";}
+  renderCutButtons(opts.buttons||[{label:btn||"Continue \u25B8",on:closeCutscene,cls:"big ok"}]);
+  $("cutscene").classList.add("show");}
+let _cutActs=[];
+function renderCutButtons(buttons){_cutActs=buttons.map(b=>b.on);
+  $("cutBtns").innerHTML=buttons.map((b,i)=>`<button class="${b.cls||'big ok'}"${i===0?' id="cutBtn"':''} style="width:auto;padding:11px 18px" onclick="cutAct(${i})">${b.label}</button>`).join("");}
+function cutAct(i){const fn=_cutActs[i];if(typeof fn==='function')fn();}
 function closeCutscene(){$("cutscene").classList.remove("show");}
+/* P1.5 \u2014 end-state popups reuse the cutbox. */
+function quitToMenu(){try{doAutosave();}catch(e){}closeCutscene();showMenu();}
+function showEncounterClear(){const room=DUNGEON[S.roomIndex]||DUNGEON[0];const nx=DUNGEON[S.roomIndex+1];
+  showCutscene([`${room.villain} is defeated.${nx?` Your next encounter in <b>${nx.name}</b> begins with an empty battlefield, but your life and loot carry over.`:''}`],
+    "Encounter Cleared",`\u269C ${room.name} cleared`,null,
+    {sigil:room.sigil||'\u2620',speaker:room.villain,quote:room.deathQuote||'',accent:villainAccent(room),eyebrowAcc:'var(--gold)',spoils:S._spoils||'',
+     buttons:[{label:"Descend \u2192",on:advance,cls:"big ok"},{label:"Save & quit to Menu",on:quitToMenu,cls:"big"}]});}
 const TUTORIAL_HTML=`
 <h2>❓ How Guff's Gauntlet works</h2>
 <p style="color:var(--bone-dim);font-style:italic">You play a real Commander game in your head or on the table. This app is your <b>opponent and your bookkeeper</b> — it runs the enemy and holds the shared state, but it never hides math and never changes your side without showing you.</p>
@@ -1280,13 +1286,14 @@ function migrate(s){if(!s||typeof s!=='object')return s;
   // defensive scalar backfills so a partial/corrupt save never throws in render()
   if(typeof s.youLife!=='number')s.youLife=40;if(typeof s.youMax!=='number')s.youMax=Math.max(40,s.youLife||40);
   if(typeof s.roomIndex!=='number'||!DUNGEON[s.roomIndex])s.roomIndex=0;if(typeof s.diff!=='string'||!DIFF[s.diff])s.diff='standard';
-  if(typeof s.notes!=='string')s.notes='';if(typeof s.bossMana!=='number')s.bossMana=0;if(typeof s.bossManaMax!=='number')s.bossManaMax=0;
+  if(typeof s.notes!=='string')s.notes='';if(typeof s._spoils!=='string')s._spoils='';if(typeof s.bossMana!=='number')s.bossMana=0;if(typeof s.bossManaMax!=='number')s.bossManaMax=0;
   s.combat=null;return s;}
 function continueLastGame(){const sv=DB.save;if(!sv||!sv.S){log("sys","No saved game to continue.");return;}
   S=migrate(JSON.parse(JSON.stringify(sv.S)));if(!DUNGEON[S.roomIndex])S.roomIndex=0;S._introShown=true;_liveGame=true;histReset();
-  ['victory','defeat','clearBanner','plays','resolver','overlay','library','store','cutscene','menu'].forEach(id=>{const e=$(id);if(e)e.classList.remove("show");});
+  ['plays','resolver','overlay','library','store','cutscene','menu'].forEach(id=>{const e=$(id);if(e)e.classList.remove("show");});
   setDiff(S.diff||'standard');setWarrenArt();render();
-  log("sys",`▶ Resumed your descent — <b>${DUNGEON[S.roomIndex].name}</b>, Turn ${S.turn}.`);}
+  log("sys",`▶ Resumed your descent — <b>${DUNGEON[S.roomIndex].name}</b>, Turn ${S.turn}.`);
+  if(S.paused&&!S.over)showEncounterClear();}
 function saveFileName(kind){const p=prof();const nm=(((p&&p.name)||'profile').replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,''))||'profile';let ts='save';try{const d=new Date();const pad=n=>String(n).padStart(2,'0');ts=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;}catch(e){}return `guffs-gauntlet${kind==='library'?'-library':''}_${nm}_${ts}.json`;}
 function newProfile(name){name=(name||'').trim();if(!name)return;if(!DB.profiles[name])DB.profiles[name]=blankProfile(name);DB.active=name;saveDB();renderMenu();}
 function switchProfile(name){if(DB.profiles[name]){DB.active=name;saveDB();renderMenu();}}
