@@ -19,7 +19,8 @@
 | &nbsp;&nbsp;P1.1 four cornice tabs + satchel popup | ✅ **DONE** (disposition locked, see §3b) |
 | &nbsp;&nbsp;P1.2 background covers viewport | ✅ **DONE** (user-confirmed) |
 | &nbsp;&nbsp;P1.3 kill white image edge | ✅ **DONE** (user-confirmed) |
-| &nbsp;&nbsp;P1.4–P1.9 visual polish | ⬜ (P1.4 next) |
+| &nbsp;&nbsp;P1.4 cinematic intro + menu drop | ✅ **DONE** (user-confirmed) |
+| &nbsp;&nbsp;P1.5–P1.9 visual polish | ⬜ (P1.5 next) |
 | &nbsp;&nbsp;**P1.10 Stack-as-popup** (NEW) | ⬜ |
 | **Phase 2 — Card creation & library UX** | ⬜ |
 | **Phase 3 — Commander & emblems** | ⬜ |
@@ -116,8 +117,9 @@ Regroup the body into four bordered, collapsible "cornice" frames per dispositio
 Diagnose & remove the white sliver on lore art / `openArt` popup (`display:block;max-width:100%;border:0;outline:0`; check baked-in margin / `object-fit`). **Accept:** no white edge desktop or phone. Touchpoints: `.loreframe img`, `openArt`.
 **Root cause (diagnosed by decoding the assets):** the 5 `ART` images are JPEGs mislabeled `data:image/png`, each with a **baked-in solid-white line** on one edge (right for grakk/murglax/vael/warren, bottom for merchant; 8–25px). Not a CSS issue. **Fixed at source:** cropped that edge + margin and re-encoded via Pillow (libjpeg `optimize`, q90), re-embedded as proper `data:image/jpeg`; all four edges re-scanned to 0.0% white. The interim CSS crops (`transform:scale` / `clip-path`) were reverted — images display at true size. `openArt` kept the harmless `max-width:100%`+`outline:0` cleanups. Disk 1.46→1.73 MB.
 
-### P1.4 — Menu entrance animation
+### P1.4 — Menu entrance animation ✅ DONE
 Menu falls from the top and opens up (keyframe on `.menubox` when `#menu` gains `.show`; respect reduced-motion). Touchpoints: `.overlay.menu`/`.menubox`, `showMenu`.
+**Done — expanded into a full first-boot cinematic** (per playtest feedback): (1) a black `#intro` curtain in the markup so the board never flashes on load; (2) a **center-out canvas fire** (`runBurn` + `buildFbm`, `#introfire`) — a fiery hole ignites mid-screen and burns outward with a ragged fbm edge, ember sparks, and additive bloom — turning transparent to reveal (3) the **warren art as the menu backdrop** (`menuBgCss`/`setMenuArt`, lighter scrim than `#bgart`, replacing the flat ink); then (4) the menubox **drops from above with a double rebound** (`menuBounce`). Orchestrated by `beginIntro()` (called at init instead of `showMenu`); `#menu.bootdrop` delays the drop until the burn clears (cleared in `startGame`). Reduced-motion path skips the curtain/fire and shows the menu instantly (guards against the global `animation:none` freezing the curtain). Tunables live as constants in `runBurn` (DUR/RMAX/RAGGED/MAXW/col ramp) + the bootdrop `animation-delay`.
 
 ### P1.5 — Victory & defeat as animated popups
 Replace inline `.banner` victory/defeat with big modal popups (reuse `.cutbox`): **encounter-cleared / victory / defeat** modes, the enemy's last quote (`deathQuote` on win, `quote` on loss), animate in, and a **"Save & quit to Menu"** button (`autosave()` then `showMenu`). Remove old banner markup. Touchpoints: banners, `bossDown`/`win`/`lose`, `showCutscene`. Depends: P0.2, P1.4.
