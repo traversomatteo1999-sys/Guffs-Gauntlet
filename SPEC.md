@@ -17,7 +17,8 @@
 | **Phase 0 — Foundations** (undo, save/continue, schema, logging) | ✅ **DONE** + committed + reviewed |
 | **Phase 1 — UI restructure** | 🔨 in progress |
 | &nbsp;&nbsp;P1.1 four cornice tabs + satchel popup | ✅ **DONE** (disposition locked, see §3b) |
-| &nbsp;&nbsp;P1.2–P1.9 visual polish | ⬜ next |
+| &nbsp;&nbsp;P1.2 background covers viewport | ✅ **DONE** (user-confirmed) |
+| &nbsp;&nbsp;P1.3–P1.9 visual polish | ⬜ (P1.3 next) |
 | &nbsp;&nbsp;**P1.10 Stack-as-popup** (NEW) | ⬜ |
 | **Phase 2 — Card creation & library UX** | ⬜ |
 | **Phase 3 — Commander & emblems** | ⬜ |
@@ -106,8 +107,9 @@
 ### P1.1 — Four labelled, collapsible cornice tabs ✅ DONE
 Regroup the body into four bordered, collapsible "cornice" frames per disposition **A1**. Implemented by reparenting existing panel nodes into tab shells (`buildTabs`), preserving every id (verified by id-diff). Collapse state on `S.ui.tabs` (`toggleTab`/`applyTabs`), persisted & restored. **Satchel popup** delivered here too (A2).
 
-### P1.2 — Background covers the whole screen
+### P1.2 — Background covers the whole screen ✅ DONE
 `#bgart` fully covers the viewport behind the game (`background-size:cover`, slight scale so edges never show; scrim/glow layers stretch to `inset:0`). **Accept:** no bare `#0b0c10` gap at any size / tall phone. Touchpoints: `#bgart` CSS, `warrenBgCss`/`setWarrenArt`.
+**Done:** art layer switched `auto 140% no-repeat fixed` → `cover no-repeat` (cover guarantees coverage at any aspect ratio); `#bgart` given `inset:-2%` overscan (the "slight scale"); dropped `attachment:fixed` (the iOS tall-phone bug — fixed-attachment is sized to document height there). User-confirmed across wide/tall/phone widths.
 
 ### P1.3 — Kill the white right-edge border on images
 Diagnose & remove the white sliver on lore art / `openArt` popup (`display:block;max-width:100%;border:0;outline:0`; check baked-in margin / `object-fit`). **Accept:** no white edge desktop or phone. Touchpoints: `.loreframe img`, `openArt`.

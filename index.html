@@ -20,7 +20,7 @@
   *{box-sizing:border-box;margin:0;padding:0}
   html{font-size:17px;background:#0b0c10} /* gentle global zoom; rem-based UI scales, px media-query breakpoints stay put */
   body{background:transparent;color:var(--bone);font-family:"Spectral",Georgia,serif;line-height:1.5;padding:clamp(12px,3vw,28px);min-height:100vh}
-  #bgart{position:fixed;inset:0;z-index:-1;background:#0b0c10} /* warren landscape + glows + scrim layered here via JS */
+  #bgart{position:fixed;inset:-2%;z-index:-1;background:#0b0c10} /* warren landscape + glows + scrim layered via JS; inset:-2% overscan + cover = no bare edge at any size/tall phone (P1.2) */
   .wrap{max-width:1140px;margin:0 auto}
   header{border:1px solid var(--line);border-radius:14px;padding:clamp(16px,3vw,24px);background:linear-gradient(180deg,rgba(217,164,65,.06),transparent 70%),var(--ink-2);position:relative;overflow:hidden}
   header::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.012) 0 2px,transparent 2px 9px);pointer-events:none}
@@ -1186,7 +1186,7 @@ function warrenBgCss(){if(typeof ART==='undefined'||!ART.warren)return"";return(
   "radial-gradient(1100px 560px at 75% -10%,rgba(224,83,61,.13),transparent 60%),"+
   "radial-gradient(900px 500px at -5% 110%,rgba(77,168,218,.13),transparent 60%),"+
   "linear-gradient(180deg,rgba(11,12,16,.80),rgba(11,12,16,.90) 45%,rgba(11,12,16,.97)),"+
-  "url('"+ART.warren+"') center top / auto 140% no-repeat fixed,#0b0c10");}
+  "url('"+ART.warren+"') center top / cover no-repeat,#0b0c10");}
 function setWarrenArt(){const bg=$("bgart");const css=warrenBgCss();if(bg&&css)bg.style.background=css;}
 function villainCutOpts(room,quote){return room?{sigil:room.sigil||'\u2620',speaker:room.villain,quote:quote!==undefined?quote:(room.quote||''),accent:villainAccent(room)}:{};}
 function showCutscene(lines,title,eyebrow,btn,opts){if(!lines||!lines.length)return;opts=opts||{};
