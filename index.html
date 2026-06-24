@@ -76,8 +76,24 @@
   .subh{font-family:"Space Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-top:12px;display:flex;justify-content:space-between;align-items:center}
   .rules{display:grid;gap:8px;margin-top:10px} .ruleperm{border:1px solid rgba(154,134,196,.45);border-radius:10px;background:rgba(154,134,196,.06);padding:9px 11px} .ruleperm.bossr{border-color:rgba(224,83,61,.45);background:rgba(224,83,61,.06)} .ruleperm .rn{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:.92rem;color:var(--purp)} .ruleperm.bossr .rn{color:var(--ember)} .ruleperm .rt{font-size:.78rem;color:var(--bone-dim);margin-top:2px} .ruleperm .acts{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
   .inv{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:9px;margin-top:10px} .item{border:1px solid var(--line);border-radius:11px;background:var(--ink-3);padding:9px 11px} .item.rare{border-color:rgba(217,164,65,.6)} .item .in{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:.92rem;display:flex;justify-content:space-between;gap:6px} .item .ir{font-family:"Space Mono",monospace;font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)} .item .it{font-size:.76rem;color:var(--bone-dim);margin:4px 0 6px}
-  .plays,.resolver{border:1px dashed var(--ember);border-radius:12px;padding:12px;margin-top:12px;background:rgba(224,83,61,.05);display:none} .plays.show,.resolver.show{display:block}
-  .plays h3,.resolver h3{font-family:"Grenze Gotisch",serif;font-size:1.12rem;margin-bottom:4px}
+  .resolver{border:1px dashed var(--ember);border-radius:12px;padding:12px;margin-top:12px;background:rgba(224,83,61,.05);display:none} .resolver.show{display:block}
+  .resolver h3{font-family:"Grenze Gotisch",serif;font-size:1.12rem;margin-bottom:4px}
+  /* P1.10: the Stack is a docked, auto-surfacing popup (not an inline panel) + a floating launcher */
+  .stackpop{position:fixed;inset:0;z-index:38;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(6,7,10,.82);backdrop-filter:blur(3px)}
+  .stackpop.show{display:flex;animation:fade .25s ease}
+  .stackmodal{display:flex;flex-direction:column;width:min(440px,94vw);max-height:88vh;border:1px solid var(--ember);border-radius:14px;background:var(--ink-2);box-shadow:0 26px 90px -16px rgba(0,0,0,.85);overflow:hidden;animation:spawn .3s ease}
+  .stackhead{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:9px 11px;border-bottom:1px solid var(--line);background:rgba(8,9,12,.45)}
+  .stackhead h3{font-family:"Grenze Gotisch",serif;font-size:1.12rem;margin:0}
+  .stackhacts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .stackbody{padding:10px 11px;overflow-y:auto;overscroll-behavior:contain;flex:1 1 auto}
+  .stacknote{font-size:.78rem;color:var(--bone-dim);margin:0 0 8px}
+  .stackmodal>.btnrow{padding:9px 11px;border-top:1px solid var(--line);margin:0;background:rgba(8,9,12,.3)}
+  .stackx{padding:6px 9px}
+  .stackfab{position:fixed;z-index:37;right:16px;bottom:16px;display:none;align-items:center;gap:7px;padding:11px 15px;border-radius:999px;background:linear-gradient(180deg,#2a2d38,#1a1d26);border:1px solid var(--ember);color:var(--gold);font-size:1.2rem;cursor:pointer;box-shadow:0 10px 26px -8px rgba(0,0,0,.75);transition:transform .15s,box-shadow .15s}
+  .stackfab .sfl{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:.95rem;letter-spacing:.02em}
+  .stackfab:hover{transform:translateY(-2px)} .stackfab.hot{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 22px -4px var(--gold)}
+  .stackfabn{position:absolute;top:-5px;right:-5px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--ember);color:#fff;font-family:"Space Mono",monospace;font-size:.66rem;font-weight:700;display:flex;align-items:center;justify-content:center;border:1px solid var(--ink)} .stackfabn:empty{display:none}
+  @media(max-width:560px){.stackpop{padding:10px} .stackmodal{width:100%;max-height:88vh} .stackfab{right:12px;bottom:12px}}
   .playcard{border:1px solid var(--line);border-radius:var(--r-tile);background:var(--ink-2);padding:10px 12px;margin:7px 0} .playcard.resolved{border-color:rgba(123,178,116,.4)} .playcard.countered{opacity:.4;text-decoration:line-through}
   .crea,.item,.libitem,.playcard{transition:border-color .15s} .crea:hover,.item:hover,.libitem:hover,.playcard:hover{border-color:var(--bone-dim)} /* P1.9: tiles get the same subtle hover the store/lore tiles already have */
   .playcard .ph{display:flex;align-items:center;gap:8px;flex-wrap:wrap} .playcard .pn{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:1rem}
@@ -413,12 +429,6 @@
       <button class="big" id="dmBtn" onclick="flowClick()">▶ Begin the first turn</button>
       <div class="btnrow" style="justify-content:center;margin-top:10px"><button class="big azor inline" onclick="openCast()">✦ Cast a spell</button></div>
     </div>
-    <div class="plays" id="plays">
-      <h3>🜟 The Stack <span class="tag">resolves top-down</span></h3>
-      <p style="font-size:.82rem;color:var(--bone-dim)">Your casts and the enemy's responses pile up here — the <b>TOP</b> resolves first. Enemy targeted spells auto-hit your tracked board on resolve; your permanents auto-enter your board.</p>
-      <div id="playCards"></div>
-      <div class="btnrow"><button class="big ember inline" onclick="toAssault()">Resolve remaining & continue ▸</button></div>
-    </div>
     <div class="resolver" id="resolver">
       <h3 id="combatTitle">Combat</h3>
       <div id="combatBox"></div>
@@ -428,6 +438,19 @@
   </div>
 
   <div class="log"><h2 style="font-family:'Grenze Gotisch'">📜 Dungeon Log</h2><div id="log"></div></div>
+
+  <!-- P1.10: the Stack — a docked, auto-surfacing popup that doesn't block the board, openable on demand via the launcher -->
+  <div class="stackpop" id="plays" role="dialog" aria-label="The Stack" onclick="if(event.target===this)hidePlays()">
+    <div class="stackmodal">
+      <div class="stackhead">
+        <h3>🜟 The Stack <span class="tag">top-down</span></h3>
+        <div class="stackhacts"><button class="mini azor" onclick="openCast()">✦ Cast a spell</button><button class="mini gold" onclick="quickCast()" title="Quick cast">⚡ Quick</button><button class="mini stackx" onclick="hidePlays()" aria-label="dismiss the stack">✕</button></div>
+      </div>
+      <div class="stackbody"><p class="stacknote">Your casts and the enemy's responses pile up here — the <b>TOP</b> resolves first. Enemy targeted spells auto-hit your tracked board on resolve; your permanents auto-enter your board.</p><div id="playCards"></div></div>
+      <div class="btnrow"><button class="big ember inline" onclick="toAssault()">Resolve remaining & continue ▸</button></div>
+    </div>
+  </div>
+  <button class="stackfab" id="stackFab" onclick="toggleStack()" title="The Stack — cast &amp; resolve" aria-label="Open the Stack">🜟<span class="sfl">Stack</span><span class="stackfabn" id="stackFabN"></span></button>
 
   <div class="overlay" id="overlay" onclick="if(event.target===this)closeOverlay()">
     <div class="modal"><button class="modalx" onclick="closeOverlay()">✕</button><div id="modalBody"></div></div>
@@ -856,7 +879,7 @@ function render(){
   const cf=$("creaField");cf.innerHTML="";const creaN=S.tokens.length+(S.cmd.inPlay?1:0);$("creaCount").textContent=creaN;$("creaEmpty").style.display=creaN?"none":"block";
   if(S.cmd.inPlay){const el=document.createElement("div");el.className="crea cmdcard"+(S.cmd.sick?" sick":"")+(S.cmd.tapped?" tapped":"");el.innerHTML=cmdFieldCard();cf.appendChild(el);}
   S.tokens.forEach(c=>{const el=document.createElement("div");el.className="crea"+(c.sick?" sick":"")+(c.tapped?" tapped":"");el.innerHTML=enemyCard(c);cf.appendChild(el);});
-  renderMy();renderAtkPick();renderCounters();
+  renderMy();renderAtkPick();renderCounters();renderStackFab();
   const rp=$("rulesPanel"),rf=$("rulesField");if(S.rules.length){rp.style.display="";rf.innerHTML="";S.rules.forEach(r=>{const el=document.createElement("div");el.className="ruleperm"+(r.side==="boss"?" bossr":"");el.innerHTML=`<div class="rn">${r.name}</div><div class="rt">${r.text}</div><div class="acts">${r.die?`<button class="mini gold" onclick="rollRule(${r.id})">Roll d${r.die}</button>`:''}<button class="mini ember" onclick="destroyRule(${r.id})">Destroy</button></div>`;rf.appendChild(el);});}else rp.style.display="none";
   const sc=$("satchelCount");if(sc)sc.textContent=S.inv.length?`${S.inv.length} item${S.inv.length===1?'':'s'}`:'empty';
   $("turnTag").textContent="Turn "+S.turn+" · "+DUNGEON[S.roomIndex].name;renderFlow();renderZones();renderMyZones();renderDeckColors();renderBoardTokens();const gn=$("goldNote");if(gn)gn.textContent="💰 "+getGold();
@@ -1022,7 +1045,11 @@ function enterPhase(){const ph=PHASES[S.phase];if(!S.plays.some(p=>p.status==='p
   else{if(ph==='untap')youUntap();else if(ph==='upkeep')youUpkeep();else if(ph==='draw')youDraw();else if(ph==='combat')youCombat();else if(ph==='end')youEnd();else youMain();}
   render();}
 function resolveLeftoverPlays(){S.plays.forEach((p,i)=>{if(p.status==='pending'&&!p._player)resolvePlay(i);});}
-function showPlays(){renderPlays();$("plays").classList.add("show");$("plays").scrollIntoView({block:"nearest"});}
+function showPlays(){renderPlays();$("plays").classList.add("show");renderStackFab();}
+function hidePlays(){$("plays").classList.remove("show");renderStackFab();}
+function toggleStack(){const pl=$("plays");if(pl&&pl.classList.contains("show"))hidePlays();else showPlays();}
+function quickCast(){openCast();} /* P2.4 will replace this with the fast cast path; routes to the full form for now */
+function renderStackFab(){const fab=$("stackFab");if(!fab)return;const live=_liveGame&&typeof S!=='undefined'&&S&&!S.over;const open=!!($("plays")&&$("plays").classList.contains("show"));const n=(S&&Array.isArray(S.plays))?S.plays.filter(p=>p&&p.status==='pending').length:0;fab.style.display=(live&&!open)?'flex':'none';fab.classList.toggle('hot',n>0);const b=$("stackFabN");if(b)b.textContent=n||'';}
 
 /* --- Vael's phases --- */
 function vaelUntap(){S.tokens.forEach(c=>{c.tapped=false;c.sick=false;});if(S.cmd.inPlay){S.cmd.tapped=false;S.cmd.sick=false;}S.bossManaMax=bossMana();S.bossMana=S.bossManaMax;log("dm",`Untap. ${ENs()} has <b>${S.bossMana}</b> mana this turn.`);}
