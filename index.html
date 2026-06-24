@@ -1157,14 +1157,18 @@ function removeStackItem(i){const o=S.plays[i];if(!o)return;if(o._pcmd&&o._pcmdO
 function openCast(){if(S.over)return;_editLid=null;_castCommander=false;$("modalBody").innerHTML=castFormHTML();$("overlay").classList.add("show");}
 /* P2.1: type-first — pick a type, focus the form to only that type's fields (readCastForm still reads them all; ctype gates what's used). */
 function setCastType(t){const sel=$("castType");if(sel)sel.value=t;const g=$("castGrid");if(g)g.className='castgrid ct-'+t;const tp=$("typePick");if(tp)[...tp.querySelectorAll('.typebtn')].forEach(b=>b.classList.toggle('on',b.dataset.t===t));}
+/* P2.2: colours via mana-symbol pills (reuse .manapip), not typed text. Form-local: pills toggle .on; readCastForm reads the .on ones. */
+function castColorPicker(id,sel){sel=sel||[];return `<div class="setbtns" id="${id}">${COLORS.map(col=>`<button type="button" class="manapip${sel.indexOf(col)>=0?' on':''}" data-col="${col}" style="--mc:${COLOR_HEX[col]}" onclick="this.classList.toggle('on')">${col}</button>`).join("")}</div>`;}
+function readColorPills(id){const el=$(id);return el?[...el.querySelectorAll('.manapip.on')].map(b=>b.dataset.col):[];}
+function setColorPills(id,arr){const el=$(id);if(!el)return;arr=arr||[];[...el.querySelectorAll('.manapip')].forEach(b=>b.classList.toggle('on',arr.indexOf(b.dataset.col)>=0));}
 function castFromLibSel(){const sel=$("castLibSel");if(!sel||sel.value===''){alert('Pick a saved card from the dropdown first.');return;}const i=parseInt(sel.value,10);closeOverlay();libCast(i);}
 function _setOn(el,on){if(!el)return;if(on)el.classList.add('on');else el.classList.remove('on');}
 function loadCastFromLibrary(idx){if(idx===''||idx==null)return;const p=prof();if(!p)return;const c=p.library[parseInt(idx,10)];if(!c)return;const pr=c.props||{};
   $("castType").value=c.ctype||'creature';$("castName").value=c.name||'';$("castP").value=c.p!=null?c.p:2;$("castT").value=c.t!=null?c.t:2;$("castLoy").value=c.loy!=null?c.loy:3;
-  $("castColor").value=(c.color||[]).join('');$("castKw").value=(c.kw||[]).join(', ');$("castNote").value=c.note||'';
+  setColorPills('castColorPills',c.color||[]);$("castKw").value=(c.kw||[]).join(', ');$("castNote").value=c.note||'';
   if(c.auto){$("castAutoEffect").value=c.auto.k;$("castAutoN").value=c.auto.n;}else{$("castAutoEffect").value='none';}
   _castCommander=!!c.commander;_setOn($("castCommander"),!!c.commander);_setOn($("castNoCounter"),!!c.cantCounter);_setOn($("castLeg"),!!pr.legendary);_setOn($("castTok"),!!pr.token);_setOn($("castDef"),!!pr.defender);
-  $("castProt").value=(pr.prot||[]).join('');$("castDies").value=pr.dies||'graveyard';
+  setColorPills('castProtPills',pr.prot||[]);$("castDies").value=pr.dies||'graveyard';
   $("castWardN").value=pr.cward?pr.cward.amt:0;$("castWardType").value=pr.cward?pr.cward.type:'mana';
   $("castAtkN").value=pr.catk?pr.catk.amt:0;$("castAtkType").value=pr.catk?pr.catk.type:'mana';_setOn($("castAtkTgt"),!!(pr.catk&&pr.catk.tgt));
   $("castAbilP").value=pr.abilP||0;$("castAbilA").value=pr.abilA||0;$("castMana").value=pr.mana||0;$("castStrength").value=pr.strength||'mid';
@@ -1179,7 +1183,7 @@ ${(()=>{const p=prof();const lib=p?p.library:[];return lib.length?`<div class="b
 <div class="lab" style="margin:4px 0 2px">2 · Details</div>
 <div class="castgrid ct-creature" id="castGrid">
   <label>Name<input type="text" id="castName" placeholder="Spell name"></label>
-  <label>Colors<input type="text" id="castColor" placeholder="R / UB / …" style="text-transform:uppercase"></label>
+  <label>Colors${castColorPicker('castColorPills')}</label>
   <label class="cf-cre">Power<input type="number" id="castP" value="2"></label>
   <label class="cf-cre">Toughness<input type="number" id="castT" value="2"></label>
   <label class="cf-pw">Loyalty (walker)<input type="number" id="castLoy" value="3"></label>
@@ -1188,7 +1192,7 @@ ${(()=>{const p=prof();const lib=p?p.library:[];return lib.length?`<div class="b
   <label>N<input type="number" id="castAutoN" value="3"></label>
   <label class="cf-perm" style="grid-column:1/-1;border-top:1px solid var(--line);padding-top:8px;color:var(--gold)">permanent properties — applied when it resolves onto your board</label>
   <label class="cf-perm" style="grid-column:1/-1">flags<div class="setbtns"><button type="button" class="tiny" id="castLeg" onclick="this.classList.toggle('on')">legendary</button><button type="button" class="tiny" id="castTok" onclick="this.classList.toggle('on')">token</button><button type="button" class="tiny cf-cre" id="castDef" onclick="this.classList.toggle('on')">defender</button></div></label>
-  <label class="cf-perm">Protection from<input type="text" id="castProt" placeholder="R / UB" style="text-transform:uppercase"></label>
+  <label class="cf-perm">Protection from${castColorPicker('castProtPills')}</label>
   <label class="cf-perm">Dies to<select id="castDies"><option value="graveyard">graveyard</option><option value="exile">exile</option></select></label>
   <label class="cf-perm">Ward — enemy pays<input type="number" id="castWardN" value="0"></label>
   <label class="cf-perm">ward type<select id="castWardType"><option value="mana">mana</option><option value="life">life</option></select></label>
@@ -1451,9 +1455,9 @@ function renderMenu(){
 /* ----- read the cast form into a reusable card config ----- */
 function _int(v,d){const n=parseInt(v,10);return isNaN(n)?d:n;}
 function readCastForm(){const type=$("castType").value;const defName={creature:'Creature',instant:'Instant',sorcery:'Sorcery',artifact:'Artifact',enchantment:'Enchantment',planeswalker:'Planeswalker'}[type]||'Spell';const name=(($("castName").value||'').trim())||defName;
-  const colors=($("castColor").value||'').toUpperCase().split('').filter(c=>'WUBRGC'.indexOf(c)>=0);const wn=parseInt($("castWardN").value,10)||0,an=parseInt($("castAtkN").value,10)||0;
+  const colors=readColorPills('castColorPills');const wn=parseInt($("castWardN").value,10)||0,an=parseInt($("castAtkN").value,10)||0;
   const cfg={name,ctype:type,note:($("castNote").value||'').trim(),color:colors,cantCounter:$("castNoCounter").classList.contains('on'),commander:($("castCommander")?$("castCommander").classList.contains('on'):_castCommander),p:_int($("castP").value,1),t:_int($("castT").value,1),loy:parseInt($("castLoy").value,10)||3,kw:($("castKw").value||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean),
-    props:{legendary:$("castLeg").classList.contains('on'),token:$("castTok").classList.contains('on'),defender:$("castDef").classList.contains('on'),prot:($("castProt").value||'').toUpperCase().split('').filter(c=>'WUBRGC'.indexOf(c)>=0),cward:wn>0?{amt:wn,type:$("castWardType").value}:null,catk:an>0?{amt:an,type:$("castAtkType").value,tgt:$("castAtkTgt").classList.contains('on')}:null,dies:$("castDies").value,abilP:parseInt($("castAbilP").value,10)||0,abilA:parseInt($("castAbilA").value,10)||0,mana:parseInt($("castMana").value,10)||0,strength:$("castStrength").value}};
+    props:{legendary:$("castLeg").classList.contains('on'),token:$("castTok").classList.contains('on'),defender:$("castDef").classList.contains('on'),prot:readColorPills('castProtPills'),cward:wn>0?{amt:wn,type:$("castWardType").value}:null,catk:an>0?{amt:an,type:$("castAtkType").value,tgt:$("castAtkTgt").classList.contains('on')}:null,dies:$("castDies").value,abilP:parseInt($("castAbilP").value,10)||0,abilA:parseInt($("castAbilA").value,10)||0,mana:parseInt($("castMana").value,10)||0,strength:$("castStrength").value}};
   const ae=$("castAutoEffect").value,n=parseInt($("castAutoN").value,10)||0;if(ae!=='none')cfg.auto={k:ae,n};return cfg;}
 
 /* ----- library ----- */
