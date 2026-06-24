@@ -14,7 +14,7 @@
 <link rel="icon" type="image/png" href="icons/favicon-64.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@500;700;900&family=Spectral:ital,wght@0,400;0,600;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@500;700;900&family=IM+Fell+English:ital@0;1&family=Spectral:ital,wght@0,400;0,600;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{--ink:#14161d;--ink-2:#1d2029;--ink-3:#252934;--bone:#e8e1cf;--bone-dim:#a7a293;--azor:#4da8da;--ember:#e0533d;--gold:#d9a441;--line:#2c303c;--ok:#7bb274;--purp:#9a86c4;}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -81,9 +81,12 @@
   .playcard .pt{font-size:.86rem;color:var(--bone-dim);margin:6px 0} .playcard .flav{font-size:.76rem;font-style:italic;color:#7d7869;margin-top:3px} .playcard .die{font-family:"Space Mono",monospace;color:var(--gold);font-size:.8rem} .playcard .pacts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
   .blockrow{border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin:7px 0;background:var(--ink-2)} .blockrow .ba{font-family:"Grenze Gotisch",serif;font-weight:700} .blockrow .assigned{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
   .chip{font-family:"Space Mono",monospace;font-size:.64rem;padding:3px 7px;border:1px solid var(--azor);border-radius:7px;color:var(--azor);background:rgba(77,168,218,.07)} .chip b{cursor:pointer;margin-left:5px;color:var(--ember)}
-  .log{margin-top:12px;border:1px solid var(--line);border-radius:14px;background:#101218;padding:12px clamp(12px,2.2vw,18px);max-height:300px;overflow-y:auto}
-  .entry{font-size:.85rem;padding:6px 0;border-bottom:1px solid rgba(44,48,60,.6);display:flex;gap:10px} .entry:last-child{border-bottom:none} .entry .t{font-family:"Space Mono",monospace;font-size:.56rem;color:var(--bone-dim);min-width:40px;padding-top:3px}
-  .entry.dm .x{color:var(--ember)} .entry.you .x{color:var(--azor)} .entry.sys .x{color:var(--gold)} .entry.loot .x{color:var(--gold)} .entry.cbt .x{color:var(--bone)} .entry .x b{font-family:"Grenze Gotisch",serif;font-weight:700}
+  /* P1.6: the Dungeon Log is an old, fire-consumed parchment — darkened & charred at the edges to sit deep in the dark UI; inked IM Fell serif entries, a faint Space-Mono stamp, body ink kept AA on the central field */
+  .log{margin-top:12px;border:1px solid #2e2210;border-radius:14px;background:radial-gradient(58% 52% at 0% 0%,rgba(18,11,3,.58),transparent 48%),radial-gradient(62% 54% at 100% 100%,rgba(18,11,3,.54),transparent 50%),radial-gradient(46% 42% at 100% 0%,rgba(22,14,5,.42),transparent 55%),radial-gradient(42% 38% at 0% 100%,rgba(22,14,5,.40),transparent 55%),radial-gradient(34% 26% at 72% 44%,rgba(48,32,13,.18),transparent 62%),repeating-linear-gradient(96deg,rgba(60,44,22,.05) 0 2px,transparent 2px 5px),linear-gradient(180deg,#c2ad74,#a8945c);padding:13px clamp(13px,2.3vw,19px);max-height:300px;overflow-y:auto;color:#241b0f;box-shadow:inset 0 0 60px -6px rgba(14,8,1,.7),inset 0 0 22px -4px rgba(10,6,1,.5),inset 0 0 0 1px rgba(20,12,4,.45)}
+  .log h2{color:#4a3410;border-bottom:1px solid rgba(28,18,7,.42);padding-bottom:7px;margin-bottom:9px;text-shadow:0 1px 0 rgba(255,244,216,.14)}
+  .entry{font-family:"IM Fell English",Spectral,Georgia,serif;font-size:.95rem;line-height:1.5;padding:6px 0;border-bottom:1px solid rgba(28,18,7,.22);display:flex;gap:10px;color:#241b0f} .entry:last-child{border-bottom:none}
+  .entry .t{font-family:"Space Mono",monospace;font-size:.56rem;color:#6e5c36;min-width:40px;padding-top:5px;letter-spacing:.06em}
+  .entry.dm .x{color:#5e1a0c} .entry.you .x{color:#123a52} .entry.sys .x{color:#523609} .entry.loot .x{color:#56340a} .entry.cbt .x{color:#241b0f} .entry .x b{font-family:"Grenze Gotisch",serif;font-weight:700;color:inherit}
   details summary{cursor:pointer;font-family:"Space Mono",monospace;font-size:.76rem;color:var(--gold);list-style:none} details summary::-webkit-details-marker{display:none} details[open] summary{margin-bottom:9px} .help ol{margin-left:18px;font-size:.86rem;color:var(--bone-dim)} .help li{margin:6px 0} .help b{color:var(--bone)}
   .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px} .controls .seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden} .controls .seg button{border:none;border-radius:0;border-right:1px solid var(--line)} .controls .seg button:last-child{border-right:none} .controls .seg button.on{background:var(--gold);color:var(--ink);font-weight:700} .controls .lab{font-family:"Space Mono",monospace;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--bone-dim)}
   .loot{font-family:Spectral;color:var(--gold);font-size:1.05rem;margin:8px 0;font-style:italic}
@@ -1485,7 +1488,7 @@ function satchelHTML(){const items=(S&&S.inv)||[];if(!items.length)return `<h2>�
 
 loadDB();
 fresh();setDiff("standard");render();setWarrenArt();setMenuArt();buildTabs();applyTabs();
-log("sys",`Welcome to the Warren of Embers. Pick a profile and build your card library from the menu, then <b>Descend</b>. In-game: set your deck colors, log your board, and walk the phases with <b>Continue ▸</b>. Tap <b>☰ Menu</b> any time to return here.`);
+log("sys",`The Warren breathes cold and ash from the dark below. Your chronicle begins here — every blow, spell, and bargain is remembered.`);
 beginIntro();
 try{if(typeof navigator!=='undefined'&&navigator.serviceWorker&&typeof location!=='undefined'&&/^https?:/.test(location.protocol)){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}}catch(e){}
 
