@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@500;700;900&family=IM+Fell+English:ital@0;1&family=Spectral:ital,wght@0,400;0,600;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
-  :root{--ink:#14161d;--ink-2:#1d2029;--ink-3:#252934;--bone:#e8e1cf;--bone-dim:#a7a293;--azor:#4da8da;--ember:#e0533d;--gold:#d9a441;--line:#2c303c;--ok:#7bb274;--purp:#9a86c4;}
+  :root{--ink:#14161d;--ink-2:#1d2029;--ink-3:#252934;--bone:#e8e1cf;--bone-dim:#a7a293;--azor:#4da8da;--ember:#e0533d;--gold:#d9a441;--line:#2c303c;--ok:#7bb274;--purp:#9a86c4;--r-tile:11px;--r-ctl:9px;}
   *{box-sizing:border-box;margin:0;padding:0}
   html{font-size:17px;background:#0b0c10} /* gentle global zoom; rem-based UI scales, px media-query breakpoints stay put */
   body{background:transparent;color:var(--bone);font-family:"Spectral",Georgia,serif;line-height:1.5;padding:clamp(12px,3vw,28px);min-height:100vh}
@@ -40,6 +40,7 @@
   .tag.live{color:var(--ember);border-color:rgba(224,83,61,.5)} .tag.prep{color:var(--azor);border-color:rgba(77,168,218,.5)}
   .dial{display:flex;align-items:baseline;gap:9px;margin:8px 0 4px} .dial .num{font-family:"Space Mono",monospace;font-weight:700;font-size:2.2rem;line-height:1}
   .you .num{color:var(--azor)} .boss .num{color:var(--ember)} .pw .num{color:var(--gold)} .dial .of{color:var(--bone-dim);font-family:"Space Mono",monospace;font-size:.9rem}
+  .panel.you{display:flex;flex-direction:column;gap:12px} .panel.you>*{margin-top:0;margin-bottom:0} .panel.you #pcmdBox{margin-top:auto;margin-bottom:26px} /* even breathing room; commander box drops near the bottom to level with the enemy's */
   .bar{height:8px;border-radius:6px;background:var(--ink-3);overflow:hidden;border:1px solid var(--line)} .bar>i{display:block;height:100%;transition:width .4s ease}
   .you .bar>i{background:linear-gradient(90deg,#2f6f93,var(--azor))} .boss .bar>i{background:linear-gradient(90deg,#7e2b1e,var(--ember))} .pw .bar>i{background:linear-gradient(90deg,#8a6a22,var(--gold))}
   .pips{display:flex;gap:5px;align-items:center;margin:7px 0;flex-wrap:wrap} .pip{width:13px;height:13px;border-radius:50%;background:var(--gold);border:1px solid rgba(0,0,0,.4)} .pip.off{background:var(--ink-3);opacity:.4}
@@ -50,7 +51,7 @@
   button.mini{padding:4px 8px;font-size:.66rem} button.tiny{padding:3px 6px;font-size:.6rem}
   button.gold{border-color:var(--gold);color:var(--gold)} button.ember{border-color:var(--ember);color:var(--ember)} button.azor{border-color:var(--azor);color:var(--azor)} button.ok{border-color:var(--ok);color:var(--ok)} button.on{background:var(--gold);color:var(--ink);font-weight:700;border-color:var(--gold)}
   button.atk{border-color:var(--azor)} button.atk.sel{background:var(--azor);color:var(--ink);font-weight:700}
-  .big{width:100%;padding:14px;font-size:.9rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:linear-gradient(180deg,#2a2d38,#1a1d26);border-color:var(--ember);color:var(--bone)} .big:hover{box-shadow:0 0 0 1px var(--ember),0 8px 22px -10px rgba(224,83,61,.6)} .big:disabled{border-color:var(--line);box-shadow:none}
+  .big{width:100%;padding:14px;font-size:.9rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:linear-gradient(180deg,#2a2d38,#1a1d26);border-color:var(--ember);color:var(--bone)} .big:hover{box-shadow:0 0 0 1px var(--ember),0 8px 22px -10px rgba(224,83,61,.6)} .big:disabled{border-color:var(--line);box-shadow:none} button.big.inline{width:auto;padding:11px 16px} /* P1.9: inline primary — one source of truth */
   .setbtns{display:flex;gap:4px;flex-wrap:wrap}
   input[type=number]{font-family:"Space Mono",monospace;font-size:.88rem;width:54px;padding:5px 7px;background:var(--ink);color:var(--bone);border:1px solid var(--line);border-radius:7px}
   input[type=text]{font-family:Spectral;font-size:.85rem;padding:5px 8px;background:var(--ink);color:var(--bone);border:1px solid var(--line);border-radius:7px}
@@ -71,14 +72,14 @@
   .badges{display:flex;gap:3px;flex-wrap:wrap;margin-top:3px} .badge{font-family:"Space Mono",monospace;font-size:.52rem;padding:1px 5px;border-radius:5px;border:1px solid var(--line);color:var(--bone-dim);cursor:pointer} .badge.tap{color:var(--gold)} .badge.no{color:var(--ember)} .badge.kw{color:var(--azor);border-color:rgba(77,168,218,.4)}
   .crea .ctr{display:flex;gap:3px;margin-top:5px;flex-wrap:wrap} .crea .ctr button{padding:2px 5px;font-size:.54rem} .crea select{font-size:.58rem;padding:2px 4px;margin-top:4px}
   .empty{color:var(--bone-dim);font-style:italic;margin-top:8px}
-  .brow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:9px;padding:7px 9px;margin-top:6px;background:var(--ink-3)} .brow.tapped{opacity:.7} .brow .lab{font-family:"Space Mono",monospace;font-size:.58rem;color:var(--bone-dim)}
+  .brow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:9px;padding:7px 9px;margin-top:6px;background:var(--ink-3)} .brow .lab{font-family:"Space Mono",monospace;font-size:.58rem;color:var(--bone-dim)}
   .subh{font-family:"Space Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-top:12px;display:flex;justify-content:space-between;align-items:center}
   .rules{display:grid;gap:8px;margin-top:10px} .ruleperm{border:1px solid rgba(154,134,196,.45);border-radius:10px;background:rgba(154,134,196,.06);padding:9px 11px} .ruleperm.bossr{border-color:rgba(224,83,61,.45);background:rgba(224,83,61,.06)} .ruleperm .rn{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:.92rem;color:var(--purp)} .ruleperm.bossr .rn{color:var(--ember)} .ruleperm .rt{font-size:.78rem;color:var(--bone-dim);margin-top:2px} .ruleperm .acts{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
   .inv{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:9px;margin-top:10px} .item{border:1px solid var(--line);border-radius:11px;background:var(--ink-3);padding:9px 11px} .item.rare{border-color:rgba(217,164,65,.6)} .item .in{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:.92rem;display:flex;justify-content:space-between;gap:6px} .item .ir{font-family:"Space Mono",monospace;font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)} .item .it{font-size:.76rem;color:var(--bone-dim);margin:4px 0 6px}
-  .plays,.resolver,.atkpanel{border:1px dashed var(--ember);border-radius:12px;padding:12px;margin-top:12px;background:rgba(224,83,61,.05);display:none} .plays.show,.resolver.show,.atkpanel.show{display:block}
-  .atkpanel{border-color:var(--azor);background:rgba(77,168,218,.05)}
-  .plays h3,.resolver h3,.atkpanel h3{font-family:"Grenze Gotisch",serif;font-size:1.12rem;margin-bottom:4px}
-  .playcard{border:1px solid var(--line);border-radius:10px;background:var(--ink-2);padding:10px 12px;margin:7px 0} .playcard.resolved{border-color:rgba(123,178,116,.4)} .playcard.countered{opacity:.4;text-decoration:line-through}
+  .plays,.resolver{border:1px dashed var(--ember);border-radius:12px;padding:12px;margin-top:12px;background:rgba(224,83,61,.05);display:none} .plays.show,.resolver.show{display:block}
+  .plays h3,.resolver h3{font-family:"Grenze Gotisch",serif;font-size:1.12rem;margin-bottom:4px}
+  .playcard{border:1px solid var(--line);border-radius:var(--r-tile);background:var(--ink-2);padding:10px 12px;margin:7px 0} .playcard.resolved{border-color:rgba(123,178,116,.4)} .playcard.countered{opacity:.4;text-decoration:line-through}
+  .crea,.item,.libitem,.playcard{transition:border-color .15s} .crea:hover,.item:hover,.libitem:hover,.playcard:hover{border-color:var(--bone-dim)} /* P1.9: tiles get the same subtle hover the store/lore tiles already have */
   .playcard .ph{display:flex;align-items:center;gap:8px;flex-wrap:wrap} .playcard .pn{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:1rem}
   .cost{font-family:"Space Mono",monospace;font-size:.62rem;color:var(--gold);border:1px solid rgba(217,164,65,.4);border-radius:6px;padding:1px 6px}
   .typechip{font-family:"Space Mono",monospace;font-size:.54rem;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:6px;border:1px solid var(--line);color:var(--bone-dim)} .typechip.creature{color:var(--ok)} .typechip.instant{color:var(--azor)} .typechip.sorcery{color:var(--ember)} .typechip.enchant{color:var(--purp)}
@@ -101,7 +102,7 @@
   .phasechips{display:flex;gap:4px;flex-wrap:wrap;margin:8px 0} .phasechip{font-family:"Space Mono",monospace;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--bone-dim);opacity:.55} .phasechip.past{opacity:.85;color:var(--ok);border-color:rgba(123,178,116,.4)} .phasechip.on{opacity:1;color:var(--ink);background:var(--gold);border-color:var(--gold);font-weight:700}
   .flowmana{font-family:"Space Mono",monospace;font-size:.74rem;color:var(--bone-dim);margin-bottom:6px} .flowmana b{color:var(--gold);font-size:1.05rem}
   .zones{display:grid;gap:9px;margin-top:10px} @media(min-width:680px){.zones.duoz{grid-template-columns:1fr 1fr}}
-  .zone{border:1px solid var(--line);border-radius:10px;background:var(--ink-3);padding:8px 10px} .zone .zh{font-family:"Space Mono",monospace;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--bone-dim);display:flex;justify-content:space-between;margin-bottom:5px} .zone.ex .zh{color:var(--purp)}
+  .zone{border:1px solid var(--line);border-radius:var(--r-tile);background:var(--ink-3);padding:8px 10px} .zone .zh{font-family:"Space Mono",monospace;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--bone-dim);display:flex;justify-content:space-between;margin-bottom:5px} .zone.ex .zh{color:var(--purp)}
   .zchips{display:flex;gap:4px;flex-wrap:wrap} .zchip{font-family:"Space Mono",monospace;font-size:.58rem;padding:2px 7px;border-radius:6px;border:1px solid var(--line);color:var(--bone-dim);display:inline-flex;align-items:center;gap:5px} .zchip.ex{border-color:rgba(154,134,196,.45);color:var(--purp)} .zchip .zx{cursor:pointer;color:var(--purp)} .zchip .zg{cursor:pointer;color:var(--bone-dim)}
   .deckmeta{display:flex;gap:14px;font-family:"Space Mono",monospace;font-size:.66rem;color:var(--bone-dim);margin-bottom:2px} .deckmeta b{color:var(--azor)}
   .crea.cmdcard{border-color:var(--ember);background:linear-gradient(180deg,rgba(224,83,61,.10),var(--ink-3))}
@@ -112,7 +113,6 @@
   .drawer{margin-top:7px;border-top:1px dashed var(--line);padding-top:7px;display:flex;flex-direction:column;gap:5px} .drow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:.66rem;color:var(--bone-dim)} .dlab{font-family:"Space Mono",monospace;font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:var(--bone-dim);min-width:84px} .drawer .setbtns{display:flex;gap:4px;flex-wrap:wrap}
   .drawtoggle{margin-top:7px;width:100%;background:var(--ink-2);color:var(--bone-dim);border:1px solid var(--line)} .drawtoggle:hover{color:var(--bone)}
   .crea.phased{opacity:.5;border-style:dashed} .brow.tapped{opacity:.55}
-  .taxnote{color:var(--azor);font-size:.78rem}
   .badge.cmd{color:var(--gold);border-color:rgba(217,164,65,.5)} .badge.leg{color:var(--purp);border-color:rgba(154,134,196,.45)} .badge.tok{color:var(--bone-dim)} .badge.ph{color:var(--azor);border-color:rgba(77,168,218,.45)} .badge.ex{color:var(--purp);border-color:rgba(154,134,196,.45)} .badge.prot{color:var(--azor);border-color:rgba(77,168,218,.45)} .badge.mana{color:var(--gold)} .badge.tax{color:var(--ember);border-color:rgba(224,83,61,.45)}
   .overlay{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(6,7,10,.78);backdrop-filter:blur(3px)}
   #overlay{z-index:60}
@@ -126,7 +126,7 @@
   .modal p,.modal li{font-family:Spectral;color:var(--bone);line-height:1.5;font-size:.93rem}
   .modal ol,.modal ul{padding-left:20px;margin:6px 0} .modal li{margin:5px 0}
   .loreh{color:var(--gold)}
-  .loreent{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0;background:var(--ink)}
+  .loreent{border:1px solid var(--line);border-radius:var(--r-tile);padding:12px 14px;margin:10px 0;background:var(--ink)}
   .loreent.cur{border-color:var(--gold);background:rgba(217,164,65,.06)}
   .loreent.has-art{display:flex;gap:14px;align-items:flex-start}
   .loreent .lorebody{flex:1;min-width:0}
@@ -155,7 +155,7 @@
   .storecat{font-family:'Space Mono',monospace;font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:15px 0 7px;border-bottom:1px solid var(--line);padding-bottom:5px;display:flex;align-items:center;gap:7px}
   .storecat::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold)}
   .storegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(224px,1fr));gap:10px}
-  .storeitem{display:flex;gap:10px;border:1px solid var(--line);border-radius:13px;background:var(--ink-3);padding:10px 11px;transition:.15s}
+  .storeitem{display:flex;gap:10px;border:1px solid var(--line);border-radius:var(--r-tile);background:var(--ink-3);padding:10px 11px;transition:.15s}
   .storeitem:hover{border-color:var(--bone-dim);transform:translateY(-1px)}
   .storeitem.uncommon{border-color:rgba(77,168,218,.32)}
   .storeitem.rare{border-color:rgba(217,164,65,.6);background:linear-gradient(180deg,rgba(217,164,65,.07),var(--ink-3))}
@@ -195,11 +195,11 @@
   #intro{position:fixed;inset:0;z-index:80;background:#050407;pointer-events:none} /* first-paint black backing; goes transparent once the fire canvas takes over */
   #introfire{position:fixed;inset:0;z-index:81;pointer-events:none;display:block} /* P1.4 canvas fire-dissolve */
   .menugrid{display:grid;gap:12px;margin-top:14px}@media(min-width:640px){.menugrid{grid-template-columns:1fr 1fr}}
-  .menucard{border:1px solid var(--line);border-radius:12px;background:var(--ink-3);padding:12px 14px}
+  .menucard{border:1px solid var(--line);border-radius:var(--r-tile);background:var(--ink-3);padding:12px 14px}
   .menurec{font-family:'Space Mono';font-size:.82rem;margin-top:10px}
   .libmodal{max-width:780px}
   .liblist{display:grid;gap:8px;margin-top:8px}
-  .libitem{border:1px solid var(--line);border-radius:10px;background:var(--ink-3);padding:8px 10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .libitem{border:1px solid var(--line);border-radius:var(--r-tile);background:var(--ink-3);padding:8px 10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
   .libitem .li-h{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .libitem .li-n{font-family:'Grenze Gotisch',serif;font-weight:700}
   .libitem .li-a{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
@@ -234,6 +234,10 @@
     .node{min-width:74px} .node .dot{width:30px;height:30px} .node .nm{font-size:.56rem}
     .storegrid{grid-template-columns:1fr}
     .cutbox{padding:22px 16px} .cutbox h2{font-size:1.4rem}
+    html,body{overflow-x:hidden} .wrap{max-width:100%} /* P1.9: no full-page horizontal scroll from a long token in a chip/input */
+    .zchip,.chip,.badge,.entry .x{word-break:break-word;overflow-wrap:anywhere}
+    .controls{gap:6px;margin-top:10px} .deckmeta{gap:10px}
+    .btnrow>.manaline:first-child{flex:1 0 100%;margin-bottom:2px} /* long control labels take their own line above the buttons */
   }
   @media (max-width:480px){
     html{font-size:16px} /* ease the zoom on the smallest phones so nothing crowds */
@@ -242,6 +246,11 @@
     .storegrid{grid-template-columns:1fr}
     .track{gap:0} .link{min-width:10px}
     .dial .num{font-size:1.9rem}
+    .brow input[type=text]{flex:1 1 120px;width:auto!important;min-width:0} /* fluid name/note inputs instead of fixed px */
+    .crea .ctr{gap:5px}
+  }
+  @media (max-width:380px){ /* P1.9: reclaim width/height on the smallest phones */
+    body{padding:8px} .panel{padding:10px} .tabbody{padding:10px}
   }
   /* ===== PHASE 1 — cornice tabs ===== */
   .tab{border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,rgba(217,164,65,.045),transparent 55%),var(--ink-2);margin-top:14px;overflow:hidden}
@@ -285,7 +294,7 @@
   <div class="controls">
     <span class="lab">Difficulty</span>
     <div class="seg" id="diffSeg"><button data-d="easy">Easy</button><button data-d="standard" class="on">Standard</button><button data-d="brutal">Brutal</button></div>
-    <button class="mini" id="resetBtn">↺ Restart Dungeon</button><button class="mini azor" onclick="undo()">↩ Undo</button><button class="mini gold" onclick="openTutorial()">❓ Tutorial</button><button class="mini" onclick="openLore()">📖 Lore</button><button class="mini gold" onclick="openLibrary()">🃏 Library</button><button class="mini azor" onclick="showMenu()">☰ Menu</button><span class="goldpill" id="goldNote" style="align-self:center">💰 0</span><span class="lab" id="diffNote">standard</span>
+    <button class="mini ember" id="resetBtn">↺ Restart Dungeon</button><button class="mini azor" onclick="undo()">↩ Undo</button><button class="mini gold" onclick="openTutorial()">❓ Tutorial</button><button class="mini" onclick="openLore()">📖 Lore</button><button class="mini gold" onclick="openLibrary()">🃏 Library</button><button class="mini azor" onclick="showMenu()">☰ Menu</button><span class="goldpill" id="goldNote" style="align-self:center">💰 0</span><span class="lab" id="diffNote">standard</span>
   </div>
 
   <section class="tab" id="tab-info"><button class="tabhead" onclick="toggleTab('info')"><span class="tablabel">⟡ Info <span class="tabnote">you · foe · log</span></span><span class="tabchev">▾</span></button><div class="tabbody" id="tb-info"></div></section>
@@ -346,7 +355,7 @@
 
   <div class="panel" style="margin-top:12px">
     <h2>🛡 Your board <span class="tag">the enemy reads &amp; fights this</span></h2>
-    <div class="btnrow" style="margin-top:4px"><button class="azor" style="padding:11px 20px;font-size:.88rem;font-weight:700;letter-spacing:.03em" onclick="openCast()">✦ Cast a spell</button><span class="manaline">→ onto the Stack; permanents resolve onto this board</span></div>
+    <div class="btnrow" style="margin-top:4px"><button class="big azor inline" onclick="openCast()">✦ Cast a spell</button><span class="manaline">→ onto the Stack; permanents resolve onto this board</span></div>
     <div class="btnrow" style="margin-top:4px"><span class="lab">Deploy token</span><select id="boardTokSel" style="max-width:180px"></select><input type="number" id="boardTokQty" min="1" value="1" style="width:48px"><button class="ok" style="padding:8px 14px;font-weight:700" onclick="deploySavedToken()">Deploy ×N</button><button class="tiny" onclick="openLibrary()">＋ make / manage</button></div>
     <div class="cmdbox" id="pcmdBox" style="display:none"></div>
     <div class="subh"><span>Creatures</span><button class="tiny ok" onclick="addC()">+ creature</button></div>
@@ -360,9 +369,9 @@
   <!-- YOUR ATTACK -->
   <div class="panel" style="margin-top:12px">
     <h2>🗡 Your attack <span class="tag">pick attackers · enemy blocks</span></h2>
-    <p class="manaline" id="atkHint">Tap an attacker to select it, then Swing. Tapped/defender creatures can't attack.</p>
+    <p class="manaline">Tap an attacker to select it, then Swing. Tapped/defender creatures can't attack.</p>
     <div class="creatures" id="atkPick"></div>
-    <div class="btnrow"><button class="big azor" style="width:auto;padding:11px 16px" onclick="swing()">⚔ Swing! (enemy declares blocks)</button></div>
+    <div class="btnrow"><button class="big azor inline" onclick="swing()">⚔ Swing! (enemy declares blocks)</button></div>
   </div>
 
   <div class="panel" id="myZonesPanel" style="margin-top:12px;display:none">
@@ -376,16 +385,13 @@
   <div class="panel" id="rulesPanel" style="margin-top:12px;display:none">
     <h2>♾ Enchantments in play <span class="tag">persist until destroyed</span></h2><div class="rules" id="rulesField"></div>
   </div>
-  <div class="panel" id="invPanel" style="margin-top:12px;display:none">
-    <h2>🎒 Satchel <span class="tag" id="invCount">empty</span> <span class="tag">spent at the end of each descent</span></h2><div class="inv" id="invField"></div>
-  </div>
   <div class="panel" style="margin-top:12px">
     <h2>🧰 Tools <span class="tag">dice · coin · counters · notes</span></h2>
     <div class="btnrow"><span class="lab">Dice</span><button class="mini" onclick="rollDie(4)">d4</button><button class="mini" onclick="rollDie(6)">d6</button><button class="mini" onclick="rollDie(8)">d8</button><button class="mini" onclick="rollDie(10)">d10</button><button class="mini" onclick="rollDie(12)">d12</button><button class="mini" onclick="rollDie(20)">d20</button><input type="number" id="dieN" min="2" placeholder="N"><button class="mini gold" onclick="rollDie(parseInt($('dieN').value,10)||6)">roll dN</button><button class="mini" onclick="coinFlip()">🪙 coin</button><span id="diceOut" class="manaline"></span></div>
     <div class="btnrow"><span class="lab">Boardwipe</span>
       <select id="bwMode"><option value="all">destroy all creatures</option><option value="toughLE">toughness ≤ N</option><option value="powGE">power ≥ N</option><option value="dmgAll">deal N to all</option></select>
       <input type="number" id="bwN" min="0" value="2" style="width:48px"><span class="lab">N</span>
-      <button class="mini ${''}" id="bwTok" onclick="this.classList.toggle('on')">skip tokens</button>
+      <button class="mini" id="bwTok" onclick="this.classList.toggle('on')">skip tokens</button>
       <button class="mini" id="bwLeg" onclick="this.classList.toggle('on')">skip legendary</button>
       <select id="bwScope"><option value="mine">your board</option><option value="enemy">enemy tokens</option><option value="both">both boards</option></select>
       <button class="mini ember" onclick="boardWipe()">⚡ Wipe</button></div>
@@ -405,19 +411,19 @@
       <div class="phasechips" id="phaseChips"></div>
       <div class="flowmana" id="flowMana"></div>
       <button class="big" id="dmBtn" onclick="flowClick()">▶ Begin the first turn</button>
-      <div class="btnrow" style="justify-content:center;margin-top:10px"><button class="azor" style="padding:11px 20px;font-size:.88rem;font-weight:700;letter-spacing:.03em" onclick="openCast()">✦ Cast a spell</button></div>
+      <div class="btnrow" style="justify-content:center;margin-top:10px"><button class="big azor inline" onclick="openCast()">✦ Cast a spell</button></div>
     </div>
     <div class="plays" id="plays">
       <h3>🜟 The Stack <span class="tag">resolves top-down</span></h3>
       <p style="font-size:.82rem;color:var(--bone-dim)">Your casts and the enemy's responses pile up here — the <b>TOP</b> resolves first. Enemy targeted spells auto-hit your tracked board on resolve; your permanents auto-enter your board.</p>
       <div id="playCards"></div>
-      <div class="btnrow"><button class="big ember" style="width:auto;padding:11px 16px" onclick="toAssault()">Resolve remaining & continue ▸</button></div>
+      <div class="btnrow"><button class="big ember inline" onclick="toAssault()">Resolve remaining & continue ▸</button></div>
     </div>
     <div class="resolver" id="resolver">
       <h3 id="combatTitle">Combat</h3>
       <div id="combatBox"></div>
       <div class="incoming" id="combatPred"></div>
-      <div class="btnrow"><button class="big ember" style="width:auto;padding:11px 16px" onclick="approveCombat()">Approve &amp; apply</button><button class="mini" onclick="cancelCombat()">Cancel</button></div>
+      <div class="btnrow"><button class="big ember inline" onclick="approveCombat()">Approve &amp; apply</button><button class="mini" onclick="cancelCombat()">Cancel</button></div>
     </div>
   </div>
 
@@ -427,7 +433,7 @@
     <div class="modal"><button class="modalx" onclick="closeOverlay()">✕</button><div id="modalBody"></div></div>
   </div>
   <div class="overlay cut" id="cutscene">
-    <div class="cutbox"><div id="cutSigil"></div><div class="cuteyebrow" id="cutEyebrow"></div><h2 id="cutTitle"></h2><div id="cutLines"></div><div id="cutQuote"></div><div class="loot" id="cutSpoils" style="display:none"></div><div class="btnrow" id="cutBtns" style="justify-content:center;flex-wrap:wrap"><button class="big ok" id="cutBtn" style="width:auto;padding:11px 18px" onclick="closeCutscene()">Continue ▸</button></div></div>
+    <div class="cutbox"><div id="cutSigil"></div><div class="cuteyebrow" id="cutEyebrow"></div><h2 id="cutTitle"></h2><div id="cutLines"></div><div id="cutQuote"></div><div class="loot" id="cutSpoils" style="display:none"></div><div class="btnrow" id="cutBtns" style="justify-content:center;flex-wrap:wrap"><button class="big ok inline" id="cutBtn" onclick="closeCutscene()">Continue ▸</button></div></div>
   </div>
 
   <div class="overlay menu" id="menu">
@@ -830,7 +836,6 @@ function settleHistory(){if(typeof S==='undefined'||!S)return;const fullNow=JSON
 function scheduleSettle(){if(_settleScheduled)return;_settleScheduled=true;Promise.resolve().then(()=>{_settleScheduled=false;settleHistory();});}
 function actionLabel(l){_actLabel=l;}
 function histReset(){_hist=[];_committed=null;_actLabel='';}
-function histCapture(){/* legacy no-op: undo now settles via render()→scheduleSettle (P0.1) */}
 function undo(){if(!_hist.length){log("sys","Nothing to undo.");return;}const ent=_hist.pop();let snap;try{snap=JSON.parse(ent.s);}catch(e){return;}S=snap;S.combat=null;closeTransientUI();_committed={full:JSON.stringify(S),strip:stripJSON(S)};_actLabel='';log("you",`↩ Undid: ${ent.label||'last action'}.`);scheduleAutosave();render();}
 function closeTransientUI(){const rz=$("resolver");if(rz)rz.classList.remove("show");const pl=$("plays");if(pl&&!(S.plays||[]).some(p=>p&&p.status==='pending'))pl.classList.remove("show");}
 function render(){
@@ -853,7 +858,6 @@ function render(){
   S.tokens.forEach(c=>{const el=document.createElement("div");el.className="crea"+(c.sick?" sick":"")+(c.tapped?" tapped":"");el.innerHTML=enemyCard(c);cf.appendChild(el);});
   renderMy();renderAtkPick();renderCounters();
   const rp=$("rulesPanel"),rf=$("rulesField");if(S.rules.length){rp.style.display="";rf.innerHTML="";S.rules.forEach(r=>{const el=document.createElement("div");el.className="ruleperm"+(r.side==="boss"?" bossr":"");el.innerHTML=`<div class="rn">${r.name}</div><div class="rt">${r.text}</div><div class="acts">${r.die?`<button class="mini gold" onclick="rollRule(${r.id})">Roll d${r.die}</button>`:''}<button class="mini ember" onclick="destroyRule(${r.id})">Destroy</button></div>`;rf.appendChild(el);});}else rp.style.display="none";
-  const ip=$("invPanel");if(ip)ip.style.display="none";/* satchel is now a popup (openSatchel); keep the inline panel hidden */
   const sc=$("satchelCount");if(sc)sc.textContent=S.inv.length?`${S.inv.length} item${S.inv.length===1?'':'s'}`:'empty';
   $("turnTag").textContent="Turn "+S.turn+" · "+DUNGEON[S.roomIndex].name;renderFlow();renderZones();renderMyZones();renderDeckColors();renderBoardTokens();const gn=$("goldNote");if(gn)gn.textContent="💰 "+getGold();
   if(S.combat)renderCombat();
@@ -1159,7 +1163,7 @@ ${(()=>{const p=prof();const lib=p?p.library:[];return lib.length?`<div class="b
   <label>Threat (AI hint)<select id="castStrength"><option value="low">low</option><option value="mid" selected>mid</option><option value="top">top</option></select></label>
   <label style="grid-column:1/-1">Note / effect (your reference)<input type="text" id="castNote" placeholder="what it does"></label>
 </div>
-<div class="btnrow" style="margin-top:12px"><button class="mini" id="castNoCounter" onclick="this.classList.toggle('on')">can't be countered</button><button class="big azor" style="width:auto;padding:10px 16px" onclick="submitCast()">✦ Put on the stack</button>${_editLid?`<button class="mini ok" onclick="saveCardEdits()">★ Save changes</button><button class="mini gold" onclick="saveCardToLibrary()">＋ Save as new</button>`:`<button class="mini gold" onclick="saveCardToLibrary()">★ Save to library</button>`}<button class="mini gold" onclick="castAsCommander()">♛ Set as commander</button><button class="mini" onclick="closeOverlay()">cancel</button></div>`;}
+<div class="btnrow" style="margin-top:12px"><button class="mini" id="castNoCounter" onclick="this.classList.toggle('on')">can't be countered</button><button class="big azor inline" onclick="submitCast()">✦ Put on the stack</button>${_editLid?`<button class="mini ok" onclick="saveCardEdits()">★ Save changes</button><button class="mini gold" onclick="saveCardToLibrary()">＋ Save as new</button>`:`<button class="mini gold" onclick="saveCardToLibrary()">★ Save to library</button>`}<button class="mini gold" onclick="castAsCommander()">♛ Set as commander</button><button class="mini" onclick="closeOverlay()">cancel</button></div>`;}
 function submitCast(){const cfg=readCastForm();const item=Object.assign({id:S.nextId++,_player:true,side:'you',status:'pending'},cfg);
   S.plays.push(item);log("you",`✦ You cast <b>${item.name}</b> (${item.ctype})${item.cantCounter?" — can't be countered":""}. It's on the stack.`);
   closeOverlay();render();enemyRespondToCast(item);showPlays();}
@@ -1235,7 +1239,7 @@ function showCutscene(lines,title,eyebrow,btn,opts){if(!lines||!lines.length)ret
   $("cutscene").classList.add("show");}
 let _cutActs=[];
 function renderCutButtons(buttons){_cutActs=buttons.map(b=>b.on);
-  $("cutBtns").innerHTML=buttons.map((b,i)=>`<button class="${b.cls||'big ok'}"${i===0?' id="cutBtn"':''} style="width:auto;padding:11px 18px" onclick="cutAct(${i})">${b.label}</button>`).join("");}
+  $("cutBtns").innerHTML=buttons.map((b,i)=>`<button class="${b.cls||'big ok'} inline"${i===0?' id="cutBtn"':''} onclick="cutAct(${i})">${b.label}</button>`).join("");}
 function cutAct(i){const fn=_cutActs[i];if(typeof fn==='function')fn();}
 function closeCutscene(){$("cutscene").classList.remove("show");}
 /* P1.5 \u2014 end-state popups reuse the cutbox. */
@@ -1447,7 +1451,7 @@ function cmdChooseHTML(){const p=prof();const elig=(p?p.library:[]).map((c,i)=>(
   <p style="color:var(--bone-dim);font-style:italic">Pick a saved creature or planeswalker, or build a brand-new card. Your commander starts in the <b>command zone</b> — deploy it when you cast it. You can also skip and set one later from any card's ⚙ drawer.</p>
   <div class="subh"><span>From your library</span></div>
   <div class="liblist">${list}</div>
-  <div class="btnrow" style="margin-top:12px"><button class="big azor" style="width:auto;padding:10px 16px" onclick="newCommander()">✦ Create a new commander</button><button class="mini" onclick="skipCommander()">Skip — set one later</button></div>`;}
+  <div class="btnrow" style="margin-top:12px"><button class="big azor inline" onclick="newCommander()">✦ Create a new commander</button><button class="mini" onclick="skipCommander()">Skip — set one later</button></div>`;}
 function pickCommanderFromLib(i){const p=prof();if(!p)return;const cfg=p.library[i];if(!cfg)return;if(setStartCommander(cfg))proceedAfterCommander();}
 function newCommander(){openCast();}
 function castAsCommander(){const cfg=readCastForm();if(setStartCommander(cfg)){if(_cmdChooseActive)proceedAfterCommander();else closeOverlay();}}
@@ -1494,7 +1498,7 @@ function mv(parent,node){if(parent&&node){parent.appendChild(node);node.style.ma
 function buildTabs(){const byId=id=>document.getElementById(id),q=s=>document.querySelector(s);
   const tbInfo=byId('tb-info'),tbActTop=byId('tb-action-top'),tbActTools=byId('tb-action-tools'),tbEnemy=byId('tb-enemy'),tbPlayer=byId('tb-player');
   if(!tbInfo||tbInfo.dataset.built)return;tbInfo.dataset.built='1';
-  const youBoss=q('.grid.duo'),youPanel=q('.panel.you'),deck=q('.deckcolors'),pcmd=byId('pcmdBox'),logEl=q('.log');
+  const youPanel=q('.panel.you'),youBoss=youPanel&&youPanel.closest('.grid.duo'),deck=q('.deckcolors'),pcmd=byId('pcmdBox'),logEl=q('.log'); /* youBoss = the REAL you/foe duo (via .panel.you), not #tb-action-top which also has class "grid duo" */
   const pw=byId('pwPanel'),enemyCrea=byId('creaField')&&byId('creaField').closest('.panel'),enemyZones=byId('vaelZones')&&byId('vaelZones').closest('.panel');
   const yourBoard=byId('myCrea')&&byId('myCrea').closest('.panel'),yourAttack=byId('atkPick')&&byId('atkPick').closest('.panel'),yourZones=byId('myZonesPanel'),rules=byId('rulesPanel');
   const tools=byId('bwMode')&&byId('bwMode').closest('.panel'),turnflow=byId('dmBtn')&&byId('dmBtn').closest('.panel');

@@ -1,8 +1,8 @@
 /* Guff's Gauntlet — service worker (offline app shell).
-   The cache name is versioned (gg-cache-v40), so installing this build
+   The cache name is versioned (gg-cache-v41), so installing this build
    evicts any earlier cached version on activate. A fetch handler is present,
    which is what makes the app installable. */
-const CACHE = 'gg-cache-v40';
+const CACHE = 'gg-cache-v41';
 const SHELL = [
   './index.html',
   './manifest.webmanifest',
