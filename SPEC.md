@@ -23,7 +23,8 @@
 | &nbsp;&nbsp;P1.5 victory/defeat/cleared popups | ✅ **DONE** |
 | &nbsp;&nbsp;P1.6 parchment log restyle | ✅ **DONE** |
 | &nbsp;&nbsp;P1.7 player commander box mirrors enemy | ✅ **DONE** |
-| &nbsp;&nbsp;P1.8–P1.9 visual polish | ⬜ (P1.8 next) |
+| &nbsp;&nbsp;P1.8 ⓘ info popups | ✅ **DONE** |
+| &nbsp;&nbsp;P1.9 noise reduction / hierarchy pass | ⬜ (P1.9 next) |
 | &nbsp;&nbsp;**P1.10 Stack-as-popup** (NEW) | ⬜ |
 | **Phase 2 — Card creation & library UX** | ⬜ |
 | **Phase 3 — Commander & emblems** | ⬜ |
@@ -81,7 +82,7 @@
   - **Action tab:** Turn-flow panel + Your-attack panel on **one row**; **Tools** panel full-width beneath.
   - **Enemy Board tab:** enemy creatures · enemy planeswalker · enemy zones.
   - **Player Board tab:** your board · your zones · enchantments-in-play.
-- **A2 — Satchel is a POPUP (supersedes P7.4 "satchel in menu").** ✅ done. A 🎒 button on the You panel, **under the commander box**, opens `openSatchel()` (shared `#overlay` modal) listing items with Use controls. The passive-item **duration counter** (original P7.4) can be added inside that popup later.
+- **A2 — Satchel is a POPUP (supersedes P7.4 "satchel in menu").** ✅ done. A 🎒 button on the You panel, **above the commander box**, opens `openSatchel()` (shared `#overlay` modal) listing items with Use controls. The passive-item **duration counter** (original P7.4) can be added inside that popup later.
 - **A3 — Stack is a POPUP (NEW → task P1.10).** See P1.10.
 - **A4 — Descend confirms when a save exists (done).** Clicking **Descend** on the menu while a continuable autosave exists *and* no game is in progress yet (`!S._introShown && hasSave()`) opens a confirmation popup (reusing the `.cutbox` decision modal) naming the saved room + turn, with **▶ Continue saved descent / ✦ Start new — abandon save / Cancel** — so a fresh run never silently overwrites a save. Cancel leaves the menu untouched; the confirm layers above the menu (cutscene `z-50` > menu `z-40`). Touchpoints: `startGame`→`confirmNewDescent`/`startNewDescent`. Verified by jsdom TEST I.
 
@@ -137,8 +138,9 @@ Pure CSS: aged-parchment surface + inked serif for entries, keep `Space Mono` ti
 Render the player commander into the You panel with the **same `.cmdbox` UI** as the enemy (name, P/T or loyalty, tax/deaths, Deploy when in command zone). Relocation already done in P1.1 (`pcmdBox` lives in You); finish the mirror + verify death-return repopulates it. Touchpoints: `renderCmd`/`renderPlayerCmd`, `sendCmdToZone`. Depends: P1.1, P3.1.
 **Done.** `renderPlayerCmd` rewritten to mirror the enemy `.cmdbox`: a big `.cpt` shows **P/T (creatures) or loyalty (walkers)** like the enemy's dormant box, with recast **tax/deaths** in `.cstat` and the **Cast to Stack / Deploy direct** actions when in the command zone (on-battlefield state mirrors the enemy's "controls on the card" line). Added a **`.cmdbox.mine`** azor variant (+ `.cptsub` loyalty label) so the player's box reads blue against the enemy's ember — same layout, player identity. The empty state now hides *and clears* the box. **Death-return verified**: `killMy`→`sendCmdToZone(c,true)`→`S.pcmd=c` repopulates the box with `deaths+1` and the new recast tax (jsdom TEST H drives deploy→kill→return for both creature and walker commanders). CSS + one function; id-set diff & syntax gate unchanged; 62-assertion jsdom driver green. **Adversarially reviewed** (3 dimensions): 1 nit — the on-battlefield recast line was tightened to a compact, azor-bolded mirror of the enemy box — fixed. *(Noted pre-existing, out-of-scope: countering the player's own commander on the stack drops `_pcmdObj` instead of returning it to the zone — a `counterPlay` gap for the P4.x stack work.)*
 
-### P1.8 — ⓘ info popups beside labels
+### P1.8 — ⓘ info popups beside labels ✅ DONE
 One `infoBtn(key)` helper + `INFO_TEXT` map + shared modal. Place on tab labels and tricky controls (stack, freeze mana, ward/tax, threat hint, commander, battles).
+**Done.** `infoBtn(key)` returns a small bordered-"i" `.ibtn` badge (a `<span role="button">` rather than a nested `<button>`; `stopPropagation` so it doesn't toggle the tab; Enter/Space support). `showInfo(key)` fills the shared `#overlay` modal from the `INFO_TEXT` map. Placed (8 keys): the **4 tab labels** + the **stack** header (injected once in `buildTabs`), both **commander** boxes (`renderCmd`/`renderPlayerCmd`), the **threat** drawer label, and every **ward** drawer label (one `replace_all`). **Deferred to their phases:** `freeze` mana (P5.1) and `battles` (P7.7). **Adversarially reviewed** (2 dims): 4 findings, all minor/nit — fixed: `.ibtn` grows to 34px under `@media(pointer:coarse)` (matching the project's touch-target convention); the tab ⓘ is injected into `.tabnote` (inside `.tablabel`) so it can't orphan onto its own line at phone widths; `text-transform:none` keeps the glyph a lowercase "i" inside the uppercase `.dlab` labels. *Accepted as a benign conformance nit:* the focusable span sits inside the tab-header `<button>` (works in every browser; no clean fix without restructuring the header). id-set diff & syntax gate unchanged; 82-assertion jsdom driver green (TEST J).
 
 ### P1.9 — Noise reduction, hierarchy, animations, phone nav
 Visual-hierarchy convention (primary/secondary/tertiary), subtle per-surface backgrounds, small transitions, dead-code/ID sweep, tighter phone layout. A *pass*, not a redesign — no game-logic changes.
