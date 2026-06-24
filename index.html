@@ -221,6 +221,17 @@
     .track{gap:0} .link{min-width:10px}
     .dial .num{font-size:1.9rem}
   }
+  /* ===== PHASE 1 — cornice tabs ===== */
+  .tab{border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,rgba(217,164,65,.045),transparent 55%),var(--ink-2);margin-top:14px;overflow:hidden}
+  .tabhead{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:linear-gradient(180deg,var(--ink-3),rgba(29,32,41,.55));border:0;border-bottom:1px solid var(--line);border-radius:0;padding:11px 16px;cursor:pointer}
+  .tabhead:hover{transform:none;background:linear-gradient(180deg,#2b2f3b,rgba(29,32,41,.7))}
+  .tablabel{font-family:'Grenze Gotisch',serif;font-weight:700;font-size:1.18rem;letter-spacing:.02em;color:var(--gold);display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+  .tabnote{font-family:'Space Mono',monospace;font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;color:var(--bone-dim);font-weight:400}
+  .tabchev{font-family:'Space Mono',monospace;font-size:.8rem;color:var(--bone-dim);transition:transform .2s;flex:none}
+  .tab.collapsed .tabchev{transform:rotate(-90deg)}
+  .tab.collapsed .tabbody{display:none}
+  .tabbody{padding:clamp(10px,2vw,16px);display:flex;flex-direction:column;gap:12px}
+  .tabbody>.grid{margin-top:0}
   @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -253,6 +264,11 @@
     <button class="mini" id="resetBtn">↺ Restart Dungeon</button><button class="mini azor" onclick="undo()">↩ Undo</button><button class="mini gold" onclick="openTutorial()">❓ Tutorial</button><button class="mini" onclick="openLore()">📖 Lore</button><button class="mini gold" onclick="openLibrary()">🃏 Library</button><button class="mini azor" onclick="showMenu()">☰ Menu</button><span class="goldpill" id="goldNote" style="align-self:center">💰 0</span><span class="lab" id="diffNote">standard</span>
   </div>
 
+  <section class="tab" id="tab-info"><button class="tabhead" onclick="toggleTab('info')"><span class="tablabel">⟡ Info <span class="tabnote">you · foe · log</span></span><span class="tabchev">▾</span></button><div class="tabbody" id="tb-info"></div></section>
+  <section class="tab" id="tab-action"><button class="tabhead" onclick="toggleTab('action')"><span class="tablabel">🜂 Action <span class="tabnote">turn flow · attack · tools</span></span><span class="tabchev">▾</span></button><div class="tabbody" id="tb-action"><div class="grid duo" id="tb-action-top" style="margin-top:0"></div><div id="tb-action-tools" style="margin-top:0"></div></div></section>
+  <section class="tab" id="tab-enemy"><button class="tabhead" onclick="toggleTab('enemy')"><span class="tablabel">⚔ Enemy Board <span class="tabnote">creatures · walker · zones</span></span><span class="tabchev">▾</span></button><div class="tabbody" id="tb-enemy"></div></section>
+  <section class="tab" id="tab-player"><button class="tabhead" onclick="toggleTab('player')"><span class="tablabel">🛡 Your Board <span class="tabnote">board · zones · enchantments · satchel</span></span><span class="tabchev">▾</span></button><div class="tabbody" id="tb-player"></div></section>
+
   <div class="deckcolors">
     <span class="lab">Your deck colors</span><div class="setbtns" id="deckColorRow"></div>
     <span class="hint">tap the mana symbols for your commander identity — sets up protection-from-color and informs the enemy</span>
@@ -264,6 +280,7 @@
       <div class="dial"><span class="num" id="youLife">40</span><span class="of">/ <span id="youMax">40</span> life</span></div>
       <div class="bar"><i id="youBar" style="width:100%"></i></div>
       <div class="btnrow"><div class="setbtns"><button class="mini" onclick="adjLife('you',-5)">−5</button><button class="mini" onclick="adjLife('you',-1)">−1</button><button class="mini" onclick="adjLife('you',1)">+1</button><button class="mini" onclick="adjLife('you',5)">+5</button><button class="mini azor" onclick="setLife()">Set…</button></div></div>
+      <div class="btnrow" id="satchelRow"><button class="mini gold" onclick="openSatchel()">🎒 Satchel <span class="tag" id="satchelCount">empty</span></button></div>
     </div>
     <div class="panel boss">
       <h2>☠ <span id="bossName">—</span> <span class="cdots" id="bossColors"></span> <span class="tag live" id="bossTag">enemy general</span></h2>
@@ -788,7 +805,7 @@ let _hist=[],_committed=null,_settleScheduled=false,_actLabel='',_lastLog='';
    line (or an explicit actionLabel) names the undone step. Checklist for new
    mutating actions: just call render() at the end (every action already does) —
    no per-action checkpoint bookkeeping needed. */
-function stripJSON(s){return JSON.stringify(s,(k,v)=>(k==='_drawer'||k==='_atk'||k==='combat')?undefined:v);}
+function stripJSON(s){return JSON.stringify(s,(k,v)=>(k==='_drawer'||k==='_atk'||k==='combat'||k==='ui')?undefined:v);}
 function settleHistory(){if(typeof S==='undefined'||!S)return;const fullNow=JSON.stringify(S),stripNow=stripJSON(S);
   if(_committed===null){_committed={full:fullNow,strip:stripNow};return;}
   if(stripNow!==_committed.strip){_hist.push({s:_committed.full,label:_actLabel||_lastLog||'an action'});if(_hist.length>80)_hist.shift();_committed={full:fullNow,strip:stripNow};scheduleAutosave();}
@@ -819,9 +836,11 @@ function render(){
   S.tokens.forEach(c=>{const el=document.createElement("div");el.className="crea"+(c.sick?" sick":"")+(c.tapped?" tapped":"");el.innerHTML=enemyCard(c);cf.appendChild(el);});
   renderMy();renderAtkPick();renderCounters();
   const rp=$("rulesPanel"),rf=$("rulesField");if(S.rules.length){rp.style.display="";rf.innerHTML="";S.rules.forEach(r=>{const el=document.createElement("div");el.className="ruleperm"+(r.side==="boss"?" bossr":"");el.innerHTML=`<div class="rn">${r.name}</div><div class="rt">${r.text}</div><div class="acts">${r.die?`<button class="mini gold" onclick="rollRule(${r.id})">Roll d${r.die}</button>`:''}<button class="mini ember" onclick="destroyRule(${r.id})">Destroy</button></div>`;rf.appendChild(el);});}else rp.style.display="none";
-  const ip=$("invPanel"),inf=$("invField");if(S.inv.length){ip.style.display="";$("invCount").textContent=S.inv.length+" item"+(S.inv.length===1?"":"s");inf.innerHTML="";S.inv.forEach((it,i)=>{const b=BOONS[it.id];const el=document.createElement("div");el.className="item"+(b.r==="rare"?" rare":"");el.innerHTML=`<div class="in">${b.n}<span class="ir">${b.r}</span></div><div class="it">${b.t}</div>${b.kind==="consumable"?`<button class="mini ok" onclick="useBoon(${i})">Use</button>`:`<span class="ir" style="color:var(--bone-dim)">${b.kind==="reminder"?"reminder":"passive · auto"}</span>`}`;inf.appendChild(el);});}else ip.style.display="none";
+  const ip=$("invPanel");if(ip)ip.style.display="none";/* satchel is now a popup (openSatchel); keep the inline panel hidden */
+  const sc=$("satchelCount");if(sc)sc.textContent=S.inv.length?`${S.inv.length} item${S.inv.length===1?'':'s'}`:'empty';
   $("turnTag").textContent="Turn "+S.turn+" · "+DUNGEON[S.roomIndex].name;renderFlow();renderZones();renderMyZones();renderDeckColors();renderBoardTokens();const gn=$("goldNote");if(gn)gn.textContent="💰 "+getGold();
   if(S.combat)renderCombat();
+  applyTabs();
 }
 function renderAtkPick(){const box=$("atkPick");box.innerHTML="";const av=S.my.creatures.filter(c=>!c.tapped&&!c.sick&&!c.phased&&!kw(c,'defender'));if(!av.length){box.innerHTML='<span class="empty">No untapped creatures to attack with. Log your board above.</span>';return;}
   av.forEach(c=>{const el=document.createElement("div");el.className="crea";el.innerHTML=`<div class="cn">${c.name}</div><div class="cpt">${effP(c)}/${effT(c)}</div><div class="badges">${(c.kw||[]).map(k=>`<span class="badge kw">${k}</span>`).join("")}</div><button class="atk mini ${c._atk?'sel':''}" style="margin-top:6px;width:100%" onclick="toggleAtk(${c.id})">${c._atk?'attacking ✓':'attack'}</button>`;box.appendChild(el);});}
@@ -1347,8 +1366,31 @@ function importLibrary(input){const f=input.files&&input.files[0];if(!f)return;c
     const tseen=new Set((p.tokens||[]).map(t=>t.tid).filter(Boolean));let tadded=0;(o.tokens||[]).forEach(t=>{if(!t||typeof t!=='object')return;if(!t.tid||!tseen.has(t.tid)){if(!t.tid)t.tid='T'+Date.now()+Math.floor(Math.random()*1000);p.tokens.push(t);tseen.add(t.tid);tadded++;}});
     saveDB();renderMenu();try{renderLibrary();}catch(e){}alert(`Imported ${added} card${added===1?'':'s'} and ${tadded} token${tadded===1?'':'s'} into ${p.name}. (Gold and record unchanged.)`);}catch(e){alert('Could not read that library file.');}};r.readAsText(f);input.value='';}
 
+/* ===== PHASE 1 — cornice tabs: regroup the existing panels into 4 collapsible frames =====
+   We relocate the live panel nodes (selected by stable inner ids) into the tab bodies, so
+   every element id and handler is preserved untouched — only the wrapping/order changes. */
+const TABS=['info','action','enemy','player'];
+function mv(parent,node){if(parent&&node){parent.appendChild(node);node.style.marginTop='0';}}
+function buildTabs(){const byId=id=>document.getElementById(id),q=s=>document.querySelector(s);
+  const tbInfo=byId('tb-info'),tbActTop=byId('tb-action-top'),tbActTools=byId('tb-action-tools'),tbEnemy=byId('tb-enemy'),tbPlayer=byId('tb-player');
+  if(!tbInfo||tbInfo.dataset.built)return;tbInfo.dataset.built='1';
+  const youBoss=q('.grid.duo'),youPanel=q('.panel.you'),deck=q('.deckcolors'),pcmd=byId('pcmdBox'),logEl=q('.log');
+  const pw=byId('pwPanel'),enemyCrea=byId('creaField')&&byId('creaField').closest('.panel'),enemyZones=byId('vaelZones')&&byId('vaelZones').closest('.panel');
+  const yourBoard=byId('myCrea')&&byId('myCrea').closest('.panel'),yourAttack=byId('atkPick')&&byId('atkPick').closest('.panel'),yourZones=byId('myZonesPanel'),rules=byId('rulesPanel');
+  const tools=byId('bwMode')&&byId('bwMode').closest('.panel'),turnflow=byId('dmBtn')&&byId('dmBtn').closest('.panel');
+  mv(tbInfo,youBoss);if(youPanel){mv(youPanel,deck);mv(youPanel,pcmd);mv(youPanel,byId('satchelRow'));}mv(tbInfo,logEl); // Info: you(+deck/cmd/satchel btn) & foe, then log
+  mv(tbActTop,turnflow);mv(tbActTop,yourAttack);mv(tbActTools,tools);                                // Action: flow+attack, tools below
+  mv(tbEnemy,enemyCrea);mv(tbEnemy,pw);mv(tbEnemy,enemyZones);                                       // Enemy board
+  mv(tbPlayer,yourBoard);mv(tbPlayer,yourZones);mv(tbPlayer,rules);}                                 // Your board
+function applyTabs(){if(typeof S==='undefined'||!S||!S.ui||!S.ui.tabs)return;TABS.forEach(k=>{const el=document.getElementById('tab-'+k);if(el)el.classList.toggle('collapsed',!!S.ui.tabs[k]);});}
+function toggleTab(k){if(!S.ui)S.ui={tabs:{}};if(!S.ui.tabs)S.ui.tabs={};S.ui.tabs[k]=!S.ui.tabs[k];applyTabs();scheduleAutosave();}
+/* ===== Satchel popup (opened from the You panel, under the commander box) ===== */
+function openSatchel(){if(typeof S==='undefined'||!S)return;$("modalBody").innerHTML=satchelHTML();$("overlay").classList.add("show");}
+function satchelHTML(){const items=(S&&S.inv)||[];if(!items.length)return `<h2>🎒 Satchel</h2><p style="color:var(--bone-dim);font-style:italic">Empty for now. Loot from cleared rooms and the Merchant's wares land here — and are spent at the end of each descent.</p>`;
+  return `<h2>🎒 Satchel <span class="tag">${items.length} item${items.length===1?'':'s'}</span></h2><p class="manaline" style="margin:2px 0 10px">Spent at the end of each descent. Consumables you trigger; passives apply automatically; reminders you apply yourself.</p><div class="inv">${items.map((it,i)=>{const b=BOONS[it.id];return `<div class="item${b.r==='rare'?' rare':''}"><div class="in">${b.n}<span class="ir">${b.r}</span></div><div class="it">${b.t}</div>${b.kind==='consumable'?`<button class="mini ok" onclick="useBoon(${i});openSatchel()">Use</button>`:`<span class="ir" style="color:var(--bone-dim)">${b.kind==='reminder'?'reminder':'passive · auto'}</span>`}</div>`;}).join('')}</div>`;}
+
 loadDB();
-fresh();setDiff("standard");render();setWarrenArt();
+fresh();setDiff("standard");render();setWarrenArt();buildTabs();applyTabs();
 log("sys",`Welcome to the Warren of Embers. Pick a profile and build your card library from the menu, then <b>Descend</b>. In-game: set your deck colors, log your board, and walk the phases with <b>Continue ▸</b>. Tap <b>☰ Menu</b> any time to return here.`);
 showMenu();
 try{if(typeof navigator!=='undefined'&&navigator.serviceWorker&&typeof location!=='undefined'&&/^https?:/.test(location.protocol)){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}}catch(e){}
