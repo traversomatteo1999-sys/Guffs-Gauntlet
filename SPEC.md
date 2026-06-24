@@ -83,6 +83,7 @@
   - **Player Board tab:** your board · your zones · enchantments-in-play.
 - **A2 — Satchel is a POPUP (supersedes P7.4 "satchel in menu").** ✅ done. A 🎒 button on the You panel, **under the commander box**, opens `openSatchel()` (shared `#overlay` modal) listing items with Use controls. The passive-item **duration counter** (original P7.4) can be added inside that popup later.
 - **A3 — Stack is a POPUP (NEW → task P1.10).** See P1.10.
+- **A4 — Descend confirms when a save exists (done).** Clicking **Descend** on the menu while a continuable autosave exists *and* no game is in progress yet (`!S._introShown && hasSave()`) opens a confirmation popup (reusing the `.cutbox` decision modal) naming the saved room + turn, with **▶ Continue saved descent / ✦ Start new — abandon save / Cancel** — so a fresh run never silently overwrites a save. Cancel leaves the menu untouched; the confirm layers above the menu (cutscene `z-50` > menu `z-40`). Touchpoints: `startGame`→`confirmNewDescent`/`startNewDescent`. Verified by jsdom TEST I.
 
 ---
 
