@@ -193,6 +193,12 @@
   .castgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;margin-top:10px}
   .castgrid label{display:flex;flex-direction:column;gap:3px;font-family:'Space Mono';font-size:.6rem;letter-spacing:.04em;text-transform:uppercase;color:var(--bone-dim)}
   .castgrid input,.castgrid select{font-family:Spectral;font-size:.85rem;width:100%}
+  /* P2.1: type-first card creator — pick a type, then only that type's fields show */
+  .typepick{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}
+  .typebtn{font-family:"Space Mono",monospace;font-size:.72rem;text-transform:capitalize;padding:8px 12px;border:1px solid var(--line);border-radius:9px;background:var(--ink-3);color:var(--bone-dim);cursor:pointer;transition:.12s}
+  .typebtn:hover{color:var(--bone)} .typebtn.on{border-color:var(--azor);color:var(--azor);background:rgba(77,168,218,.1);font-weight:700}
+  .castgrid .cf-cre,.castgrid .cf-pw,.castgrid .cf-perm{display:none}
+  .castgrid.ct-creature .cf-cre,.castgrid.ct-creature .cf-perm,.castgrid.ct-planeswalker .cf-pw,.castgrid.ct-planeswalker .cf-perm,.castgrid.ct-artifact .cf-perm,.castgrid.ct-enchantment .cf-perm{display:flex}
   .redir{max-width:180px}
   .overlay.menu{background:#0b0c10;align-items:flex-start;overflow:auto;z-index:40} /* warren art set via setMenuArt() (P1.4); #0b0c10 is the no-art fallback */
   .menubox{max-width:780px;width:100%;margin:auto;background:linear-gradient(180deg,rgba(217,164,65,.06),transparent 60%),var(--ink-2);border:1px solid var(--line);border-radius:16px;padding:clamp(18px,4vw,34px)}
@@ -1149,6 +1155,8 @@ function resolvePlayOn(i,val){const p=S.plays[i];if(!p||p.status==="resolved"||!
 function copyStackItem(i){const o=S.plays[i];if(!o)return;if(o._pcmd||o._enemyCmd){log(o._player?"you":"dm",`A commander spell can't be copied onto the stack.`);return;}const c=JSON.parse(JSON.stringify(o));c.id=S.nextId++;c._copy=true;c.status='pending';delete c._card;c.n=o.n?o.n+" (copy)":undefined;c.name=(o.name||o.n||'Spell')+" (copy)";S.plays.push(c);log(o._player?"you":"dm",`⧉ A copy of <b>${o.name||o.n}</b> is put on the stack.`);showPlays();render();}
 function removeStackItem(i){const o=S.plays[i];if(!o)return;if(o._pcmd&&o._pcmdObj){S.pcmd=o._pcmdObj;log("you",`✕ <b>${o._pcmdObj.name}</b> leaves the stack → back to your command zone.`);S.plays.splice(i,1);renderPlays();render();return;}if(o._enemyCmd){log("dm",`✕ <b>${o.n||o.name}</b> leaves the stack → ${ENs()}'s command zone.`);S.plays.splice(i,1);renderPlays();render();return;}log(o._player?"you":"dm",`✕ <b>${o.name||o.n}</b> leaves the stack.`);S.plays.splice(i,1);renderPlays();render();}
 function openCast(){if(S.over)return;_editLid=null;_castCommander=false;$("modalBody").innerHTML=castFormHTML();$("overlay").classList.add("show");}
+/* P2.1: type-first — pick a type, focus the form to only that type's fields (readCastForm still reads them all; ctype gates what's used). */
+function setCastType(t){const sel=$("castType");if(sel)sel.value=t;const g=$("castGrid");if(g)g.className='castgrid ct-'+t;const tp=$("typePick");if(tp)[...tp.querySelectorAll('.typebtn')].forEach(b=>b.classList.toggle('on',b.dataset.t===t));}
 function castFromLibSel(){const sel=$("castLibSel");if(!sel||sel.value===''){alert('Pick a saved card from the dropdown first.');return;}const i=parseInt(sel.value,10);closeOverlay();libCast(i);}
 function _setOn(el,on){if(!el)return;if(on)el.classList.add('on');else el.classList.remove('on');}
 function loadCastFromLibrary(idx){if(idx===''||idx==null)return;const p=prof();if(!p)return;const c=p.library[parseInt(idx,10)];if(!c)return;const pr=c.props||{};
@@ -1160,34 +1168,37 @@ function loadCastFromLibrary(idx){if(idx===''||idx==null)return;const p=prof();i
   $("castWardN").value=pr.cward?pr.cward.amt:0;$("castWardType").value=pr.cward?pr.cward.type:'mana';
   $("castAtkN").value=pr.catk?pr.catk.amt:0;$("castAtkType").value=pr.catk?pr.catk.type:'mana';_setOn($("castAtkTgt"),!!(pr.catk&&pr.catk.tgt));
   $("castAbilP").value=pr.abilP||0;$("castAbilA").value=pr.abilA||0;$("castMana").value=pr.mana||0;$("castStrength").value=pr.strength||'mid';
-  log("you",`Loaded <b>${c.name}</b> from your library into the cast form.`);}
-function castFormHTML(){const types=['creature','instant','sorcery','artifact','enchantment','planeswalker','ability'];return `
+  setCastType(c.ctype||'creature');log("you",`Loaded <b>${c.name}</b> from your library into the cast form.`);}
+function castFormHTML(){const types=['creature','instant','sorcery','artifact','enchantment','planeswalker'];return `
 <h2>${_editLid?'✎ Edit a saved card':'✦ Cast a spell onto the stack'}</h2>
 <p style="color:var(--bone-dim);font-style:italic">Declare it; the enemy gets a window to respond; then you resolve it. Permanents auto-enter your board on resolution. For lands, tokens, or anything that should simply happen, use the board's + buttons instead.</p>
 ${(()=>{const p=prof();const lib=p?p.library:[];return lib.length?`<div class="btnrow" style="margin:2px 0 8px"><span class="lab">From library</span><select id="castLibSel" onchange="loadCastFromLibrary(this.value)" style="max-width:220px"><option value="">— pick a saved card… —</option>${lib.map((c,i)=>`<option value="${i}">${c.name} · ${c.ctype}${c.ctype==='creature'?` ${c.p}/${c.t}`:''}</option>`).join("")}</select><button class="mini ok" onclick="castFromLibSel()">✦ Cast it</button><span class="manaline">(or it loads below to tweak)</span></div>`:'<p class="manaline" style="margin:2px 0 8px">Your library is empty — build a card below, or ★ Save it for next time.</p>';})()}
-<div class="castgrid">
-  <label>Type<select id="castType">${types.map(t=>`<option value="${t}">${t}</option>`).join("")}</select></label>
+<div class="lab" style="margin:2px 0 4px">1 · Pick a type</div>
+<div class="typepick" id="typePick">${types.map(t=>`<button type="button" class="typebtn${t==='creature'?' on':''}" data-t="${t}" onclick="setCastType('${t}')">${t}</button>`).join("")}</div>
+<select id="castType" style="display:none">${types.map(t=>`<option value="${t}"${t==='creature'?' selected':''}>${t}</option>`).join("")}</select>
+<div class="lab" style="margin:4px 0 2px">2 · Details</div>
+<div class="castgrid ct-creature" id="castGrid">
   <label>Name<input type="text" id="castName" placeholder="Spell name"></label>
-  <label>Power<input type="number" id="castP" value="2"></label>
-  <label>Toughness<input type="number" id="castT" value="2"></label>
-  <label>Loyalty (walker)<input type="number" id="castLoy" value="3"></label>
   <label>Colors<input type="text" id="castColor" placeholder="R / UB / …" style="text-transform:uppercase"></label>
-  <label style="grid-column:1/-1">Keywords — creature, comma-sep<input type="text" id="castKw" placeholder="flying, lifelink"></label>
+  <label class="cf-cre">Power<input type="number" id="castP" value="2"></label>
+  <label class="cf-cre">Toughness<input type="number" id="castT" value="2"></label>
+  <label class="cf-pw">Loyalty (walker)<input type="number" id="castLoy" value="3"></label>
+  <label class="cf-cre" style="grid-column:1/-1">Keywords — comma-sep<input type="text" id="castKw" placeholder="flying, lifelink"></label>
   <label>On resolve (one-shots)<select id="castAutoEffect"><option value="none">— manual —</option><option value="dmgBoss">deal N to enemy</option><option value="gainLife">you gain N life</option><option value="loseLife">you lose N life</option></select></label>
   <label>N<input type="number" id="castAutoN" value="3"></label>
-  <label style="grid-column:1/-1;border-top:1px solid var(--line);padding-top:8px;color:var(--gold)">permanent properties — applied when a creature / artifact / enchantment / walker resolves</label>
-  <label style="grid-column:1/-1">flags<div class="setbtns"><button class="tiny" id="castLeg" onclick="this.classList.toggle('on')">legendary</button><button class="tiny" id="castTok" onclick="this.classList.toggle('on')">token</button><button class="tiny" id="castDef" onclick="this.classList.toggle('on')">defender</button></div></label>
-  <label>Protection from<input type="text" id="castProt" placeholder="R / UB" style="text-transform:uppercase"></label>
-  <label>Dies to<select id="castDies"><option value="graveyard">graveyard</option><option value="exile">exile</option></select></label>
-  <label>Ward — enemy pays<input type="number" id="castWardN" value="0"></label>
-  <label>ward type<select id="castWardType"><option value="mana">mana</option><option value="life">life</option></select></label>
-  <label>Attack tax — enemy pays<input type="number" id="castAtkN" value="0"></label>
-  <label>tax type<select id="castAtkType"><option value="mana">mana</option><option value="life">life</option></select></label>
-  <label style="grid-column:1/-1">attack tax applies to<div class="setbtns"><button class="tiny" id="castAtkTgt" onclick="this.classList.toggle('on')">targeted (single creature/walker)</button></div></label>
-  <label>Abilities — passive<input type="number" id="castAbilP" value="0"></label>
-  <label>active<input type="number" id="castAbilA" value="0"></label>
-  <label>Taps for mana<input type="number" id="castMana" value="0"></label>
-  <label>Threat (AI hint)<select id="castStrength"><option value="low">low</option><option value="mid" selected>mid</option><option value="top">top</option></select></label>
+  <label class="cf-perm" style="grid-column:1/-1;border-top:1px solid var(--line);padding-top:8px;color:var(--gold)">permanent properties — applied when it resolves onto your board</label>
+  <label class="cf-perm" style="grid-column:1/-1">flags<div class="setbtns"><button type="button" class="tiny" id="castLeg" onclick="this.classList.toggle('on')">legendary</button><button type="button" class="tiny" id="castTok" onclick="this.classList.toggle('on')">token</button><button type="button" class="tiny cf-cre" id="castDef" onclick="this.classList.toggle('on')">defender</button></div></label>
+  <label class="cf-perm">Protection from<input type="text" id="castProt" placeholder="R / UB" style="text-transform:uppercase"></label>
+  <label class="cf-perm">Dies to<select id="castDies"><option value="graveyard">graveyard</option><option value="exile">exile</option></select></label>
+  <label class="cf-perm">Ward — enemy pays<input type="number" id="castWardN" value="0"></label>
+  <label class="cf-perm">ward type<select id="castWardType"><option value="mana">mana</option><option value="life">life</option></select></label>
+  <label class="cf-cre">Attack tax — enemy pays<input type="number" id="castAtkN" value="0"></label>
+  <label class="cf-cre">tax type<select id="castAtkType"><option value="mana">mana</option><option value="life">life</option></select></label>
+  <label class="cf-cre" style="grid-column:1/-1">attack tax applies to<div class="setbtns"><button type="button" class="tiny" id="castAtkTgt" onclick="this.classList.toggle('on')">targeted (single creature/walker)</button></div></label>
+  <label class="cf-perm">Abilities — passive<input type="number" id="castAbilP" value="0"></label>
+  <label class="cf-perm">active<input type="number" id="castAbilA" value="0"></label>
+  <label class="cf-perm">Taps for mana<input type="number" id="castMana" value="0"></label>
+  <label class="cf-perm">Threat (AI hint)<select id="castStrength"><option value="low">low</option><option value="mid" selected>mid</option><option value="top">top</option></select></label>
   <label style="grid-column:1/-1">Note / effect (your reference)<input type="text" id="castNote" placeholder="what it does"></label>
 </div>
 <div class="btnrow" style="margin-top:12px"><button class="mini" id="castNoCounter" onclick="this.classList.toggle('on')">can't be countered</button><button class="big azor inline" onclick="submitCast()">✦ Put on the stack</button>${_editLid?`<button class="mini ok" onclick="saveCardEdits()">★ Save changes</button><button class="mini gold" onclick="saveCardToLibrary()">＋ Save as new</button>`:`<button class="mini gold" onclick="saveCardToLibrary()">★ Save to library</button>`}<button class="mini gold" onclick="castAsCommander()">♛ Set as commander</button><button class="mini" onclick="closeOverlay()">cancel</button></div>`;}
@@ -1439,7 +1450,7 @@ function renderMenu(){
 
 /* ----- read the cast form into a reusable card config ----- */
 function _int(v,d){const n=parseInt(v,10);return isNaN(n)?d:n;}
-function readCastForm(){const type=$("castType").value;const defName={creature:'Creature',instant:'Instant',sorcery:'Sorcery',artifact:'Artifact',enchantment:'Enchantment',planeswalker:'Planeswalker',ability:'Ability'}[type];const name=(($("castName").value||'').trim())||defName;
+function readCastForm(){const type=$("castType").value;const defName={creature:'Creature',instant:'Instant',sorcery:'Sorcery',artifact:'Artifact',enchantment:'Enchantment',planeswalker:'Planeswalker'}[type]||'Spell';const name=(($("castName").value||'').trim())||defName;
   const colors=($("castColor").value||'').toUpperCase().split('').filter(c=>'WUBRGC'.indexOf(c)>=0);const wn=parseInt($("castWardN").value,10)||0,an=parseInt($("castAtkN").value,10)||0;
   const cfg={name,ctype:type,note:($("castNote").value||'').trim(),color:colors,cantCounter:$("castNoCounter").classList.contains('on'),commander:($("castCommander")?$("castCommander").classList.contains('on'):_castCommander),p:_int($("castP").value,1),t:_int($("castT").value,1),loy:parseInt($("castLoy").value,10)||3,kw:($("castKw").value||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean),
     props:{legendary:$("castLeg").classList.contains('on'),token:$("castTok").classList.contains('on'),defender:$("castDef").classList.contains('on'),prot:($("castProt").value||'').toUpperCase().split('').filter(c=>'WUBRGC'.indexOf(c)>=0),cward:wn>0?{amt:wn,type:$("castWardType").value}:null,catk:an>0?{amt:an,type:$("castAtkType").value,tgt:$("castAtkTgt").classList.contains('on')}:null,dies:$("castDies").value,abilP:parseInt($("castAbilP").value,10)||0,abilA:parseInt($("castAbilA").value,10)||0,mana:parseInt($("castMana").value,10)||0,strength:$("castStrength").value}};

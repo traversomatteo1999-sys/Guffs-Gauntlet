@@ -26,7 +26,8 @@
 | &nbsp;&nbsp;P1.8 ⓘ info popups | ✅ **DONE** |
 | &nbsp;&nbsp;P1.9 noise reduction / hierarchy pass | ✅ **DONE** |
 | &nbsp;&nbsp;**P1.10 Stack-as-popup** (NEW) | ✅ **DONE** |
-| **Phase 2 — Card creation & library UX** | ⬜ |
+| **Phase 2 — Card creation & library UX** | 🔨 in progress |
+| &nbsp;&nbsp;P2.1 type-first card creator | ✅ **DONE** |
 | **Phase 3 — Commander & emblems** | ⬜ |
 | **Phase 4 — Stack & turn-phase engine** | ⬜ |
 | **Phase 5 — Enemy mana & deck rework** | ⬜ |
@@ -157,7 +158,8 @@ Visual-hierarchy convention (primary/secondary/tertiary), subtle per-surface bac
 
 # PHASE 2 — Card creation & library UX
 
-- **P2.1 — Windowed, type-first card creator.** Pick a type first, then a focused form showing only that type's fields. `readCastForm` stays the single config builder, reading only visible fields. Preserve save-to-library / set-as-commander / can't-be-countered / library quick-pick.
+- **P2.1 — Windowed, type-first card creator.** ✅ **DONE.** Pick a type first, then a focused form showing only that type's fields. `readCastForm` stays the single config builder, reading only visible fields. Preserve save-to-library / set-as-commander / can't-be-countered / library quick-pick.
+  **How:** the form opens with a prominent **type picker** (`.typepick` — 6 `.typebtn`s for the real card types, "1 · Pick a type") above the `.castgrid`; a hidden `<select id="castType">` still backs `readCastForm`. `setCastType(t)` sets that value, swaps the grid class (`ct-<type>`), and highlights the button. Each field carries a visibility class — **`cf-cre`** (P/T, keywords, attack-tax, defender), **`cf-pw`** (loyalty), **`cf-perm`** (the permanent-properties block) — and CSS shows only the right group per `ct-*` (creature → cf-cre+cf-perm; walker → cf-pw+cf-perm; artifact/enchantment → cf-perm; instant/sorcery/ability → common only). `readCastForm` is unchanged (reads every field; `ctype` gates what's used downstream, so hidden fields' defaults are harmless). `loadCastFromLibrary` calls `setCastType(c.ctype)` so a loaded card focuses its type. Save-to-library / set-as-commander / can't-be-countered / library quick-pick untouched. id-set diff: only `typePick`/`castGrid` added. Verified: syntax gate, 103-assertion jsdom driver incl. TEST L (picker, default focus, field tags, setCastType updates grid/select/button, readCastForm ctype).
 - **P2.2 — Colours via mana symbols, not typed text.** Replace `castColor`/`castProt` text inputs with the `colorToggles` symbol pills (also in quick-cast).
 - **P2.3 — Prominent yellow AI-threat indicator.** Promote the threat selector to a gold/yellow control near the top of the creature/permanent form, with an ⓘ; feeds the P6.1 threat hierarchy.
 - **P2.4 — Quick-cast.** Fast path: name, colours (symbols), stats, counters, threat — all optional — into the **same** config→stack-item function as the full creator; editable afterward. Surfaced from the **stack popup (P1.10)** and "Cast a spell".
