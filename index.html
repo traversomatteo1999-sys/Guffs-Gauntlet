@@ -382,7 +382,7 @@
 
   <div class="panel" style="margin-top:12px">
     <h2>🛡 Your board <span class="tag">the enemy reads &amp; fights this</span></h2>
-    <div class="btnrow" style="margin-top:4px"><button class="big azor inline" onclick="openCast()">✦ Cast a spell</button><span class="manaline">→ onto the Stack; permanents resolve onto this board</span></div>
+    <div class="btnrow" style="margin-top:4px"><button class="big azor inline" onclick="openCast()">✦ Cast a spell</button><button class="mini gold" onclick="quickCast()" title="Quick cast">⚡ Quick</button><span class="manaline">→ onto the Stack; permanents resolve onto this board</span></div>
     <div class="btnrow" style="margin-top:4px"><span class="lab">Deploy token</span><select id="boardTokSel" style="max-width:180px"></select><input type="number" id="boardTokQty" min="1" value="1" style="width:48px"><button class="ok" style="padding:8px 14px;font-weight:700" onclick="deploySavedToken()">Deploy ×N</button><button class="tiny" onclick="openLibrary()">＋ make / manage</button></div>
     <div class="cmdbox" id="pcmdBox" style="display:none"></div>
     <div class="subh"><span>Creatures</span><button class="tiny ok" onclick="addC()">+ creature</button></div>
@@ -438,7 +438,7 @@
       <div class="phasechips" id="phaseChips"></div>
       <div class="flowmana" id="flowMana"></div>
       <button class="big" id="dmBtn" onclick="flowClick()">▶ Begin the first turn</button>
-      <div class="btnrow" style="justify-content:center;margin-top:10px"><button class="big azor inline" onclick="openCast()">✦ Cast a spell</button></div>
+      <div class="btnrow" style="justify-content:center;margin-top:10px"><button class="big azor inline" onclick="openCast()">✦ Cast a spell</button><button class="mini gold" onclick="quickCast()" title="Quick cast">⚡ Quick</button></div>
     </div>
     <div class="resolver" id="resolver">
       <h3 id="combatTitle">Combat</h3>
@@ -1062,7 +1062,27 @@ function resolveLeftoverPlays(){S.plays.forEach((p,i)=>{if(p.status==='pending'&
 function showPlays(){renderPlays();$("plays").classList.add("show");renderStackFab();}
 function hidePlays(){$("plays").classList.remove("show");renderStackFab();}
 function toggleStack(){const pl=$("plays");if(pl&&pl.classList.contains("show"))hidePlays();else showPlays();}
-function quickCast(){openCast();} /* P2.4 will replace this with the fast cast path; routes to the full form for now */
+/* P2.4: quick-cast — a fast, all-optional path into the SAME stack-item pipeline (castConfig); refine afterward from the board or the full editor. */
+function quickCast(){if(S.over)return;_editLid=null;_castCommander=false;$("modalBody").innerHTML=quickCastHTML();$("overlay").classList.add("show");}
+function quickCastHTML(){const types=['creature','instant','sorcery','artifact','enchantment','planeswalker'];return `
+<h2>⚡ Quick cast</h2>
+<p style="color:var(--bone-dim);font-style:italic">Straight onto the stack — everything's optional. Refine it afterward from the board, or open the full editor for keywords, wards, abilities, and more.</p>
+<div class="lab" style="margin:2px 0 4px">Type</div>
+<div class="typepick" id="qcTypePick">${types.map(t=>`<button type="button" class="typebtn${t==='creature'?' on':''}" data-t="${t}" onclick="setQuickType('${t}')">${t}</button>`).join("")}</div>
+<select id="qcType" style="display:none">${types.map(t=>`<option value="${t}"${t==='creature'?' selected':''}>${t}</option>`).join("")}</select>
+<div class="castgrid ct-creature" id="qcGrid">
+  <label>Name<input type="text" id="qcName" placeholder="optional"></label>
+  <label>Colours${castColorPicker('qcColorPills')}</label>
+  <label class="cf-cre">Power<input type="number" id="qcP" value="2"></label>
+  <label class="cf-cre">Toughness<input type="number" id="qcT" value="2"></label>
+  <label class="cf-pw">Loyalty<input type="number" id="qcLoy" value="3"></label>
+  <label class="cf-perm threatrow" style="grid-column:1/-1"><span class="threatlbl">⚠ AI threat${infoBtn('threat')}</span><div class="threatseg" id="qcThreatSeg"><button type="button" data-v="low" onclick="setQuickThreat('low')">low</button><button type="button" data-v="mid" class="on" onclick="setQuickThreat('mid')">mid</button><button type="button" data-v="top" onclick="setQuickThreat('top')">top</button></div></label>
+</div>
+<div class="btnrow" style="margin-top:12px"><button class="big azor inline" onclick="submitQuickCast()">⚡ Cast it</button><button class="mini gold" onclick="openCast()">⚙ Full editor</button><button class="mini" onclick="closeOverlay()">cancel</button></div>`;}
+function setQuickType(t){const sel=$("qcType");if(sel)sel.value=t;const g=$("qcGrid");if(g)g.className='castgrid ct-'+t;const tp=$("qcTypePick");if(tp)[...tp.querySelectorAll('.typebtn')].forEach(b=>b.classList.toggle('on',b.dataset.t===t));}
+function setQuickThreat(v){const seg=$("qcThreatSeg");if(seg)[...seg.querySelectorAll('button')].forEach(b=>b.classList.toggle('on',b.dataset.v===v));}
+function readQuickForm(){const type=$("qcType").value;const dn={creature:'Creature',instant:'Instant',sorcery:'Sorcery',artifact:'Artifact',enchantment:'Enchantment',planeswalker:'Planeswalker'}[type]||'Spell';const ts=$("qcThreatSeg")&&$("qcThreatSeg").querySelector('button.on');
+  return {name:(($("qcName").value||'').trim())||dn,ctype:type,color:readColorPills('qcColorPills'),note:'',cantCounter:false,commander:false,p:_int($("qcP").value,2),t:_int($("qcT").value,2),loy:parseInt($("qcLoy").value,10)||3,kw:[],props:{legendary:false,token:false,defender:false,prot:[],cward:null,catk:null,dies:'graveyard',abilP:0,abilA:0,mana:0,strength:ts?ts.dataset.v:'mid'}};}
 function renderStackFab(){const fab=$("stackFab");if(!fab)return;const live=_liveGame&&typeof S!=='undefined'&&S&&!S.over;const open=!!($("plays")&&$("plays").classList.contains("show"));const n=(S&&Array.isArray(S.plays))?S.plays.filter(p=>p&&p.status==='pending').length:0;fab.style.display=(live&&!open)?'flex':'none';fab.classList.toggle('hot',n>0);const b=$("stackFabN");if(b)b.textContent=n||'';}
 
 /* --- Vael's phases --- */
@@ -1216,9 +1236,11 @@ ${(()=>{const p=prof();const lib=p?p.library:[];return lib.length?`<div class="b
   <label style="grid-column:1/-1">Note / effect (your reference)<input type="text" id="castNote" placeholder="what it does"></label>
 </div>
 <div class="btnrow" style="margin-top:12px"><button class="mini" id="castNoCounter" onclick="this.classList.toggle('on')">can't be countered</button><button class="big azor inline" onclick="submitCast()">✦ Put on the stack</button>${_editLid?`<button class="mini ok" onclick="saveCardEdits()">★ Save changes</button><button class="mini gold" onclick="saveCardToLibrary()">＋ Save as new</button>`:`<button class="mini gold" onclick="saveCardToLibrary()">★ Save to library</button>`}<button class="mini gold" onclick="castAsCommander()">♛ Set as commander</button><button class="mini" onclick="closeOverlay()">cancel</button></div>`;}
-function submitCast(){const cfg=readCastForm();const item=Object.assign({id:S.nextId++,_player:true,side:'you',status:'pending'},cfg);
+function castConfig(cfg){const item=Object.assign({id:S.nextId++,_player:true,side:'you',status:'pending'},cfg);
   S.plays.push(item);log("you",`✦ You cast <b>${item.name}</b> (${item.ctype})${item.cantCounter?" — can't be countered":""}. It's on the stack.`);
-  closeOverlay();render();enemyRespondToCast(item);showPlays();}
+  closeOverlay();render();enemyRespondToCast(item);showPlays();return item;}
+function submitCast(){castConfig(readCastForm());}
+function submitQuickCast(){castConfig(readQuickForm());}
 function enemyRespondToCast(item){if(S.over)return;const idxs=S.hand.map((c,i)=>i).filter(i=>FX[S.hand[i].key].type==='instant'&&FX[S.hand[i].key].cost<=S.bossMana);if(!idxs.length)return;if(Math.random()>0.55)return;
   idxs.sort((a,b)=>FX[S.hand[b].key].cost-FX[S.hand[a].key].cost);const pick=idxs[0];const card=S.hand[pick],fx=FX[card.key];S.bossMana-=fx.cost;S.hand.splice(pick,1);const p=mkPlay(fx);p._card=card;p._instant=true;p._respondingTo=item.id;S.plays.push(p);
   log("dm",`⚡ ${ENs()} responds to your spell — <b>${fx.n}</b> (${S.bossMana} mana left). It's on top of the stack.`);}
