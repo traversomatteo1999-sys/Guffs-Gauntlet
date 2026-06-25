@@ -376,6 +376,12 @@
   </div>
 
   <div class="panel" style="margin-top:12px">
+    <h2>✶ <span id="enemyName2">Enemy</span>'s emblems <span class="tag">persistent effects · ⚡ auto on its upkeep</span></h2>
+    <div class="btnrow" style="margin-top:2px"><select id="embTemplate" style="max-width:240px"></select><button class="tiny ok" onclick="addEnemyEmblem()">+ add emblem</button></div>
+    <div id="enemyEmbList" style="margin-top:6px"></div>
+  </div>
+
+  <div class="panel" style="margin-top:12px">
     <h2>🂠 Enemy's zones <span class="tag">deck · graveyard · exile</span></h2>
     <div class="deckmeta"><span>Library: <b id="libCount">0</b></span><span>Hand: <b id="handCount">0</b></span></div>
     <div class="btnrow" style="margin-top:2px"><button class="tiny azor" onclick="openDeckTools()">🂠 Manipulate enemy deck</button><span class="manaline">scry · look · mill · exile · discard · shuffle</span></div>
@@ -899,7 +905,7 @@ function render(){
   const cf=$("creaField");cf.innerHTML="";const creaN=S.tokens.length+(S.cmd.inPlay?1:0);$("creaCount").textContent=creaN;$("creaEmpty").style.display=creaN?"none":"block";
   if(S.cmd.inPlay){const el=document.createElement("div");el.className="crea cmdcard"+(S.cmd.sick?" sick":"")+(S.cmd.tapped?" tapped":"");el.innerHTML=cmdFieldCard();cf.appendChild(el);}
   S.tokens.forEach(c=>{const el=document.createElement("div");el.className="crea"+(c.sick?" sick":"")+(c.tapped?" tapped":"");el.innerHTML=enemyCard(c);cf.appendChild(el);});
-  renderMy();renderAtkPick();renderCounters();renderStackFab();
+  renderMy();renderAtkPick();renderCounters();renderStackFab();renderEnemyEmblems();
   const rp=$("rulesPanel"),rf=$("rulesField");if(S.rules.length){rp.style.display="";rf.innerHTML="";S.rules.forEach(r=>{const el=document.createElement("div");el.className="ruleperm"+(r.side==="boss"?" bossr":"");el.innerHTML=`<div class="rn">${r.name}</div><div class="rt">${r.text}</div><div class="acts">${r.die?`<button class="mini gold" onclick="rollRule(${r.id})">Roll d${r.die}</button>`:''}<button class="mini ember" onclick="destroyRule(${r.id})">Destroy</button></div>`;rf.appendChild(el);});}else rp.style.display="none";
   const sc=$("satchelCount");if(sc)sc.textContent=S.inv.length?`${S.inv.length} item${S.inv.length===1?'':'s'}`:'empty';
   $("turnTag").textContent="Turn "+S.turn+" · "+DUNGEON[S.roomIndex].name;renderFlow();renderZones();renderMyZones();renderDeckColors();renderBoardTokens();const gn=$("goldNote");if(gn)gn.textContent="💰 "+getGold();
@@ -1003,6 +1009,40 @@ function addC(){S.my.creatures.push({id:S.nextId++,name:"Creature",p:2,t:2,baseP
 function addP(cat){S.my[cat].push({id:S.nextId++,name:cat==='artifacts'?"Artifact":"Enchantment",kind:"passive",mana:0,dmg:0,note:"",color:[],legendary:false,token:false,dies:"graveyard",phased:false,prot:[],catk:null,_drawer:false});log("you",`Added ${cat==='artifacts'?'an artifact':'an enchantment'} to your board.`);render();}
 function addW(){S.my.walkers.push({id:S.nextId++,name:"Planeswalker",loyalty:3,baseLoy:3,abilities:3,note:"",color:[],legendary:true,dies:"graveyard",isCmd:false,_drawer:false});log("you","Added a planeswalker to your board.");render();}
 function addEm(){S.my.emblems.push({id:S.nextId++,name:"Emblem",note:""});log("you","Added an emblem.");render();}
+/* ===== P3.2: Enemy emblems — classic templates + optional automation (auto ones fire on the enemy's upkeep; others are reminders). Stored on S.emblemsEnemy, rendered in the Enemy Board. ===== */
+const ENEMY_EMBLEMS=[
+  {n:'Lifegain emblem',note:'At the beginning of its upkeep, the enemy gains 2 life.',auto:{k:'enemyGain',n:2}},
+  {n:'Drain emblem',note:'At the beginning of its upkeep, you lose 1 life.',auto:{k:'youLose',n:1}},
+  {n:'Card-advantage emblem',note:'At the beginning of its upkeep, the enemy draws a card.',auto:{k:'enemyDraw',n:1}},
+  {n:'Mana emblem',note:'At the beginning of its upkeep, the enemy gets +1 mana this turn.',auto:{k:'enemyMana',n:1}},
+  {n:'Growth emblem',note:'At the beginning of its upkeep, put a +1/+1 counter on each enemy creature.',auto:{k:'buffEnemyCreatures',n:1}},
+  {n:'Anthem (+1/+1)',note:'Enemy creatures get +1/+1. Reminder — track via each creature’s P/T.',auto:null},
+  {n:'Menace anthem',note:'Enemy creatures have menace (must be blocked by two). Reminder.',auto:null},
+  {n:'Custom emblem',note:'',auto:null},
+];
+function embEsc(s){return (''+(s==null?'':s)).replace(/"/g,'&quot;');}
+function fillEmblemTemplates(){const sel=$('embTemplate');if(sel&&!sel.options.length)sel.innerHTML=ENEMY_EMBLEMS.map((t,i)=>`<option value="${i}">${t.n}${t.auto?' ⚡':''}</option>`).join('');}
+function addEnemyEmblem(){const sel=$('embTemplate');const i=sel?parseInt(sel.value,10):ENEMY_EMBLEMS.length-1;const t=ENEMY_EMBLEMS[i]||ENEMY_EMBLEMS[ENEMY_EMBLEMS.length-1];
+  S.emblemsEnemy.push({id:S.nextId++,name:t.n,note:t.note,auto:t.auto?{k:t.auto.k,n:t.auto.n}:null,autoOn:!!t.auto});
+  log("dm",`✦ ${ENs()} gains an emblem: <b>${t.n}</b>${t.auto?' (⚡ auto on upkeep)':' (reminder)'}.`);render();}
+function setEnemyEmblem(id,f,v){const em=(S.emblemsEnemy||[]).find(e=>e.id===id);if(em){em[f]=v;render();}}
+function toggleEmblemAuto(id){const em=(S.emblemsEnemy||[]).find(e=>e.id===id);if(em&&em.auto){em.autoOn=!em.autoOn;log("dm",`✦ <b>${em.name}</b>: automation ${em.autoOn?'on':'off'}.`);render();}}
+function rmEnemyEmblem(id){const i=(S.emblemsEnemy||[]).findIndex(e=>e.id===id);if(i>=0){const nm=S.emblemsEnemy[i].name;S.emblemsEnemy.splice(i,1);log("dm",`✦ ${ENs()} loses the emblem <b>${nm}</b>.`);render();}}
+function emblemEffect(em){if(!em||!em.auto)return;const a=em.auto,n=a.n||0;
+  if(a.k==='enemyGain'){bossHealLife(n);log("dm",`✦ ${em.name}: ${ENs()} gains ${n} life. (${S.boss.life})`);}
+  else if(a.k==='youLose'){S.youLife-=n;log("dm",`✦ ${em.name}: you lose ${n} life. (${S.youLife})`);}
+  else if(a.k==='enemyDraw'){vaelDraw(n);log("dm",`✦ ${em.name}: ${ENs()} draws ${n}. (hand ${S.hand.length})`);}
+  else if(a.k==='enemyMana'){S.bossMana=(S.bossMana||0)+n;S.bossManaMax=(S.bossManaMax||0)+n;log("dm",`✦ ${em.name}: ${ENs()} gets +${n} mana this turn. (${S.bossMana})`);}
+  else if(a.k==='buffEnemyCreatures'){let c=0;S.tokens.forEach(t=>{t.plus=(t.plus||0)+n;c++;});if(S.cmd&&S.cmd.inPlay){S.cmd.plus=(S.cmd.plus||0)+n;c++;}log("dm",`✦ ${em.name}: +${n}/+${n} on ${c} enemy creature${c===1?'':'s'}.`);}}
+function fireEnemyEmblems(){const list=(S.emblemsEnemy||[]).filter(em=>em.auto&&em.autoOn!==false);if(!list.length)return;list.forEach(emblemEffect);checkLose();}
+function fireOneEmblem(id){if(S.over)return;const em=(S.emblemsEnemy||[]).find(e=>e.id===id);if(em&&em.auto){emblemEffect(em);checkLose();render();}}
+function renderEnemyEmblems(){fillEmblemTemplates();const box=$('enemyEmbList');if(!box)return;const list=S.emblemsEnemy||[];
+  if(!list.length){box.innerHTML='<span class="empty">No emblems. Add a classic template above — ⚡ ones fire automatically on the enemy’s upkeep; the rest are reminders you apply yourself.</span>';return;}
+  box.innerHTML='';
+  list.forEach(em=>{const el=document.createElement('div');el.className='brow';
+    const ctrl=em.auto?`<button class="tiny ${em.autoOn?'gold on':''}" title="automation fires on the enemy’s upkeep — click to toggle" onclick="toggleEmblemAuto(${em.id})">⚡ ${em.autoOn?'auto':'off'}</button><button class="tiny" title="fire this emblem now" onclick="fireOneEmblem(${em.id})">▸ fire</button>`:'<span class="badge">reminder</span>';
+    el.innerHTML=`<input type="text" value="${embEsc(em.name)}" style="width:150px" onchange="setEnemyEmblem(${em.id},'name',this.value)"><input type="text" placeholder="effect" value="${embEsc(em.note)}" style="width:190px" onchange="setEnemyEmblem(${em.id},'note',this.value)">${ctrl}<button class="tiny ember" onclick="rmEnemyEmblem(${em.id})">✕</button>`;
+    box.appendChild(el);});}
 function setMy(cat,id,f,v){const o=S.my[cat].find(x=>x.id===id);if(o){o[f]=v;render();}}
 function adjMy(cat,id,f,n){const o=S.my[cat].find(x=>x.id===id);if(o){o[f]=Math.max(0,(o[f]||0)+n);render();}}
 function rmMy(cat,id){const i=S.my[cat].findIndex(x=>x.id===id);if(i>=0)S.my[cat].splice(i,1);render();}
@@ -1096,8 +1136,9 @@ function renderStackFab(){const fab=$("stackFab");if(!fab)return;const live=_liv
 /* --- Vael's phases --- */
 function vaelUntap(){S.tokens.forEach(c=>{c.tapped=false;c.sick=false;});if(S.cmd.inPlay){S.cmd.tapped=false;S.cmd.sick=false;}S.bossManaMax=bossMana();S.bossMana=S.bossManaMax;log("dm",`Untap. ${ENs()} has <b>${S.bossMana}</b> mana this turn.`);}
 function vaelUpkeep(){S.rules.filter(r=>r.side==="boss"&&r.heal).forEach(r=>{bossHealLife(r.heal);log("dm",`${r.name}: ${ENs()} gains ${r.heal}. (${S.boss.life})`);});
+  fireEnemyEmblems();if(S.over)return;/* a drain emblem can end the game on the enemy's upkeep — stop the rest of the upkeep */
   if(S.pw)pwAct();}
-function pwAct(){const pw=S.pw;let ab;
+function pwAct(){if(S.over)return;const pw=S.pw;let ab;
   if(pw.loy>=pw.ultThreshold){ab=pw.ult;pw.loy+=ab.sign;}
   else{const bigThreat=S.my.creatures.some(c=>effP(c)>=4&&!kw(c,'hexproof')&&!c.phased);
     if(pw.minus&&bigThreat&&pw.loy+pw.minus.sign>=1&&Math.random()<0.55){ab=pw.minus;pw.loy+=ab.sign;}
@@ -1596,12 +1637,12 @@ function buildTabs(){const byId=id=>document.getElementById(id),q=s=>document.qu
   const tbInfo=byId('tb-info'),tbActTop=byId('tb-action-top'),tbActTools=byId('tb-action-tools'),tbEnemy=byId('tb-enemy'),tbPlayer=byId('tb-player');
   if(!tbInfo||tbInfo.dataset.built)return;tbInfo.dataset.built='1';
   const youPanel=q('.panel.you'),youBoss=youPanel&&youPanel.closest('.grid.duo'),deck=q('.deckcolors'),pcmd=byId('pcmdBox'),logEl=q('.log'); /* youBoss = the REAL you/foe duo (via .panel.you), not #tb-action-top which also has class "grid duo" */
-  const pw=byId('pwPanel'),enemyCrea=byId('creaField')&&byId('creaField').closest('.panel'),enemyZones=byId('vaelZones')&&byId('vaelZones').closest('.panel');
+  const pw=byId('pwPanel'),enemyCrea=byId('creaField')&&byId('creaField').closest('.panel'),enemyEmb=byId('enemyEmbList')&&byId('enemyEmbList').closest('.panel'),enemyZones=byId('vaelZones')&&byId('vaelZones').closest('.panel');
   const yourBoard=byId('myCrea')&&byId('myCrea').closest('.panel'),yourAttack=byId('atkPick')&&byId('atkPick').closest('.panel'),yourZones=byId('myZonesPanel'),rules=byId('rulesPanel');
   const tools=byId('bwMode')&&byId('bwMode').closest('.panel'),turnflow=byId('dmBtn')&&byId('dmBtn').closest('.panel');
   mv(tbInfo,youBoss);if(youPanel){mv(youPanel,deck);mv(youPanel,byId('satchelRow'));mv(youPanel,pcmd);}mv(tbInfo,logEl); // Info: you(+deck/satchel btn/cmd) & foe, then log
   mv(tbActTop,turnflow);mv(tbActTop,yourAttack);mv(tbActTools,tools);                                // Action: flow+attack, tools below
-  mv(tbEnemy,enemyCrea);mv(tbEnemy,pw);mv(tbEnemy,enemyZones);                                       // Enemy board
+  mv(tbEnemy,enemyCrea);mv(tbEnemy,pw);mv(tbEnemy,enemyEmb);mv(tbEnemy,enemyZones);                   // Enemy board
   mv(tbPlayer,yourBoard);mv(tbPlayer,yourZones);mv(tbPlayer,rules);
   [['info','tab-info'],['action','tab-action'],['enemy','tab-enemy'],['player','tab-player']].forEach(([k,id])=>{const t=byId(id),lab=t&&t.querySelector('.tabnote');if(lab&&!lab.querySelector('.ibtn'))lab.insertAdjacentHTML('beforeend',' '+infoBtn(k));});
   const sh=byId('plays')&&byId('plays').querySelector('h3');if(sh&&!sh.querySelector('.ibtn'))sh.insertAdjacentHTML('beforeend',infoBtn('stack'));}                                 // Your board
