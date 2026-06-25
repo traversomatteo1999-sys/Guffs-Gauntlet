@@ -26,13 +26,14 @@
 | &nbsp;&nbsp;P1.8 ⓘ info popups | ✅ **DONE** |
 | &nbsp;&nbsp;P1.9 noise reduction / hierarchy pass | ✅ **DONE** |
 | &nbsp;&nbsp;**P1.10 Stack-as-popup** (NEW) | ✅ **DONE** |
-| **Phase 2 — Card creation & library UX** | 🔨 in progress |
+| **Phase 2 — Card creation & library UX** | ✅ **DONE** |
 | &nbsp;&nbsp;P2.1 type-first card creator | ✅ **DONE** |
 | &nbsp;&nbsp;P2.2 colours via mana-symbol pills | ✅ **DONE** |
 | &nbsp;&nbsp;P2.3 prominent gold AI-threat control | ✅ **DONE** |
 | &nbsp;&nbsp;P2.4 quick-cast | ✅ **DONE** |
 | &nbsp;&nbsp;P2.5 library + picker search | ✅ **DONE** |
 | &nbsp;&nbsp;P2.6 reset card to original | ✅ **DONE** |
+| &nbsp;&nbsp;P2.7 planeswalkers legendary by default | ✅ **DONE** |
 | **Phase 3 — Commander & emblems** | ⬜ |
 | **Phase 4 — Stack & turn-phase engine** | ⬜ |
 | **Phase 5 — Enemy mana & deck rework** | ⬜ |
@@ -175,7 +176,8 @@ Visual-hierarchy convention (primary/secondary/tertiary), subtle per-surface bac
   **How:** Library modal gets a `#libSearch` box (`oninput="renderLibrary()"`); `renderLibrary` filters cards **and** tokens by name/type/colour/keyword via an `lmatch` predicate, while **preserving original indices** (`lib.map((c,i)=>({c,i})).filter(...)` then `rows.forEach(({c,i})=>…)`) so `libCast/libDeploy/editLibrary/libDelete(i)` still address the right entry — plus a live `#libCardCount` ("matched/total"). The cast-form picker's option list was extracted into **`castLibOptions(q)`** (index-preserving) and given a `#castLibSearch` box (`filterCastLib()` rebuilds `#castLibSel`). Verified: syntax gate, id-set diff (only `libSearch`/`libCardCount`/`castLibSearch` added), 137-assertion jsdom driver incl. TEST P (filter by name + colour, original-index preservation in both list and picker).
 - **P2.6 — Reset card to original** (player & enemy): restore base P/T (`baseP/baseT` from P0.4), clear counters (all or selected kinds). ✅ **DONE.**
   **How:** `resetCard(scope,id)` (via the generic `getObj`) restores `baseP→p`/`baseT→t` (and `baseLoy→loyalty`), zeroes `plus`/`minus`, empties `other[]`, logs to the right channel (`dm` for enemy `token`/`cmd`, else `you`), and re-renders. A **↺ reset** button sits on the player creature card's action row (`scope='creatures'`) and the enemy creature card after its properties toggle (`scope='token'`). "Selected kinds" remains available through the existing granular controls (click a counter badge / ⊖ ctr / P/T ±); reset clears everything. Verified: syntax gate, 142-assertion jsdom driver incl. TEST Q (player creature + enemy token both restore base P/T and clear counters; buttons present in the rendered DOM).
-- **P2.7 — Planeswalkers legendary by default** (never prompt; remove the toggle).
+- **P2.7 — Planeswalkers legendary by default** (never prompt; remove the toggle). ✅ **DONE.**
+  **How:** the rule *"a planeswalker is always legendary"* is enforced at every walker **creation site** — `resolvePlayerItem` (the resolve path for *all* player walkers: openCast, quickCast, libCast/libDeploy via `cfgToItem`), `cmdObjFromCfg` (commander-from-library / `setStartCommander`), and `saveBoardToLibrary` now hardcode `legendary:true` (was `pr.legendary!==false`/`o.legendary!==false`); `addW` already did. The cfg producers stay honest too: `readCastForm` and `readQuickForm` yield `legendary:true` for `ctype==='planeswalker'` (non-walkers still read the toggle). **Toggle removed from both surfaces:** the cast-form `#castLeg` button gains a **`cf-leg`** class shown for creature/artifact/enchantment but **not** planeswalker (one CSS rule), and in its place a static gold **"★ always legendary"** note (`cf-legpw`, shown only for `ct-planeswalker`) mirrors the board treatment so the removal isn't silent; the **walker board drawer** replaces its `flagMy('walkers',…,'legendary')` button with the same static indicator (zero `flagMy('walkers',…,'legendary')` calls remain). **`migrate()`** backfills any pre-P2.7 save (`s.my.walkers[].legendary=true` + a `kind:'walkers'` `pcmd`). Non-walker permanents are untouched (creature toggle still governs). Verified: syntax gate, **id-set diff empty** (no ids added/removed), 34-assertion jsdom driver incl. **TEST R** (cast-form + quick-cast walkers force legendary with toggle off; creature regression both ways; resolve / `cmdObjFromCfg` / `saveBoardToLibrary` / end-to-end pipeline all force true; walker drawer has no toggle + shows the indicator; `migrate` normalizes walkers + walker-pcmd while leaving creatures alone; `getComputedStyle` confirms `cf-leg`/`cf-legpw` visibility per type; boot/turn-cycle/undo/autosave clean). **Adversarially reviewed** (4 dimensions × refute-each-finding workflow): 13 findings, all nit/minor, 0 confirmed defects — one minor UX inconsistency (silent toggle-hide in the cast form) was addressed with the `cf-legpw` affordance above.
 
 ---
 
