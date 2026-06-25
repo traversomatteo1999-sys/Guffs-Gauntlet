@@ -197,11 +197,13 @@
   .typepick{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}
   .typebtn{font-family:"Space Mono",monospace;font-size:.72rem;text-transform:capitalize;padding:8px 12px;border:1px solid var(--line);border-radius:9px;background:var(--ink-3);color:var(--bone-dim);cursor:pointer;transition:.12s}
   .typebtn:hover{color:var(--bone)} .typebtn.on{border-color:var(--azor);color:var(--azor);background:rgba(77,168,218,.1);font-weight:700}
-  .castgrid .cf-cre,.castgrid .cf-pw,.castgrid .cf-perm,.castgrid .cf-leg,.castgrid .cf-legpw{display:none}
+  .castgrid .cf-cre,.castgrid .cf-pw,.castgrid .cf-perm,.castgrid .cf-leg,.castgrid .cf-legpw,.castgrid .cf-cmd{display:none}
   .castgrid.ct-creature .cf-cre,.castgrid.ct-creature .cf-perm,.castgrid.ct-planeswalker .cf-pw,.castgrid.ct-planeswalker .cf-perm,.castgrid.ct-artifact .cf-perm,.castgrid.ct-enchantment .cf-perm{display:flex}
   /* P2.7: the legendary toggle shows for every permanent EXCEPT planeswalkers (always legendary); walkers instead show a static "always legendary" note, mirroring the board drawer */
   .castgrid.ct-creature .cf-leg,.castgrid.ct-artifact .cf-leg,.castgrid.ct-enchantment .cf-leg{display:flex}
   .castgrid.ct-planeswalker .cf-legpw{display:flex}
+  /* P3.1: the "save as commander" toggle shows only for the two commander-eligible types */
+  .castgrid.ct-creature .cf-cmd,.castgrid.ct-planeswalker .cf-cmd{display:flex}
   /* P2.3: prominent gold AI-threat control, near the top of the permanent form */
   .castgrid .threatrow{flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;border:1px solid var(--gold);border-radius:10px;background:rgba(217,164,65,.08);padding:9px 11px;margin:2px 0}
   .threatlbl{font-family:"Space Mono",monospace;font-size:.64rem;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:5px}
@@ -385,7 +387,7 @@
 
   <div class="panel" style="margin-top:12px">
     <h2>🛡 Your board <span class="tag">the enemy reads &amp; fights this</span></h2>
-    <div class="btnrow" style="margin-top:4px"><button class="big azor inline" onclick="openCast()">✦ Cast a spell</button><button class="mini gold" onclick="quickCast()" title="Quick cast">⚡ Quick cast</button><span class="manaline">→ onto the Stack; permanents resolve onto this board</span></div>
+    <div class="btnrow" style="margin-top:4px"><button class="big azor inline" onclick="openCast()">✦ Cast a spell</button><button class="mini gold" onclick="quickCast()" title="Quick cast">⚡ Quick cast</button><button class="mini gold" onclick="chooseCommander()" title="Choose or change your commander">♛ + commander</button><span class="manaline">→ onto the Stack; permanents resolve onto this board</span></div>
     <div class="btnrow" style="margin-top:4px"><span class="lab">Deploy token</span><select id="boardTokSel" style="max-width:180px"></select><input type="number" id="boardTokQty" min="1" value="1" style="width:48px"><button class="ok" style="padding:8px 14px;font-weight:700" onclick="deploySavedToken()">Deploy ×N</button><button class="tiny" onclick="openLibrary()">＋ make / manage</button></div>
     <div class="cmdbox" id="pcmdBox" style="display:none"></div>
     <div class="subh"><span>Creatures</span><button class="tiny ok" onclick="addC()">+ creature</button></div>
@@ -1197,7 +1199,7 @@ function readColorPills(id){const el=$(id);return el?[...el.querySelectorAll('.m
 function setColorPills(id,arr){const el=$(id);if(!el)return;arr=arr||[];[...el.querySelectorAll('.manapip')].forEach(b=>b.classList.toggle('on',arr.indexOf(b.dataset.col)>=0));}
 /* P2.3: threat is a gold segmented control backed by the hidden #castStrength select (readCastForm unchanged). */
 function setThreat(v){const sel=$("castStrength");if(sel)sel.value=v;const seg=$("threatSeg");if(seg)[...seg.querySelectorAll('button')].forEach(b=>b.classList.toggle('on',b.dataset.v===v));}
-function castFromLibSel(){const sel=$("castLibSel");if(!sel||sel.value===''){alert('Pick a saved card from the dropdown first.');return;}const i=parseInt(sel.value,10);closeOverlay();libCast(i);}
+function castFromLibSel(){const sel=$("castLibSel");if(!sel||sel.value===''){alert('Pick a saved card from the dropdown first.');return;}const i=parseInt(sel.value,10);closeOverlayCommit();libCast(i);}
 function _setOn(el,on){if(!el)return;if(on)el.classList.add('on');else el.classList.remove('on');}
 function loadCastFromLibrary(idx){if(idx===''||idx==null)return;const p=prof();if(!p)return;const c=p.library[parseInt(idx,10)];if(!c)return;const pr=c.props||{};
   $("castType").value=c.ctype||'creature';$("castName").value=c.name||'';$("castP").value=c.p!=null?c.p:2;$("castT").value=c.t!=null?c.t:2;$("castLoy").value=c.loy!=null?c.loy:3;
@@ -1228,7 +1230,7 @@ ${(()=>{const p=prof();const lib=p?p.library:[];return lib.length?`<div class="b
   <label>On resolve (one-shots)<select id="castAutoEffect"><option value="none">— manual —</option><option value="dmgBoss">deal N to enemy</option><option value="gainLife">you gain N life</option><option value="loseLife">you lose N life</option></select></label>
   <label>N<input type="number" id="castAutoN" value="3"></label>
   <label class="cf-perm" style="grid-column:1/-1;border-top:1px solid var(--line);padding-top:8px;color:var(--gold)">permanent properties — applied when it resolves onto your board</label>
-  <label class="cf-perm" style="grid-column:1/-1">flags<div class="setbtns"><button type="button" class="tiny cf-leg" id="castLeg" onclick="this.classList.toggle('on')">legendary</button><span class="cf-legpw" style="color:var(--gold);font-size:.62rem;align-items:center">★ always legendary</span><button type="button" class="tiny" id="castTok" onclick="this.classList.toggle('on')">token</button><button type="button" class="tiny cf-cre" id="castDef" onclick="this.classList.toggle('on')">defender</button></div></label>
+  <label class="cf-perm" style="grid-column:1/-1">flags<div class="setbtns"><button type="button" class="tiny cf-leg" id="castLeg" onclick="this.classList.toggle('on')">legendary</button><span class="cf-legpw" style="color:var(--gold);font-size:.62rem;align-items:center">★ always legendary</span><button type="button" class="tiny" id="castTok" onclick="this.classList.toggle('on')">token</button><button type="button" class="tiny cf-cre" id="castDef" onclick="this.classList.toggle('on')">defender</button><button type="button" class="tiny gold cf-cmd" id="castCommander" title="Mark as a commander — when you ★ Save it, it appears in the commander chooser" onclick="this.classList.toggle('on')">♛ commander</button></div></label>
   <label class="cf-perm">Protection from${castColorPicker('castProtPills')}</label>
   <label class="cf-perm">Dies to<select id="castDies"><option value="graveyard">graveyard</option><option value="exile">exile</option></select></label>
   <label class="cf-perm">Ward — enemy pays<input type="number" id="castWardN" value="0"></label>
@@ -1244,7 +1246,7 @@ ${(()=>{const p=prof();const lib=p?p.library:[];return lib.length?`<div class="b
 <div class="btnrow" style="margin-top:12px"><button class="mini" id="castNoCounter" onclick="this.classList.toggle('on')">can't be countered</button><button class="big azor inline" onclick="submitCast()">✦ Put on the stack</button>${_editLid?`<button class="mini ok" onclick="saveCardEdits()">★ Save changes</button><button class="mini gold" onclick="saveCardToLibrary()">＋ Save as new</button>`:`<button class="mini gold" onclick="saveCardToLibrary()">★ Save to library</button>`}<button class="mini gold" onclick="castAsCommander()">♛ Set as commander</button><button class="mini" onclick="closeOverlay()">cancel</button></div>`;}
 function castConfig(cfg){const item=Object.assign({id:S.nextId++,_player:true,side:'you',status:'pending'},cfg);
   S.plays.push(item);log("you",`✦ You cast <b>${item.name}</b> (${item.ctype})${item.cantCounter?" — can't be countered":""}. It's on the stack.`);
-  closeOverlay();render();enemyRespondToCast(item);showPlays();return item;}
+  closeOverlayCommit();render();enemyRespondToCast(item);showPlays();return item;}
 function submitCast(){castConfig(readCastForm());}
 function submitQuickCast(){castConfig(readQuickForm());}
 function enemyRespondToCast(item){if(S.over)return;const idxs=S.hand.map((c,i)=>i).filter(i=>FX[S.hand[i].key].type==='instant'&&FX[S.hand[i].key].cost<=S.bossMana);if(!idxs.length)return;if(Math.random()>0.55)return;
@@ -1263,14 +1265,17 @@ function cnt(k,n){S.counters[k]=Math.max(0,(S.counters[k]||0)+n);renderCounters(
 function rollDie(n){n=Math.max(2,n|0);const r=Math.floor(Math.random()*n)+1;const o=$("diceOut");if(o)o.innerHTML=`🎲 d${n} -> <b style="color:var(--gold)">${r}</b>`;log("sys",`🎲 d${n} -> <b>${r}</b>.`);}
 function coinFlip(){const h=Math.random()<.5;const o=$("diceOut");if(o)o.innerHTML=`🪙 <b style="color:var(--gold)">${h?'Heads':'Tails'}</b>`;log("sys",`🪙 ${h?'Heads':'Tails'}.`);}
 function setDiff(df){S.diff=df;$("diffNote").textContent=DIFF[df].note;[...$("diffSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.d===df));}
-function restart(){const df=S.diff;closeCutscene();["plays","resolver"].forEach(id=>{const e=$(id);if(e)e.classList.remove("show");});$("log").innerHTML="";fresh();S.diff=df;enterRoom(0,true);setDiff(df);_liveGame=true;render();log("sys",`New descent · ${df.toUpperCase()}.`);showCutscene(DUNGEON[0].intro,DUNGEON[0].villain,"Ember Gate · Level I","Enter the gate ▸",villainCutOpts(DUNGEON[0]));}
+function restart(){const df=S.diff;closeCutscene();["plays","resolver"].forEach(id=>{const e=$(id);if(e)e.classList.remove("show");});$("log").innerHTML="";fresh();S.diff=df;enterRoom(0,true);setDiff(df);_liveGame=true;render();log("sys",`New descent · ${df.toUpperCase()}.`);chooseCommander();/* P3.1: re-ask the commander each new descent (fresh() clears it); proceedAfterCommander shows the gate intro */}
 $("diffSeg").addEventListener("click",e=>{if(!e.target.dataset.d)return;if(S.turn===0&&S.roomIndex===0&&!S.inv.length){const df=e.target.dataset.d;fresh();S.diff=df;enterRoom(0,true);setDiff(df);render();}else log("sys","Restart to change difficulty.");});
 $("resetBtn").addEventListener("click",restart);
 $("bossDmgIn")&&$("bossDmgIn").addEventListener("keydown",e=>{if(e.key==="Enter")dmgBoss();});
 $("pwDmgIn").addEventListener("keydown",e=>{if(e.key==="Enter")damagePW();});
 
 /* ===== Lore / Tutorial / Cutscene overlays ===== */
-function closeOverlay(){if(_cmdChooseActive){chooseCommander();return;}$("overlay").classList.remove("show");}
+/* P3.1: dismiss is no longer a trap. While choosing a commander, a backdrop/✕/cancel either steps back from the create sub-form to the chooser (_cmdCreating) or, on the chooser itself, skips ("set one later"). */
+function closeOverlay(){if(_cmdChooseActive){if(_cmdCreating){_cmdCreating=false;chooseCommander();return;}skipCommander();return;}$("overlay").classList.remove("show");}
+/* P3.1: a COMMITTED cast (put-on-stack / cast-from-library) is a definitive exit from the commander flow — it must not bounce back to the chooser the way a cancel does. */
+function closeOverlayCommit(){if(_cmdChooseActive){proceedAfterCommander();return;}$("overlay").classList.remove("show");}
 function openTutorial(){$("modalBody").innerHTML=TUTORIAL_HTML;$("overlay").classList.add("show");}
 /* P1.8 — ⓘ info popups: one infoBtn(key) helper + INFO_TEXT map + shared #overlay modal (showInfo). */
 const INFO_TEXT={
@@ -1515,30 +1520,35 @@ function lidStamp(){return 'L'+Date.now()+Math.floor(Math.random()*1000);}
 function saveBoardToLibrary(cat,id){const p=prof();if(!p){alert('Create a profile first (open the Menu).');return;}const o=S.my[cat].find(x=>x.id===id);if(!o)return;let cfg;
   if(cat==='creatures'){cfg={name:o.name,ctype:'creature',p:o.p,t:o.t,loy:3,color:(o.color||[]).slice(),note:'',commander:!!o.isCmd,kw:(o.kw||[]).filter(k=>k!=='defender'),props:{legendary:!!o.legendary,token:!!o.token,defender:(o.kw||[]).indexOf('defender')>=0,prot:(o.prot||[]).slice(),cward:o.cward||null,catk:o.catk||null,dies:o.dies||'graveyard',abilP:o.abilP||0,abilA:o.abilA||0,mana:o.mana||0,strength:o.strength||'mid'}};}
   else if(cat==='artifacts'||cat==='enchants'){cfg={name:o.name,ctype:cat==='artifacts'?'artifact':'enchantment',color:(o.color||[]).slice(),note:o.note||'',kw:[],props:{legendary:!!o.legendary,token:!!o.token,defender:false,prot:(o.prot||[]).slice(),cward:o.cward||null,catk:o.catk||null,dies:o.dies||'graveyard',abilP:0,abilA:0,mana:o.mana||0,strength:'mid'}};}
-  else if(cat==='walkers'){cfg={name:o.name,ctype:'planeswalker',loy:o.loyalty||o.baseLoy||3,color:(o.color||[]).slice(),note:o.note||'',kw:[],props:{legendary:true,token:!!o.token,defender:false,prot:(o.prot||[]).slice(),cward:o.cward||null,catk:o.catk||null,dies:o.dies||'graveyard',abilP:0,abilA:0,mana:0,strength:'mid'}};}
+  else if(cat==='walkers'){cfg={name:o.name,ctype:'planeswalker',loy:o.loyalty||o.baseLoy||3,color:(o.color||[]).slice(),note:o.note||'',commander:!!o.isCmd,kw:[],props:{legendary:true,token:!!o.token,defender:false,prot:(o.prot||[]).slice(),cward:o.cward||null,catk:o.catk||null,dies:o.dies||'graveyard',abilP:0,abilA:0,mana:0,strength:'mid'}};}
   else return;
   cfg.lid=lidStamp();p.library.push(cfg);saveDB();log("loot",`★ Saved <b>${o.name}</b> to your library.`);render();}
 function saveStackToLibrary(i){const it=S.plays[i];if(!it||!it._player){return;}const p=prof();if(!p){alert('Create a profile first (open the Menu).');return;}const cfg=JSON.parse(JSON.stringify(it));['id','_player','side','status','_copy','_instant','_respondingTo','_pcmd','_pcmdObj','_enemyCmd'].forEach(k=>delete cfg[k]);cfg.lid=lidStamp();p.library.push(cfg);saveDB();log("loot",`★ Saved <b>${it.name||it.n}</b> to your library.`);renderPlays();}
 function cfgToItem(cfg){const it=JSON.parse(JSON.stringify(cfg));delete it.lid;return it;}
-let _cmdChooseActive=false;let _editLid=null;let _castCommander=false;
+let _cmdChooseActive=false;let _cmdCreating=false;let _editLid=null;let _castCommander=false;
 function cmdObjFromCfg(cfg){const pr=cfg.props||{};
   if(cfg.ctype==='creature'){const kwl=(cfg.kw||[]).slice();if(pr.defender&&kwl.indexOf('defender')<0)kwl.push('defender');return {id:S.nextId++,name:cfg.name,p:(cfg.p==null?1:cfg.p),t:(cfg.t==null?1:cfg.t),baseP:(cfg.p==null?1:cfg.p),baseT:(cfg.t==null?1:cfg.t),kw:kwl,color:(cfg.color||[]).slice(),plus:0,minus:0,other:[],tapped:false,sick:true,token:!!pr.token,expires:false,legendary:!!pr.legendary,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',abilP:pr.abilP||0,abilA:pr.abilA||0,mana:pr.mana||0,strength:pr.strength||'mid',isCmd:true,kind:'creatures',cmdTax:0,cmdDeaths:0};}
   if(cfg.ctype==='planeswalker'){return {id:S.nextId++,name:cfg.name,loyalty:cfg.loy||3,baseLoy:cfg.loy||3,abilities:0,note:cfg.note||'',color:(cfg.color||[]).slice(),legendary:true,token:!!pr.token,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',isCmd:true,kind:'walkers',cmdTax:0,cmdDeaths:0};}
   return null;}
 function setStartCommander(cfg){const o=cmdObjFromCfg(cfg);if(!o){alert('A commander must be a creature or a planeswalker.');return false;}S.my.creatures.forEach(c=>c.isCmd=false);S.my.walkers.forEach(w=>w.isCmd=false);S.pcmd=o;log("you",`♛ <b>${o.name}</b> begins in your command zone — deploy it when you cast it.`);render();return true;}
 function chooseCommander(){_cmdChooseActive=true;$("modalBody").innerHTML=cmdChooseHTML();$("overlay").classList.add("show");}
-function cmdChooseHTML(){const p=prof();const elig=(p?p.library:[]).map((c,i)=>({c,i})).filter(x=>x.c.ctype==='creature'||x.c.ctype==='planeswalker');
-  const list=elig.length?elig.map(({c,i})=>{const stat=c.ctype==='creature'?`${c.p}/${c.t}`:`loy ${c.loy}`;const dots=(c.color||[]).map(col=>`<span class="cdot" style="background:${COLOR_HEX[col]||'#888'}"></span>`).join("");return `<div class="libitem"><div class="li-h"><span class="li-n">${c.name}</span><span class="typechip ${c.ctype}">${c.ctype}</span><span class="cost">${stat}</span>${dots}</div><div class="li-a"><button class="tiny ok" onclick="pickCommanderFromLib(${i})">♛ Choose</button></div></div>`;}).join(""):'<span class="empty">No commander-eligible cards saved yet — build one below.</span>';
+function cmdChooseHTML(){const p=prof();const all=(p?p.library:[]).map((c,i)=>({c,i})).filter(x=>x.c.ctype==='creature'||x.c.ctype==='planeswalker');
+  const flagged=all.filter(x=>x.c.commander===true);
+  /* P3.1: filter to saved-as-commander cards; but if NONE are marked (fresh/legacy library) fall back to all eligible so the chooser is never an empty dead-end. */
+  const useList=flagged.length?flagged:all;
+  const row=({c,i})=>{const stat=c.ctype==='creature'?`${c.p}/${c.t}`:`loy ${c.loy}`;const dots=(c.color||[]).map(col=>`<span class="cdot" style="background:${COLOR_HEX[col]||'#888'}"></span>`).join("");return `<div class="libitem"><div class="li-h"><span class="li-n">${c.name}</span><span class="typechip ${c.ctype}">${c.ctype}</span><span class="cost">${stat}</span>${dots}</div><div class="li-a"><button class="tiny ok" onclick="pickCommanderFromLib(${i})">♛ Choose</button></div></div>`;};
+  const subLabel=flagged.length?'Saved as commander':(all.length?'Eligible cards — toggle ♛ commander in the editor to feature favourites here':'From your library');
+  const list=useList.length?useList.map(row).join(""):'<span class="empty">No creatures or planeswalkers saved yet — build one below.</span>';
   return `<h2>♛ Choose your commander</h2>
-  <p style="color:var(--bone-dim);font-style:italic">Pick a saved creature or planeswalker, or build a brand-new card. Your commander starts in the <b>command zone</b> — deploy it when you cast it. You can also skip and set one later from any card's ⚙ drawer.</p>
-  <div class="subh"><span>From your library</span></div>
+  <p style="color:var(--bone-dim);font-style:italic">Pick a card you saved as a commander, or build a brand-new one. Your commander starts in the <b>command zone</b> — deploy it when you cast it. You can dismiss this and set one later with the <b>♛ + commander</b> board button or any card's ⚙ drawer.</p>
+  <div class="subh"><span>${subLabel}</span></div>
   <div class="liblist">${list}</div>
   <div class="btnrow" style="margin-top:12px"><button class="big azor inline" onclick="newCommander()">✦ Create a new commander</button><button class="mini" onclick="skipCommander()">Skip — set one later</button></div>`;}
 function pickCommanderFromLib(i){const p=prof();if(!p)return;const cfg=p.library[i];if(!cfg)return;if(setStartCommander(cfg))proceedAfterCommander();}
-function newCommander(){openCast();}
+function newCommander(){_cmdCreating=true;openCast();}
 function castAsCommander(){const cfg=readCastForm();if(setStartCommander(cfg)){if(_cmdChooseActive)proceedAfterCommander();else closeOverlay();}}
 function skipCommander(){proceedAfterCommander();}
-function proceedAfterCommander(){_cmdChooseActive=false;$("overlay").classList.remove("show");if(!S._introShown){S._introShown=true;if(DUNGEON[0].intro)showCutscene(DUNGEON[0].intro,DUNGEON[0].villain,"Ember Gate · Level I","Enter the gate ▸",villainCutOpts(DUNGEON[0]));}}
+function proceedAfterCommander(){_cmdChooseActive=false;_cmdCreating=false;$("overlay").classList.remove("show");if(!S._introShown){S._introShown=true;if(DUNGEON[0].intro)showCutscene(DUNGEON[0].intro,DUNGEON[0].villain,"Ember Gate · Level I","Enter the gate ▸",villainCutOpts(DUNGEON[0]));}}
 function libCast(i){const p=prof();if(!p)return;const cfg=p.library[i];if(!cfg)return;if(S.over){alert('The game is over — restart to cast.');return;}const item=Object.assign({id:S.nextId++,_player:true,side:'you',status:'pending'},cfgToItem(cfg));S.plays.push(item);log("you",`✦ Cast <b>${item.name}</b> from your library. It's on the stack.`);closeLibrary();render();enemyRespondToCast(item);showPlays();}
 function libDeploy(i){const p=prof();if(!p)return;const cfg=p.library[i];if(!cfg)return;resolvePlayerItem(cfgToItem(cfg));log("loot",`Deployed <b>${cfg.name}</b> from your library.`);closeLibrary();render();}
 function libCopy(i){const p=prof();if(!p)return;const c=JSON.parse(JSON.stringify(p.library[i]));c.lid='L'+Date.now()+Math.floor(Math.random()*1000);c.name=c.name+" (copy)";p.library.push(c);saveDB();renderLibrary();}

@@ -34,7 +34,9 @@
 | &nbsp;&nbsp;P2.5 library + picker search | ✅ **DONE** |
 | &nbsp;&nbsp;P2.6 reset card to original | ✅ **DONE** |
 | &nbsp;&nbsp;P2.7 planeswalkers legendary by default | ✅ **DONE** |
-| **Phase 3 — Commander & emblems** | ⬜ |
+| **Phase 3 — Commander & emblems** | 🔨 in progress |
+| &nbsp;&nbsp;P3.1 commander = saved-as-commander + trap rewrite | ✅ **DONE** |
+| &nbsp;&nbsp;P3.2 enemy emblems | ⬜ |
 | **Phase 4 — Stack & turn-phase engine** | ⬜ |
 | **Phase 5 — Enemy mana & deck rework** | ⬜ |
 | **Phase 6 — AI intelligence & balance** | ⬜ |
@@ -183,7 +185,8 @@ Visual-hierarchy convention (primary/secondary/tertiary), subtle per-surface bac
 
 # PHASE 3 — Commander & emblems
 
-- **P3.1 — Commander = only cards saved as commander.** Filter the chooser by `cfg.commander===true` (plumbed in P0.4); add a "save as commander" toggle + a **+ commander** board button; re-ask on restart; rewrite the `_cmdChooseActive` mobile dismissal trap.
+- **P3.1 — Commander = only cards saved as commander.** ✅ **DONE.**
+  **How:** **Chooser by flag, not type:** `cmdChooseHTML` now lists `commander===true` creatures/walkers; when **none** are marked (fresh/legacy library) it **falls back to all eligible** cards so the chooser is never an empty dead-end (sub-label flips between "Saved as commander" / "Eligible cards — toggle ♛ commander…"). Index preservation kept (`map((c,i)) → filter → pickCommanderFromLib(i)`). **Save-as-commander toggle:** a new `#castCommander` button (`cf-cmd`, shown only for creature/planeswalker via one CSS rule) in the cast-form flags row; `readCastForm`/`loadCastFromLibrary` already referenced `#castCommander`, so the element makes Save persist `commander:true`. Also fixed `saveBoardToLibrary` **walkers** branch to carry `commander:!!o.isCmd` (was creature-only — a board planeswalker couldn't be saved as commander). **+ commander board button:** a gold `♛ + commander` button in the Your-board controls row opens the chooser any time (mid-game re-pick is undo-safe). **Re-ask on restart:** `restart()` ends with `chooseCommander()` (since `fresh()` clears `S.pcmd`); `proceedAfterCommander` shows the gate intro when `!S._introShown`. **Mobile dismissal-trap rewrite:** the old `closeOverlay` reopened the chooser on every dismiss. New: a `_cmdCreating` flag distinguishes *cancel the create sub-form → back to chooser* from *dismiss the chooser → `skipCommander` (set one later)*, so the modal is always dismissible; and a separate `closeOverlayCommit()` (used by `castConfig` and `castFromLibSel`) makes a **committed cast a clean exit** from the commander flow rather than bouncing back to the chooser. Verified: syntax gate, id-set diff (only the intended `castCommander` id added, nothing removed), **57-assertion jsdom TEST S** (chooser strict+fallback+index-preservation, toggle drives & persists the flag via `getComputedStyle` cf-cmd visibility, board button, dismiss-skips / cancel-returns / committed-cast-exits, walker save parity, restart re-ask shows intro once, boot/turn/undo/autosave). **Adversarially reviewed** (4 dims → refute-each): **4 real bugs found & fixed** — cast-to-stack and cast-from-library inside the create sub-form re-trapped the user (fixed via `closeOverlayCommit`); legacy libraries showed an empty chooser (fixed via the fallback); the walker save-as-commander asymmetry (fixed). A **focused re-review** of the fixes returned **allClean** (0 issues across commit-exit completeness, fallback/parity, and a regression sweep).
 - **P3.2 — Enemy emblems** with classic templates + optional automation (store on `S.emblemsEnemy`; automatable ones fire on enemy upkeep and log; others are reminders; render in Enemy Board).
 
 ---
