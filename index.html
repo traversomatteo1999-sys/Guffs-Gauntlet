@@ -606,17 +606,20 @@ const FX={
   bleed:{n:"Exsanguinate",cost:3,type:"sorcery",color:"B",text:"You lose 3 life; the enemy gains 3 life.",selfLoss:3,run:["bossHeal",3]},
   voidcall:{n:"Voidcall",cost:2,type:"instant",color:"B",text:"Your least-loyal planeswalker loses 3 loyalty.",flav:"It knows your name.",target:"walkerMinLoy3"},
   idol:{n:"Emberheart Idol",cost:3,type:"enchant",color:"B",text:"Each enemy upkeep, the enemy gains 2 life. (Destroy to stop.)",run:["bossrule","Emberheart Idol","Enemy upkeep: gains 2 life.",2]},
+  /* P5.2 mana engine — lands are real cards: drawn into the enemy's hand, then "played" as a mana source (+1 mana). They are NOT shown as permanents; only the mana count is. Mana rocks/dorks use run:["ramp",N]. */
+  mtn:{n:"Mountain",cost:0,type:"land",color:"R",text:"A red mana source."},
+  swp:{n:"Swamp",cost:0,type:"land",color:"B",text:"A black mana source."},
 };
 const DUNGEON=[
   {name:"Ember Gate",villain:"Grakk the Gatewarden",colors:["R"],life:14,landStart:0,
    cmd:{n:"Ashmaw",p:3,t:3,kw:["haste"],cost:3,colors:["R"]},
-   pool:["whelp","raider","warband","brute","drake","bolt","lash","warcry","aura"],
+   pool:["whelp","raider","warband","brute","drake","bolt","lash","warcry","aura"],lands:{mtn:16},
    lore:"Grakk holds the only road into the Warren, and he holds it the way a goblin holds anything \u2014 by setting it alight. He does not parley; every challenger is fresh kindling for the gate-fires. Fast, gleeful, and utterly without patience. If Grakk has a plan, the plan is more fire, sooner.",
    intro:["Smoke coils up out of the gorge. At its mouth squats the Ember Gate, and atop the wall a goblin warlord grins through the heat-haze.","\u201CDown there's where the dead things live,\u201D Grakk calls, hefting a torch. \u201CYou want past? Then burn \u2014 or be burned.\u201D"],
    sigil:"\uD83D\uDD25",quote:"Burn bright, little walker. It's the only way anybody leaves my gate.",deathQuote:"...cold... when did... the fire get so... cold..."},
   {name:"The Slag Pit",villain:"Murglax, Pit-Tyrant",colors:["B"],life:24,landStart:2,
    cmd:{n:"Slagmaw",p:5,t:5,kw:["trample"],cost:4,colors:["B"]},
-   pool:["gnaw","crawler","leech","hulk","swarm","raise","smother","edict","wither","drain","bleed","plague","idol"],
+   pool:["gnaw","crawler","leech","hulk","swarm","raise","smother","edict","wither","drain","bleed","plague","idol"],lands:{swp:18},
    lore:"Below the gate, the Warren throws its dead into the Slag Pit \u2014 and the Pit answers with Murglax. He does not kill you quickly; he spends you, a wound and a year at a time, feeding what he takes back into himself. The longer you last, the stronger he grows on your losses. Patience is his only weapon, and he has all the patience of the grave.",
    intro:["The gate-fires gutter out behind you. The air turns wet and cold and sweet with rot.","Something vast shifts in the dark of the Slag Pit, and a voice like settling gravel says: \u201CGrakk burned bright. Bright things burn out. I will take my time with you.\u201D"],
    sigil:"\u2620",quote:"I am in no hurry. The dead never are. Bleed for me a while \u2014 I'll grow fat on it.",deathQuote:"Spent... at last... even the Pit... runs... dry..."},
@@ -626,7 +629,7 @@ const DUNGEON=[
        plus:{sign:1,n:"Ember Whisper",text:"You lose 2 life.",selfLoss:2,color:"R"},
        minus:{sign:-3,n:"Grasping Ash",text:"Destroy your greatest-power creature.",target:"destroyMaxPow",color:"B"},
        ult:{sign:-7,n:"Voice of Cinders",text:"You lose 8 life; the Tyrant creates a 5/5 Cinder Wraith with trample and haste.",selfLoss:8,run:["spawn","Cinder Wraith",5,5,["trample","haste"],"RB"],color:"B",ult:true}},
-   pool:["ogre","nightmare","colossus","crawler","hulk","storm","bleed","drain","edict","wrath2","voidcall","pyro","warcry","idol","plague"],
+   pool:["ogre","nightmare","colossus","crawler","hulk","storm","bleed","drain","edict","wrath2","voidcall","pyro","warcry","idol","plague"],lands:{mtn:9,swp:9},
    lore:"Grakk was the spark; Murglax was the ash. Vael is the fire that learned to feed on its own ashes and never go out. Tyrant of the Warren, Vael wields flame and decay as a single art \u2014 burning what cannot be drained, draining what cannot be burned \u2014 and when the body finally fails, the embers merely choose a new shape. To put Vael down you must do it twice, and mean it both times.",
    intro:["The Pit narrows to a stair, and the stair to a throne of cooling slag. Heat and cold war in the same breath.","Vael does not rise. \u201CTwo of my wardens, undone,\u201D the Tyrant muses, almost fond. \u201CYou've come far enough to matter. Good. Ash should have witnesses.\u201D"],
    sigil:"\u265B",quote:"Ash should have witnesses. Kneel, and I will let you be one. Refuse, and you will be the ash.",deathQuote:"Embers... do not... choose... twice...",
@@ -652,16 +655,17 @@ let _dt={};
 const LOOT_D20=[[1,2,"map"],[3,6,"heal5"],[7,9,"ember"],[10,11,"scholar"],[12,14,"heal10"],[15,16,"ward"],[17,18,"spark"],[19,19,"phoenix"],[20,20,"jackpot"]];
 
 let S;
-function fresh(){histReset();S={diff:"standard",youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],stackProposal:null,phasesFired:[],nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,bossManaFrozen:0,emblemsEnemy:[],battles:[],plane:null,ui:{tabs:{}},my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",_spoils:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
+function fresh(){histReset();S={diff:"standard",youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],stackProposal:null,phasesFired:[],nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,bossManaFrozen:0,bossLands:0,bossLandPlayed:false,emblemsEnemy:[],battles:[],plane:null,ui:{tabs:{}},my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",_spoils:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
 function enterRoom(i,first){S.roomIndex=i;const room=DUNGEON[i];const m=DIFF[S.diff].hpMult*(S.balanceScale||1);let life=Math.max(1,Math.round(room.life*m));if(S.weakenNext){life=Math.max(1,life-4);S.weakenNext=false;}
   S.boss={name:room.villain,life,max:life,isVael:!!room.isVael,colors:(room.colors||["R"]).slice()};
   S.enemy={name:room.villain,colors:(room.colors||["R"]).slice(),lore:room.lore||"",isFinal:!!room.isVael};
   S.cmd={id:'cmd',n:room.cmd.n,p:room.cmd.p,t:room.cmd.t,baseP:room.cmd.p,baseT:room.cmd.t,kw:[...room.cmd.kw],color:(room.cmd.colors||room.colors||["R"]).slice(),baseCost:room.cmd.cost,cost:room.cmd.cost,tax:0,deaths:0,inPlay:false,sick:false,tapped:false,plus:0,minus:0,other:[],_cmd:true};
   S.tokens=[];S.rules=[];S.turn=0;S.phase2done=false;S.balanceScale=1;S.emblemsEnemy=[];S.battles=[];S.plane=null;S.bossManaFrozen=0;S.stackProposal=null;
   S.pw=room.pw?{name:room.pw.name,loy:room.pw.loy,baseLoy:room.pw.loy,colors:(room.pw.colors||room.colors||[]).slice(),ultThreshold:room.pw.ultThreshold||7,plus:room.pw.plus,minus:room.pw.minus,ult:room.pw.ult}:null;
-  S.activeTurn=null;S.phase=0;S.bossMana=0;S.bossManaMax=0;S.bossManaMod=0;S.plays=[];S.combat=null;S.paused=false;S.lib=buildDeck(room.pool);S.hand=[];S.gy=[];S.exile=[];vaelDraw(4);
+  S.bossManaMod=0;S.bossLands=Math.max(0,(room.landStart||0)+(DIFF[S.diff].manaBonus||0));S.bossLandPlayed=false;S.bossManaMax=S.bossLands;S.bossMana=S.bossLands;/* P5.2: mana now comes from sources (lands/rocks/dorks); start with landStart±difficulty already developed, then play a land per turn */
+  S.activeTurn=null;S.phase=0;S.plays=[];S.combat=null;S.paused=false;S.lib=buildDeck(room);S.hand=[];S.gy=[];S.exile=[];vaelDraw(4);
   if(!first)log("sys",`— You descend into <b>${room.name}</b>. ${S.boss.name} [${S.boss.colors.join("/")}]: ${life} life. Commander ${S.cmd.n} (${S.cmd.cost} mana). Deck: ${S.lib.length} cards. —`);}
-function buildDeck(pool){const lib=[];pool.forEach(k=>{const n=deckCopies(k);for(let j=0;j<n;j++)lib.push({id:S.nextId++,key:k});});for(let a=lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[lib[a],lib[b]]=[lib[b],lib[a]];}return lib;}
+function buildDeck(room){const lib=[];const pool=(room&&room.pool)||[];pool.forEach(k=>{const n=deckCopies(k);for(let j=0;j<n;j++)lib.push({id:S.nextId++,key:k});});const lands=(room&&room.lands)||{};Object.keys(lands).forEach(k=>{for(let j=0;j<lands[k];j++)lib.push({id:S.nextId++,key:k});});for(let a=lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[lib[a],lib[b]]=[lib[b],lib[a]];}return lib;}
 function vaelDraw(n){for(let i=0;i<n;i++){if(!S.lib.length){if(!S.gy.length)break;S.lib=S.gy.splice(0);for(let a=S.lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[S.lib[a],S.lib[b]]=[S.lib[b],S.lib[a]];}log("dm",`${EN()} shuffles its graveyard into a fresh library.`);}if(S.lib.length)S.hand.push(S.lib.shift());}}
 
 /* ===== ENEMY DECK MANIPULATION =====
@@ -717,7 +721,8 @@ function dtDiscardRandom(){const f=$("dtDN");deckDiscardRandom(f?parseInt(f.valu
 const $=id=>document.getElementById(id);
 const d=n=>Math.floor(Math.random()*n)+1;
 function log(who,html){_lastLog=(''+html).replace(/<[^>]*>/g,'').trim().slice(0,80);const e=document.createElement("div");e.className="entry "+who;e.innerHTML=`<span class="t">${who==='sys'||who==='loot'?'·':'T'+S.turn}</span><span class="x">${html}</span>`;$("log").prepend(e);}
-function bossMana(){return Math.max(0,(DUNGEON[S.roomIndex].landStart||0)+S.turn+DIFF[S.diff].manaBonus+(S.bossManaMod||0));}
+/* P5.2: the "mana NEXT turn" projection (only used on your turn). The enemy plays one land per turn, so next turn it'll have its current sources + the ritual/stax mod + the land it will play (a land in hand, or one scrounged by the anti-screw floor). Getting this right keeps the commander-readiness hint honest. */
+function bossMana(){const willLand=Array.isArray(S.hand)&&(S.hand.some(c=>FX[c.key]&&FX[c.key].type==='land')||((S.bossLands||0)<(S.turn||0)));return Math.max(0,(S.bossLands||0)+(S.bossManaMod||0)+(willLand?1:0));}
 /* P5.1: the single "usable mana now" accessor — the enemy's pool minus what the player has FROZEN (tapped down). Every enemy affordability check routes through this so a freeze actually limits casting; spends still draw from S.bossMana (the frozen part stays in the pool, just unusable, until it clears at vaelEnd). */
 function usableMana(){return Math.max(0,(S.bossMana||0)-(S.bossManaFrozen||0));}
 function effP(c){return Math.max(0,c.p+(c.plus||0)-(c.minus||0));}
@@ -726,6 +731,7 @@ function kw(c,k){return (c.kw||[]).some(x=>(''+x).toLowerCase()===k);}
 function threatScore(c){const s={low:-2,mid:0,top:3}[c.strength||'mid'];return effP(c)+(s||0);}
 function applyRun(run){if(!run)return;if(Array.isArray(run[0])){run.forEach(applyRun);return;}switch(run[0]){
   case "spawn":S.tokens.push({id:S.nextId++,name:run[1],p:run[2],t:run[3],baseP:run[2],baseT:run[3],kw:[...run[4]],color:(run[5]?String(run[5]).split(''):((S.boss&&S.boss.colors)?S.boss.colors.slice():[])),sick:!run[4].includes("haste"),tapped:false,plus:0,minus:0,other:[],expires:false});break;
+  case "ramp":S.bossLands=(S.bossLands||0)+(run[1]||1);S.bossMana+=(run[1]||1);S.bossManaMax+=(run[1]||1);log("dm",`${ENs()} taps a new source — +${run[1]||1} mana (${S.bossLands} total).`);break;
   case "bossHeal":bossHealLife(run[1]);log("dm",`${ENs()} gains <b>${run[1]}</b> life. (${S.boss.life})`);break;
   case "cmdBuff":if(S.cmd){S.cmd.p+=run[1];log("dm",`${S.cmd.n} gets +${run[1]}/+0 (now ${effP(S.cmd)}/${effT(S.cmd)}).`);}break;
   case "rule":if(!S.rules.some(r=>r.name===run[1]))S.rules.push({id:S.nextId++,name:run[1],text:run[2],die:run[3],side:"you"});break;
@@ -1167,7 +1173,11 @@ function readQuickForm(){const type=$("qcType").value;const dn={creature:'Creatu
 function renderStackFab(){const fab=$("stackFab");if(!fab)return;const live=_liveGame&&typeof S!=='undefined'&&S&&!S.over;const open=!!($("plays")&&$("plays").classList.contains("show"));const n=(S&&Array.isArray(S.plays))?S.plays.filter(p=>p&&p.status==='pending').length:0;fab.style.display=(live&&!open)?'flex':'none';fab.classList.toggle('hot',n>0);const b=$("stackFabN");if(b)b.textContent=n||'';}
 
 /* --- Vael's phases --- */
-function vaelUntap(){S.tokens.forEach(c=>{c.tapped=false;c.sick=false;});if(S.cmd.inPlay){S.cmd.tapped=false;S.cmd.sick=false;}S.bossManaMax=bossMana();S.bossMana=S.bossManaMax;log("dm",`Untap. ${ENs()} has <b>${S.bossMana}</b> mana this turn.`);}
+function vaelUntap(){S.tokens.forEach(c=>{c.tapped=false;c.sick=false;});if(S.cmd.inPlay){S.cmd.tapped=false;S.cmd.sick=false;}S.bossLandPlayed=false;S.bossManaMax=(S.bossLands||0)+(S.bossManaMod||0);S.bossMana=S.bossManaMax;log("dm",`Untap. ${ENs()} has <b>${S.bossMana}</b> mana (${S.bossLands||0} source${(S.bossLands||0)===1?'':'s'}).`);}
+/* P5.2: the enemy plays one land per turn from hand (a mana source — never shown as a permanent). Anti-screw floor: if badly mana-light with no land in hand, it scrounges one so games don't stall. */
+function playEnemyLand(){if(S.over||S.bossLandPlayed)return;const li=S.hand.findIndex(c=>FX[c.key]&&FX[c.key].type==='land');
+  if(li>=0){S.hand.splice(li,1);S.bossLands=(S.bossLands||0)+1;S.bossMana++;S.bossManaMax++;S.bossLandPlayed=true;log("dm",`${ENs()} plays a land — ${S.bossLands} mana source${S.bossLands===1?'':'s'} (usable ${usableMana()}).`);return;}
+  if((S.bossLands||0)<S.turn-1&&S.turn>1){S.bossLands=(S.bossLands||0)+1;S.bossMana++;S.bossManaMax++;S.bossLandPlayed=true;log("dm",`${ENs()} scrounges a mana source (mana-light) — now ${S.bossLands}.`);}}
 function vaelUpkeep(){S.rules.filter(r=>r.side==="boss"&&r.heal).forEach(r=>{bossHealLife(r.heal);log("dm",`${r.name}: ${ENs()} gains ${r.heal}. (${S.boss.life})`);});
   fireEnemyEmblems();if(S.over)return;/* a drain emblem can end the game on the enemy's upkeep — stop the rest of the upkeep */
   if(S.pw)pwAct();}
@@ -1181,9 +1191,10 @@ function pwAct(){if(S.over)return;const pw=S.pw;let ab;
 function vaelDrawStep(){vaelDraw(1);log("dm",`${ENs()} draws. (hand ${S.hand.length} · library ${S.lib.length})`);}
 function vaelMain(which){
   let summonedCmd=false;
+  if(which===1)playEnemyLand();
   if(which===1&&!S.cmd.inPlay&&!S.plays.some(p=>p._enemyCmd&&p.status==='pending')&&usableMana()>=S.cmd.cost){S.bossMana-=S.cmd.cost;S.plays.push({id:S.nextId++,_enemyCmd:true,side:'boss',status:'pending',n:S.cmd.n,type:'creature',cost:S.cmd.cost,color:(S.boss.colors||['R']).join(''),text:`♛ ${ENs()}'s commander — resolves to its battlefield, summoning-sick.`});summonedCmd=true;log("dm",`♛ ${ENs()} casts <b>${S.cmd.n}</b> from its command zone (spent ${S.cmd.cost}, ${S.bossMana} left). It's on the stack.`);}
   let cast=0,guard=24;
-  while(guard-->0){const idxs=S.hand.map((c,i)=>i).filter(i=>FX[S.hand[i].key].cost<=usableMana());if(!idxs.length)break;idxs.sort((a,b)=>FX[S.hand[b].key].cost-FX[S.hand[a].key].cost);const topCost=FX[S.hand[idxs[0]].key].cost;const top=idxs.filter(i=>FX[S.hand[i].key].cost===topCost);const pick=top[Math.floor(Math.random()*top.length)];const card=S.hand[pick],fx=FX[card.key];S.bossMana-=fx.cost;S.hand.splice(pick,1);const p=mkPlay(fx);p._card=card;S.plays.push(p);log("dm",`Casts <b>${fx.n}</b> (spent ${fx.cost}, ${S.bossMana} left).`);cast++;}
+  while(guard-->0){const idxs=S.hand.map((c,i)=>i).filter(i=>FX[S.hand[i].key].type!=='land'&&FX[S.hand[i].key].cost<=usableMana());if(!idxs.length)break;idxs.sort((a,b)=>FX[S.hand[b].key].cost-FX[S.hand[a].key].cost);const topCost=FX[S.hand[idxs[0]].key].cost;const top=idxs.filter(i=>FX[S.hand[i].key].cost===topCost);const pick=top[Math.floor(Math.random()*top.length)];const card=S.hand[pick],fx=FX[card.key];S.bossMana-=fx.cost;S.hand.splice(pick,1);const p=mkPlay(fx);p._card=card;S.plays.push(p);log("dm",`Casts <b>${fx.n}</b> (spent ${fx.cost}, ${S.bossMana} left).`);cast++;}
   if(which===1&&S.tokens.length===0&&!S.cmd.inPlay&&!summonedCmd&&!S.plays.some(p=>p._enemyCmd&&p.status==='pending')){const rb=S.boss.colors||["R"];const rn=rb.includes('B')&&!rb.includes('R')?"Pit Spawn":(rb.includes('R')&&!rb.includes('B')?"Goblin Whelp":"Ember Servant");applyRun(["spawn",rn,1,1,[],rb.join('')]);log("dm",`🜂 <b>Resurgence</b> — a 1/1 ${rn}.`);}
   if(S.plays.some(p=>p.status==='pending'))showPlays();
   if(!cast&&!summonedCmd&&which===1&&!S.cmd.inPlay)log("dm",`${ENs()} can't afford a cast — still ramping.`);
@@ -1495,7 +1506,7 @@ function migrate(s){if(!s||typeof s!=='object')return s;
   if(!s.counters||typeof s.counters!=='object')s.counters={};['poison','energy','experience','cmdDmg'].forEach(k=>{if(typeof s.counters[k]!=='number')s.counters[k]=0;});
   if(!s.ui||typeof s.ui!=='object')s.ui={tabs:{}};if(!s.ui.tabs)s.ui.tabs={};
   ['over','paused','phase2done','phoenixUsed','weakenNext'].forEach(k=>{s[k]=!!s[k];});
-  if(typeof s.bossManaMod!=='number')s.bossManaMod=0;if(typeof s.bossManaFrozen!=='number')s.bossManaFrozen=0;
+  if(typeof s.bossManaMod!=='number')s.bossManaMod=0;if(typeof s.bossManaFrozen!=='number')s.bossManaFrozen=0;if(typeof s.bossLands!=='number')s.bossLands=Math.max(0,(s.bossManaMax||s.bossMana||0));if(typeof s.bossLandPlayed!=='boolean')s.bossLandPlayed=false;
   if(typeof s.balanceScale!=='number')s.balanceScale=1;if(s.plane===undefined)s.plane=null;if(s.stackProposal===undefined)s.stackProposal=null;if(!Array.isArray(s.phasesFired))s.phasesFired=[];
   if(typeof s.nextId!=='number')s.nextId=1;if(typeof s.phase!=='number')s.phase=0;if(typeof s.turn!=='number')s.turn=0;
   const bp=c=>{if(!c)return;if(c.p!=null&&c.baseP==null)c.baseP=c.p;if(c.t!=null&&c.baseT==null)c.baseT=c.t;if(c.loyalty!=null&&c.baseLoy==null)c.baseLoy=c.loyalty;if(c.token&&c.expires==null)c.expires=false;};
