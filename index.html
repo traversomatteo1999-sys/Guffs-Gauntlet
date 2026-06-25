@@ -643,7 +643,7 @@ const FX={
   gatemaw:{n:"Gatemaw Forge",cost:0,type:"land",color:"R",text:"A red mana source (the gate-forge itself).",flav:"The fire that never goes out."},
   emberpit:{n:"Emberpit Caldera",cost:0,type:"land",color:"R",text:"A red mana source (a pit of living coals).",flav:"Goblins are born from it, screaming."},
   /* ===== P5.2: MURGLAX — mono-black aristocrats/attrition/drain deck (singleton). Engine: The Pit's Tithe (run:["bloodpact",N]). Finisher: Maw of the Pit. ===== */
-  bloodpact:{n:"The Pit's Tithe",cost:3,type:"enchant",color:"B",text:"Whenever any enemy creature dies, you lose 1 life and the enemy gains 1 life. (Destroy to stop.)",run:["bloodpact",1],flav:"Every death pays the Pit its tithe. Murglax simply waits to be paid."},
+  bloodpact:{n:"The Pit's Tithe",cost:3,type:"enchant",color:"B",text:"Whenever any creature dies, you lose 1 life and the enemy gains 1 life. (Destroy to stop.)",run:["bloodpact",1],flav:"Every death pays the Pit its tithe. Murglax simply waits to be paid."},
   siphon:{n:"Siphon Vitae",cost:1,type:"sorcery",color:"B",text:"You lose 1 life; the enemy gains 1 life.",selfLoss:1, run:["bossHeal",1],flav:"A small wound. The first of very many."},
   tithe:{n:"Pit-Tithe",cost:3,type:"sorcery",color:"B",text:"You lose 4 life; the enemy gains 4 life.",selfLoss:4, run:["bossHeal",4],flav:"He does not ask the tithe. He simply collects it."},
   glut:{n:"Glut of the Grave",cost:4,type:"sorcery",color:"B",text:"You lose 5 life; the enemy gains 5 life.",selfLoss:5, run:["bossHeal",5],flav:"The longer you last, the fatter he grows."},
@@ -1187,14 +1187,14 @@ function boardWipe(){const mode=$("bwMode").value,N=parseInt($("bwN").value,10)|
   let mine=0,foe=0;const dmg=mode==='dmgAll';
   if(scope==='mine'||scope==='both'){S.my.creatures.slice().forEach(c=>{if(skipTok&&c.token)return;if(skipLeg&&c.legendary)return;if(dmg){c.minus=(c.minus||0)+N;if(effT(c)<=0){mine++;killMy(c);}}else if(hit(c)){mine++;killMy(c);}});}
   if(scope==='enemy'||scope==='both'){
-    S.tokens.slice().forEach(c=>{if(skipTok&&c.token)return;if(dmg){c.minus=(c.minus||0)+N;if(effT(c)<=0){foe++;const i=S.tokens.indexOf(c);if(i>=0)S.tokens.splice(i,1);}}else if(mode==='all'||(mode==='toughLE'&&effT(c)<=N)||(mode==='powGE'&&effP(c)>=N)){foe++;const i=S.tokens.indexOf(c);if(i>=0)S.tokens.splice(i,1);}});
+    S.tokens.slice().forEach(c=>{if(skipTok&&c.token)return;if(dmg){c.minus=(c.minus||0)+N;if(effT(c)<=0){foe++;removeRef(c);}}else if(mode==='all'||(mode==='toughLE'&&effT(c)<=N)||(mode==='powGE'&&effP(c)>=N)){foe++;removeRef(c);}});/* P5.2: route enemy-token destruction through removeRef so deaths pay the Pit's Tithe consistently */
     if(S.cmd.inPlay&&!(skipLeg)){const c=S.cmd;if(dmg){c.minus=(c.minus||0)+N;if(effT(c)<=0){foe++;removeRef(c);}}else if(mode==='all'||(mode==='toughLE'&&effT(c)<=N)||(mode==='powGE'&&effP(c)>=N)){foe++;removeRef(c);}}
   }
   const label=mode==='all'?'destroys all creatures':mode==='toughLE'?`destroys toughness ≤ ${N}`:mode==='powGE'?`destroys power ≥ ${N}`:`deals ${N} to all creatures`;
   log("sys",`🌊 Boardwipe — ${label}${skipTok?' (sparing tokens)':''}${skipLeg?' (sparing legendaries)':''}: ${mine} of yours, ${foe} enemy.`);
   checkLose();render();}
 function adjLoy(n){if(!S.pw)return;S.pw.loy+=n;if(S.pw.loy<=0){log("sys",`${S.pw.name} destroyed.`);S.pw=null;}render();}
-function slay(id){const i=S.tokens.findIndex(c=>c.id===id);if(i<0)return;log("you",`Removed <b>${S.tokens[i].name}</b>.`);S.tokens.splice(i,1);render();}
+function slay(id){const i=S.tokens.findIndex(c=>c.id===id);if(i<0)return;const c=S.tokens[i];log("you",`Slew <b>${c.name}</b>.`);removeRef(c);render();}/* P5.2: a slain enemy creature is a death — route through removeRef (pays the Pit's Tithe) */
 function destroyRule(id){const i=S.rules.findIndex(r=>r.id===id);if(i<0)return;log("you",`Destroyed <b>${S.rules[i].name}</b>.`);S.rules.splice(i,1);render();}
 function rollRule(id){const r=S.rules.find(x=>x.id===id);if(!r)return;log("sys",`${r.name}: rolled <b>${d(r.die)}</b> on d${r.die}.`);}
 function dmgBoss(){const q=$("bossDmgIn");const v=parseInt(q.value,10);if(isNaN(v)||v<=0){log("sys","Enter direct damage.");return;}S.boss.life-=v;log("you",`Direct damage <b>${v}</b>. (${Math.max(0,S.boss.life)})`);q.value="";if(S.boss.life<=0)bossDown();render();}
