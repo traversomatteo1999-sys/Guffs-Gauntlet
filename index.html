@@ -292,6 +292,11 @@
   .tabnote{font-family:'Space Mono',monospace;font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;color:var(--bone-dim);font-weight:400}
   .tabchev{font-family:'Space Mono',monospace;font-size:.8rem;color:var(--bone-dim);transition:transform .2s;flex:none}
   .tab.collapsed .tabchev{transform:rotate(-90deg)}
+  .tabright{display:flex;align-items:center;gap:9px;flex:none}
+  .tabhint{font-family:'Space Mono',monospace;font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;color:var(--bone-dim);font-weight:400;white-space:nowrap}
+  .tabhint::after{content:"tap to close"}
+  .tab.collapsed .tabhint::after{content:"tap to open"}
+  .tab.collapsed .tabhint{color:var(--gold);opacity:.85}
   .tab.collapsed .tabbody{display:none}
   .tabbody{padding:clamp(10px,2vw,16px);display:flex;flex-direction:column;gap:12px}
   .tabbody>.grid{margin-top:0}
@@ -329,10 +334,10 @@
     <button class="mini ember" id="resetBtn">↺ Restart Dungeon</button><button class="mini azor" onclick="undo()">↩ Undo</button><button class="mini gold" onclick="openTutorial()">❓ Tutorial</button><button class="mini" onclick="openLore()">📖 Lore</button><button class="mini gold" onclick="openLibrary()">🃏 Library</button><button class="mini azor" onclick="showMenu()">☰ Menu</button><span class="goldpill" id="goldNote" style="align-self:center">💰 0</span><span class="lab" id="diffNote">standard</span>
   </div>
 
-  <section class="tab" id="tab-info"><button class="tabhead" onclick="toggleTab('info')"><span class="tablabel">⟡ Info <span class="tabnote">you · foe · log</span></span><span class="tabchev">▾</span></button><div class="tabbody" id="tb-info"></div></section>
-  <section class="tab" id="tab-action"><button class="tabhead" onclick="toggleTab('action')"><span class="tablabel">🜂 Action <span class="tabnote">turn flow · attack · tools</span></span><span class="tabchev">▾</span></button><div class="tabbody" id="tb-action"><div class="grid duo" id="tb-action-top" style="margin-top:0"></div><div id="tb-action-tools" style="margin-top:0"></div></div></section>
-  <section class="tab" id="tab-enemy"><button class="tabhead" onclick="toggleTab('enemy')"><span class="tablabel">⚔ Enemy Board <span class="tabnote">creatures · walker · zones</span></span><span class="tabchev">▾</span></button><div class="tabbody" id="tb-enemy"></div></section>
-  <section class="tab" id="tab-player"><button class="tabhead" onclick="toggleTab('player')"><span class="tablabel">🛡 Your Board <span class="tabnote">board · zones · enchantments</span></span><span class="tabchev">▾</span></button><div class="tabbody" id="tb-player"></div></section>
+  <section class="tab" id="tab-info"><button class="tabhead" onclick="toggleTab('info')"><span class="tablabel">⟡ Info <span class="tabnote">you · foe · log</span></span><span class="tabright"><span class="tabhint"></span><span class="tabchev">▾</span></span></button><div class="tabbody" id="tb-info"></div></section>
+  <section class="tab" id="tab-action"><button class="tabhead" onclick="toggleTab('action')"><span class="tablabel">🜂 Action <span class="tabnote">turn flow · attack · tools</span></span><span class="tabright"><span class="tabhint"></span><span class="tabchev">▾</span></span></button><div class="tabbody" id="tb-action"><div class="grid duo" id="tb-action-top" style="margin-top:0"></div><div id="tb-action-tools" style="margin-top:0"></div></div></section>
+  <section class="tab" id="tab-enemy"><button class="tabhead" onclick="toggleTab('enemy')"><span class="tablabel">⚔ Enemy Board <span class="tabnote">creatures · walker · zones</span></span><span class="tabright"><span class="tabhint"></span><span class="tabchev">▾</span></span></button><div class="tabbody" id="tb-enemy"></div></section>
+  <section class="tab" id="tab-player"><button class="tabhead" onclick="toggleTab('player')"><span class="tablabel">🛡 Your Board <span class="tabnote">board · zones · enchantments</span></span><span class="tabright"><span class="tabhint"></span><span class="tabchev">▾</span></span></button><div class="tabbody" id="tb-player"></div></section>
 
   <div class="deckcolors">
     <span class="lab">Your deck colors</span><div class="setbtns" id="deckColorRow"></div>
@@ -1646,8 +1651,9 @@ function buildTabs(){const byId=id=>document.getElementById(id),q=s=>document.qu
   mv(tbPlayer,yourBoard);mv(tbPlayer,yourZones);mv(tbPlayer,rules);
   [['info','tab-info'],['action','tab-action'],['enemy','tab-enemy'],['player','tab-player']].forEach(([k,id])=>{const t=byId(id),lab=t&&t.querySelector('.tabnote');if(lab&&!lab.querySelector('.ibtn'))lab.insertAdjacentHTML('beforeend',' '+infoBtn(k));});
   const sh=byId('plays')&&byId('plays').querySelector('h3');if(sh&&!sh.querySelector('.ibtn'))sh.insertAdjacentHTML('beforeend',infoBtn('stack'));}                                 // Your board
-function applyTabs(){if(typeof S==='undefined'||!S||!S.ui||!S.ui.tabs)return;TABS.forEach(k=>{const el=document.getElementById('tab-'+k);if(el)el.classList.toggle('collapsed',!!S.ui.tabs[k]);});}
-function toggleTab(k){if(!S.ui)S.ui={tabs:{}};if(!S.ui.tabs)S.ui.tabs={};S.ui.tabs[k]=!S.ui.tabs[k];applyTabs();scheduleAutosave();}
+/* Tabs default CLOSED: a never-toggled tab (undefined) is collapsed; only an explicit `false` means the player opened it. */
+function applyTabs(){if(typeof S==='undefined'||!S||!S.ui||!S.ui.tabs)return;TABS.forEach(k=>{const el=document.getElementById('tab-'+k);if(el)el.classList.toggle('collapsed',S.ui.tabs[k]!==false);});}
+function toggleTab(k){if(!S.ui)S.ui={tabs:{}};if(!S.ui.tabs)S.ui.tabs={};S.ui.tabs[k]=(S.ui.tabs[k]===false);applyTabs();scheduleAutosave();}
 /* ===== Satchel popup (opened from the You panel, above the commander box) ===== */
 function openSatchel(){if(typeof S==='undefined'||!S)return;$("modalBody").innerHTML=satchelHTML();$("overlay").classList.add("show");}
 function satchelHTML(){const items=(S&&S.inv)||[];if(!items.length)return `<h2>🎒 Satchel</h2><p style="color:var(--bone-dim);font-style:italic">Empty for now. Loot from cleared rooms and the Merchant's wares land here — and are spent at the end of each descent.</p>`;
