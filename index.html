@@ -87,6 +87,8 @@
   .stackhacts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
   .stackbody{padding:10px 11px;overflow-y:auto;overscroll-behavior:contain;flex:1 1 auto}
   .stacknote{font-size:.78rem;color:var(--bone-dim);margin:0 0 8px}
+  .stackproposal{display:none;margin:0 0 9px;padding:9px 11px;border:1px solid var(--ember);border-radius:10px;background:linear-gradient(180deg,rgba(224,83,61,.12),var(--ink-3))} .stackproposal.show{display:block}
+  .stackproposal .pphead{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:.92rem;color:var(--ember);margin-bottom:6px} .stackproposal select{flex:1 1 140px;min-width:0} .stackproposal .ppacts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
   .stackmodal>.btnrow{padding:9px 11px;border-top:1px solid var(--line);margin:0;background:rgba(8,9,12,.3)}
   .stackx{padding:6px 9px}
   .stackfab{position:fixed;z-index:37;right:16px;bottom:16px;display:none;align-items:center;gap:7px;padding:11px 15px;border-radius:999px;background:linear-gradient(180deg,#2a2d38,#1a1d26);border:1px solid var(--ember);color:var(--gold);font-size:1.2rem;cursor:pointer;box-shadow:0 10px 26px -8px rgba(0,0,0,.75);transition:transform .15s,box-shadow .15s}
@@ -473,7 +475,7 @@
         <h3>🜟 The Stack <span class="tag">top-down</span></h3>
         <div class="stackhacts"><button class="mini azor" onclick="openCast()">✦ Cast a spell</button><button class="mini gold" onclick="quickCast()" title="Quick cast">⚡ Quick</button><button class="mini stackx" onclick="hidePlays()" aria-label="dismiss the stack">✕</button></div>
       </div>
-      <div class="stackbody"><p class="stacknote">Your casts and the enemy's responses pile up here — the <b>TOP</b> resolves first. Enemy targeted spells auto-hit your tracked board on resolve; your permanents auto-enter your board.</p><div id="playCards"></div></div>
+      <div class="stackbody"><div id="stackProposal" class="stackproposal"></div><p class="stacknote">Your casts and the enemy's responses pile up here — the <b>TOP</b> resolves first. Enemy targeted spells auto-hit your tracked board on resolve; your permanents auto-enter your board.</p><div id="playCards"></div></div>
       <div class="btnrow" style="align-items:center;gap:10px"><button class="big ember inline" onclick="resolveStack()">▸ Resolve the stack</button><span class="manaline">resolves &amp; clears — the phase advances only on <b>Continue ▸</b></span></div>
     </div>
   </div>
@@ -639,12 +641,12 @@ let _dt={};
 const LOOT_D20=[[1,2,"map"],[3,6,"heal5"],[7,9,"ember"],[10,11,"scholar"],[12,14,"heal10"],[15,16,"ward"],[17,18,"spark"],[19,19,"phoenix"],[20,20,"jackpot"]];
 
 let S;
-function fresh(){histReset();S={diff:"standard",youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,bossManaFrozen:0,emblemsEnemy:[],battles:[],plane:null,ui:{tabs:{}},my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",_spoils:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
+function fresh(){histReset();S={diff:"standard",youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],stackProposal:null,nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,bossManaFrozen:0,emblemsEnemy:[],battles:[],plane:null,ui:{tabs:{}},my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",_spoils:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
 function enterRoom(i,first){S.roomIndex=i;const room=DUNGEON[i];const m=DIFF[S.diff].hpMult*(S.balanceScale||1);let life=Math.max(1,Math.round(room.life*m));if(S.weakenNext){life=Math.max(1,life-4);S.weakenNext=false;}
   S.boss={name:room.villain,life,max:life,isVael:!!room.isVael,colors:(room.colors||["R"]).slice()};
   S.enemy={name:room.villain,colors:(room.colors||["R"]).slice(),lore:room.lore||"",isFinal:!!room.isVael};
   S.cmd={id:'cmd',n:room.cmd.n,p:room.cmd.p,t:room.cmd.t,baseP:room.cmd.p,baseT:room.cmd.t,kw:[...room.cmd.kw],color:(room.cmd.colors||room.colors||["R"]).slice(),baseCost:room.cmd.cost,cost:room.cmd.cost,tax:0,deaths:0,inPlay:false,sick:false,tapped:false,plus:0,minus:0,other:[],_cmd:true};
-  S.tokens=[];S.rules=[];S.turn=0;S.phase2done=false;S.balanceScale=1;S.emblemsEnemy=[];S.battles=[];S.plane=null;S.bossManaFrozen=0;
+  S.tokens=[];S.rules=[];S.turn=0;S.phase2done=false;S.balanceScale=1;S.emblemsEnemy=[];S.battles=[];S.plane=null;S.bossManaFrozen=0;S.stackProposal=null;
   S.pw=room.pw?{name:room.pw.name,loy:room.pw.loy,baseLoy:room.pw.loy,colors:(room.pw.colors||room.colors||[]).slice(),ultThreshold:room.pw.ultThreshold||7,plus:room.pw.plus,minus:room.pw.minus,ult:room.pw.ult}:null;
   S.activeTurn=null;S.phase=0;S.bossMana=0;S.bossManaMax=0;S.bossManaMod=0;S.plays=[];S.combat=null;S.paused=false;S.lib=buildDeck(room.pool);S.hand=[];S.gy=[];S.exile=[];vaelDraw(4);
   if(!first)log("sys",`— You descend into <b>${room.name}</b>. ${S.boss.name} [${S.boss.colors.join("/")}]: ${life} life. Commander ${S.cmd.n} (${S.cmd.cost} mana). Deck: ${S.lib.length} cards. —`);}
@@ -790,7 +792,7 @@ function swing(){ // YOUR attack -> Vael proposes blocks
 }
 function vaelAttackers(){let a=S.tokens.filter(c=>!c.sick&&!c.tapped&&!c.phased&&!kw(c,'defender'));if(S.cmd.inPlay&&!S.cmd.sick&&!S.cmd.tapped&&!S.cmd.phased&&!kw(S.cmd,'defender'))a.push(S.cmd);a=a.filter(c=>effP(c)>0||kw(c,'must attack'));a.sort((x,y)=>effP(y)-effP(x));const maxA=parseInt($("maxAtk").value,10)||0;if(maxA>0&&a.length>maxA)a=a.slice(0,maxA);return a;}
 /* P4.1: resolve every pending item top-down, then CLEAR the resolved/countered items off the stack — WITHOUT advancing the phase. Phase advance is solely Continue ▸ (flowClick→advancePhase), so you can cast → resolve → cast again within one phase (multiple stacks per phase). */
-function resolveStack(){if(S.over)return;for(let i=S.plays.length-1;i>=0;i--){const p=S.plays[i];if(p&&p.status==='pending')resolvePlay(i);}S.plays=S.plays.filter(p=>p.status==='pending');if(!S.plays.length)hidePlays();render();}
+function resolveStack(){if(S.over)return;S.stackProposal=null;for(let i=S.plays.length-1;i>=0;i--){const p=S.plays[i];if(p&&p.status==='pending')resolvePlay(i);}S.plays=S.plays.filter(p=>p.status==='pending');if(!S.plays.length)hidePlays();render();}
 function openCombat(dir,attackers,pool,assign,target){S.combat={dir,attackers,pool,assign,target:target||{}};$("combatTitle").textContent=dir==='you'?`Your attack — ${ENs()} proposes blocks. Edit, then approve.`:`${ENs()} attacks — assign your blockers (and check targets), then approve.`;renderCombat();$("resolver").classList.add("show");$("resolver").scrollIntoView({block:"nearest"});}
 function cancelCombat(){S.combat=null;$("resolver").classList.remove("show");render();}
 function combatUsed(){const set=new Set();Object.values(S.combat.assign).forEach(arr=>arr.forEach(o=>set.add(o)));return set;}
@@ -883,7 +885,7 @@ let _hist=[],_committed=null,_settleScheduled=false,_actLabel='',_lastLog='';
    line (or an explicit actionLabel) names the undone step. Checklist for new
    mutating actions: just call render() at the end (every action already does) —
    no per-action checkpoint bookkeeping needed. */
-function stripJSON(s){return JSON.stringify(s,(k,v)=>(k==='_drawer'||k==='_atk'||k==='combat'||k==='ui')?undefined:v);}
+function stripJSON(s){return JSON.stringify(s,(k,v)=>(k==='_drawer'||k==='_atk'||k==='combat'||k==='ui'||k==='stackProposal')?undefined:v);}
 function settleHistory(){if(typeof S==='undefined'||!S)return;const fullNow=JSON.stringify(S),stripNow=stripJSON(S);
   if(_committed===null){_committed={full:fullNow,strip:stripNow};return;}
   if(stripNow!==_committed.strip){_hist.push({s:_committed.full,label:_actLabel||_lastLog||'an action'});if(_hist.length>80)_hist.shift();_committed={full:fullNow,strip:stripNow};scheduleAutosave();}
@@ -911,7 +913,7 @@ function render(){
   const cf=$("creaField");cf.innerHTML="";const creaN=S.tokens.length+(S.cmd.inPlay?1:0);$("creaCount").textContent=creaN;$("creaEmpty").style.display=creaN?"none":"block";
   if(S.cmd.inPlay){const el=document.createElement("div");el.className="crea cmdcard"+(S.cmd.sick?" sick":"")+(S.cmd.tapped?" tapped":"");el.innerHTML=cmdFieldCard();cf.appendChild(el);}
   S.tokens.forEach(c=>{const el=document.createElement("div");el.className="crea"+(c.sick?" sick":"")+(c.tapped?" tapped":"");el.innerHTML=enemyCard(c);cf.appendChild(el);});
-  renderMy();renderAtkPick();renderCounters();renderStackFab();renderEnemyEmblems();
+  renderMy();renderAtkPick();renderCounters();renderStackFab();renderEnemyEmblems();renderStackProposal();
   const rp=$("rulesPanel"),rf=$("rulesField");if(S.rules.length){rp.style.display="";rf.innerHTML="";S.rules.forEach(r=>{const el=document.createElement("div");el.className="ruleperm"+(r.side==="boss"?" bossr":"");el.innerHTML=`<div class="rn">${r.name}</div><div class="rt">${r.text}</div><div class="acts">${r.die?`<button class="mini gold" onclick="rollRule(${r.id})">Roll d${r.die}</button>`:''}<button class="mini ember" onclick="destroyRule(${r.id})">Destroy</button></div>`;rf.appendChild(el);});}else rp.style.display="none";
   const sc=$("satchelCount");if(sc)sc.textContent=S.inv.length?`${S.inv.length} item${S.inv.length===1?'':'s'}`:'empty';
   $("turnTag").textContent="Turn "+S.turn+" · "+DUNGEON[S.roomIndex].name;renderFlow();renderZones();renderMyZones();renderDeckColors();renderBoardTokens();const gn=$("goldNote");if(gn)gn.textContent="💰 "+getGold();
@@ -1107,13 +1109,13 @@ function advance(){const next=S.roomIndex+1;closeCutscene();S._spoils="";freshGa
 function flowClick(){if(S.over||S.paused||S.combat)return;if(S.plays.some(p=>p.status==='pending'&&p._player)){log("sys","Resolve the spells on your stack first.");showPlays();return;}if(S.activeTurn===null){beginVaelTurn();return;}advancePhase();}
 function beginVaelTurn(){if(S.over)return;S.activeTurn='vael';S.turn++;S.phase=0;S.plays=[];log("sys",`— ${ENs()} · Turn ${S.turn} · ${DUNGEON[S.roomIndex].name} —`);enterPhase();}
 function beginYourTurn(){if(S.over)return;S.activeTurn='you';S.phase=0;log("sys",`— Your turn ·  ${DUNGEON[S.roomIndex].name} —`);enterPhase();}
-function advancePhase(){if(S.over||S.combat)return;resolveLeftoverPlays();/* P4.1: resolve any leftover ENEMY stack item before the phase advances, in BOTH turns — so an enemy instant cast during your combat/end isn't silently dropped when you press Continue. Only touches pending non-player items, so it's a no-op otherwise. */if(S.phase<PHASES.length-1){S.phase++;enterPhase();}else{if(S.activeTurn==='vael')beginYourTurn();else beginVaelTurn();}}
+function advancePhase(){if(S.over||S.combat)return;S.stackProposal=null;resolveLeftoverPlays();/* P4.1: resolve any leftover ENEMY stack item before the phase advances, in BOTH turns — so an enemy instant cast during your combat/end isn't silently dropped when you press Continue. Only touches pending non-player items, so it's a no-op otherwise. */if(S.phase<PHASES.length-1){S.phase++;enterPhase();}else{if(S.activeTurn==='vael')beginYourTurn();else beginVaelTurn();}}
 function enterPhase(){const ph=PHASES[S.phase];if(!S.plays.some(p=>p.status==='pending'))$("plays").classList.remove("show");
   if(S.activeTurn==='vael'){if(ph==='untap')vaelUntap();else if(ph==='upkeep')vaelUpkeep();else if(ph==='draw')vaelDrawStep();else if(ph==='main1')vaelMain(1);else if(ph==='combat')vaelCombat();else if(ph==='main2')vaelMain(2);else if(ph==='end')vaelEnd();}
   else{if(ph==='untap')youUntap();else if(ph==='upkeep')youUpkeep();else if(ph==='draw')youDraw();else if(ph==='combat')youCombat();else if(ph==='end')youEnd();else youMain();}
   render();}
 function resolveLeftoverPlays(){S.plays.forEach((p,i)=>{if(p.status==='pending'&&!p._player)resolvePlay(i);});}
-function showPlays(){renderPlays();$("plays").classList.add("show");renderStackFab();}
+function showPlays(){renderPlays();renderStackProposal();$("plays").classList.add("show");renderStackFab();}
 function hidePlays(){$("plays").classList.remove("show");renderStackFab();}
 function toggleStack(){const pl=$("plays");if(pl&&pl.classList.contains("show"))hidePlays();else showPlays();}
 /* P2.4: quick-cast — a fast, all-optional path into the SAME stack-item pipeline (castConfig); refine afterward from the board or the full editor. */
@@ -1223,7 +1225,7 @@ function renderPlays(){const box=$("playCards");box.innerHTML="";if(!S.plays.len
     else acts=`<span class="ir" style="color:var(--bone-dim);font-family:Space Mono;font-size:.66rem">COUNTERED ✕</span><button class="mini" onclick="undoPlay(${i})">undo</button>`;
     if(mine)acts+=`<button class="mini gold" onclick="saveStackToLibrary(${i})">★ save</button>`;
     el.innerHTML=`<div class="ph">${i===topIdx?'<span class="topbadge">TOP ▸</span>':''}<span class="pn">${nm}</span>${colChips?`<span style="margin-left:2px">${colChips}</span>`:''}${p.cost!=null?`<span class="cost">${p.cost}◇</span>`:''}<span class="typechip ${ty}">${ty}</span>${mine?'<span class="typechip" style="color:var(--azor)">your spell</span>':''}${p._instant?'<span class="typechip" style="color:var(--azor)">flash</span>':''}${p.cantCounter?'<span class="typechip" style="color:var(--gold)">uncounterable</span>':''}${p.target?'<span class="typechip" style="color:var(--ember)">targets you</span>':''}</div><div class="pt">${txt}${p.die?` <span class="die">→ rolled ${p.roll}/${p.die}</span>`:''}</div>${p.flav?`<div class="flav">${p.flav}</div>`:''}<div class="pacts">${acts}</div>`;box.appendChild(el);});}
-function resolvePlay(i){const p=S.plays[i];if(!p||p.status==="resolved")return;p.status="resolved";
+function resolvePlay(i){const p=S.plays[i];if(!p||p.status==="resolved")return;if(S.stackProposal&&S.stackProposal.forId===p.id)S.stackProposal=null;p.status="resolved";
   if(p._player){if(p._pcmd)resolveCmdToBoard(p);else resolvePlayerItem(p);checkLose();renderPlays();render();return;}
   if(p._enemyCmd){S.cmd.inPlay=true;S.cmd.sick=true;log("dm",`♛ <b>${S.cmd.n}</b> resolves onto ${ENs()}'s battlefield, summoning-sick.`);checkLose();renderPlays();render();return;}
   if(p.run)applyRun(p.run);if(p.target){const msg=applyTarget(p.target,(p.color||'').split('').filter(Boolean));if(msg)log("dm",`${p.n}: ${ENs()} ${msg}.`);else log("dm",`${p.n} — no valid target on your tracked board.`);}if(p.selfLoss){S.youLife-=p.selfLoss;log("dm",`${p.n} → you lose <b>${p.selfLoss}</b>. (${S.youLife})`);}else if(!p.target&&!p.run)log("dm",`${p.n} resolves.`);if(p._card&&!p._copy&&p.type!=='enchant')S.gy.push(p._card);checkLose();renderPlays();render();}
@@ -1232,11 +1234,11 @@ function resolvePlayerItem(p){const t=p.ctype;const pr=p.props||{};const tok=!!p
   else if(t==='artifact'||t==='enchantment'){const cat=t==='artifact'?'artifacts':'enchants';S.my[cat].push({id:S.nextId++,name:p.name,kind:'passive',mana:pr.mana||0,dmg:0,note:p.note||'',color:(p.color||[]).slice(),token:tok,legendary:!!pr.legendary,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard'});log("you",`<b>${p.name}</b> resolves into play.`);}
   else if(t==='planeswalker'){S.my.walkers.push({id:S.nextId++,name:p.name,loyalty:p.loy||3,baseLoy:p.loy||3,abilities:0,note:p.note||'',color:(p.color||[]).slice(),legendary:true,token:tok,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard'});log("you",`<b>${p.name}</b> resolves (loyalty ${p.loy||3}).`);}
   else{if(p.auto){if(p.auto.k==='dmgBoss'){S.boss.life-=p.auto.n;log("you",`<b>${p.name}</b> resolves — ${p.auto.n} to ${S.boss.name}. (${Math.max(0,S.boss.life)})`);if(S.boss.life<=0)bossDown();}else if(p.auto.k==='gainLife'){S.youLife+=p.auto.n;if(S.youLife>S.youMax)S.youMax=S.youLife;log("you",`<b>${p.name}</b> resolves — you gain ${p.auto.n}. (${S.youLife})`);}else if(p.auto.k==='loseLife'){S.youLife-=p.auto.n;log("you",`<b>${p.name}</b> resolves — you lose ${p.auto.n}. (${S.youLife})`);}}else log("you",`<b>${p.name}</b> resolves${p.note?` — ${p.note}`:''}. Apply its effect with the controls as needed.`);}}
-function resolvePlayOn(i,val){const p=S.plays[i];if(!p||p.status==="resolved"||!val)return;
+function resolvePlayOn(i,val){const p=S.plays[i];if(!p||p.status==="resolved"||!val)return;if(S.stackProposal&&S.stackProposal.forId===p.id)S.stackProposal=null;
   if(val==='fizzle'){p.status="resolved";log("you",`<b>${p.n||p.name}</b> fizzles — no legal target (protected / hexproof / out of range).`);if(p._card&&!p._copy&&p.type!=='enchant')S.gy.push(p._card);renderPlays();render();return;}
   const id=parseInt(val.replace('c',''),10);p.status="resolved";const msg=applyTarget(p.target,(p.color||'').split('').filter(Boolean),id);if(msg)log("dm",`${p.n}: ${ENs()} ${msg} <span class="manaline">(you redirected it)</span>.`);else log("dm",`${p.n} — redirect had no effect.`);if(p._card&&!p._copy&&p.type!=='enchant')S.gy.push(p._card);checkLose();renderPlays();render();}
 function copyStackItem(i){const o=S.plays[i];if(!o)return;if(o._pcmd||o._enemyCmd){log(o._player?"you":"dm",`A commander spell can't be copied onto the stack.`);return;}const c=JSON.parse(JSON.stringify(o));c.id=S.nextId++;c._copy=true;c.status='pending';delete c._card;c.n=o.n?o.n+" (copy)":undefined;c.name=(o.name||o.n||'Spell')+" (copy)";S.plays.push(c);log(o._player?"you":"dm",`⧉ A copy of <b>${o.name||o.n}</b> is put on the stack.`);showPlays();render();}
-function removeStackItem(i){const o=S.plays[i];if(!o)return;if(o._pcmd&&o._pcmdObj){S.pcmd=o._pcmdObj;log("you",`✕ <b>${o._pcmdObj.name}</b> leaves the stack → back to your command zone.`);S.plays.splice(i,1);renderPlays();render();return;}if(o._enemyCmd){log("dm",`✕ <b>${o.n||o.name}</b> leaves the stack → ${ENs()}'s command zone.`);S.plays.splice(i,1);renderPlays();render();return;}log(o._player?"you":"dm",`✕ <b>${o.name||o.n}</b> leaves the stack.`);S.plays.splice(i,1);renderPlays();render();}
+function removeStackItem(i){const o=S.plays[i];if(!o)return;if(S.stackProposal&&S.stackProposal.forId===o.id)S.stackProposal=null;if(o._pcmd&&o._pcmdObj){S.pcmd=o._pcmdObj;log("you",`✕ <b>${o._pcmdObj.name}</b> leaves the stack → back to your command zone.`);S.plays.splice(i,1);renderPlays();render();return;}if(o._enemyCmd){log("dm",`✕ <b>${o.n||o.name}</b> leaves the stack → ${ENs()}'s command zone.`);S.plays.splice(i,1);renderPlays();render();return;}log(o._player?"you":"dm",`✕ <b>${o.name||o.n}</b> leaves the stack.`);S.plays.splice(i,1);renderPlays();render();}
 function openCast(){if(S.over)return;_editLid=null;_castCommander=false;$("modalBody").innerHTML=castFormHTML();$("overlay").classList.add("show");}
 /* P2.1: type-first — pick a type, focus the form to only that type's fields (readCastForm still reads them all; ctype gates what's used). */
 function setCastType(t){const sel=$("castType");if(sel)sel.value=t;const g=$("castGrid");if(g)g.className='castgrid ct-'+t;const tp=$("typePick");if(tp)[...tp.querySelectorAll('.typebtn')].forEach(b=>b.classList.toggle('on',b.dataset.t===t));}
@@ -1296,10 +1298,44 @@ function castConfig(cfg){const item=Object.assign({id:S.nextId++,_player:true,si
   closeOverlayCommit();render();enemyRespondToCast(item);showPlays();return item;}
 function submitCast(){castConfig(readCastForm());}
 function submitQuickCast(){castConfig(readQuickForm());}
-function enemyRespondToCast(item){if(S.over)return;const idxs=S.hand.map((c,i)=>i).filter(i=>FX[S.hand[i].key].type==='instant'&&FX[S.hand[i].key].cost<=S.bossMana);if(!idxs.length)return;if(Math.random()>0.55)return;
-  idxs.sort((a,b)=>FX[S.hand[b].key].cost-FX[S.hand[a].key].cost);const pick=idxs[0];const card=S.hand[pick],fx=FX[card.key];S.bossMana-=fx.cost;S.hand.splice(pick,1);const p=mkPlay(fx);p._card=card;p._instant=true;p._respondingTo=item.id;S.plays.push(p);
-  log("dm",`⚡ ${ENs()} responds to your spell — <b>${fx.n}</b> (${S.bossMana} mana left). It's on top of the stack.`);}
-function counterPlay(i){const p=S.plays[i];if(!p)return;p.status="countered";if(p._pcmd){const c=p._pcmdObj;if(c)S.pcmd=c;log("you",`<b>${p.n||p.name}</b> is countered → back to your command zone.`);S.plays.splice(i,1);renderPlays();render();return;}if(p._enemyCmd){log("you",`Countered <b>${p.n||p.name}</b> → it returns to ${ENs()}'s command zone.`);renderPlays();render();return;}if(p._card)S.gy.push(p._card);log("you",`Countered <b>${p.n}</b> → ${ENs()}'s graveyard.`);renderPlays();render();}
+/* P4.2: after every player cast the enemy PROPOSES a visible stack response (or "let it resolve") — like the attack/block proposal. Only affordable instants that would actually do something are offered (target validity). The player approves/edits the enemy's play. Deeper threat/value selection of WHICH response & WHETHER to respond is P6.1/P6.2; for now the default pick is the costliest candidate and the player drives the rest. */
+function enemyRespondToCast(item){if(S.over||!item)return;
+  const seen={},cands=[];
+  S.hand.forEach(c=>{const fx=FX[c.key];if(!fx||fx.type!=='instant')return;if(fx.cost>S.bossMana)return;if(!enemyInstantWouldDo(fx))return;if(seen[c.key])return;seen[c.key]=true;cands.push({key:c.key,n:fx.n,cost:fx.cost,target:!!fx.target});});
+  if(!cands.length){S.stackProposal=null;return;}                 // nothing playable → the enemy silently lets it resolve
+  cands.sort((a,b)=>b.cost-a.cost);                                 // default = costliest (placeholder for P6 value-based selection)
+  S.stackProposal={forId:item.id,forName:item.name||item.n||'your spell',candidates:cands,choice:cands[0].key};
+  showPlays();}
+/* lightweight, non-mutating target-validity guard — mirrors applyTarget's "is there a legal target?" branches so the enemy never proposes a fizzle. Ward affordability is deferred to P6.2. Non-targeted instants (burn/heal/spawn/rule) always do something. */
+function enemyInstantWouldDo(fx){const t=fx&&fx.target;if(!t)return true;
+  const sc=fx.color?String(fx.color).split(''):((S.boss&&S.boss.colors)||[]);
+  const safe=c=>!kw(c,'hexproof')&&!c.phased&&!(c.prot||[]).some(p=>sc.indexOf(p)>=0);
+  const cr=S.my.creatures.filter(safe),crD=cr.filter(c=>!kw(c,'indestructible')),wk=S.my.walkers.filter(w=>!w.phased);
+  switch(t){
+    case 'destroyMaxPow':case 'destroyMinPow':case 'destroyTop2':return crD.length>0;
+    case 'destroyToughLE2':return crD.some(c=>effT(c)<=2);
+    case 'minusAll2':case 'wither3':return cr.length>0;
+    case 'walkerMinLoy3':return wk.length>0;
+    default:return true;}}
+/* a proposal is valid only while its originating spell is still PENDING on the stack — the response window. Gates render + approve so a stale proposal (per-item resolve, removal, phase/turn/room boundary) can never render or fire an out-of-window enemy response. */
+function proposalLive(){return !!(S.stackProposal&&Array.isArray(S.plays)&&S.plays.some(p=>p&&p.id===S.stackProposal.forId&&p.status==='pending'));}
+function renderStackProposal(){const box=$("stackProposal");if(!box)return;const pr=S.stackProposal;
+  if(!pr||!Array.isArray(pr.candidates)||!pr.candidates.length||!proposalLive()){box.className="stackproposal";box.innerHTML="";return;}
+  if(!pr.candidates.some(c=>c.key===pr.choice))pr.choice=pr.candidates[0].key;
+  box.className="stackproposal show";
+  const opts=pr.candidates.map(c=>`<option value="${c.key}" ${c.key===pr.choice?'selected':''}>${c.n} — ${c.cost}◇${c.target?' · targets your board':''}</option>`).join("");
+  box.innerHTML=`<div class="pphead">⚡ ${ENs()} weighs a response to your <b>${pr.forName}</b></div>
+    <div class="btnrow"><span class="lab">respond with</span><select onchange="setProposalChoice(this.value)">${opts}</select></div>
+    <div class="ppacts"><button class="mini ember" onclick="approveStackProposal()">⚡ ${ENs()} responds ▸</button><button class="mini" onclick="passStackProposal()">▸ let it resolve</button></div>
+    <div class="manaline" style="margin-top:5px">${ENs()} has <b>${S.bossMana}</b> mana left. You approve the enemy's play — choose a different instant, or let your spell resolve.</div>`;}
+function setProposalChoice(v){if(S.stackProposal){S.stackProposal.choice=v;render();}}
+function passStackProposal(){const pr=S.stackProposal;if(!pr)return;S.stackProposal=null;log("dm",`⚡ ${ENs()} holds back — your <b>${pr.forName}</b> resolves unanswered.`);render();}
+function approveStackProposal(){const pr=S.stackProposal;if(!pr)return;if(!proposalLive()){S.stackProposal=null;render();return;}const key=pr.choice;const idx=S.hand.findIndex(c=>c.key===key);const fx=idx>=0?FX[S.hand[idx].key]:null;
+  if(!fx){S.stackProposal=null;render();return;}
+  if(fx.cost>S.bossMana){log("dm",`⚡ ${ENs()} can't pay for <b>${fx.n}</b> now — your spell resolves.`);S.stackProposal=null;render();return;}
+  S.bossMana-=fx.cost;const card=S.hand.splice(idx,1)[0];const p=mkPlay(fx);p._card=card;p._instant=true;p._respondingTo=pr.forId;S.plays.push(p);S.stackProposal=null;
+  log("dm",`⚡ ${ENs()} responds — <b>${fx.n}</b> (${S.bossMana} mana left). It sits on top of the stack.`);render();showPlays();}
+function counterPlay(i){const p=S.plays[i];if(!p)return;if(S.stackProposal&&S.stackProposal.forId===p.id)S.stackProposal=null;p.status="countered";if(p._pcmd){const c=p._pcmdObj;if(c)S.pcmd=c;log("you",`<b>${p.n||p.name}</b> is countered → back to your command zone.`);S.plays.splice(i,1);renderPlays();render();return;}if(p._enemyCmd){log("you",`Countered <b>${p.n||p.name}</b> → it returns to ${ENs()}'s command zone.`);renderPlays();render();return;}if(p._card)S.gy.push(p._card);log("you",`Countered <b>${p.n}</b> → ${ENs()}'s graveyard.`);renderPlays();render();}
 function undoPlay(i){const p=S.plays[i];p.status="pending";if(p._card){const gi=S.gy.indexOf(p._card);if(gi>=0)S.gy.splice(gi,1);}renderPlays();render();}
 
 function checkLose(){if(S.over)return;const poison=(S.counters&&S.counters.poison)||0,cmdd=(S.counters&&S.counters.cmdDmg)||0;if(S.youLife<=0||poison>=10||cmdd>=21){if(S.youLife<=0&&S.inv.some(it=>it.id==="phoenix")&&!S.phoenixUsed){S.phoenixUsed=true;S.inv=S.inv.filter(it=>it.id!=="phoenix");S.youLife=1;log("loot",`🔥 <b>Phoenix Charm</b> catches you at <b>1</b>!`);render();return;}if(poison>=10)log("sys","☠ 10 poison counters - you fall.");if(cmdd>=21)log("sys","☠ 21 commander damage - you fall.");lose();}}
@@ -1437,7 +1473,7 @@ function migrate(s){if(!s||typeof s!=='object')return s;
   if(!s.ui||typeof s.ui!=='object')s.ui={tabs:{}};if(!s.ui.tabs)s.ui.tabs={};
   ['over','paused','phase2done','phoenixUsed','weakenNext'].forEach(k=>{s[k]=!!s[k];});
   if(typeof s.bossManaMod!=='number')s.bossManaMod=0;if(typeof s.bossManaFrozen!=='number')s.bossManaFrozen=0;
-  if(typeof s.balanceScale!=='number')s.balanceScale=1;if(s.plane===undefined)s.plane=null;
+  if(typeof s.balanceScale!=='number')s.balanceScale=1;if(s.plane===undefined)s.plane=null;if(s.stackProposal===undefined)s.stackProposal=null;
   if(typeof s.nextId!=='number')s.nextId=1;if(typeof s.phase!=='number')s.phase=0;if(typeof s.turn!=='number')s.turn=0;
   const bp=c=>{if(!c)return;if(c.p!=null&&c.baseP==null)c.baseP=c.p;if(c.t!=null&&c.baseT==null)c.baseT=c.t;if(c.loyalty!=null&&c.baseLoy==null)c.baseLoy=c.loyalty;if(c.token&&c.expires==null)c.expires=false;};
   (s.my.creatures||[]).forEach(bp);(s.my.walkers||[]).forEach(bp);(s.tokens||[]).forEach(t=>{bp(t);if(t.expires==null)t.expires=false;});if(s.cmd)bp(s.cmd);if(s.pcmd)bp(s.pcmd);
