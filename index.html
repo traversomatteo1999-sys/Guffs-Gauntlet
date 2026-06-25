@@ -642,6 +642,38 @@ const FX={
   overrun:{n:"Warren Overrun",cost:5,type:"sorcery",color:"R",text:"FINISHER: Each creature the enemy controls gets +2/+1 and gains trample and haste until end of turn.",run:["anthem",2,1,["trample","haste"]],flav:"\"EVERYONE. NOW. THE GATE IS OPEN.\""},
   gatemaw:{n:"Gatemaw Forge",cost:0,type:"land",color:"R",text:"A red mana source (the gate-forge itself).",flav:"The fire that never goes out."},
   emberpit:{n:"Emberpit Caldera",cost:0,type:"land",color:"R",text:"A red mana source (a pit of living coals).",flav:"Goblins are born from it, screaming."},
+  /* ===== P5.2: MURGLAX — mono-black aristocrats/attrition/drain deck (singleton). Engine: The Pit's Tithe (run:["bloodpact",N]). Finisher: Maw of the Pit. ===== */
+  bloodpact:{n:"The Pit's Tithe",cost:3,type:"enchant",color:"B",text:"Whenever any enemy creature dies, you lose 1 life and the enemy gains 1 life. (Destroy to stop.)",run:["bloodpact",1],flav:"Every death pays the Pit its tithe. Murglax simply waits to be paid."},
+  siphon:{n:"Siphon Vitae",cost:1,type:"sorcery",color:"B",text:"You lose 1 life; the enemy gains 1 life.",selfLoss:1, run:["bossHeal",1],flav:"A small wound. The first of very many."},
+  tithe:{n:"Pit-Tithe",cost:3,type:"sorcery",color:"B",text:"You lose 4 life; the enemy gains 4 life.",selfLoss:4, run:["bossHeal",4],flav:"He does not ask the tithe. He simply collects it."},
+  glut:{n:"Glut of the Grave",cost:4,type:"sorcery",color:"B",text:"You lose 5 life; the enemy gains 5 life.",selfLoss:5, run:["bossHeal",5],flav:"The longer you last, the fatter he grows."},
+  maw:{n:"Maw of the Pit",cost:6,type:"sorcery",color:"B",text:"FINISHER: You lose 8 life; the enemy gains 8 life.",selfLoss:8, run:["bossHeal",8],flav:"\"Spent at last. I told you I'd grow fat on it.\""},
+  rendmind:{n:"Rend the Marrow",cost:3,type:"sorcery",color:"B",text:"Destroy your greatest-power creature; you lose 1 life and the enemy gains 1.",target:"destroyMaxPow", selfLoss:1, run:["bossHeal",1],flav:"The Pit takes the strongest first. It savors those."},
+  cull:{n:"Cull the Weak",cost:2,type:"sorcery",color:"B",text:"You sacrifice your lowest-power creature; the enemy gains 2 life.",target:"destroyMinPow", run:["bossHeal",2],flav:"What the Pit will not eat, it lets the others feed on."},
+  shrivel:{n:"Shrivelling Murk",cost:3,type:"sorcery",color:"B",text:"Your creatures get -2/-2.",target:"minusAll2",flav:"A breath of grave-damp, and the strong go soft."},
+  rot:{n:"Rotwork",cost:3,type:"instant",color:"B",text:"Your highest-power creature gets -3/-3.",target:"wither3",flav:"Decay does not negotiate."},
+  sunder:{n:"Sunder the Ranks",cost:5,type:"sorcery",color:"B",text:"Destroy your two greatest-power creatures; the enemy gains 2 life.",target:"destroyTop2", run:["bossHeal",2],flav:"He breaks the line at its spine and grows on the wreckage."},
+  toughcull:{n:"Cull the Frail",cost:3,type:"sorcery",color:"B",text:"Destroy each creature you control with toughness 2 or less.",target:"destroyToughLE2",flav:"The frail feed the tithe soonest."},
+  wound:{n:"A Wound at a Time",cost:2,type:"enchant",color:"B",text:"Each enemy upkeep, the enemy gains 1 life. (Destroy to stop.)",run:["bossrule","A Wound at a Time","Enemy upkeep: gains 1 life.",1],flav:"\"I am in no hurry. The dead never are.\""},
+  creep:{n:"Creeping Murk",cost:2,type:"enchant",color:"B",text:"Each of your upkeeps, lose 2 life. (Destroy to stop.)",run:["rule","Creeping Murk","Your upkeep: lose 2 life.",0],flav:"It seeps up through the floor while you sleep."},
+  toll:{n:"The Pit's Toll",cost:3,type:"enchant",color:"B",text:"Each of your upkeeps, roll a d6 and lose that much life. (Destroy to stop.)",run:["rule","The Pit's Toll","Your upkeep: roll d6, lose that much life.",6],flav:"Every dawn down here costs you something. The Pit decides how much."},
+  warden2:{n:"Bog Sentinel",cost:2,type:"creature",color:"B",text:"Create a 1/4 with deathtouch and reach.",run:["spawn","Bog Sentinel",1,4,["deathtouch","reach"],"B"],flav:"Nothing crosses the mire it guards. Nothing."},
+  gravewarden:{n:"Grave-Warden",cost:3,type:"creature",color:"B",text:"Create a 2/4 with deathtouch.",run:["spawn","Grave-Warden",2,4,["deathtouch"],"B"],flav:"It does not chase. It only waits, and what it touches dies."},
+  pitfiend:{n:"Pit Fiend",cost:3,type:"creature",color:"B",text:"Create a 2/3 with deathtouch and lifelink.",run:["spawn","Pit Fiend",2,3,["deathtouch","lifelink"],"B"],flav:"Every wound it deals, it drinks."},
+  sanguine:{n:"Sanguine Stalker",cost:2,type:"creature",color:"B",text:"Create a 2/2 with menace and lifelink.",run:["spawn","Sanguine Stalker",2,2,["menace","lifelink"],"B"],flav:"You will not see all of it coming."},
+  broodmother:{n:"Pit Broodmother",cost:4,type:"creature",color:"B",text:"Create a 2/3, then create two 1/1 Zombies.",run:[["spawn","Pit Broodmother",2,3,[],"B"],["spawn","Zombie",1,1,[],"B"],["spawn","Zombie",1,1,[],"B"]],flav:"She births fodder for the tithe."},
+  gravecall:{n:"Graveyard Call",cost:3,type:"sorcery",color:"B",text:"Create three 2/2 Zombies.",run:[["spawn","Zombie",2,2,[],"B"],["spawn","Zombie",2,2,[],"B"],["spawn","Zombie",2,2,[],"B"]],flav:"The Pit never runs short of the dead."},
+  dirgewing:{n:"Dirgewing Horror",cost:4,type:"creature",color:"B",text:"Create a 3/4 with flying and deathtouch.",run:["spawn","Dirgewing Horror",3,4,["flying","deathtouch"],"B"],flav:"It circles the dying and is never wrong."},
+  reaper:{n:"Pit-Reaper",cost:4,type:"creature",color:"B",text:"Create a 3/3 with deathtouch and lifelink.",run:["spawn","Pit-Reaper",3,3,["deathtouch","lifelink"],"B"],flav:"It kills what it touches and drinks what it kills."},
+  slag:{n:"Slagmaw Reborn",cost:4,type:"creature",color:"B",text:"Create a 5/5 with trample.",run:["spawn","Slagmaw Reborn",5,5,["trample"],"B"],flav:"What the Pit keeps, it keeps whole."},
+  reaper5:{n:"Slag Reaper",cost:5,type:"creature",color:"B",text:"Create a 5/5 with deathtouch and lifelink.",run:["spawn","Slag Reaper",5,5,["deathtouch","lifelink"],"B"],flav:"It does not hurry. It does not miss."},
+  horror:{n:"Marrow Horror",cost:5,type:"creature",color:"B",text:"Create a 4/5 with menace and lifelink.",run:["spawn","Marrow Horror",4,5,["menace","lifelink"],"B"],flav:"Stitched from the spent, leaking the lives it took."},
+  overlord:{n:"Murglax's Overlord",cost:6,type:"creature",color:"B",text:"Create a 5/6 with deathtouch, lifelink and trample.",run:["spawn","Pit Overlord",5,6,["deathtouch","lifelink","trample"],"B"],flav:"The Pit's hand, made flesh, made patient, made yours to fear."},
+  tyrant:{n:"Murglax, Pit-Tyrant",cost:6,type:"creature",color:"B",text:"Create a 6/6 with trample and lifelink; you lose 2 life and the enemy gains 2.",run:[["spawn","Murglax Avatar",6,6,["trample","lifelink"],"B"],["bossHeal",2]], selfLoss:2,flav:"The Pit, given shape and a grudge. It spends you and grows on the spending."},
+  obol:{n:"Grave-Obol",cost:1,type:"artifact",color:"B",text:"Adds 1 mana (ramp).",run:["ramp",1],flav:"The coin the dead pay to descend."},
+  altar:{n:"Altar of the Pit",cost:2,type:"artifact",color:"B",text:"Adds 2 mana (ramp).",run:["ramp",2],flav:"Feed it; it pays you in power."},
+  slagmire:{n:"The Slag Mire",cost:0,type:"land",color:"B",text:"A black mana source (a sucking field of cooling slag).",flav:"Step careful. The Pit remembers every footfall."},
+  bonefen:{n:"Bonefen Hollow",cost:0,type:"land",color:"B",text:"A black mana source (a hollow paved in old bone).",flav:"The dead of the Warren, packed deep enough to walk on."},
 };
 const DUNGEON=[
   {name:"Ember Gate",villain:"Grakk the Gatewarden",colors:["R"],life:14,landStart:0,
@@ -652,7 +684,7 @@ const DUNGEON=[
    sigil:"\uD83D\uDD25",quote:"Burn bright, little walker. It's the only way anybody leaves my gate.",deathQuote:"...cold... when did... the fire get so... cold..."},
   {name:"The Slag Pit",villain:"Murglax, Pit-Tyrant",colors:["B"],life:24,landStart:2,
    cmd:{n:"Slagmaw",p:5,t:5,kw:["trample"],cost:4,colors:["B"]},
-   pool:["gnaw","crawler","leech","hulk","swarm","raise","smother","edict","wither","drain","bleed","plague","idol"],lands:{swp:18},
+   pool:{warden2:1,gnaw:1,leech:1,sanguine:1,gravewarden:1,crawler:1,pitfiend:1,raise:1,gravecall:1,swarm:1,hulk:1,broodmother:1,dirgewing:1,reaper:1,slag:1,reaper5:1,horror:1,overlord:1,tyrant:1,smother:1,edict:1,cull:1,rendmind:1,wither:1,rot:1,shrivel:1,toughcull:1,plague:1,wrath2:1,sunder:1,voidcall:1,siphon:1,drain:1,bleed:1,tithe:1,glut:1,maw:1,bloodpact:1,idol:1,wound:1,creep:1,toll:1,obol:1,altar:1},lands:{swp:34,slagmire:1,bonefen:1},swaps:{easy:{cut:["maw","glut"],add:{swp:2}},brutal:{cut:["warden2"],add:{swp:1}}},
    lore:"Below the gate, the Warren throws its dead into the Slag Pit \u2014 and the Pit answers with Murglax. He does not kill you quickly; he spends you, a wound and a year at a time, feeding what he takes back into himself. The longer you last, the stronger he grows on your losses. Patience is his only weapon, and he has all the patience of the grave.",
    intro:["The gate-fires gutter out behind you. The air turns wet and cold and sweet with rot.","Something vast shifts in the dark of the Slag Pit, and a voice like settling gravel says: \u201CGrakk burned bright. Bright things burn out. I will take my time with you.\u201D"],
    sigil:"\u2620",quote:"I am in no hurry. The dead never are. Bleed for me a while \u2014 I'll grow fat on it.",deathQuote:"Spent... at last... even the Pit... runs... dry..."},
@@ -772,6 +804,7 @@ function applyRun(run){if(!run)return;if(Array.isArray(run[0])){run.forEach(appl
   case "spawn":S.tokens.push({id:S.nextId++,name:run[1],p:run[2],t:run[3],baseP:run[2],baseT:run[3],kw:[...run[4]],color:(run[5]?String(run[5]).split(''):((S.boss&&S.boss.colors)?S.boss.colors.slice():[])),sick:!run[4].includes("haste"),tapped:false,plus:0,minus:0,other:[],expires:false});break;
   case "ramp":S.bossLands=(S.bossLands||0)+(run[1]||1);S.bossMana+=(run[1]||1);S.bossManaMax+=(run[1]||1);log("dm",`${ENs()} taps a new source — +${run[1]||1} mana (${S.bossLands} total).`);break;
   case "anthem":{const ap=run[1]||0,at=run[2]||0,akw=run[3]||[];const buff=c=>{if(!c)return;c._tp=(c._tp||0)+ap;c._tt=(c._tt||0)+at;c.kw=c.kw||[];c._grantKw=c._grantKw||[];akw.forEach(k=>{if(!c.kw.map(x=>(''+x).toLowerCase()).includes((''+k).toLowerCase())){c.kw.push(k);c._grantKw.push(k);}});};S.tokens.forEach(buff);if(S.cmd&&S.cmd.inPlay)buff(S.cmd);log("dm",`🔥 <b>OVERRUN!</b> Every enemy creature gets +${ap}/+${at}${akw.length?' and gains '+akw.join(', '):''} until end of turn.`);break;}
+  case "bloodpact":{const amt=run[1]||1;const ex=S.rules.find(r=>r.bloodpact);if(ex)ex.bloodpact+=amt;else S.rules.push({id:S.nextId++,name:"The Pit's Tithe",text:`Each creature's death: you lose ${amt}, ${ENs()} gains ${amt}.`,side:"boss",bloodpact:amt});log("dm",`🩸 <b>The Pit's Tithe</b> binds — every death now pays ${ENs()} in blood.`);break;}
   case "bossHeal":bossHealLife(run[1]);log("dm",`${ENs()} gains <b>${run[1]}</b> life. (${S.boss.life})`);break;
   case "cmdBuff":if(S.cmd){S.cmd.p+=run[1];log("dm",`${S.cmd.n} gets +${run[1]}/+0 (now ${effP(S.cmd)}/${effT(S.cmd)}).`);}break;
   case "rule":if(!S.rules.some(r=>r.name===run[1]))S.rules.push({id:S.nextId++,name:run[1],text:run[2],die:run[3],side:"you"});break;
@@ -815,8 +848,12 @@ function resolveAttack(attackers,assign){ // assign: {attId:[blockerObjs]}
   });
   return{face,deadAtt,deadBlk,attLifelink,defLifelink,perAtt};
 }
-function removeRef(obj){if(obj===S.cmd){S.cmd.deaths=(S.cmd.deaths||0)+1;const inc=CMD_TAX_DOUBLE?CMD_TAX_BASE*Math.pow(2,S.cmd.deaths-1):CMD_TAX_BASE;S.cmd.tax+=inc;S.cmd.inPlay=false;S.cmd.cost=S.cmd.baseCost+S.cmd.tax;S.cmd.plus=0;S.cmd.minus=0;S.cmd.tapped=false;S.cmd.sick=false;log("dm",`♛ ${S.cmd.n} dies (death #${S.cmd.deaths}) → command zone. Recast now costs <b>${S.cmd.cost}</b> (tax +${S.cmd.tax}).`);return;}let i=S.tokens.findIndex(c=>c===obj);if(i>=0){S.tokens.splice(i,1);return;}if(S.my.creatures.indexOf(obj)>=0)killMy(obj);}
+/* P5.2: The Pit's Tithe (bloodpact) — each creature death drains the player by the total bloodpact in play; it lives as a destroyable S.rules entry, so destroying the enchant removes it. */
+function bloodpactAmount(){return (S.rules||[]).reduce((s,r)=>s+(r.bloodpact||0),0);}
+function bloodTithe(){if(S.over)return;const amt=bloodpactAmount();if(amt>0){S.youLife-=amt;bossHealLife(amt);log("dm",`🩸 The Pit's Tithe — a death bleeds you <b>${amt}</b> (you ${S.youLife}, ${ENs()} ${S.boss.life}).`);checkLose();}}
+function removeRef(obj){if(obj===S.cmd){S.cmd.deaths=(S.cmd.deaths||0)+1;const inc=CMD_TAX_DOUBLE?CMD_TAX_BASE*Math.pow(2,S.cmd.deaths-1):CMD_TAX_BASE;S.cmd.tax+=inc;S.cmd.inPlay=false;S.cmd.cost=S.cmd.baseCost+S.cmd.tax;S.cmd.plus=0;S.cmd.minus=0;S.cmd.tapped=false;S.cmd.sick=false;log("dm",`♛ ${S.cmd.n} dies (death #${S.cmd.deaths}) → command zone. Recast now costs <b>${S.cmd.cost}</b> (tax +${S.cmd.tax}).`);bloodTithe();return;}let i=S.tokens.findIndex(c=>c===obj);if(i>=0){S.tokens.splice(i,1);bloodTithe();return;}if(S.my.creatures.indexOf(obj)>=0)killMy(obj);}
 function killMy(c){/* route a destroyed player permanent: commander→command zone, else graveyard/exile per its setting */
+  if(c&&(c.isCmd?c.kind!=='walkers':S.my.creatures.indexOf(c)>=0))bloodTithe();/* P5.2: a creature's death pays the Pit's Tithe */
   if(c.isCmd){sendCmdToZone(c,true);return;}
   let cat=null;["creatures","artifacts","enchants","walkers","emblems"].forEach(k=>{if(S.my[k].indexOf(c)>=0)cat=k;});
   if(cat){c._cat=cat;S.my[cat].splice(S.my[cat].indexOf(c),1);}
