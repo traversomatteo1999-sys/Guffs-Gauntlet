@@ -609,11 +609,44 @@ const FX={
   /* P5.2 mana engine — lands are real cards: drawn into the enemy's hand, then "played" as a mana source (+1 mana). They are NOT shown as permanents; only the mana count is. Mana rocks/dorks use run:["ramp",N]. */
   mtn:{n:"Mountain",cost:0,type:"land",color:"R",text:"A red mana source."},
   swp:{n:"Swamp",cost:0,type:"land",color:"B",text:"A black mana source."},
+  /* ===== P5.2: GRAKK — mono-red Goblin aggro/burn deck (singleton). Finisher: Warren Overrun (run:["anthem",...]). ===== */
+  sparkling:{n:"Sparkling Goblin",cost:1,type:"creature",color:"R",text:"Create a 1/1 Goblin with haste.",run:["spawn","Spark Goblin",1,1,["haste"],"R"],flav:"Lit, thrown, gleeful."},
+  emberpup:{n:"Emberpup",cost:1,type:"creature",color:"R",text:"Create a 1/1 with haste and trample.",run:["spawn","Emberpup",1,1,["haste","trample"],"R"],flav:"Small, fast, and on fire."},
+  torchbearer:{n:"Warren Torchbearer",cost:1,type:"creature",color:"R",text:"Create a 1/1 Goblin with haste; you take 1 damage.",run:["spawn","Torch Goblin",1,1,["haste"],"R"], selfLoss:1,flav:"He carries the fire so the others don't have to."},
+  prowler:{n:"Warren Prowler",cost:1,type:"creature",color:"R",text:"Create a 2/1 with menace.",run:["spawn","Warren Prowler",2,1,["menace"],"R"],flav:"Comes at you sideways."},
+  firstwave:{n:"First of the Wave",cost:1,type:"creature",color:"R",text:"Create a 2/1 Goblin with haste that must attack.",run:["spawn","Vanguard Goblin",2,1,["haste","must attack"],"R"],flav:"Patience is for the dead."},
+  matchstick:{n:"Matchstick Mob",cost:1,type:"sorcery",color:"R",text:"Create a 1/1 Goblin with haste.",run:["spawn","Goblin Whelp",1,1,["haste"],"R"],flav:"One spark, one goblin."},
+  effigy:{n:"Gate Effigy",cost:1,type:"sorcery",color:"R",text:"The enemy commander gains +2/+0.",run:["cmdBuff",2],flav:"Burn the effigy; Ashmaw grows."},
+  jab:{n:"Ember Jab",cost:1,type:"instant",color:"R",text:"You take 2 damage.",selfLoss:2,flav:"A little fire, in a hurry."},
+  twinwhelp:{n:"Twin Whelps",cost:2,type:"sorcery",color:"R",text:"Create two 1/1 Goblins with haste.",run:[["spawn","Spark Goblin",1,1,["haste"],"R"],["spawn","Spark Goblin",1,1,["haste"],"R"]],flav:"Two torches, one fuse."},
+  sapper:{n:"Gate Sapper",cost:2,type:"creature",color:"R",text:"Create a 2/2 with haste and menace.",run:["spawn","Gate Sapper",2,2,["haste","menace"],"R"],flav:"He knows where the walls are weakest."},
+  scorchwing:{n:"Scorchwing",cost:2,type:"creature",color:"R",text:"Create a 2/1 with flying and haste.",run:["spawn","Scorchwing",2,1,["flying","haste"],"R"],flav:"Over the wall and onto your face."},
+  firefist:{n:"Firefist Recruit",cost:2,type:"creature",color:"R",text:"Create a 3/1 with haste.",run:["spawn","Firefist Recruit",3,1,["haste"],"R"],flav:"All punch, no plan."},
+  wallbreaker:{n:"Emberfist Wallbreaker",cost:2,type:"creature",color:"R",text:"Create a 3/1 with trample and haste.",run:["spawn","Wallbreaker",3,1,["trample","haste"],"R"],flav:"Doors are a suggestion."},
+  rabble:{n:"Rabble Rouser",cost:2,type:"creature",color:"R",text:"Create a 2/2 Goblin and a 1/1 Goblin.",run:[["spawn","Rabble Rouser",2,2,[],"R"],["spawn","Goblin",1,1,[],"R"]],flav:"One loud goblin makes ten brave ones."},
+  twinbolt:{n:"Twin Bolt",cost:2,type:"instant",color:"R",text:"You take 4 damage.",selfLoss:4,flav:"Why throw one?"},
+  chant:{n:"Goblin War-Chant",cost:2,type:"sorcery",color:"R",text:"The enemy commander gains +3/+0.",run:["cmdBuff",3],flav:"\"BURN! BURN! BURN!\""},
+  firetide:{n:"Goblin Firetide",cost:3,type:"sorcery",color:"R",text:"Create three 1/1 Goblins with haste.",run:[["spawn","Goblin",1,1,["haste"],"R"],["spawn","Goblin",1,1,["haste"],"R"],["spawn","Goblin",1,1,["haste"],"R"]],flav:"The tide comes in burning."},
+  chieftain:{n:"Warren Chieftain",cost:3,type:"creature",color:"R",text:"Create a 3/3 with haste and trample.",run:["spawn","Warren Chieftain",3,3,["haste","trample"],"R"],flav:"He leads from the very front, where the fire is."},
+  rocket:{n:"Goblin Rocketeer",cost:3,type:"creature",color:"R",text:"Create a 2/2 with flying and haste.",run:["spawn","Rocketeer",2,2,["flying","haste"],"R"],flav:"Strapped to a firework, screaming with joy."},
+  firebrand:{n:"Gatefire Firebrand",cost:3,type:"creature",color:"R",text:"Create a 2/2 with haste; the enemy commander gains +1/+0.",run:[["spawn","Firebrand",2,2,["haste"],"R"],["cmdBuff",1]],flav:"He stokes Ashmaw as he runs."},
+  emberblast:{n:"Gatefire Blast",cost:3,type:"sorcery",color:"R",text:"You take 6 damage.",selfLoss:6,flav:"Grakk likes the big ones."},
+  meteor:{n:"Gate-Meteor",cost:3,type:"sorcery",color:"R",text:"Roll a d6, then take that much +2 damage.",selfLoss:2,die:6,dieLoss:true,flav:"It falls where Grakk points."},
+  warbanner:{n:"Warren War-Banner",cost:2,type:"enchant",color:"R",text:"Each of your upkeeps, lose 2 life. (Destroy to stop.)",run:["rule","Warren War-Banner","Your upkeep: lose 2 life.",0],flav:"While it flies, the Warren never tires."},
+  hellrider:{n:"Warren Hellrider",cost:4,type:"creature",color:"R",text:"Create a 4/3 with haste, trample, and must attack.",run:["spawn","Hellrider",4,3,["haste","trample","must attack"],"R"],flav:"It does not stop. It has never learned how."},
+  warboss:{n:"Goblin Warboss",cost:4,type:"creature",color:"R",text:"Create a 4/3 Goblin with haste and two 1/1 Goblins.",run:[["spawn","Goblin Warboss",4,3,["haste"],"R"],["spawn","Goblin",1,1,[],"R"],["spawn","Goblin",1,1,[],"R"]],flav:"\"MORE. SOONER.\""},
+  mob:{n:"Burning Mob",cost:4,type:"sorcery",color:"R",text:"Create four 1/1 Goblins.",run:[["spawn","Goblin Whelp",1,1,[],"R"],["spawn","Goblin Whelp",1,1,[],"R"],["spawn","Goblin Whelp",1,1,[],"R"],["spawn","Goblin Whelp",1,1,[],"R"]],flav:"There is no front of the mob. There is only mob."},
+  conflag:{n:"Conflagrate",cost:4,type:"sorcery",color:"R",text:"You take 6 damage.",selfLoss:6,flav:"Everything at once."},
+  inferno:{n:"Inferno Colossus",cost:5,type:"creature",color:"R",text:"Create a 5/5 with trample, haste, and menace.",run:["spawn","Inferno Colossus",5,5,["trample","haste","menace"],"R"],flav:"The gate, given legs and a grudge."},
+  firestorm:{n:"Warren Firestorm",cost:5,type:"sorcery",color:"R",text:"You take 7 damage.",selfLoss:7,flav:"The whole gorge, alight."},
+  overrun:{n:"Warren Overrun",cost:5,type:"sorcery",color:"R",text:"FINISHER: Each creature the enemy controls gets +2/+1 and gains trample and haste until end of turn.",run:["anthem",2,1,["trample","haste"]],flav:"\"EVERYONE. NOW. THE GATE IS OPEN.\""},
+  gatemaw:{n:"Gatemaw Forge",cost:0,type:"land",color:"R",text:"A red mana source (the gate-forge itself).",flav:"The fire that never goes out."},
+  emberpit:{n:"Emberpit Caldera",cost:0,type:"land",color:"R",text:"A red mana source (a pit of living coals).",flav:"Goblins are born from it, screaming."},
 };
 const DUNGEON=[
   {name:"Ember Gate",villain:"Grakk the Gatewarden",colors:["R"],life:14,landStart:0,
    cmd:{n:"Ashmaw",p:3,t:3,kw:["haste"],cost:3,colors:["R"]},
-   pool:["whelp","raider","warband","brute","drake","bolt","lash","warcry","aura"],lands:{mtn:16},
+   pool:{whelp:1,raider:1,sparkling:1,emberpup:1,torchbearer:1,prowler:1,firstwave:1,matchstick:1,effigy:1,jab:1,bolt:1,warband:1,brute:1,drake:1,twinwhelp:1,sapper:1,scorchwing:1,firefist:1,wallbreaker:1,rabble:1,warcry:1,chant:1,lash:1,twinbolt:1,aura:1,warbanner:1,ogre:1,nightmare:1,chieftain:1,rocket:1,firebrand:1,firetide:1,pyro:1,emberblast:1,meteor:1,furnace:1,hellrider:1,warboss:1,mob:1,conflag:1,storm:1,colossus:1,inferno:1,firestorm:1,overrun:1},lands:{mtn:33,gatemaw:1,emberpit:1},swaps:{easy:{cut:["firestorm","conflag"],add:{mtn:2}},brutal:{cut:["firstwave"],add:{mtn:1}}},
    lore:"Grakk holds the only road into the Warren, and he holds it the way a goblin holds anything \u2014 by setting it alight. He does not parley; every challenger is fresh kindling for the gate-fires. Fast, gleeful, and utterly without patience. If Grakk has a plan, the plan is more fire, sooner.",
    intro:["Smoke coils up out of the gorge. At its mouth squats the Ember Gate, and atop the wall a goblin warlord grins through the heat-haze.","\u201CDown there's where the dead things live,\u201D Grakk calls, hefting a torch. \u201CYou want past? Then burn \u2014 or be burned.\u201D"],
    sigil:"\uD83D\uDD25",quote:"Burn bright, little walker. It's the only way anybody leaves my gate.",deathQuote:"...cold... when did... the fire get so... cold..."},
@@ -665,7 +698,13 @@ function enterRoom(i,first){S.roomIndex=i;const room=DUNGEON[i];const m=DIFF[S.d
   S.bossManaMod=0;S.bossLands=Math.max(0,(room.landStart||0)+(DIFF[S.diff].manaBonus||0));S.bossLandPlayed=false;S.bossManaMax=S.bossLands;S.bossMana=S.bossLands;/* P5.2: mana now comes from sources (lands/rocks/dorks); start with landStart±difficulty already developed, then play a land per turn */
   S.activeTurn=null;S.phase=0;S.plays=[];S.combat=null;S.paused=false;S.lib=buildDeck(room);S.hand=[];S.gy=[];S.exile=[];vaelDraw(4);
   if(!first)log("sys",`— You descend into <b>${room.name}</b>. ${S.boss.name} [${S.boss.colors.join("/")}]: ${life} life. Commander ${S.cmd.n} (${S.cmd.cost} mana). Deck: ${S.lib.length} cards. —`);}
-function buildDeck(room){const lib=[];const pool=(room&&room.pool)||[];pool.forEach(k=>{const n=deckCopies(k);for(let j=0;j<n;j++)lib.push({id:S.nextId++,key:k});});const lands=(room&&room.lands)||{};Object.keys(lands).forEach(k=>{for(let j=0;j<lands[k];j++)lib.push({id:S.nextId++,key:k});});for(let a=lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[lib[a],lib[b]]=[lib[b],lib[a]];}return lib;}
+function buildDeck(room){const lib=[];const add=(k,n)=>{for(let j=0;j<n;j++)lib.push({id:S.nextId++,key:k});};
+  let pool={},lands=Object.assign({},(room&&room.lands)||{});const rp=(room&&room.pool)||[];
+  if(Array.isArray(rp))rp.forEach(k=>{pool[k]=(pool[k]||0)+deckCopies(k);});else Object.keys(rp).forEach(k=>{pool[k]=rp[k];}); /* P5.2: array pool = cost-based copies (legacy); {key:count} map = explicit counts (singleton decks) */
+  const sw=room&&room.swaps&&room.swaps[S.diff]; /* P5.2: per-difficulty card swaps (cut weaker/stronger cards) */
+  if(sw){(sw.cut||[]).forEach(k=>{if(pool[k]>0){pool[k]--;if(!pool[k])delete pool[k];}else if(lands[k]>0){lands[k]--;if(!lands[k])delete lands[k];}});Object.keys(sw.add||{}).forEach(k=>{const isLand=FX[k]&&FX[k].type==='land';const tgt=isLand?lands:pool;tgt[k]=(tgt[k]||0)+sw.add[k];});}
+  Object.keys(pool).forEach(k=>add(k,pool[k]));Object.keys(lands).forEach(k=>add(k,lands[k]));
+  for(let a=lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[lib[a],lib[b]]=[lib[b],lib[a]];}return lib;}
 function vaelDraw(n){for(let i=0;i<n;i++){if(!S.lib.length){if(!S.gy.length)break;S.lib=S.gy.splice(0);for(let a=S.lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[S.lib[a],S.lib[b]]=[S.lib[b],S.lib[a]];}log("dm",`${EN()} shuffles its graveyard into a fresh library.`);}if(S.lib.length)S.hand.push(S.lib.shift());}}
 
 /* ===== ENEMY DECK MANIPULATION =====
@@ -725,13 +764,14 @@ function log(who,html){_lastLog=(''+html).replace(/<[^>]*>/g,'').trim().slice(0,
 function bossMana(){const willLand=Array.isArray(S.hand)&&(S.hand.some(c=>FX[c.key]&&FX[c.key].type==='land')||((S.bossLands||0)<(S.turn||0)));return Math.max(0,(S.bossLands||0)+(S.bossManaMod||0)+(willLand?1:0));}
 /* P5.1: the single "usable mana now" accessor — the enemy's pool minus what the player has FROZEN (tapped down). Every enemy affordability check routes through this so a freeze actually limits casting; spends still draw from S.bossMana (the frozen part stays in the pool, just unusable, until it clears at vaelEnd). */
 function usableMana(){return Math.max(0,(S.bossMana||0)-(S.bossManaFrozen||0));}
-function effP(c){return Math.max(0,c.p+(c.plus||0)-(c.minus||0));}
-function effT(c){return c.t+(c.plus||0)-(c.minus||0);}
+function effP(c){return Math.max(0,c.p+(c.plus||0)-(c.minus||0)+(c._tp||0));} /* _tp/_tt = temporary until-end-of-turn buffs (e.g. Warren Overrun anthem) */
+function effT(c){return c.t+(c.plus||0)-(c.minus||0)+(c._tt||0);}
 function kw(c,k){return (c.kw||[]).some(x=>(''+x).toLowerCase()===k);}
 function threatScore(c){const s={low:-2,mid:0,top:3}[c.strength||'mid'];return effP(c)+(s||0);}
 function applyRun(run){if(!run)return;if(Array.isArray(run[0])){run.forEach(applyRun);return;}switch(run[0]){
   case "spawn":S.tokens.push({id:S.nextId++,name:run[1],p:run[2],t:run[3],baseP:run[2],baseT:run[3],kw:[...run[4]],color:(run[5]?String(run[5]).split(''):((S.boss&&S.boss.colors)?S.boss.colors.slice():[])),sick:!run[4].includes("haste"),tapped:false,plus:0,minus:0,other:[],expires:false});break;
   case "ramp":S.bossLands=(S.bossLands||0)+(run[1]||1);S.bossMana+=(run[1]||1);S.bossManaMax+=(run[1]||1);log("dm",`${ENs()} taps a new source — +${run[1]||1} mana (${S.bossLands} total).`);break;
+  case "anthem":{const ap=run[1]||0,at=run[2]||0,akw=run[3]||[];const buff=c=>{if(!c)return;c._tp=(c._tp||0)+ap;c._tt=(c._tt||0)+at;c.kw=c.kw||[];c._grantKw=c._grantKw||[];akw.forEach(k=>{if(!c.kw.map(x=>(''+x).toLowerCase()).includes((''+k).toLowerCase())){c.kw.push(k);c._grantKw.push(k);}});};S.tokens.forEach(buff);if(S.cmd&&S.cmd.inPlay)buff(S.cmd);log("dm",`🔥 <b>OVERRUN!</b> Every enemy creature gets +${ap}/+${at}${akw.length?' and gains '+akw.join(', '):''} until end of turn.`);break;}
   case "bossHeal":bossHealLife(run[1]);log("dm",`${ENs()} gains <b>${run[1]}</b> life. (${S.boss.life})`);break;
   case "cmdBuff":if(S.cmd){S.cmd.p+=run[1];log("dm",`${S.cmd.n} gets +${run[1]}/+0 (now ${effP(S.cmd)}/${effT(S.cmd)}).`);}break;
   case "rule":if(!S.rules.some(r=>r.name===run[1]))S.rules.push({id:S.nextId++,name:run[1],text:run[2],die:run[3],side:"you"});break;
@@ -1206,7 +1246,10 @@ function vaelCombat(){resolveLeftoverPlays();if(S.over)return;const cands=vaelAt
   const atk=pay.kept;if(!atk.length){log("dm",`${ENs()} can't afford to attack into your defenses.`);return;}
   const pool=S.my.creatures.filter(c=>!c.tapped&&!kw(c,"can't block")&&!c.phased);const assign={};atk.forEach(a=>assign[a.id]=[]);
   openCombat('vael',atk,pool,assign,aiTargets(atk));}
-function vaelEnd(){resolveLeftoverPlays();if(S.bossManaFrozen){log("dm",`❄ ${ENs()}'s frozen mana thaws (was ${S.bossManaFrozen}).`);S.bossManaFrozen=0;}log("dm",`${ENs()} ends its turn.`);}
+function vaelEnd(){resolveLeftoverPlays();if(S.bossManaFrozen){log("dm",`❄ ${ENs()}'s frozen mana thaws (was ${S.bossManaFrozen}).`);S.bossManaFrozen=0;}
+  /* P5.2: clear until-end-of-turn anthem buffs (Warren Overrun) — reset temp P/T and strip the granted keywords */
+  [...S.tokens,S.cmd].forEach(c=>{if(c&&(c._tp||c._tt||((c._grantKw||[]).length))){c._tp=0;c._tt=0;(c._grantKw||[]).forEach(k=>{const i=(c.kw||[]).indexOf(k);if(i>=0)c.kw.splice(i,1);});c._grantKw=[];}});
+  log("dm",`${ENs()} ends its turn.`);}
 
 /* --- Your phases --- */
 function youUntap(){S.my.creatures.forEach(c=>{c.tapped=false;c.sick=false;c._atk=false;});log("you",`Your untap — creatures untap, summoning sickness clears.`);}
