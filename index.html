@@ -1482,12 +1482,14 @@ function runBurn(){
   function frame(ts){if(start==null){start=ts;if(intro)intro.style.background="transparent";}const t=(ts-start)/DUR;draw(Math.min(t,1));if(t<1.06)requestAnimationFrame(frame);else finish();}
   requestAnimationFrame(frame);
 }
-function startGame(){if(!S._introShown&&hasSave()){confirmNewDescent();return;}const mn=$("menu");mn.classList.remove("show");mn.classList.remove("bootdrop");_liveGame=true;if(S._introShown)return;chooseCommander();}
+/* Descend from the menu. A continuable save (incl. the autosave of a run already in progress) confirms first; otherwise begin a brand-new descent straight away. (Bugfix: a run in progress used to early-return on _introShown, so Descend was a no-op until a page refresh.) */
+function startGame(){if(hasSave()){confirmNewDescent();return;}startNewDescent();}
 /* Guard: Descend with a continuable save would silently overwrite it — confirm first. */
 function confirmNewDescent(){const sv=DB.save||{};const rn=(DUNGEON[sv.room!=null?sv.room:((sv.S&&sv.S.roomIndex)||0)]||{}).name||'your descent';const tn=sv.turn!=null?sv.turn:((sv.S&&sv.S.turn)||0);
   showCutscene([`You have a descent already underway — <b>${rn}</b>, Turn ${tn}.`,`Starting a new descent will <b>abandon</b> it — once the new run begins, your saved game is overwritten.`],"Start a new descent?","⚠ A descent is already saved",null,
     {eyebrowAcc:'var(--ember)',buttons:[{label:"▶ Continue saved descent",on:continueLastGame,cls:"big azor"},{label:"✦ Start new — abandon save",on:startNewDescent,cls:"big ok"},{label:"Cancel",on:closeCutscene,cls:"big"}]});}
-function startNewDescent(){closeCutscene();const mn=$("menu");mn.classList.remove("show");mn.classList.remove("bootdrop");_liveGame=true;chooseCommander();}
+/* Begin a brand-new descent from a clean board — works from first boot AND from a run already in progress (the latter requires the fresh() reset, which the old version omitted). Mirrors restart() but also dismisses the menu and any open overlays. */
+function startNewDescent(){const df=S.diff;closeCutscene();const mn=$("menu");if(mn){mn.classList.remove("show");mn.classList.remove("bootdrop");}["plays","resolver","overlay","library","store"].forEach(id=>{const e=$(id);if(e)e.classList.remove("show");});$("log").innerHTML="";fresh();S.diff=df;enterRoom(0,true);setDiff(df);_liveGame=true;render();chooseCommander();}
 function menuSetDiff(df){setDiff(df);renderMenu();}
 function renderMenu(){
   const p=prof();const sel=$("menuProfileSel");if(sel){const names=Object.keys(DB.profiles);sel.innerHTML=names.map(n=>`<option value="${n}" ${n===DB.active?'selected':''}>${n}</option>`).join("");}
