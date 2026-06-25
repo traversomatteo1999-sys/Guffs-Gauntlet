@@ -674,6 +674,15 @@ const FX={
   altar:{n:"Altar of the Pit",cost:2,type:"artifact",color:"B",text:"Adds 2 mana (ramp).",run:["ramp",2],flav:"Feed it; it pays you in power."},
   slagmire:{n:"The Slag Mire",cost:0,type:"land",color:"B",text:"A black mana source (a sucking field of cooling slag).",flav:"Step careful. The Pit remembers every footfall."},
   bonefen:{n:"Bonefen Hollow",cost:0,type:"land",color:"B",text:"A black mana source (a hollow paved in old bone).",flav:"The dead of the Warren, packed deep enough to walk on."},
+  /* ===== P5.2: VAEL — Rakdos (R/B) midrange + reanimation deck (final boss, singleton). Reuses the red+black pool; finishers: Embers Choose a New Shape + Warren Overrun + Maw. No new engine effect. ===== */
+  embershape:{n:"Embers Choose a New Shape",cost:5,type:"sorcery",color:"RB",text:"FINISHER: Create a 6/6 with trample and haste; you lose 3 life and the enemy gains 3.",run:[["spawn","Cinder Avatar",6,6,["trample","haste"],"RB"],["bossHeal",3]], selfLoss:3,flav:"Burn it down; it returns wearing the fire as a face."},
+  cinderwraith:{n:"Cinder Wraith",cost:4,type:"creature",color:"RB",text:"Create a 5/4 with trample and haste.",run:["spawn","Cinder Wraith",5,4,["trample","haste"],"RB"],flav:"Ash given a grudge and legs to chase it on."},
+  rakfiend:{n:"Rakdos Fiend",cost:3,type:"creature",color:"RB",text:"Create a 3/3 with menace and deathtouch.",run:["spawn","Rakdos Fiend",3,3,["menace","deathtouch"],"RB"],flav:"It laughs while it kills you. That is the worst part."},
+  ashdrake:{n:"Ashwing Terror",cost:4,type:"creature",color:"RB",text:"Create a 4/4 with flying and trample.",run:["spawn","Ashwing Terror",4,4,["flying","trample"],"RB"],flav:"Over the wall, through the wall, it makes no difference to it."},
+  emberglut:{n:"Emberglut",cost:4,type:"sorcery",color:"RB",text:"You lose 6 life; the enemy gains 3 life.",selfLoss:6, run:["bossHeal",3],flav:"Burning what cannot be drained, draining what cannot be burned."},
+  ashreborn:{n:"The Avatar Reborn",cost:6,type:"creature",color:"RB",text:"Create a 6/6 with trample, deathtouch, and lifelink.",run:["spawn","Vael's Avatar Reborn",6,6,["trample","deathtouch","lifelink"],"RB"],flav:"You put the body down. The Tyrant was never the body."},
+  ashmire:{n:"Ashen Mire",cost:0,type:"land",color:"B",text:"A mana source (a mire of warm ash and cold rot).",flav:"Fire above, grave below, and the Tyrant between."},
+  emberfen:{n:"Emberfen",cost:0,type:"land",color:"R",text:"A mana source (a fen where the coals never quite die).",flav:"It steams in the cold and smolders in the wet."},
 };
 const DUNGEON=[
   {name:"Ember Gate",villain:"Grakk the Gatewarden",colors:["R"],life:14,landStart:0,
@@ -694,7 +703,7 @@ const DUNGEON=[
        plus:{sign:1,n:"Ember Whisper",text:"You lose 2 life.",selfLoss:2,color:"R"},
        minus:{sign:-3,n:"Grasping Ash",text:"Destroy your greatest-power creature.",target:"destroyMaxPow",color:"B"},
        ult:{sign:-7,n:"Voice of Cinders",text:"You lose 8 life; the Tyrant creates a 5/5 Cinder Wraith with trample and haste.",selfLoss:8,run:["spawn","Cinder Wraith",5,5,["trample","haste"],"RB"],color:"B",ult:true}},
-   pool:["ogre","nightmare","colossus","crawler","hulk","storm","bleed","drain","edict","wrath2","voidcall","pyro","warcry","idol","plague"],lands:{mtn:9,swp:9},
+   pool:{embershape:1,cinderwraith:1,rakfiend:1,ashdrake:1,emberglut:1,ashreborn:1,ogre:1,nightmare:1,chieftain:1,hellrider:1,warboss:1,colossus:1,inferno:1,crawler:1,pitfiend:1,gravewarden:1,reaper:1,hulk:1,slag:1,overlord:1,reaper5:1,pyro:1,wrath2:1,plague:1,smother:1,edict:1,wither:1,sunder:1,voidcall:1,rot:1,toughcull:1,bolt:1,twinbolt:1,storm:1,emberblast:1,conflag:1,firestorm:1,drain:1,bleed:1,tithe:1,maw:1,bloodpact:1,idol:1,warcry:1,obol:1,overrun:1},lands:{mtn:16,swp:16,ashmire:1,emberfen:1},swaps:{easy:{cut:["overrun","embershape"],add:{mtn:1,swp:1}},brutal:{cut:["rakfiend"],add:{swp:1}}},
    lore:"Grakk was the spark; Murglax was the ash. Vael is the fire that learned to feed on its own ashes and never go out. Tyrant of the Warren, Vael wields flame and decay as a single art \u2014 burning what cannot be drained, draining what cannot be burned \u2014 and when the body finally fails, the embers merely choose a new shape. To put Vael down you must do it twice, and mean it both times.",
    intro:["The Pit narrows to a stair, and the stair to a throne of cooling slag. Heat and cold war in the same breath.","Vael does not rise. \u201CTwo of my wardens, undone,\u201D the Tyrant muses, almost fond. \u201CYou've come far enough to matter. Good. Ash should have witnesses.\u201D"],
    sigil:"\u265B",quote:"Ash should have witnesses. Kneel, and I will let you be one. Refuse, and you will be the ash.",deathQuote:"Embers... do not... choose... twice...",
