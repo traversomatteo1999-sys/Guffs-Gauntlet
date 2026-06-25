@@ -76,7 +76,8 @@
   .subh{font-family:"Space Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-top:12px;display:flex;justify-content:space-between;align-items:center}
   .rules{display:grid;gap:8px;margin-top:10px} .ruleperm{border:1px solid rgba(154,134,196,.45);border-radius:10px;background:rgba(154,134,196,.06);padding:9px 11px} .ruleperm.bossr{border-color:rgba(224,83,61,.45);background:rgba(224,83,61,.06)} .ruleperm .rn{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:.92rem;color:var(--purp)} .ruleperm.bossr .rn{color:var(--ember)} .ruleperm .rt{font-size:.78rem;color:var(--bone-dim);margin-top:2px} .ruleperm .acts{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
   .inv{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:9px;margin-top:10px} .item{border:1px solid var(--line);border-radius:11px;background:var(--ink-3);padding:9px 11px} .item.rare{border-color:rgba(217,164,65,.6)} .item .in{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:.92rem;display:flex;justify-content:space-between;gap:6px} .item .ir{font-family:"Space Mono",monospace;font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)} .item .it{font-size:.76rem;color:var(--bone-dim);margin:4px 0 6px}
-  .resolver{border:1px dashed var(--ember);border-radius:12px;padding:12px;margin-top:12px;background:rgba(224,83,61,.05);display:none} .resolver.show{display:block}
+  .resolver{position:fixed;inset:0;z-index:39;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(3,4,7,.93);backdrop-filter:blur(3px)} .resolver.show{display:flex;animation:fade .25s ease}
+  .resolvermodal{width:min(480px,94vw);max-height:88vh;overflow-y:auto;overscroll-behavior:contain;border:1px solid var(--ember);border-radius:14px;background:var(--ink-2);box-shadow:0 26px 90px -16px rgba(0,0,0,.85);padding:14px 16px 12px;animation:spawn .3s ease}
   .resolver h3{font-family:"Grenze Gotisch",serif;font-size:1.12rem;margin-bottom:4px}
   /* P1.10: the Stack is a docked, auto-surfacing popup (not an inline panel) + a floating launcher */
   .stackpop{position:fixed;inset:0;z-index:38;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(6,7,10,.82);backdrop-filter:blur(3px)}
@@ -95,7 +96,7 @@
   .stackfab .sfl{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:.95rem;letter-spacing:.02em}
   .stackfab:hover{transform:translateY(-2px)} .stackfab.hot{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 22px -4px var(--gold)}
   .stackfabn{position:absolute;top:-5px;right:-5px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--ember);color:#fff;font-family:"Space Mono",monospace;font-size:.66rem;font-weight:700;display:flex;align-items:center;justify-content:center;border:1px solid var(--ink)} .stackfabn:empty{display:none}
-  @media(max-width:560px){.stackpop{padding:10px} .stackmodal{width:100%;max-height:88vh} .stackfab{right:12px;bottom:12px}}
+  @media(max-width:560px){.stackpop{padding:10px} .stackmodal{width:100%;max-height:88vh} .stackfab{right:12px;bottom:12px} .resolver{padding:10px} .resolvermodal{width:100%}}
   .playcard{border:1px solid var(--line);border-radius:var(--r-tile);background:var(--ink-2);padding:10px 12px;margin:7px 0} .playcard.resolved{border-color:rgba(123,178,116,.4)} .playcard.countered{opacity:.4;text-decoration:line-through}
   .crea,.item,.libitem,.playcard{transition:border-color .15s} .crea:hover,.item:hover,.libitem:hover,.playcard:hover{border-color:var(--bone-dim)} /* P1.9: tiles get the same subtle hover the store/lore tiles already have */
   .playcard .ph{display:flex;align-items:center;gap:8px;flex-wrap:wrap} .playcard .pn{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:1rem}
@@ -105,8 +106,11 @@
   .blockrow{border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin:7px 0;background:var(--ink-2)} .blockrow .ba{font-family:"Grenze Gotisch",serif;font-weight:700} .blockrow .assigned{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
   .chip{font-family:"Space Mono",monospace;font-size:.64rem;padding:3px 7px;border:1px solid var(--azor);border-radius:7px;color:var(--azor);background:rgba(77,168,218,.07)} .chip b{cursor:pointer;margin-left:5px;color:var(--ember)}
   /* P1.6: the Dungeon Log is an old, fire-consumed parchment — darkened & charred at the edges to sit deep in the dark UI; inked IM Fell serif entries, a faint Space-Mono stamp, body ink kept AA on the central field */
-  .log{margin-top:12px;border:1px solid #2e2210;border-radius:14px;background:radial-gradient(58% 52% at 0% 0%,rgba(18,11,3,.58),transparent 48%),radial-gradient(62% 54% at 100% 100%,rgba(18,11,3,.54),transparent 50%),radial-gradient(46% 42% at 100% 0%,rgba(22,14,5,.42),transparent 55%),radial-gradient(42% 38% at 0% 100%,rgba(22,14,5,.40),transparent 55%),radial-gradient(34% 26% at 72% 44%,rgba(48,32,13,.18),transparent 62%),repeating-linear-gradient(96deg,rgba(60,44,22,.05) 0 2px,transparent 2px 5px),linear-gradient(180deg,#c2ad74,#a8945c);padding:13px clamp(13px,2.3vw,19px);max-height:300px;overflow-y:auto;color:#241b0f;box-shadow:inset 0 0 60px -6px rgba(14,8,1,.7),inset 0 0 22px -4px rgba(10,6,1,.5),inset 0 0 0 1px rgba(20,12,4,.45)}
-  .log h2{color:#4a3410;border-bottom:1px solid rgba(28,18,7,.42);padding-bottom:7px;margin-bottom:9px;text-shadow:0 1px 0 rgba(255,244,216,.14)}
+  .log{margin-top:12px;border:1px solid #2e2210;border-radius:14px;background:radial-gradient(58% 52% at 0% 0%,rgba(18,11,3,.58),transparent 48%),radial-gradient(62% 54% at 100% 100%,rgba(18,11,3,.54),transparent 50%),radial-gradient(46% 42% at 100% 0%,rgba(22,14,5,.42),transparent 55%),radial-gradient(42% 38% at 0% 100%,rgba(22,14,5,.40),transparent 55%),radial-gradient(34% 26% at 72% 44%,rgba(48,32,13,.18),transparent 62%),repeating-linear-gradient(96deg,rgba(60,44,22,.05) 0 2px,transparent 2px 5px),linear-gradient(180deg,#c2ad74,#a8945c);padding:13px clamp(13px,2.3vw,19px);color:#241b0f;box-shadow:inset 0 0 60px -6px rgba(14,8,1,.7),inset 0 0 22px -4px rgba(10,6,1,.5),inset 0 0 0 1px rgba(20,12,4,.45)}
+  .log h2{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#4a3410;border-bottom:1px solid rgba(28,18,7,.42);padding-bottom:7px;margin-bottom:9px;text-shadow:0 1px 0 rgba(255,244,216,.14)}
+  /* P1.6+: fixed default height — the log text flows/scrolls inside the box instead of growing per line; the header toggle expands/collapses it (state on S.ui.logExpanded). */
+  #log{height:240px;overflow-y:auto;overscroll-behavior:contain} .log.expanded #log{height:min(62vh,560px)}
+  .logtoggle{font-family:"Space Mono",monospace;font-size:.82rem;line-height:1;padding:3px 9px;border:1px solid rgba(28,18,7,.4);border-radius:7px;background:rgba(28,18,7,.07);color:#4a3410;cursor:pointer;flex:0 0 auto} .logtoggle:hover{background:rgba(28,18,7,.16)}
   .entry{font-family:"IM Fell English",Spectral,Georgia,serif;font-size:.95rem;line-height:1.5;padding:6px 0;border-bottom:1px solid rgba(28,18,7,.22);display:flex;gap:10px;color:#241b0f} .entry:last-child{border-bottom:none}
   .entry .t{font-family:"Space Mono",monospace;font-size:.56rem;color:#6e5c36;min-width:40px;padding-top:5px;letter-spacing:.06em}
   .entry.dm .x{color:#5e1a0c} .entry.you .x{color:#123a52} .entry.sys .x{color:#523609} .entry.loot .x{color:#56340a} .entry.cbt .x{color:#241b0f} .entry .x b{font-family:"Grenze Gotisch",serif;font-weight:700;color:inherit}
@@ -461,17 +465,19 @@
       <div class="flowbtns"><button class="backphase" id="backBtn" onclick="backPhase()" title="Step back one phase — one-time effects won't re-fire" disabled>◂ Back</button><button class="big" id="dmBtn" onclick="flowClick()">▶ Begin the first turn</button></div>
       <div class="btnrow" style="justify-content:center;margin-top:10px"><button class="big azor inline" onclick="openCast()">✦ Cast a spell</button><button class="mini gold" onclick="quickCast()" title="Quick cast">⚡ Quick cast</button></div>
     </div>
-    <div class="resolver" id="resolver">
+  </div>
+
+  <div class="log" id="logBox"><h2 style="font-family:'Grenze Gotisch'"><span>📜 Dungeon Log</span><button class="logtoggle" id="logToggle" onclick="toggleLog()" aria-label="Expand or collapse the log">⤢</button></h2><div id="log"></div></div>
+
+  <!-- P1.10: the Stack — a docked, auto-surfacing popup that doesn't block the board, openable on demand via the launcher -->
+  <div class="resolver" id="resolver" role="dialog" aria-label="Attack resolution">
+    <div class="resolvermodal">
       <h3 id="combatTitle">Combat</h3>
       <div id="combatBox"></div>
       <div class="incoming" id="combatPred"></div>
       <div class="btnrow"><button class="big ember inline" onclick="approveCombat()">Approve &amp; apply</button><button class="mini" onclick="cancelCombat()">Cancel</button></div>
     </div>
   </div>
-
-  <div class="log"><h2 style="font-family:'Grenze Gotisch'">📜 Dungeon Log</h2><div id="log"></div></div>
-
-  <!-- P1.10: the Stack — a docked, auto-surfacing popup that doesn't block the board, openable on demand via the launcher -->
   <div class="stackpop" id="plays" role="dialog" aria-label="The Stack" onclick="if(event.target===this)hidePlays()">
     <div class="stackmodal">
       <div class="stackhead">
@@ -797,7 +803,7 @@ function swing(){ // YOUR attack -> Vael proposes blocks
 function vaelAttackers(){let a=S.tokens.filter(c=>!c.sick&&!c.tapped&&!c.phased&&!kw(c,'defender'));if(S.cmd.inPlay&&!S.cmd.sick&&!S.cmd.tapped&&!S.cmd.phased&&!kw(S.cmd,'defender'))a.push(S.cmd);a=a.filter(c=>effP(c)>0||kw(c,'must attack'));a.sort((x,y)=>effP(y)-effP(x));const maxA=parseInt($("maxAtk").value,10)||0;if(maxA>0&&a.length>maxA)a=a.slice(0,maxA);return a;}
 /* P4.1: resolve every pending item top-down, then CLEAR the resolved/countered items off the stack — WITHOUT advancing the phase. Phase advance is solely Continue ▸ (flowClick→advancePhase), so you can cast → resolve → cast again within one phase (multiple stacks per phase). */
 function resolveStack(){if(S.over)return;S.stackProposal=null;for(let i=S.plays.length-1;i>=0;i--){const p=S.plays[i];if(p&&p.status==='pending')resolvePlay(i);}S.plays=S.plays.filter(p=>p.status==='pending');if(!S.plays.length)hidePlays();render();}
-function openCombat(dir,attackers,pool,assign,target){S.stackProposal=null;/* P4.4: an instant-speed window proposal's window closes when combat begins (avoids a proposal layered over the combat resolver) */S.combat={dir,attackers,pool,assign,target:target||{}};$("combatTitle").textContent=dir==='you'?`Your attack — ${ENs()} proposes blocks. Edit, then approve.`:`${ENs()} attacks — assign your blockers (and check targets), then approve.`;renderCombat();$("resolver").classList.add("show");$("resolver").scrollIntoView({block:"nearest"});}
+function openCombat(dir,attackers,pool,assign,target){S.stackProposal=null;/* P4.4: an instant-speed window proposal's window closes when combat begins (avoids a proposal layered over the combat resolver) */S.combat={dir,attackers,pool,assign,target:target||{}};$("combatTitle").textContent=dir==='you'?`Your attack — ${ENs()} proposes blocks. Edit, then approve.`:`${ENs()} attacks — assign your blockers (and check targets), then approve.`;renderCombat();$("resolver").classList.add("show");}
 function cancelCombat(){S.combat=null;$("resolver").classList.remove("show");render();}
 function combatUsed(){const set=new Set();Object.values(S.combat.assign).forEach(arr=>arr.forEach(o=>set.add(o)));return set;}
 function renderCombat(){
@@ -922,7 +928,7 @@ function render(){
   const sc=$("satchelCount");if(sc)sc.textContent=S.inv.length?`${S.inv.length} item${S.inv.length===1?'':'s'}`:'empty';
   $("turnTag").textContent="Turn "+S.turn+" · "+DUNGEON[S.roomIndex].name;renderFlow();renderZones();renderMyZones();renderDeckColors();renderBoardTokens();const gn=$("goldNote");if(gn)gn.textContent="💰 "+getGold();
   if(S.combat)renderCombat();
-  applyTabs();
+  applyTabs();applyLog();
 }
 function renderAtkPick(){const box=$("atkPick");box.innerHTML="";const av=S.my.creatures.filter(c=>!c.tapped&&!c.sick&&!c.phased&&!kw(c,'defender'));if(!av.length){box.innerHTML='<span class="empty">No untapped creatures to attack with. Log your board above.</span>';return;}
   av.forEach(c=>{const el=document.createElement("div");el.className="crea";el.innerHTML=`<div class="cn">${c.name}</div><div class="cpt">${effP(c)}/${effT(c)}</div><div class="badges">${(c.kw||[]).map(k=>`<span class="badge kw">${k}</span>`).join("")}</div><button class="atk mini ${c._atk?'sel':''}" style="margin-top:6px;width:100%" onclick="toggleAtk(${c.id})">${c._atk?'attacking ✓':'attack'}</button>`;box.appendChild(el);});}
@@ -1699,6 +1705,9 @@ function buildTabs(){const byId=id=>document.getElementById(id),q=s=>document.qu
 /* Tabs default CLOSED: a never-toggled tab (undefined) is collapsed; only an explicit `false` means the player opened it. */
 function applyTabs(){if(typeof S==='undefined'||!S||!S.ui||!S.ui.tabs)return;TABS.forEach(k=>{const el=document.getElementById('tab-'+k);if(el)el.classList.toggle('collapsed',S.ui.tabs[k]!==false);});}
 function toggleTab(k){if(!S.ui)S.ui={tabs:{}};if(!S.ui.tabs)S.ui.tabs={};S.ui.tabs[k]=(S.ui.tabs[k]===false);applyTabs();scheduleAutosave();}
+/* P-UX: Dungeon Log expand/collapse (a tab-like toggle). Default = fixed height + internal scroll; expanded = taller. State on S.ui.logExpanded (in the saved/restored ui, excluded from undo like the tabs). */
+function applyLog(){const box=document.getElementById('logBox');if(!box)return;const exp=!!(typeof S!=='undefined'&&S&&S.ui&&S.ui.logExpanded);box.classList.toggle('expanded',exp);const b=document.getElementById('logToggle');if(b){b.textContent=exp?'⤡':'⤢';b.title=exp?'Collapse the log':'Expand the log';}}
+function toggleLog(){if(!S.ui)S.ui={tabs:{}};S.ui.logExpanded=!S.ui.logExpanded;applyLog();scheduleAutosave();}
 /* ===== Satchel popup (opened from the You panel, above the commander box) ===== */
 function openSatchel(){if(typeof S==='undefined'||!S)return;$("modalBody").innerHTML=satchelHTML();$("overlay").classList.add("show");}
 function satchelHTML(){const items=(S&&S.inv)||[];if(!items.length)return `<h2>🎒 Satchel</h2><p style="color:var(--bone-dim);font-style:italic">Empty for now. Loot from cleared rooms and the Merchant's wares land here — and are spent at the end of each descent.</p>`;
