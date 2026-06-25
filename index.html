@@ -797,7 +797,7 @@ function swing(){ // YOUR attack -> Vael proposes blocks
 function vaelAttackers(){let a=S.tokens.filter(c=>!c.sick&&!c.tapped&&!c.phased&&!kw(c,'defender'));if(S.cmd.inPlay&&!S.cmd.sick&&!S.cmd.tapped&&!S.cmd.phased&&!kw(S.cmd,'defender'))a.push(S.cmd);a=a.filter(c=>effP(c)>0||kw(c,'must attack'));a.sort((x,y)=>effP(y)-effP(x));const maxA=parseInt($("maxAtk").value,10)||0;if(maxA>0&&a.length>maxA)a=a.slice(0,maxA);return a;}
 /* P4.1: resolve every pending item top-down, then CLEAR the resolved/countered items off the stack — WITHOUT advancing the phase. Phase advance is solely Continue ▸ (flowClick→advancePhase), so you can cast → resolve → cast again within one phase (multiple stacks per phase). */
 function resolveStack(){if(S.over)return;S.stackProposal=null;for(let i=S.plays.length-1;i>=0;i--){const p=S.plays[i];if(p&&p.status==='pending')resolvePlay(i);}S.plays=S.plays.filter(p=>p.status==='pending');if(!S.plays.length)hidePlays();render();}
-function openCombat(dir,attackers,pool,assign,target){S.combat={dir,attackers,pool,assign,target:target||{}};$("combatTitle").textContent=dir==='you'?`Your attack — ${ENs()} proposes blocks. Edit, then approve.`:`${ENs()} attacks — assign your blockers (and check targets), then approve.`;renderCombat();$("resolver").classList.add("show");$("resolver").scrollIntoView({block:"nearest"});}
+function openCombat(dir,attackers,pool,assign,target){S.stackProposal=null;/* P4.4: an instant-speed window proposal's window closes when combat begins (avoids a proposal layered over the combat resolver) */S.combat={dir,attackers,pool,assign,target:target||{}};$("combatTitle").textContent=dir==='you'?`Your attack — ${ENs()} proposes blocks. Edit, then approve.`:`${ENs()} attacks — assign your blockers (and check targets), then approve.`;renderCombat();$("resolver").classList.add("show");$("resolver").scrollIntoView({block:"nearest"});}
 function cancelCombat(){S.combat=null;$("resolver").classList.remove("show");render();}
 function combatUsed(){const set=new Set();Object.values(S.combat.assign).forEach(arr=>arr.forEach(o=>set.add(o)));return set;}
 function renderCombat(){
@@ -1185,17 +1185,15 @@ function vaelEnd(){resolveLeftoverPlays();log("dm",`${ENs()} ends its turn.`);}
 
 /* --- Your phases --- */
 function youUntap(){S.my.creatures.forEach(c=>{c.tapped=false;c.sick=false;c._atk=false;});log("you",`Your untap — creatures untap, summoning sickness clears.`);}
-function youUpkeep(){if(S.rules.some(r=>r.side==='you'))log("you",`Your upkeep — resolve your enchantment triggers in “Enchantments in play.”`);else log("you",`Your upkeep.`);if(S.inv.some(it=>it.id==='scholar'))log("loot",`Scholar's Token: draw an extra card (apply yourself).`);}
+function youUpkeep(){if(S.rules.some(r=>r.side==='you'))log("you",`Your upkeep — resolve your enchantment triggers in “Enchantments in play.”`);else log("you",`Your upkeep.`);if(S.inv.some(it=>it.id==='scholar'))log("loot",`Scholar's Token: draw an extra card (apply yourself).`);enemyInstant("your upkeep");}
 function youDraw(){log("you",`Draw step — draw your card for the turn.`);}
 function youMain(){/* freeform: use your board tools */}
 function youCombat(){log("you",`Combat — pick attackers in “Your attack,” hit Swing, or Continue to skip.`);enemyInstant("your combat");}
 function youEnd(){enemyInstant("your end step");log("you",`You end your turn.`);}
-function enemyInstant(win){if(S.over||S.activeTurn!=='you')return;
-  const idxs=S.hand.map((c,i)=>i).filter(i=>FX[S.hand[i].key].type==='instant'&&FX[S.hand[i].key].cost<=S.bossMana);
-  if(!idxs.length)return;if(Math.random()>0.6)return; // holds up mana, doesn't always fire
-  idxs.sort((a,b)=>FX[S.hand[b].key].cost-FX[S.hand[a].key].cost);const pick=idxs[0];const card=S.hand[pick],fx=FX[card.key];
-  S.bossMana-=fx.cost;S.hand.splice(pick,1);const p=mkPlay(fx);p._card=card;p._instant=true;S.plays.push(p);
-  log("dm",`⚡ ${ENs()} responds at instant speed — <b>${fx.n}</b> (${win}; ${S.bossMana} mana left).`);showPlays();}
+/* P4.4: at instant-speed windows during YOUR turn the enemy MAY (not must) propose an instant — a freedom like a player holding up mana, NOT an every-window event. Reuses the P4.2 visible proposal (context 'window'); the random gate is a placeholder for the P6 when/whether judgment, and the affordable+would-do filter keeps instant-light enemies quiet. Skipped while a combat resolver is open — the mid-combat block-removal hook (kill a blocker AFTER blocks are declared, prune + re-predict combat) is a documented P4.4 follow-up. */
+function enemyInstant(win){if(S.over||S.activeTurn!=='you'||S.stackProposal||S.combat)return;const cands=buildEnemyCandidates();if(!cands.length)return;if(Math.random()>0.4)return;
+  S.stackProposal={context:'window',forName:win,win:win,candidates:cands,choice:cands[0].key};
+  log("dm",`⚡ ${ENs()} weighs an instant (${win})…`);showPlays();}
 
 /* --- flow / zone render --- */
 function flowLabel(){if(S.over)return"— the descent has ended —";if(S.paused)return"Descend to continue ↓";if(S.activeTurn===null)return`▶ Begin ${ENs()}'s Turn 1`;const ph=PHASES[S.phase];if(ph==='end')return S.activeTurn==='vael'?`End ${ENs()}'s turn → Your turn ▸`:`End your turn → ${ENs()}'s turn ▸`;return `Continue ▸ ${PHASE_LABEL[PHASES[S.phase+1]]}`;}
@@ -1312,13 +1310,9 @@ function castConfig(cfg){const item=Object.assign({id:S.nextId++,_player:true,si
 function submitCast(){castConfig(readCastForm());}
 function submitQuickCast(){castConfig(readQuickForm());}
 /* P4.2: after every player cast the enemy PROPOSES a visible stack response (or "let it resolve") — like the attack/block proposal. Only affordable instants that would actually do something are offered (target validity). The player approves/edits the enemy's play. Deeper threat/value selection of WHICH response & WHETHER to respond is P6.1/P6.2; for now the default pick is the costliest candidate and the player drives the rest. */
-function enemyRespondToCast(item){if(S.over||!item)return;
-  const seen={},cands=[];
-  S.hand.forEach(c=>{const fx=FX[c.key];if(!fx||fx.type!=='instant')return;if(fx.cost>S.bossMana)return;if(!enemyInstantWouldDo(fx))return;if(seen[c.key])return;seen[c.key]=true;cands.push({key:c.key,n:fx.n,cost:fx.cost,target:!!fx.target});});
-  if(!cands.length){S.stackProposal=null;return;}                 // nothing playable → the enemy silently lets it resolve
-  cands.sort((a,b)=>b.cost-a.cost);                                 // default = costliest (placeholder for P6 value-based selection)
-  S.stackProposal={forId:item.id,forName:item.name||item.n||'your spell',candidates:cands,choice:cands[0].key};
-  showPlays();}
+/* P4.4: shared candidate list — the enemy's affordable instants that would actually do something (no fizzles). Default order = costliest (placeholder for P6 value selection). Reused by the cast-response (P4.2) and the proactive instant-speed windows (P4.4). */
+function buildEnemyCandidates(){const seen={},cands=[];S.hand.forEach(c=>{const fx=FX[c.key];if(!fx||fx.type!=='instant')return;if(fx.cost>S.bossMana)return;if(!enemyInstantWouldDo(fx))return;if(seen[c.key])return;seen[c.key]=true;cands.push({key:c.key,n:fx.n,cost:fx.cost,target:!!fx.target});});cands.sort((a,b)=>b.cost-a.cost);return cands;}
+function enemyRespondToCast(item){if(S.over||!item)return;const cands=buildEnemyCandidates();if(!cands.length){S.stackProposal=null;return;}S.stackProposal={context:'cast',forId:item.id,forName:item.name||item.n||'your spell',candidates:cands,choice:cands[0].key};showPlays();}
 /* lightweight, non-mutating target-validity guard — mirrors applyTarget's "is there a legal target?" branches so the enemy never proposes a fizzle. Ward affordability is deferred to P6.2. Non-targeted instants (burn/heal/spawn/rule) always do something. */
 function enemyInstantWouldDo(fx){const t=fx&&fx.target;if(!t)return true;
   const sc=fx.color?String(fx.color).split(''):((S.boss&&S.boss.colors)||[]);
@@ -1330,24 +1324,25 @@ function enemyInstantWouldDo(fx){const t=fx&&fx.target;if(!t)return true;
     case 'minusAll2':case 'wither3':return cr.length>0;
     case 'walkerMinLoy3':return wk.length>0;
     default:return true;}}
-/* a proposal is valid only while its originating spell is still PENDING on the stack — the response window. Gates render + approve so a stale proposal (per-item resolve, removal, phase/turn/room boundary) can never render or fire an out-of-window enemy response. */
-function proposalLive(){return !!(S.stackProposal&&Array.isArray(S.plays)&&S.plays.some(p=>p&&p.id===S.stackProposal.forId&&p.status==='pending'));}
+/* a proposal is live only while its window is open: context 'cast' (default/back-compat) → its spell is still PENDING on the stack; 'combat' → a combat resolver is open; 'window' (P4.4 instant-speed windows) → live until acted on or a boundary clears it (advancePhase/enterRoom/resolveStack/openCombat). Gates render + approve so a stale proposal can never render or fire an out-of-window enemy play. */
+function proposalLive(){const pr=S.stackProposal;if(!pr)return false;if(pr.context==='combat')return !!S.combat;if(pr.context&&pr.context!=='cast')return true;return Array.isArray(S.plays)&&S.plays.some(p=>p&&p.id===pr.forId&&p.status==='pending');}
 function renderStackProposal(){const box=$("stackProposal");if(!box)return;const pr=S.stackProposal;
   if(!pr||!Array.isArray(pr.candidates)||!pr.candidates.length||!proposalLive()){box.className="stackproposal";box.innerHTML="";return;}
   if(!pr.candidates.some(c=>c.key===pr.choice))pr.choice=pr.candidates[0].key;
   box.className="stackproposal show";
   const opts=pr.candidates.map(c=>`<option value="${c.key}" ${c.key===pr.choice?'selected':''}>${c.n} — ${c.cost}◇${c.target?' · targets your board':''}</option>`).join("");
-  box.innerHTML=`<div class="pphead">⚡ ${ENs()} weighs a response to your <b>${pr.forName}</b></div>
-    <div class="btnrow"><span class="lab">respond with</span><select onchange="setProposalChoice(this.value)">${opts}</select></div>
-    <div class="ppacts"><button class="mini ember" onclick="approveStackProposal()">⚡ ${ENs()} responds ▸</button><button class="mini" onclick="passStackProposal()">▸ let it resolve</button></div>
-    <div class="manaline" style="margin-top:5px">${ENs()} has <b>${S.bossMana}</b> mana left. You approve the enemy's play — choose a different instant, or let your spell resolve.</div>`;}
+  const win=pr.context&&pr.context!=='cast';
+  box.innerHTML=`<div class="pphead">⚡ ${ENs()} ${win?`weighs an instant — <b>${pr.forName}</b>`:`weighs a response to your <b>${pr.forName}</b>`}</div>
+    <div class="btnrow"><span class="lab">${win?'play':'respond with'}</span><select onchange="setProposalChoice(this.value)">${opts}</select></div>
+    <div class="ppacts"><button class="mini ember" onclick="approveStackProposal()">⚡ ${ENs()} ${win?'acts':'responds'} ▸</button><button class="mini" onclick="passStackProposal()">▸ ${win?ENs()+' holds':'let it resolve'}</button></div>
+    <div class="manaline" style="margin-top:5px">${ENs()} has <b>${S.bossMana}</b> mana left. You approve the enemy's play — choose a different instant, or ${win?'have it hold':'let your spell resolve'}.</div>`;}
 function setProposalChoice(v){if(S.stackProposal){S.stackProposal.choice=v;render();}}
-function passStackProposal(){const pr=S.stackProposal;if(!pr)return;S.stackProposal=null;log("dm",`⚡ ${ENs()} holds back — your <b>${pr.forName}</b> resolves unanswered.`);render();}
-function approveStackProposal(){const pr=S.stackProposal;if(!pr)return;if(!proposalLive()){S.stackProposal=null;render();return;}const key=pr.choice;const idx=S.hand.findIndex(c=>c.key===key);const fx=idx>=0?FX[S.hand[idx].key]:null;
+function passStackProposal(){const pr=S.stackProposal;if(!pr)return;const win=pr.context&&pr.context!=='cast';S.stackProposal=null;log("dm",win?`⚡ ${ENs()} holds its instant (${pr.forName}).`:`⚡ ${ENs()} holds back — your <b>${pr.forName}</b> resolves unanswered.`);render();}
+function approveStackProposal(){const pr=S.stackProposal;if(!pr)return;const win=pr.context&&pr.context!=='cast';if(!proposalLive()){S.stackProposal=null;render();return;}const key=pr.choice;const idx=S.hand.findIndex(c=>c.key===key);const fx=idx>=0?FX[S.hand[idx].key]:null;
   if(!fx){S.stackProposal=null;render();return;}
-  if(fx.cost>S.bossMana){log("dm",`⚡ ${ENs()} can't pay for <b>${fx.n}</b> now — your spell resolves.`);S.stackProposal=null;render();return;}
+  if(fx.cost>S.bossMana){log("dm",`⚡ ${ENs()} can't pay for <b>${fx.n}</b> now — it holds.`);S.stackProposal=null;render();return;}
   S.bossMana-=fx.cost;const card=S.hand.splice(idx,1)[0];const p=mkPlay(fx);p._card=card;p._instant=true;p._respondingTo=pr.forId;S.plays.push(p);S.stackProposal=null;
-  log("dm",`⚡ ${ENs()} responds — <b>${fx.n}</b> (${S.bossMana} mana left). It sits on top of the stack.`);render();showPlays();}
+  log("dm",win?`⚡ ${ENs()} acts — <b>${fx.n}</b> (${S.bossMana} mana left). It's on the stack.`:`⚡ ${ENs()} responds — <b>${fx.n}</b> (${S.bossMana} mana left). It sits on top of the stack.`);render();showPlays();}
 function counterPlay(i){const p=S.plays[i];if(!p)return;if(S.stackProposal&&S.stackProposal.forId===p.id)S.stackProposal=null;p.status="countered";if(p._pcmd){const c=p._pcmdObj;if(c)S.pcmd=c;log("you",`<b>${p.n||p.name}</b> is countered → back to your command zone.`);S.plays.splice(i,1);renderPlays();render();return;}if(p._enemyCmd){log("you",`Countered <b>${p.n||p.name}</b> → it returns to ${ENs()}'s command zone.`);renderPlays();render();return;}if(p._card)S.gy.push(p._card);log("you",`Countered <b>${p.n}</b> → ${ENs()}'s graveyard.`);renderPlays();render();}
 function undoPlay(i){const p=S.plays[i];p.status="pending";if(p._card){const gi=S.gy.indexOf(p._card);if(gi>=0)S.gy.splice(gi,1);}renderPlays();render();}
 
