@@ -1126,7 +1126,8 @@ function cctrCustom(id){const c=S.tokens.find(x=>x.id===id);if(!c)return;const t
 function remCtr(scope,id){const o=getObj(scope,id);if(!o)return;if((o.other||[]).length)o.other.pop();else if((o.minus||0)>0)o.minus--;else if((o.plus||0)>0)o.plus--;else{render();return;}render();}
 function remCtrOther(scope,id,idx){const o=getObj(scope,id);if(!o||!o.other)return;o.other.splice(idx,1);render();}
 /* P2.6: reset a card to its original printed state — restore base P/T (or loyalty), clear all counters (+1/+1, −1/−1, named). */
-function resetCard(scope,id){const c=getObj(scope,id);if(!c)return;if(c.baseP!=null)c.p=c.baseP;if(c.baseT!=null)c.t=c.baseT;if(c.baseLoy!=null)c.loyalty=c.baseLoy;c.plus=0;c.minus=0;c.other=[];log(scope==='token'||scope==='cmd'?'dm':'you',`↺ <b>${c.name||c.n||'card'}</b> reset to original${c.baseP!=null?` — ${c.p}/${c.t}`:c.baseLoy!=null?` — loyalty ${c.loyalty}`:''}, counters cleared.`);render();}
+function resetCard(scope,id){const c=getObj(scope,id);if(!c)return;if(c.baseP!=null)c.p=c.baseP;if(c.baseT!=null)c.t=c.baseT;if(c.baseLoy!=null)c.loyalty=c.baseLoy;c.plus=0;c.minus=0;c.other=[];
+  if(c._tp||c._tt||((c._grantKw||[]).length)){(c._grantKw||[]).forEach(k=>{const i=(c.kw||[]).indexOf(k);if(i>=0)c.kw.splice(i,1);});c._tp=0;c._tt=0;c._grantKw=[];}/* P5.2: ↺ also clears any until-end-of-turn anthem buff */log(scope==='token'||scope==='cmd'?'dm':'you',`↺ <b>${c.name||c.n||'card'}</b> reset to original${c.baseP!=null?` — ${c.p}/${c.t}`:c.baseLoy!=null?` — loyalty ${c.loyalty}`:''}, counters cleared.`);render();}
 function tapT(id){const c=S.tokens.find(x=>x.id===id);if(c){c.tapped=!c.tapped;render();}}
 function cmdCtr(w,n){S.cmd[w]=(S.cmd[w]||0)+n;render();}
 function tapCmd(){S.cmd.tapped=!S.cmd.tapped;render();}
