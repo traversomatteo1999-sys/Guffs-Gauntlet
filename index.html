@@ -131,7 +131,7 @@
   .crea.phased{opacity:.5;border-style:dashed} .brow.tapped{opacity:.55}
   .badge.cmd{color:var(--gold);border-color:rgba(217,164,65,.5)} .badge.leg{color:var(--purp);border-color:rgba(154,134,196,.45)} .badge.tok{color:var(--bone-dim)} .badge.ph{color:var(--azor);border-color:rgba(77,168,218,.45)} .badge.ex{color:var(--purp);border-color:rgba(154,134,196,.45)} .badge.prot{color:var(--azor);border-color:rgba(77,168,218,.45)} .badge.mana{color:var(--gold)} .badge.tax{color:var(--ember);border-color:rgba(224,83,61,.45)}
   .overlay{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(6,7,10,.78);backdrop-filter:blur(3px)}
-  #overlay{z-index:60}
+  #overlay{z-index:60} #infoOverlay{z-index:70} /* ⓘ info is its own layer so it never clobbers the cast form living in #overlay */
   .overlay.show{display:flex;animation:fade .25s ease}
   @keyframes fade{from{opacity:0}to{opacity:1}}
   .modal{position:relative;max-width:640px;width:100%;max-height:86vh;overflow:auto;background:var(--ink-2);border:1px solid var(--line);border-radius:16px;padding:22px 22px 26px;box-shadow:0 24px 80px rgba(0,0,0,.6)}
@@ -199,6 +199,11 @@
   .typebtn:hover{color:var(--bone)} .typebtn.on{border-color:var(--azor);color:var(--azor);background:rgba(77,168,218,.1);font-weight:700}
   .castgrid .cf-cre,.castgrid .cf-pw,.castgrid .cf-perm{display:none}
   .castgrid.ct-creature .cf-cre,.castgrid.ct-creature .cf-perm,.castgrid.ct-planeswalker .cf-pw,.castgrid.ct-planeswalker .cf-perm,.castgrid.ct-artifact .cf-perm,.castgrid.ct-enchantment .cf-perm{display:flex}
+  /* P2.3: prominent gold AI-threat control, near the top of the permanent form */
+  .castgrid .threatrow{flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;border:1px solid var(--gold);border-radius:10px;background:rgba(217,164,65,.08);padding:9px 11px;margin:2px 0}
+  .threatlbl{font-family:"Space Mono",monospace;font-size:.64rem;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:5px}
+  .threatseg{display:flex;border:1px solid var(--gold);border-radius:8px;overflow:hidden}
+  .threatseg button{border:none;border-radius:0;border-right:1px solid rgba(217,164,65,.4);background:var(--ink-3);color:var(--bone-dim);font-family:"Space Mono",monospace;font-size:.72rem;padding:7px 16px;text-transform:uppercase;cursor:pointer;transition:.12s} .threatseg button:last-child{border-right:none} .threatseg button:hover{color:var(--bone)} .threatseg button.on{background:var(--gold);color:var(--ink);font-weight:700}
   .redir{max-width:180px}
   .overlay.menu{background:#0b0c10;align-items:flex-start;overflow:auto;z-index:40} /* warren art set via setMenuArt() (P1.4); #0b0c10 is the no-art fallback */
   .menubox{max-width:780px;width:100%;margin:auto;background:linear-gradient(180deg,rgba(217,164,65,.06),transparent 60%),var(--ink-2);border:1px solid var(--line);border-radius:16px;padding:clamp(18px,4vw,34px)}
@@ -460,6 +465,9 @@
 
   <div class="overlay" id="overlay" onclick="if(event.target===this)closeOverlay()">
     <div class="modal"><button class="modalx" onclick="closeOverlay()">✕</button><div id="modalBody"></div></div>
+  </div>
+  <div class="overlay" id="infoOverlay" onclick="if(event.target===this)closeInfo()">
+    <div class="modal"><button class="modalx" onclick="closeInfo()">✕</button><div id="infoBody"></div></div>
   </div>
   <div class="overlay cut" id="cutscene">
     <div class="cutbox"><div id="cutSigil"></div><div class="cuteyebrow" id="cutEyebrow"></div><h2 id="cutTitle"></h2><div id="cutLines"></div><div id="cutQuote"></div><div class="loot" id="cutSpoils" style="display:none"></div><div class="btnrow" id="cutBtns" style="justify-content:center;flex-wrap:wrap"><button class="big ok inline" id="cutBtn" onclick="closeCutscene()">Continue ▸</button></div></div>
@@ -1161,6 +1169,8 @@ function setCastType(t){const sel=$("castType");if(sel)sel.value=t;const g=$("ca
 function castColorPicker(id,sel){sel=sel||[];return `<div class="setbtns" id="${id}">${COLORS.map(col=>`<button type="button" class="manapip${sel.indexOf(col)>=0?' on':''}" data-col="${col}" style="--mc:${COLOR_HEX[col]}" onclick="this.classList.toggle('on')">${col}</button>`).join("")}</div>`;}
 function readColorPills(id){const el=$(id);return el?[...el.querySelectorAll('.manapip.on')].map(b=>b.dataset.col):[];}
 function setColorPills(id,arr){const el=$(id);if(!el)return;arr=arr||[];[...el.querySelectorAll('.manapip')].forEach(b=>b.classList.toggle('on',arr.indexOf(b.dataset.col)>=0));}
+/* P2.3: threat is a gold segmented control backed by the hidden #castStrength select (readCastForm unchanged). */
+function setThreat(v){const sel=$("castStrength");if(sel)sel.value=v;const seg=$("threatSeg");if(seg)[...seg.querySelectorAll('button')].forEach(b=>b.classList.toggle('on',b.dataset.v===v));}
 function castFromLibSel(){const sel=$("castLibSel");if(!sel||sel.value===''){alert('Pick a saved card from the dropdown first.');return;}const i=parseInt(sel.value,10);closeOverlay();libCast(i);}
 function _setOn(el,on){if(!el)return;if(on)el.classList.add('on');else el.classList.remove('on');}
 function loadCastFromLibrary(idx){if(idx===''||idx==null)return;const p=prof();if(!p)return;const c=p.library[parseInt(idx,10)];if(!c)return;const pr=c.props||{};
@@ -1171,7 +1181,7 @@ function loadCastFromLibrary(idx){if(idx===''||idx==null)return;const p=prof();i
   setColorPills('castProtPills',pr.prot||[]);$("castDies").value=pr.dies||'graveyard';
   $("castWardN").value=pr.cward?pr.cward.amt:0;$("castWardType").value=pr.cward?pr.cward.type:'mana';
   $("castAtkN").value=pr.catk?pr.catk.amt:0;$("castAtkType").value=pr.catk?pr.catk.type:'mana';_setOn($("castAtkTgt"),!!(pr.catk&&pr.catk.tgt));
-  $("castAbilP").value=pr.abilP||0;$("castAbilA").value=pr.abilA||0;$("castMana").value=pr.mana||0;$("castStrength").value=pr.strength||'mid';
+  $("castAbilP").value=pr.abilP||0;$("castAbilA").value=pr.abilA||0;$("castMana").value=pr.mana||0;setThreat(pr.strength||'mid');
   setCastType(c.ctype||'creature');log("you",`Loaded <b>${c.name}</b> from your library into the cast form.`);}
 function castFormHTML(){const types=['creature','instant','sorcery','artifact','enchantment','planeswalker'];return `
 <h2>${_editLid?'✎ Edit a saved card':'✦ Cast a spell onto the stack'}</h2>
@@ -1184,6 +1194,7 @@ ${(()=>{const p=prof();const lib=p?p.library:[];return lib.length?`<div class="b
 <div class="castgrid ct-creature" id="castGrid">
   <label>Name<input type="text" id="castName" placeholder="Spell name"></label>
   <label>Colors${castColorPicker('castColorPills')}</label>
+  <label class="cf-perm threatrow" style="grid-column:1/-1"><span class="threatlbl">⚠ AI threat — enemy targeting priority${infoBtn('threat')}</span><div class="threatseg" id="threatSeg"><button type="button" data-v="low" onclick="setThreat('low')">low</button><button type="button" data-v="mid" class="on" onclick="setThreat('mid')">mid</button><button type="button" data-v="top" onclick="setThreat('top')">top</button></div><select id="castStrength" style="display:none"><option value="low">low</option><option value="mid" selected>mid</option><option value="top">top</option></select></label>
   <label class="cf-cre">Power<input type="number" id="castP" value="2"></label>
   <label class="cf-cre">Toughness<input type="number" id="castT" value="2"></label>
   <label class="cf-pw">Loyalty (walker)<input type="number" id="castLoy" value="3"></label>
@@ -1202,7 +1213,6 @@ ${(()=>{const p=prof();const lib=p?p.library:[];return lib.length?`<div class="b
   <label class="cf-perm">Abilities — passive<input type="number" id="castAbilP" value="0"></label>
   <label class="cf-perm">active<input type="number" id="castAbilA" value="0"></label>
   <label class="cf-perm">Taps for mana<input type="number" id="castMana" value="0"></label>
-  <label class="cf-perm">Threat (AI hint)<select id="castStrength"><option value="low">low</option><option value="mid" selected>mid</option><option value="top">top</option></select></label>
   <label style="grid-column:1/-1">Note / effect (your reference)<input type="text" id="castNote" placeholder="what it does"></label>
 </div>
 <div class="btnrow" style="margin-top:12px"><button class="mini" id="castNoCounter" onclick="this.classList.toggle('on')">can't be countered</button><button class="big azor inline" onclick="submitCast()">✦ Put on the stack</button>${_editLid?`<button class="mini ok" onclick="saveCardEdits()">★ Save changes</button><button class="mini gold" onclick="saveCardToLibrary()">＋ Save as new</button>`:`<button class="mini gold" onclick="saveCardToLibrary()">★ Save to library</button>`}<button class="mini gold" onclick="castAsCommander()">♛ Set as commander</button><button class="mini" onclick="closeOverlay()">cancel</button></div>`;}
@@ -1246,7 +1256,8 @@ const INFO_TEXT={
   ward:{t:"🛡 Ward",h:`<p>Ward makes the enemy <b>pay</b> before it can target this permanent — mana or life, your choice. If the enemy can't (or won't) pay the ward, it simply can't target it.</p>`},
 };
 function infoBtn(key){return `<span class="ibtn" role="button" tabindex="0" onclick="event.stopPropagation();showInfo('${key}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();showInfo('${key}')}" title="What's this?">i</span>`;}
-function showInfo(key){const o=INFO_TEXT[key];if(!o)return;$("modalBody").innerHTML=`<h2 class="loreh">${o.t}</h2>${o.h}`;$("overlay").classList.add("show");}
+function showInfo(key){const o=INFO_TEXT[key];if(!o)return;$("infoBody").innerHTML=`<h2 class="loreh">${o.t}</h2>${o.h}`;$("infoOverlay").classList.add("show");}
+function closeInfo(){$("infoOverlay").classList.remove("show");}
 function openLore(){const who=(prof()&&prof().name)||'Adventurer';let h=`<h2 class="loreh">📖 The Warren of Embers</h2>
   <p style="color:var(--bone-dim);font-style:italic">You are <b>${who}</b> — a planeswalker far too curious for your own good. The Warren of Embers is a wound in the world that will not scar over: a downward maze of goblin-fire and grave-cold where something keeps relighting the dark. You came to see why. Now three wardens stand between you and the bottom of it, and you learn each one's name only by beating it out of them.</p>
   <p class="manaline" style="margin:-2px 0 10px">Between the gates, a hooded merchant waits with a cart that should not fit there — turning the gold of the slain into draughts and charms. The wardens of the descent:</p>`;
