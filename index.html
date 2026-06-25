@@ -38,6 +38,7 @@
   .panel h2{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:1.24rem;letter-spacing:.02em;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
   .tag{font-family:"Space Mono",monospace;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--bone-dim)}
   .tag.live{color:var(--ember);border-color:rgba(224,83,61,.5)} .tag.prep{color:var(--azor);border-color:rgba(77,168,218,.5)}
+  .frozenbadge{font-family:"Space Mono",monospace;font-size:.6rem;color:var(--azor);border:1px solid rgba(77,168,218,.55);border-radius:6px;padding:1px 7px;background:rgba(77,168,218,.08)} .frozenbadge:empty{display:none} .frz{color:var(--azor);font-family:"Space Mono",monospace}
   .dial{display:flex;align-items:baseline;gap:9px;margin:8px 0 4px} .dial .num{font-family:"Space Mono",monospace;font-weight:700;font-size:2.2rem;line-height:1}
   .you .num{color:var(--azor)} .boss .num{color:var(--ember)} .pw .num{color:var(--gold)} .dial .of{color:var(--bone-dim);font-family:"Space Mono",monospace;font-size:.9rem}
   .panel.you{display:flex;flex-direction:column;gap:12px} .panel.you>*{margin-top:0;margin-bottom:0} .panel.you #pcmdBox{margin-top:auto;margin-bottom:26px} /* even breathing room; commander box drops near the bottom to level with the enemy's */
@@ -362,7 +363,7 @@
       <div class="btnrow" id="satchelRow"><button class="mini gold" onclick="openSatchel()">🎒 Satchel <span class="tag" id="satchelCount">empty</span></button></div>
     </div>
     <div class="panel boss">
-      <h2>☠ <span id="bossName">—</span> <span class="cdots" id="bossColors"></span> <span class="tag live" id="bossTag">enemy general</span></h2>
+      <h2>☠ <span id="bossName">—</span> <span class="cdots" id="bossColors"></span> <span class="tag live" id="bossTag">enemy general</span> <span class="frozenbadge" id="bossFrozen"></span></h2>
       <div class="dial"><span class="num" id="bossLife">0</span><span class="of">/ <span id="bossMax">0</span> life</span></div>
       <div class="bar"><i id="bossBar" style="width:100%"></i></div>
       <div class="pips" id="manaPips"></div><div class="manaline" id="manaLine">Mana: <b>0</b></div>
@@ -370,6 +371,7 @@
       <div class="btnrow"><span class="manaline">Max attackers (Silent Arbiter → 1):</span><input type="number" id="maxAtk" min="0" value="0" onchange="render()"></div>
       <div class="btnrow"><span class="manaline">Enemy mana now:</span><button class="mini" onclick="bossManaAdj(-5)">−5</button><button class="mini" onclick="bossManaAdj(-1)">−1</button><b id="bossPoolVal" class="manaline" style="color:var(--gold);min-width:42px;text-align:center">0</b><button class="mini" onclick="bossManaAdj(1)">+1</button><button class="mini" onclick="bossManaAdj(5)">+5</button><button class="mini azor" onclick="bossManaSet()">Set…</button><button class="mini ember" onclick="bossManaEmpty()">empty</button></div>
       <div class="btnrow"><span class="manaline">Per-turn modifier (ritual + / stax −):</span><button class="mini" onclick="bossManaModAdj(-1)">−1</button><b id="bossManaModVal" class="manaline" style="color:var(--gold);min-width:24px;text-align:center">0</b><button class="mini" onclick="bossManaModAdj(1)">+1</button><button class="mini azor" onclick="bossManaModSet()">Set…</button></div>
+      <div class="btnrow"><span class="manaline">❄ Freeze mana (tapped down)</span><span class="ibtn" role="button" tabindex="0" onclick="showInfo('freeze')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showInfo('freeze')}" title="What's this?">i</span><button class="mini" onclick="bossFreezeAdj(-1)">−1</button><b id="bossFrozenVal" class="manaline" style="color:var(--azor);min-width:24px;text-align:center">0</b><button class="mini" onclick="bossFreezeAdj(1)">+1</button><button class="mini" onclick="bossFreezeClear()">clear</button></div>
       <div class="cmdbox" id="cmdBox"></div>
       <div class="gstate"><b>Note</b> Direct damage (burn, walker abilities) hits the boss's life. Creature damage reaches it through combat below.</div>
     </div>
@@ -716,6 +718,8 @@ const $=id=>document.getElementById(id);
 const d=n=>Math.floor(Math.random()*n)+1;
 function log(who,html){_lastLog=(''+html).replace(/<[^>]*>/g,'').trim().slice(0,80);const e=document.createElement("div");e.className="entry "+who;e.innerHTML=`<span class="t">${who==='sys'||who==='loot'?'·':'T'+S.turn}</span><span class="x">${html}</span>`;$("log").prepend(e);}
 function bossMana(){return Math.max(0,(DUNGEON[S.roomIndex].landStart||0)+S.turn+DIFF[S.diff].manaBonus+(S.bossManaMod||0));}
+/* P5.1: the single "usable mana now" accessor — the enemy's pool minus what the player has FROZEN (tapped down). Every enemy affordability check routes through this so a freeze actually limits casting; spends still draw from S.bossMana (the frozen part stays in the pool, just unusable, until it clears at vaelEnd). */
+function usableMana(){return Math.max(0,(S.bossMana||0)-(S.bossManaFrozen||0));}
 function effP(c){return Math.max(0,c.p+(c.plus||0)-(c.minus||0));}
 function effT(c){return c.t+(c.plus||0)-(c.minus||0);}
 function kw(c,k){return (c.kw||[]).some(x=>(''+x).toLowerCase()===k);}
@@ -727,7 +731,7 @@ function applyRun(run){if(!run)return;if(Array.isArray(run[0])){run.forEach(appl
   case "rule":if(!S.rules.some(r=>r.name===run[1]))S.rules.push({id:S.nextId++,name:run[1],text:run[2],die:run[3],side:"you"});break;
   case "bossrule":if(!S.rules.some(r=>r.name===run[1]))S.rules.push({id:S.nextId++,name:run[1],text:run[2],heal:run[3],side:"boss"});break;
 }}
-function payWard(c){const w=c.cward;if(!w||!w.amt)return '';if(w.type==='mana'){if(S.bossMana>=w.amt){S.bossMana-=w.amt;return ` <span class="manaline">(paid ward ${w.amt} mana)</span>`;}return null;}if(S.boss.life>w.amt){S.boss.life-=w.amt;return ` <span class="manaline">(paid ward ${w.amt} life)</span>`;}return null;}
+function payWard(c){const w=c.cward;if(!w||!w.amt)return '';if(w.type==='mana'){if(usableMana()>=w.amt){S.bossMana-=w.amt;return ` <span class="manaline">(paid ward ${w.amt} mana)</span>`;}return null;}if(S.boss.life>w.amt){S.boss.life-=w.amt;return ` <span class="manaline">(paid ward ${w.amt} life)</span>`;}return null;}
 function pickWardable(cands){for(const c of cands){const pr=payWard(c);if(pr!==null)return{victim:c,note:pr};}return null;}
 function applyTarget(t,sc,forceId){sc=(sc&&sc.length)?sc:((S.boss&&S.boss.colors)||[]);const safe=c=>!kw(c,'hexproof')&&!c.phased&&!(c.prot||[]).some(p=>sc.indexOf(p)>=0);const cr=S.my.creatures.filter(safe),crD=cr.filter(c=>!kw(c,'indestructible')),wk=S.my.walkers;const byT=a=>a.slice().sort((x,y)=>threatScore(y)-threatScore(x));const forced=forceId!=null?S.my.creatures.find(c=>c.id===forceId):null;
   if(t==="destroyMaxPow"){if(forced){if(kw(forced,'indestructible'))return `can't destroy <b>${forced.name}</b> — it's indestructible`;killMy(forced);return `destroys your <b>${forced.name}</b> (${effP(forced)}/${effT(forced)})`;}if(!crD.length)return cr.length?"fizzles — your creatures are indestructible":null;const pick=pickWardable(byT(crD));if(!pick)return "is warded off — the enemy can't pay to target your creatures";killMy(pick.victim);return `destroys your <b>${pick.victim.name}</b> (${effP(pick.victim)}/${effT(pick.victim)})${pick.note}`;}
@@ -881,7 +885,7 @@ function enemyCard(c){const buff=c.plus||0,deb=c.minus||0;return `<button class=
   ${kwSelect('token',c.id)}
   <button class="drawtoggle tiny" onclick="toggleDrawer('token',${c.id})">${c._drawer?'▾ properties':'▸ properties'}</button><button class="tiny" onclick="resetCard('token',${c.id})" title="reset to original — base P/T, clear counters">↺ reset</button>
   ${c._drawer?enemyDrawer('token',c.id,c):''}`;}
-function renderCmd(){const box=$("cmdBox"),c=S.cmd,mana=S.activeTurn==='vael'?S.bossMana:bossMana();
+function renderCmd(){const box=$("cmdBox"),c=S.cmd,mana=S.activeTurn==='vael'?usableMana():bossMana();
   if(!c.inPlay){box.className="cmdbox dormant";box.innerHTML=`<div class="cn">${c.n} <span class="tag prep">in hand</span>${infoBtn('commander')}</div><div class="cpt">${effP(c)}/${effT(c)}</div><div class="cstat">Needs <b style="color:var(--gold)">${c.cost}</b> mana${c.tax?` (base ${c.baseCost} + tax ${c.tax})`:''}. ${ENs()} ${S.activeTurn==='vael'?'has':'will have'} ${mana}.${c.deaths?` · deaths ${c.deaths}`:''}</div>`;}
   else{box.className="cmdbox";box.innerHTML=`<div class="cn">${c.n} ♛ <span class="tag">on ${ENs()}'s battlefield ↑</span></div><div class="cstat">Recast if it dies: <b style="color:var(--ember)">${c.baseCost}+${c.tax}=${c.baseCost+c.tax}</b> · deaths ${c.deaths||0}. Controls are on its card under the enemy's creatures.</div>`;}}
 let _hist=[],_committed=null,_settleScheduled=false,_actLabel='',_lastLog='';
@@ -911,11 +915,12 @@ function render(){
   $("youLife").textContent=S.youLife;$("youMax").textContent=S.youMax;$("youBar").style.width=Math.max(0,Math.min(100,S.youLife/S.youMax*100))+"%";
   $("bossName").textContent=S.boss.name+(S.phase2done?" · ENRAGED":"");$("bossLife").textContent=Math.max(0,S.boss.life);$("bossMax").textContent=S.boss.max;$("bossBar").style.width=Math.max(0,Math.min(100,S.boss.life/S.boss.max*100))+"%";
   const bc=$("bossColors");if(bc)bc.innerHTML=(S.boss.colors||[]).map(col=>`<span class="cdot" title="${col}" style="background:${COLOR_HEX[col]||'#888'}"></span>`).join("");
+  {const bfb=$("bossFrozen");if(bfb)bfb.innerHTML=(S.bossManaFrozen||0)>0?`❄ ${S.bossManaFrozen} frozen`:'';}
   const bt=$("bossTag");if(bt)bt.textContent=S.boss.isVael?"FINAL BOSS · fights via commander":"enemy general · fights via commander";
   ["enemyName1","enemyName2","turnEnemyName"].forEach(id=>{const e=$(id);if(e)e.textContent=ENs();});
-  const manaShow=S.activeTurn==='vael'?S.bossMana:bossMana();const pips=$("manaPips");pips.innerHTML="";for(let i=0;i<Math.max(manaShow,3);i++){const el=document.createElement("span");el.className="pip"+(i<manaShow?"":" off");pips.appendChild(el);}
-  $("manaLine").innerHTML=S.activeTurn==='vael'?`Mana remaining: <b>${S.bossMana}</b> / ${S.bossManaMax}`:`Mana next turn: <b>${bossMana()}</b>`;
-  {const bmm=$("bossManaModVal");if(bmm)bmm.textContent=(S.bossManaMod>=0?'+':'')+(S.bossManaMod||0);const bp=$("bossPoolVal");if(bp)bp.textContent=`${S.bossMana||0} / ${S.bossManaMax||0}`;}
+  const manaShow=S.activeTurn==='vael'?usableMana():bossMana();const pips=$("manaPips");pips.innerHTML="";for(let i=0;i<Math.max(manaShow,3);i++){const el=document.createElement("span");el.className="pip"+(i<manaShow?"":" off");pips.appendChild(el);}
+  $("manaLine").innerHTML=(S.activeTurn==='vael'?`Mana remaining: <b>${usableMana()}</b> / ${S.bossManaMax}`:`Mana next turn: <b>${bossMana()}</b>`)+((S.bossManaFrozen||0)>0?` · <span class="frz">❄ ${S.bossManaFrozen} frozen</span>`:'');
+  {const bmm=$("bossManaModVal");if(bmm)bmm.textContent=(S.bossManaMod>=0?'+':'')+(S.bossManaMod||0);const bp=$("bossPoolVal");if(bp)bp.textContent=`${S.bossMana||0} / ${S.bossManaMax||0}${(S.bossManaFrozen||0)>0?` ❄${S.bossManaFrozen}`:''}`;const bfv=$("bossFrozenVal");if(bfv)bfv.textContent=S.bossManaFrozen||0;}
   renderCmd();
   if(S.pw){const pw=S.pw;$("pwPanel").style.display="";$("pwName").textContent=pw.name;$("pwTag").textContent="["+(pw.colors||[]).join("/")+"] · loyalty "+pw.loy;$("pwLoy").textContent=pw.loy;$("pwBar").style.width=Math.min(100,pw.loy/(pw.ultThreshold||8)*100)+"%";
     const pa=$("pwAbil");if(pa)pa.innerHTML=[pw.plus,pw.minus,pw.ult].filter(Boolean).map(a=>`<div class="pwrow${a.ult?' ult':''}${a.ult&&pw.loy>=(pw.ultThreshold||99)?' ready':''}"><span class="pwsign">${a.sign>0?'+':''}${a.sign}</span><span><b>${a.n}</b> — ${a.text}${a.ult?` <span class="pwthr">needs ${pw.ultThreshold} loyalty${pw.loy>=(pw.ultThreshold||99)?' — READY':''}</span>`:''}</span></div>`).join("");
@@ -1008,9 +1013,9 @@ function myGyReturn(i){const c=S.myGy.splice(i,1)[0];if(!c)return;const cat=c._c
 function myGyToExile(i){const c=S.myGy.splice(i,1)[0];if(c){S.myExile.push(c);log("you",`Exiled <b>${c.name}</b> from your graveyard.`);render();}}
 function attackTax(){let mana=0,life=0;[...S.my.creatures,...S.my.artifacts,...S.my.enchants,...S.my.walkers].forEach(o=>{if(o.catk&&!o.phased){if(o.catk.type==='life')life+=o.catk.amt;else mana+=o.catk.amt;}});return{mana,life};}
 function payAttackTax(cands){const tx=attackTax();if(!tx.mana&&!tx.life)return{kept:cands,skipped:[],pm:0,pl:0,tx};
-  const ranked=cands.slice().sort((a,b)=>effP(b)-effP(a));let manaLeft=S.bossMana,lifeLeft=Math.max(0,S.boss.life-1),pm=0,pl=0;const kept=[],skipped=[];
+  const ranked=cands.slice().sort((a,b)=>effP(b)-effP(a));let manaLeft=usableMana(),lifeLeft=Math.max(0,S.boss.life-1),pm=0,pl=0;const kept=[],skipped=[];
   ranked.forEach(a=>{if(manaLeft>=tx.mana&&lifeLeft>=tx.life){manaLeft-=tx.mana;lifeLeft-=tx.life;pm+=tx.mana;pl+=tx.life;kept.push(a);}else skipped.push(a);});
-  S.bossMana=manaLeft;if(pl){S.boss.life-=pl;}
+  S.bossMana-=pm;if(pl){S.boss.life-=pl;}/* P5.1: spend only what was paid; the frozen portion stays in the pool */
   return{kept,skipped,pm,pl,tx};}
 function aiTargets(attackers){const t={};attackers.forEach(a=>t[a.id]='you');const wks=S.my.walkers.filter(w=>!w.phased);if(!wks.length)return t;
   const target=wks.slice().sort((x,y)=>y.loyalty-x.loyalty)[0];const totalP=attackers.reduce((s,a)=>s+effP(a),0);
@@ -1090,6 +1095,9 @@ function bossManaModSet(){const v=prompt("Enemy per-turn mana modifier:",S.bossM
 function bossManaAdj(n){S.bossMana=Math.max(0,(S.bossMana||0)+n);if(S.bossMana>S.bossManaMax)S.bossManaMax=S.bossMana;log("sys",`Enemy mana pool now <b>${S.bossMana}</b>.`);render();}
 function bossManaSet(){const v=prompt("Set enemy mana pool (this turn):",S.bossMana||0);if(v===null)return;const x=parseInt(v,10);if(isNaN(x)||x<0)return;S.bossMana=x;if(x>S.bossManaMax)S.bossManaMax=x;log("sys",`Enemy mana pool set to <b>${x}</b>.`);render();}
 function bossManaEmpty(){S.bossMana=0;log("sys",`Enemy mana pool emptied.`);render();}
+/* P5.1: freeze — the player taps down the enemy's mana. Lowers usableMana() (the frozen part stays in the pool, unusable) until it thaws at vaelEnd. */
+function bossFreezeAdj(n){S.bossManaFrozen=Math.max(0,(S.bossManaFrozen||0)+n);log("sys",`❄ ${ENs()}'s mana frozen: <b>${S.bossManaFrozen}</b> (usable now ${usableMana()}).`);render();}
+function bossFreezeClear(){if(!S.bossManaFrozen)return;log("sys",`❄ Cleared the freeze on ${ENs()}'s mana.`);S.bossManaFrozen=0;render();}
 function boardWipe(){const mode=$("bwMode").value,N=parseInt($("bwN").value,10)||0,skipTok=$("bwTok").classList.contains("on"),skipLeg=$("bwLeg").classList.contains("on"),scope=$("bwScope").value;
   const hit=c=>{if(skipTok&&c.token)return false;if(skipLeg&&c.legendary)return false;if(mode==='all')return true;if(mode==='toughLE')return effT(c)<=N;if(mode==='powGE')return effP(c)>=N;return true;/*dmgAll handled separately*/};
   let mine=0,foe=0;const dmg=mode==='dmgAll';
@@ -1173,9 +1181,9 @@ function pwAct(){if(S.over)return;const pw=S.pw;let ab;
 function vaelDrawStep(){vaelDraw(1);log("dm",`${ENs()} draws. (hand ${S.hand.length} · library ${S.lib.length})`);}
 function vaelMain(which){
   let summonedCmd=false;
-  if(which===1&&!S.cmd.inPlay&&!S.plays.some(p=>p._enemyCmd&&p.status==='pending')&&S.bossMana>=S.cmd.cost){S.bossMana-=S.cmd.cost;S.plays.push({id:S.nextId++,_enemyCmd:true,side:'boss',status:'pending',n:S.cmd.n,type:'creature',cost:S.cmd.cost,color:(S.boss.colors||['R']).join(''),text:`♛ ${ENs()}'s commander — resolves to its battlefield, summoning-sick.`});summonedCmd=true;log("dm",`♛ ${ENs()} casts <b>${S.cmd.n}</b> from its command zone (spent ${S.cmd.cost}, ${S.bossMana} left). It's on the stack.`);}
+  if(which===1&&!S.cmd.inPlay&&!S.plays.some(p=>p._enemyCmd&&p.status==='pending')&&usableMana()>=S.cmd.cost){S.bossMana-=S.cmd.cost;S.plays.push({id:S.nextId++,_enemyCmd:true,side:'boss',status:'pending',n:S.cmd.n,type:'creature',cost:S.cmd.cost,color:(S.boss.colors||['R']).join(''),text:`♛ ${ENs()}'s commander — resolves to its battlefield, summoning-sick.`});summonedCmd=true;log("dm",`♛ ${ENs()} casts <b>${S.cmd.n}</b> from its command zone (spent ${S.cmd.cost}, ${S.bossMana} left). It's on the stack.`);}
   let cast=0,guard=24;
-  while(guard-->0){const idxs=S.hand.map((c,i)=>i).filter(i=>FX[S.hand[i].key].cost<=S.bossMana);if(!idxs.length)break;idxs.sort((a,b)=>FX[S.hand[b].key].cost-FX[S.hand[a].key].cost);const topCost=FX[S.hand[idxs[0]].key].cost;const top=idxs.filter(i=>FX[S.hand[i].key].cost===topCost);const pick=top[Math.floor(Math.random()*top.length)];const card=S.hand[pick],fx=FX[card.key];S.bossMana-=fx.cost;S.hand.splice(pick,1);const p=mkPlay(fx);p._card=card;S.plays.push(p);log("dm",`Casts <b>${fx.n}</b> (spent ${fx.cost}, ${S.bossMana} left).`);cast++;}
+  while(guard-->0){const idxs=S.hand.map((c,i)=>i).filter(i=>FX[S.hand[i].key].cost<=usableMana());if(!idxs.length)break;idxs.sort((a,b)=>FX[S.hand[b].key].cost-FX[S.hand[a].key].cost);const topCost=FX[S.hand[idxs[0]].key].cost;const top=idxs.filter(i=>FX[S.hand[i].key].cost===topCost);const pick=top[Math.floor(Math.random()*top.length)];const card=S.hand[pick],fx=FX[card.key];S.bossMana-=fx.cost;S.hand.splice(pick,1);const p=mkPlay(fx);p._card=card;S.plays.push(p);log("dm",`Casts <b>${fx.n}</b> (spent ${fx.cost}, ${S.bossMana} left).`);cast++;}
   if(which===1&&S.tokens.length===0&&!S.cmd.inPlay&&!summonedCmd&&!S.plays.some(p=>p._enemyCmd&&p.status==='pending')){const rb=S.boss.colors||["R"];const rn=rb.includes('B')&&!rb.includes('R')?"Pit Spawn":(rb.includes('R')&&!rb.includes('B')?"Goblin Whelp":"Ember Servant");applyRun(["spawn",rn,1,1,[],rb.join('')]);log("dm",`🜂 <b>Resurgence</b> — a 1/1 ${rn}.`);}
   if(S.plays.some(p=>p.status==='pending'))showPlays();
   if(!cast&&!summonedCmd&&which===1&&!S.cmd.inPlay)log("dm",`${ENs()} can't afford a cast — still ramping.`);
@@ -1187,7 +1195,7 @@ function vaelCombat(){resolveLeftoverPlays();if(S.over)return;const cands=vaelAt
   const atk=pay.kept;if(!atk.length){log("dm",`${ENs()} can't afford to attack into your defenses.`);return;}
   const pool=S.my.creatures.filter(c=>!c.tapped&&!kw(c,"can't block")&&!c.phased);const assign={};atk.forEach(a=>assign[a.id]=[]);
   openCombat('vael',atk,pool,assign,aiTargets(atk));}
-function vaelEnd(){resolveLeftoverPlays();log("dm",`${ENs()} ends its turn.`);}
+function vaelEnd(){resolveLeftoverPlays();if(S.bossManaFrozen){log("dm",`❄ ${ENs()}'s frozen mana thaws (was ${S.bossManaFrozen}).`);S.bossManaFrozen=0;}log("dm",`${ENs()} ends its turn.`);}
 
 /* --- Your phases --- */
 function youUntap(){S.my.creatures.forEach(c=>{c.tapped=false;c.sick=false;c._atk=false;});log("you",`Your untap — creatures untap, summoning sickness clears.`);}
@@ -1205,7 +1213,7 @@ function enemyInstant(win){if(S.over||S.activeTurn!=='you'||S.stackProposal||S.c
 function flowLabel(){if(S.over)return"— the descent has ended —";if(S.paused)return"Descend to continue ↓";if(S.activeTurn===null)return`▶ Begin ${ENs()}'s Turn 1`;const ph=PHASES[S.phase];if(ph==='end')return S.activeTurn==='vael'?`End ${ENs()}'s turn → Your turn ▸`:`End your turn → ${ENs()}'s turn ▸`;return `Continue ▸ ${PHASE_LABEL[PHASES[S.phase+1]]}`;}
 function renderFlow(){const chips=$("phaseChips");if(chips){chips.innerHTML="";PHASES.forEach((ph,i)=>{const el=document.createElement("span");el.className="phasechip"+(S.activeTurn&&i===S.phase?" on":"")+(S.activeTurn&&i<S.phase?" past":"");el.textContent=PHASE_LABEL[ph];chips.appendChild(el);});}
   const lbl=$("turnLabel");if(lbl){lbl.className="turnlabel "+(S.activeTurn||'pre');lbl.textContent=S.activeTurn===null?"Pre-game — set up your board, then begin":(S.activeTurn==='vael'?`${ENs()}'s turn · ${PHASE_LABEL[PHASES[S.phase]]}`:`Your turn · ${PHASE_LABEL[PHASES[S.phase]]}`);}
-  const fm=$("flowMana");if(fm)fm.innerHTML=S.activeTurn==='vael'?`${ENs()}'s mana: <b>${S.bossMana}</b> / ${S.bossManaMax} · hand ${S.hand.length} · library ${S.lib.length}`:`${ENs()}'s mana next turn: <b>${bossMana()}</b> · hand ${S.hand.length} · library ${S.lib.length}`;
+  const fm=$("flowMana");if(fm)fm.innerHTML=S.activeTurn==='vael'?`${ENs()}'s mana: <b>${usableMana()}</b> / ${S.bossManaMax}${(S.bossManaFrozen||0)>0?` ❄${S.bossManaFrozen}`:''} · hand ${S.hand.length} · library ${S.lib.length}`:`${ENs()}'s mana next turn: <b>${bossMana()}</b> · hand ${S.hand.length} · library ${S.lib.length}`;
   const btn=$("dmBtn");if(btn){btn.disabled=S.over||!!S.combat||S.paused;btn.textContent=flowLabel();}
   const bb=$("backBtn");if(bb)bb.disabled=S.over||!!S.combat||S.paused||S.activeTurn===null||S.phase<=0;
   const sb=$("swingBtn");if(sb)sb.classList.toggle('offphase',!(S.activeTurn==='you'&&PHASES[S.phase]==='combat'));}
@@ -1317,7 +1325,7 @@ function submitCast(){castConfig(readCastForm());}
 function submitQuickCast(){castConfig(readQuickForm());}
 /* P4.2: after every player cast the enemy PROPOSES a visible stack response (or "let it resolve") — like the attack/block proposal. Only affordable instants that would actually do something are offered (target validity). The player approves/edits the enemy's play. Deeper threat/value selection of WHICH response & WHETHER to respond is P6.1/P6.2; for now the default pick is the costliest candidate and the player drives the rest. */
 /* P4.4: shared candidate list — the enemy's affordable instants that would actually do something (no fizzles). Default order = costliest (placeholder for P6 value selection). Reused by the cast-response (P4.2) and the proactive instant-speed windows (P4.4). */
-function buildEnemyCandidates(){const seen={},cands=[];S.hand.forEach(c=>{const fx=FX[c.key];if(!fx||fx.type!=='instant')return;if(fx.cost>S.bossMana)return;if(!enemyInstantWouldDo(fx))return;if(seen[c.key])return;seen[c.key]=true;cands.push({key:c.key,n:fx.n,cost:fx.cost,target:!!fx.target});});cands.sort((a,b)=>b.cost-a.cost);return cands;}
+function buildEnemyCandidates(){const seen={},cands=[];S.hand.forEach(c=>{const fx=FX[c.key];if(!fx||fx.type!=='instant')return;if(fx.cost>usableMana())return;if(!enemyInstantWouldDo(fx))return;if(seen[c.key])return;seen[c.key]=true;cands.push({key:c.key,n:fx.n,cost:fx.cost,target:!!fx.target});});cands.sort((a,b)=>b.cost-a.cost);return cands;}
 function enemyRespondToCast(item){if(S.over||!item)return;const cands=buildEnemyCandidates();if(!cands.length){S.stackProposal=null;return;}S.stackProposal={context:'cast',forId:item.id,forName:item.name||item.n||'your spell',candidates:cands,choice:cands[0].key};showPlays();}
 /* lightweight, non-mutating target-validity guard — mirrors applyTarget's "is there a legal target?" branches so the enemy never proposes a fizzle. Ward affordability is deferred to P6.2. Non-targeted instants (burn/heal/spawn/rule) always do something. */
 function enemyInstantWouldDo(fx){const t=fx&&fx.target;if(!t)return true;
@@ -1341,12 +1349,12 @@ function renderStackProposal(){const box=$("stackProposal");if(!box)return;const
   box.innerHTML=`<div class="pphead">⚡ ${ENs()} ${win?`weighs an instant — <b>${pr.forName}</b>`:`weighs a response to your <b>${pr.forName}</b>`}</div>
     <div class="btnrow"><span class="lab">${win?'play':'respond with'}</span><select onchange="setProposalChoice(this.value)">${opts}</select></div>
     <div class="ppacts"><button class="mini ember" onclick="approveStackProposal()">⚡ ${ENs()} ${win?'acts':'responds'} ▸</button><button class="mini" onclick="passStackProposal()">▸ ${win?ENs()+' holds':'let it resolve'}</button></div>
-    <div class="manaline" style="margin-top:5px">${ENs()} has <b>${S.bossMana}</b> mana left. You approve the enemy's play — choose a different instant, or ${win?'have it hold':'let your spell resolve'}.</div>`;}
+    <div class="manaline" style="margin-top:5px">${ENs()} has <b>${usableMana()}</b> mana left${(S.bossManaFrozen||0)>0?` (❄${S.bossManaFrozen} frozen)`:''}. You approve the enemy's play — choose a different instant, or ${win?'have it hold':'let your spell resolve'}.</div>`;}
 function setProposalChoice(v){if(S.stackProposal){S.stackProposal.choice=v;render();}}
 function passStackProposal(){const pr=S.stackProposal;if(!pr)return;const win=pr.context&&pr.context!=='cast';S.stackProposal=null;log("dm",win?`⚡ ${ENs()} holds its instant (${pr.forName}).`:`⚡ ${ENs()} holds back — your <b>${pr.forName}</b> resolves unanswered.`);render();}
 function approveStackProposal(){const pr=S.stackProposal;if(!pr)return;const win=pr.context&&pr.context!=='cast';if(!proposalLive()){S.stackProposal=null;render();return;}const key=pr.choice;const idx=S.hand.findIndex(c=>c.key===key);const fx=idx>=0?FX[S.hand[idx].key]:null;
   if(!fx){S.stackProposal=null;render();return;}
-  if(fx.cost>S.bossMana){log("dm",`⚡ ${ENs()} can't pay for <b>${fx.n}</b> now — it holds.`);S.stackProposal=null;render();return;}
+  if(fx.cost>usableMana()){log("dm",`⚡ ${ENs()} can't pay for <b>${fx.n}</b> now — it holds.`);S.stackProposal=null;render();return;}
   S.bossMana-=fx.cost;const card=S.hand.splice(idx,1)[0];const p=mkPlay(fx);p._card=card;p._instant=true;p._respondingTo=pr.forId;S.plays.push(p);S.stackProposal=null;
   log("dm",win?`⚡ ${ENs()} acts — <b>${fx.n}</b> (${S.bossMana} mana left). It's on the stack.`:`⚡ ${ENs()} responds — <b>${fx.n}</b> (${S.bossMana} mana left). It sits on top of the stack.`);render();showPlays();}
 function counterPlay(i){const p=S.plays[i];if(!p)return;if(S.stackProposal&&S.stackProposal.forId===p.id)S.stackProposal=null;p.status="countered";if(p._pcmd){const c=p._pcmdObj;if(c)S.pcmd=c;log("you",`<b>${p.n||p.name}</b> is countered → back to your command zone.`);S.plays.splice(i,1);renderPlays();render();return;}if(p._enemyCmd){log("you",`Countered <b>${p.n||p.name}</b> → it returns to ${ENs()}'s command zone.`);renderPlays();render();return;}if(p._card)S.gy.push(p._card);log("you",`Countered <b>${p.n}</b> → ${ENs()}'s graveyard.`);renderPlays();render();}
@@ -1384,6 +1392,7 @@ const INFO_TEXT={
   commander:{t:"♛ Commander",h:`<p>Your commander begins in the <b>command zone</b>. <b>Cast</b> it onto the stack (the enemy may respond) or <b>Deploy</b> it straight to the battlefield — you pay its cost yourself.</p><p>When it dies (or you send it back) it returns to the command zone and its <b>recast tax</b> rises by +2 each time, so repeated deaths make it cost more.</p>`},
   threat:{t:"⚔ Threat (AI hint)",h:`<p>Tells the enemy AI how dangerous this permanent is. The AI works to remove or block your <b>top</b> threats ahead of <b>mid</b> and <b>low</b> ones — set it honestly so the opponent plays sensibly.</p>`},
   ward:{t:"🛡 Ward",h:`<p>Ward makes the enemy <b>pay</b> before it can target this permanent — mana or life, your choice. If the enemy can't (or won't) pay the ward, it simply can't target it.</p>`},
+  freeze:{t:"❄ Freeze mana",h:`<p>When you tap down or freeze the enemy's lands, set the <b>frozen</b> amount here. It lowers the enemy's <b>usable mana</b> this turn — the frozen part stays in the pool but can't be spent, so the AI casts and pays for less.</p><p>It <b>thaws automatically</b> at the end of the enemy's turn; re-apply it each turn for a lasting lock.</p>`},
 };
 function infoBtn(key){return `<span class="ibtn" role="button" tabindex="0" onclick="event.stopPropagation();showInfo('${key}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();showInfo('${key}')}" title="What's this?">i</span>`;}
 function showInfo(key){const o=INFO_TEXT[key];if(!o)return;$("infoBody").innerHTML=`<h2 class="loreh">${o.t}</h2>${o.h}`;$("infoOverlay").classList.add("show");}

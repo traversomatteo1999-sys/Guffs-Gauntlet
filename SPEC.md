@@ -43,7 +43,9 @@
 | &nbsp;&nbsp;P4.2 Enemy proposes a visible stack response per player cast | ✅ **DONE** (flow now, smart selection deferred to P6) |
 | &nbsp;&nbsp;P4.3 Soft phase gating + ◂ back-a-phase | ✅ **DONE** (light gating) |
 | &nbsp;&nbsp;P4.4 Enemy casts instants at instant speed in any phase (event-hooked) | ✅ **DONE (v1)** — window proposals; mid-resolver hook deferred |
-| **Phase 5 — Enemy mana & deck rework** | ⬜ |
+| **Phase 5 — Enemy mana & deck rework** | 🔨 in progress |
+| &nbsp;&nbsp;P5.1 Enemy colours · freeze-mana · `usableMana()` accessor | ✅ **DONE** |
+| &nbsp;&nbsp;P5.2 Per-room deck identity & balance | ⬜ |
 | **Phase 6 — AI intelligence & balance** | ⬜ |
 | **Phase 7 — Tokens, battles, sounds, satchel, logging, polish** | ⬜ |
 
@@ -235,7 +237,8 @@ Visual-hierarchy convention (primary/secondary/tertiary), subtle per-surface bac
 
 # PHASE 5 — Enemy mana & deck rework (D2)
 
-- **P5.1 — Enemy colours, freeze-mana, player effects on the pool.** Keep `bossMana()` ramp; show `S.boss.colors`; add **freeze** (`S.bossManaFrozen`) lowering usable mana with badge+log; route "search a land" → temporary `+N`; centralise "usable mana now" in one accessor.
+- **P5.1 — Enemy colours, freeze-mana, player effects on the pool.** Keep `bossMana()` ramp; show `S.boss.colors`; add **freeze** (`S.bossManaFrozen`) lowering usable mana with badge+log; route "search a land" → temporary `+N`; centralise "usable mana now" in one accessor. ✅ **DONE.**
+  **How.** A single **`usableMana()` = `max(0, S.bossMana − S.bossManaFrozen)`** is the one source of truth, and **every** enemy affordability check routes through it — `payWard`, `buildEnemyCandidates` (instant offers), `approveStackProposal`, `vaelMain` (commander + the cast loop), and `payAttackTax` (changed to `S.bossMana -= pm` so only the *paid* amount leaves the pool and the **frozen portion is preserved**). **Freeze** is player-set from a boss-panel row (`bossFreezeAdj`/`bossFreezeClear`, clamp ≥0, log) with a ⓘ (`INFO_TEXT.freeze`); it lowers usable mana (the frozen mana stays in the pool, just unusable) and **thaws automatically at `vaelEnd`** (re-apply each turn for a lasting lock; `enterRoom` resets it per room). A **`#bossFrozen` header badge** ("❄ N frozen") plus manaPips / manaLine / flowMana / the **commander box** / the **stack-proposal panel** all show **usable** mana (with a ❄ note) during the enemy turn — so no readout contradicts what the enemy can actually spend. **Colours** were already surfaced (`#bossColors`); **player mana effects** use the existing controls — `bossManaMod` (persistent per-turn ramp, e.g. a searched land) and `bossManaAdj` (temporary this-turn boost, e.g. a ritual). `S.bossManaFrozen` is in undo/save; `fresh`/`migrate` init it. **Verified:** syntax gate, id-diff (+`bossFrozen`/`bossFrozenVal`), **29-assertion jsdom driver** (usableMana clamp; freeze respected by every spend site with the frozen portion preserved; `vaelEnd` thaw; controls clamp/clear; all displays show usable+frozen; fresh/migrate; turn-cycle+serialize), zero console errors; P3.3/P4.2/P4.3/P4.4/UX regressions green. **Adversarially reviewed** (3 dims × refute-verify): **3 minor fix-now** (the commander box & the stack-proposal panel still showed the raw pool under freeze) — all fixed; the completeness, freeze-lifecycle, and `payAttackTax`-arithmetic dimensions came back clean (routing complete, invariant holds, tax math identical with no freeze).
 - **P5.2 — Enemy deck rework.** Per-room deck identity (Grakk explosive mono-red aggro/burn; Murglax grindy mono-black attrition; Vael R/B midrange + walker); curate `FX` usage + `DUNGEON.pool` + copy counts; balanced so even Easy threatens. Effects stay within what the engine resolves.
 
 ---
