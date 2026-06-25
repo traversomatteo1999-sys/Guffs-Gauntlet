@@ -37,7 +37,8 @@
 | **Phase 3 — Commander & emblems** | ✅ **DONE** |
 | &nbsp;&nbsp;P3.1 commander = saved-as-commander + trap rewrite | ✅ **DONE** |
 | &nbsp;&nbsp;P3.2 enemy emblems | ✅ **DONE** |
-| **Phase 4 — Stack & turn-phase engine** | ⬜ |
+| **Phase 4 — Stack & turn-phase engine** | 🔨 in progress |
+| &nbsp;&nbsp;P4.1 Resolve clears the stack without skipping a phase | ✅ **DONE** |
 | **Phase 5 — Enemy mana & deck rework** | ⬜ |
 | **Phase 6 — AI intelligence & balance** | ⬜ |
 | **Phase 7 — Tokens, battles, sounds, satchel, logging, polish** | ⬜ |
@@ -194,7 +195,8 @@ Visual-hierarchy convention (primary/secondary/tertiary), subtle per-surface bac
 
 # PHASE 4 — Stack & turn-phase engine
 
-- **P4.1 — "Resolve" clears the stack without skipping a phase**; allow multiple stacks per phase. Split `toAssault`: a **Resolve stack** button resolves+clears, leaving phase untouched; phase advance stays solely on **Continue ▸**. (Interacts with the P1.10 stack popup.)
+- **P4.1 — "Resolve" clears the stack without skipping a phase**; allow multiple stacks per phase. Split `toAssault`: a **Resolve stack** button resolves+clears, leaving phase untouched; phase advance stays solely on **Continue ▸**. (Interacts with the P1.10 stack popup.) ✅ **DONE.**
+  **How:** the old `toAssault()` (resolve-all-then-`advancePhase`) is **removed** and replaced by **`resolveStack()`** — resolves every pending item top-down via `resolvePlay`, then `S.plays=S.plays.filter(p=>p.status==='pending')` to **clear** resolved/countered items, `hidePlays()` if the stack is now empty, `render()`; it never advances the phase. The stack-popup footer button is rewired from "Resolve remaining & continue ▸" to **"▸ Resolve the stack"** with a hint that *the phase advances only on Continue ▸*. `flowClick`/`advancePhase` keep sole ownership of phase advance (and `flowClick` still blocks the advance while a player spell is pending, surfacing the stack). So you can **cast → resolve → cast again within one phase** (multiple stacks per phase). **Also fixed (review-found, same domain):** a pending **enemy** instant cast during *your* turn (`enemyInstant` in `youCombat`/`youEnd`) used to be silently dropped on Continue because `resolveLeftoverPlays` was gated to the enemy's turn — `advancePhase` now calls `resolveLeftoverPlays()` unconditionally (it only touches pending non-player items, and `vaelEnd` already called it), so leftover enemy items resolve before the phase advances in **both** turns. Verified: syntax gate, id-set diff (no id changes), **25-assertion jsdom TEST W** (resolve w/o phase change, multiple stacks per phase, mixed player+enemy stack, `flowClick` blocks-then-advances, empty-resolve clears/closes, the leftover-enemy-on-your-turn fix, regression). **Adversarially reviewed** (4 dims): **0 confirmed defects**; the major out-of-scope note (the leftover-enemy drop) was fixed anyway as it's squarely in the stack-resolution domain. Remaining notes were nits (countered-item undo-after-resolve is a coherent lifecycle; granular vs bulk resolve coexistence).
 - **P4.2 — Enemy proposes a stack response after every player cast** — including "let it resolve" — as a visible proposal (like the attack/block flow), respecting affordability and target validity (P6.2).
 - **P4.3 — Phases gate what you can do (soft)** + a **◂ back a phase** button; out-of-phase actions are de-emphasised and warn but never hard-block; re-entering a phase must not re-fire one-time effects.
 
