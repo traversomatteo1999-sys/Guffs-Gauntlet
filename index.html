@@ -341,7 +341,7 @@
   <div class="controls">
     <span class="lab">Difficulty</span>
     <div class="seg" id="diffSeg"><button data-d="easy">Easy</button><button data-d="standard" class="on">Standard</button><button data-d="brutal">Brutal</button></div>
-    <button class="mini ember" id="resetBtn">↺ Restart Dungeon</button><button class="mini azor" onclick="undo()">↩ Undo</button><button class="mini gold" onclick="openTutorial()">❓ Tutorial</button><button class="mini" onclick="openLore()">📖 Lore</button><button class="mini gold" onclick="openLibrary()">🃏 Library</button><button class="mini azor" onclick="showMenu()">☰ Menu</button><span class="goldpill" id="goldNote" style="align-self:center">💰 0</span><span class="lab" id="diffNote">standard</span>
+    <button class="mini ember" id="resetBtn">↺ Restart Dungeon</button><button class="mini azor" onclick="undo()">↩ Undo</button><button class="mini gold" onclick="openTutorial()">❓ Tutorial</button><button class="mini" onclick="openLore()">📖 Lore</button><button class="mini gold" onclick="openLibrary()">🃏 Library</button><button class="mini" id="muteBtn" onclick="toggleMute()" title="Toggle sound">🔊 Sound</button><button class="mini azor" onclick="showMenu()">☰ Menu</button><span class="goldpill" id="goldNote" style="align-self:center">💰 0</span><span class="lab" id="diffNote">standard</span>
   </div>
 
   <section class="tab" id="tab-info"><button class="tabhead" onclick="toggleTab('info')"><span class="tablabel">⟡ Info <span class="tabnote">you · foe · log</span></span><span class="tabright"><span class="tabhint"></span><span class="tabchev">▾</span></span></button><div class="tabbody" id="tb-info"></div></section>
@@ -532,7 +532,7 @@
           <p class="manaline" style="margin:6px 0 0;font-size:.62rem">Full save = everything (profiles, gold, in-progress game). Library = only your cards &amp; tokens, to share between profiles.</p>
         </div>
       </div>
-      <div class="btnrow" style="margin-top:14px;flex-wrap:wrap"><button class="mini gold" onclick="openLibrary()">🃏 Card Library</button><button class="mini gold" onclick="openStore()">🛒 Store</button><span class="goldpill" id="menuGold" style="align-self:center">💰 0 gold</span><button class="mini" onclick="openTutorial()">❓ How to play</button><button class="mini" onclick="openLore()">📖 Lore</button></div>
+      <div class="btnrow" style="margin-top:14px;flex-wrap:wrap"><button class="mini gold" onclick="openLibrary()">🃏 Card Library</button><button class="mini gold" onclick="openStore()">🛒 Store</button><span class="goldpill" id="menuGold" style="align-self:center">💰 0 gold</span><button class="mini" onclick="openTutorial()">❓ How to play</button><button class="mini" onclick="openLore()">📖 Lore</button><button class="mini" id="menuMuteBtn" onclick="toggleMute()" title="Toggle sound">🔊 Sound</button></div>
       <button class="big azor" id="continueBtn" style="margin-top:16px;display:none" onclick="continueLastGame()">▶ Continue last game</button>
       <button class="big ok" style="margin-top:10px" onclick="startGame()">Descend ▸</button>
       <p class="manaline" style="text-align:center;margin:8px 0 0;font-size:.6rem;opacity:.6">⟳ Autosaves as you play — close any time and pick up where you left off.</p>
@@ -1079,7 +1079,7 @@ function approveCombat(){
   attackers.forEach(a=>{const bl=assign[a.id]||[];log("cbt",`${dir==='you'?'attack':ENs()}: ${a.name} (${effP(a)}/${effT(a)}) ${bl.length?'blocked by '+bl.map(b=>b.name).join(" & "):'is unblocked'}.`);});
   const r=resolveAttack(attackers,assign);
   if(dir==='you'){
-    if(r.face>0){S.boss.life-=r.face;log("you",`<b>${r.face}</b> to ${S.boss.name}'s life. (${Math.max(0,S.boss.life)})`);}
+    if(r.face>0){S.boss.life-=r.face;sfx('strike');log("you",`<b>${r.face}</b> to ${S.boss.name}'s life. (${Math.max(0,S.boss.life)})`);}
     if(r.attLifelink){S.youLife+=r.attLifelink;log("you",`Lifelink: you +${r.attLifelink}.`);}
     if(r.defLifelink){bossHealLife(r.defLifelink);log("dm",`${ENs()} lifelink: +${r.defLifelink}.`);}
     r.deadBlk.forEach(removeRef);r.deadAtt.forEach(removeRef);
@@ -1092,7 +1092,7 @@ function approveCombat(){
     const tmap=S.combat.target||{};
     let toYou=0;const wHits={};r.perAtt.forEach(({att,toFace})=>{const tg=tmap[att.id]||'you';if(tg==='you')toYou+=toFace;else wHits[tg]=(wHits[tg]||0)+toFace;});
     const ward=(S.inv.some(it=>it.id==="ward")?2:0)+(S.inv.some(it=>it.id==="aegis")?4:0);const face=Math.max(0,toYou-ward);if(ward&&toYou>0)log("you",`Your charms soak ${Math.min(ward,toYou)}.`);
-    if(face>0){S.youLife-=face;log("dm",`<b>${face}</b> to your life. (${S.youLife})`);}
+    if(face>0){S.youLife-=face;sfx('hit');log("dm",`<b>${face}</b> to your life. (${S.youLife})`);}
     Object.keys(wHits).forEach(wid=>{const w=S.my.walkers.find(x=>''+x.id===wid);if(w&&wHits[wid]>0){w.loyalty-=wHits[wid];log("dm",`${ENs()} hits <b>${w.name}</b> for ${wHits[wid]} (loyalty ${Math.max(0,w.loyalty)}).`);if(w.loyalty<=0){log("dm",`<b>${w.name}</b> is destroyed.`);killMy(w);}}});
     const cmdToYou=S.cmd.inPlay&&attackers.includes(S.cmd)&&!((assign[S.cmd.id]||[]).length)&&(tmap[S.cmd.id]||'you')==='you';
     if(cmdToYou){S.counters.cmdDmg+=effP(S.cmd);log("dm",`Commander damage: ${S.counters.cmdDmg}/21.`);}
@@ -1393,7 +1393,7 @@ function useBoon(i){const it=S.inv[i];if(!it)return;const b=BOONS[it.id];if(b.ki
 function grantBoon(id){const b=BOONS[id];if(!b)return;if(b.kind==="instant"){if(id==="spark"){S.youMax+=5;S.youLife+=5;}log("loot",`Gained <b>${b.n}</b>.`);return;}if(id==="map")S.weakenNext=true;S.inv.push({id,descents:1});/* P7.4: descents = how many descents a passive/reminder lasts (default 1 = this descent only) */log("loot",`Looted <b>${b.n}</b> (${b.r}).`);}
 function lootRoll(){const roll=d(20);let id="heal5";for(const[a,z,bid]of LOOT_D20){if(roll>=a&&roll<=z){id=bid;break;}}let names=[];if(id==="jackpot"){grantBoon("heal10");grantBoon("phoenix");names=["Greater Draught","Phoenix Charm"];}else{grantBoon(id);names=[BOONS[id].n];}return{roll,names};}
 
-function bossDown(){if(S.over)return;if(S.boss.isVael&&!S.phase2done){S.phase2done=true;S.boss.life=Math.max(10,Math.round(S.boss.max*0.30));applyRun(["spawn","Pyre Revenant",4,3,["trample","haste"],"RB"]);/* P5.2 balance: phase-2 revival 0.34→0.30 — softens the run's sharpest spike (2nd health bar at lowest carried-over life) */log("dm",`🔥🔥 <b>UNDYING EMBERS!</b> Vael rises ENRAGED at ${S.boss.life} life and calls a Pyre Revenant.`);render();return;}if(S.boss.isVael){win();return;}S.paused=true;const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);log("sys",`🏳 <b>${S.boss.name} falls!</b>`);log("loot",`💰 You collect <b>${gold} gold</b> (account balance ${getGold()}). Spend it at the Merchant in the ☰ Menu.`);S._spoils=`🎲 Loot roll ${lr.roll}/20 → ${lr.names.join(" + ")}!  ·  💰 +${gold} gold (account ${getGold()})`;render();showEncounterClear();}
+function bossDown(){if(S.over)return;if(S.boss.isVael&&!S.phase2done){S.phase2done=true;S.boss.life=Math.max(10,Math.round(S.boss.max*0.30));applyRun(["spawn","Pyre Revenant",4,3,["trample","haste"],"RB"]);/* P5.2 balance: phase-2 revival 0.34→0.30 — softens the run's sharpest spike (2nd health bar at lowest carried-over life) */log("dm",`🔥🔥 <b>UNDYING EMBERS!</b> Vael rises ENRAGED at ${S.boss.life} life and calls a Pyre Revenant.`);render();return;}if(S.boss.isVael){win();return;}S.paused=true;sfx('victory');const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);log("sys",`🏳 <b>${S.boss.name} falls!</b>`);log("loot",`💰 You collect <b>${gold} gold</b> (account balance ${getGold()}). Spend it at the Merchant in the ☰ Menu.`);S._spoils=`🎲 Loot roll ${lr.roll}/20 → ${lr.names.join(" + ")}!  ·  💰 +${gold} gold (account ${getGold()})`;render();showEncounterClear();}
 function advance(){const next=S.roomIndex+1;closeCutscene();S._spoils="";freshGameForDungeon();enterRoom(next);S.paused=false;log("sys",`A fresh board awaits in <b>${DUNGEON[next].name}</b> — empty battlefield, but your life (${S.youLife}) and loot carry over.`);render();const nr=DUNGEON[next];showCutscene(nr.intro,nr.villain,`${nr.name} · descending`,nr.isVael?"Face the Tyrant ▸":"Descend ▸",villainCutOpts(nr));}
 
 /* ===== TURN / PHASE ENGINE ===== */
@@ -1609,7 +1609,7 @@ function renderPlays(){const box=$("playCards");box.innerHTML="";if(!S.plays.len
     else acts=`<span class="ir" style="color:var(--bone-dim);font-family:Space Mono;font-size:.66rem">COUNTERED ✕</span><button class="mini" onclick="undoPlay(${i})">undo</button>`;
     if(mine)acts+=`<button class="mini gold" onclick="saveStackToLibrary(${i})">★ save</button>`;
     el.innerHTML=`<div class="ph">${i===topIdx?'<span class="topbadge">TOP ▸</span>':''}<span class="pn">${nm}</span>${colChips?`<span style="margin-left:2px">${colChips}</span>`:''}${p.cost!=null?`<span class="cost">${p.cost}◇</span>`:''}<span class="typechip ${ty}">${ty}</span>${mine?'<span class="typechip" style="color:var(--azor)">your spell</span>':''}${p._instant?'<span class="typechip" style="color:var(--azor)">flash</span>':''}${p.cantCounter?'<span class="typechip" style="color:var(--gold)">uncounterable</span>':''}${p.target?'<span class="typechip" style="color:var(--ember)">targets you</span>':''}</div><div class="pt">${txt}${p.die?` <span class="die">→ rolled ${p.roll}/${p.die}</span>`:''}</div>${p.flav?`<div class="flav">${p.flav}</div>`:''}<div class="pacts">${acts}</div>`;box.appendChild(el);});}
-function resolvePlay(i){const p=S.plays[i];if(!p||p.status==="resolved")return;if(S.stackProposal&&S.stackProposal.forId===p.id)S.stackProposal=null;p.status="resolved";
+function resolvePlay(i){const p=S.plays[i];if(!p||p.status==="resolved")return;if(S.stackProposal&&S.stackProposal.forId===p.id)S.stackProposal=null;p.status="resolved";sfx('resolve');
   if(p._player){if(p._pcmd)resolveCmdToBoard(p);else resolvePlayerItem(p);checkLose();renderPlays();render();return;}
   if(p._enemyCmd){S.cmd.inPlay=true;S.cmd.sick=true;log("dm",`♛ <b>${S.cmd.n}</b> resolves onto ${ENs()}'s battlefield, summoning-sick.`);checkLose();renderPlays();render();return;}
   if(p.run)applyRun(p.run);if(p.target){const msg=applyTarget(p.target,(p.color||'').split('').filter(Boolean));if(msg)log("dm",`${p.n}: ${ENs()} ${msg}.`);else log("dm",`${p.n} — no valid target on your tracked board.`);}if(p.selfLoss){S.youLife-=p.selfLoss;log("dm",`${p.n} → you lose <b>${p.selfLoss}</b>. (${S.youLife})`);}else if(!p.target&&!p.run)log("dm",`${p.n} resolves.`);
@@ -1680,7 +1680,7 @@ ${(()=>{const p=prof();const lib=p?p.library:[];return lib.length?`<div class="b
 </div>
 <div class="btnrow" style="margin-top:12px"><button class="mini" id="castNoCounter" onclick="this.classList.toggle('on')">can't be countered</button><button class="big azor inline" onclick="submitCast()">✦ Put on the stack</button>${_editLid?`<button class="mini ok" onclick="saveCardEdits()">★ Save changes</button><button class="mini gold" onclick="saveCardToLibrary()">＋ Save as new</button>`:`<button class="mini gold" onclick="saveCardToLibrary()">★ Save to library</button>`}<button class="mini gold" onclick="castAsCommander()">♛ Set as commander</button><button class="mini" onclick="closeOverlay()">cancel</button></div>`;}
 function castConfig(cfg){const item=Object.assign({id:S.nextId++,_player:true,side:'you',status:'pending'},cfg);
-  S.plays.push(item);log("you",`✦ You cast <b>${item.name}</b> (${item.ctype})${item.cantCounter?" — can't be countered":""}. It's on the stack.`);
+  S.plays.push(item);sfx('cast');log("you",`✦ You cast <b>${item.name}</b> (${item.ctype})${item.cantCounter?" — can't be countered":""}. It's on the stack.`);
   closeOverlayCommit();render();enemyRespondToCast(item);showPlays();return item;}
 function submitCast(){castConfig(readCastForm());}
 function submitQuickCast(){castConfig(readQuickForm());}
@@ -1740,14 +1740,14 @@ function counterPlay(i){const p=S.plays[i];if(!p)return;if(S.stackProposal&&S.st
 function undoPlay(i){const p=S.plays[i];p.status="pending";if(p._card){const gi=S.gy.indexOf(p._card);if(gi>=0)S.gy.splice(gi,1);}renderPlays();render();}
 
 function checkLose(){if(S.over)return;const poison=(S.counters&&S.counters.poison)||0,cmdd=(S.counters&&S.counters.cmdDmg)||0;if(S.youLife<=0||poison>=10||cmdd>=21){if(S.youLife<=0&&S.inv.some(it=>it.id==="phoenix")&&!S.phoenixUsed){S.phoenixUsed=true;S.inv=S.inv.filter(it=>it.id!=="phoenix");S.youLife=1;log("loot",`🔥 <b>Phoenix Charm</b> catches you at <b>1</b>!`);render();return;}if(poison>=10)log("sys","☠ 10 poison counters - you fall.");if(cmdd>=21)log("sys","☠ 21 commander damage - you fall.");lose();}}
-function win(){if(S.over)return;S.over=true;recordResult(true);S.boss.life=0;const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);log("loot",`💰 You claim <b>${gold} gold</b> from the Tyrant's hoard (account balance ${getGold()}).`);log("sys",`🏆 <b>VAEL FALLS.</b>`);render();const v=DUNGEON[2];showCutscene(v.epilogue,"The Warren Falls","Victory · Level I complete",null,{sigil:v.sigil||'☠',speaker:v.villain,quote:v.deathQuote||'',accent:villainAccent(v),eyebrowAcc:'var(--gold)',spoils:`🎲 Spoils: ${lr.names.join(" + ")}!  ·  💰 +${gold} gold (account ${getGold()})`,buttons:[{label:"↻ Descend again",on:restart,cls:"big ok"},{label:"Quit to Menu",on:quitToMenu,cls:"big"}]});}
-function lose(){if(S.over)return;S.over=true;recordResult(false);log("sys",`☠ <b>You have fallen.</b>`);render();const room=DUNGEON[S.roomIndex]||DUNGEON[0];showCutscene(["The enemy holds the field. The Warren keeps what it takes — but the gate opens again for those mad enough to return."],"The Warren Consumes You",`${room.name} · defeat`,null,{sigil:room.sigil||'☠',speaker:room.villain,quote:room.quote||'',accent:villainAccent(room),buttons:[{label:"↻ Try again",on:restart,cls:"big ember"},{label:"Quit to Menu",on:quitToMenu,cls:"big"}]});}
+function win(){if(S.over)return;S.over=true;sfx('victory');recordResult(true);S.boss.life=0;const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);log("loot",`💰 You claim <b>${gold} gold</b> from the Tyrant's hoard (account balance ${getGold()}).`);log("sys",`🏆 <b>VAEL FALLS.</b>`);render();const v=DUNGEON[2];showCutscene(v.epilogue,"The Warren Falls","Victory · Level I complete",null,{sigil:v.sigil||'☠',speaker:v.villain,quote:v.deathQuote||'',accent:villainAccent(v),eyebrowAcc:'var(--gold)',spoils:`🎲 Spoils: ${lr.names.join(" + ")}!  ·  💰 +${gold} gold (account ${getGold()})`,buttons:[{label:"↻ Descend again",on:restart,cls:"big ok"},{label:"Quit to Menu",on:quitToMenu,cls:"big"}]});}
+function lose(){if(S.over)return;S.over=true;sfx('defeat');recordResult(false);log("sys",`☠ <b>You have fallen.</b>`);render();const room=DUNGEON[S.roomIndex]||DUNGEON[0];showCutscene(["The enemy holds the field. The Warren keeps what it takes — but the gate opens again for those mad enough to return."],"The Warren Consumes You",`${room.name} · defeat`,null,{sigil:room.sigil||'☠',speaker:room.villain,quote:room.quote||'',accent:villainAccent(room),buttons:[{label:"↻ Try again",on:restart,cls:"big ember"},{label:"Quit to Menu",on:quitToMenu,cls:"big"}]});}
 function noAbilT(scope,id){const c=getCre(scope,id);if(c){c.noAbil=!c.noAbil;render();}}
 function sickMy(id){const c=S.my.creatures.find(x=>x.id===id);if(c){c.sick=!c.sick;render();}}
 function renderCounters(){if(!S.counters)return;const m={cPoison:'poison',cCmd:'cmdDmg',cEnergy:'energy',cExp:'experience'};for(const k in m){const el=$(k);if(el)el.textContent=S.counters[m[k]];}}
 function cnt(k,n){S.counters[k]=Math.max(0,(S.counters[k]||0)+n);renderCounters();checkLose();}
-function rollDie(n){n=Math.max(2,n|0);const r=Math.floor(Math.random()*n)+1;const o=$("diceOut");if(o)o.innerHTML=`🎲 d${n} -> <b style="color:var(--gold)">${r}</b>`;log("sys",`🎲 d${n} -> <b>${r}</b>.`);}
-function coinFlip(){const h=Math.random()<.5;const o=$("diceOut");if(o)o.innerHTML=`🪙 <b style="color:var(--gold)">${h?'Heads':'Tails'}</b>`;log("sys",`🪙 ${h?'Heads':'Tails'}.`);}
+function rollDie(n){n=Math.max(2,n|0);const r=Math.floor(Math.random()*n)+1;sfx('die');const o=$("diceOut");if(o)o.innerHTML=`🎲 d${n} -> <b style="color:var(--gold)">${r}</b>`;log("sys",`🎲 d${n} -> <b>${r}</b>.`);}
+function coinFlip(){const h=Math.random()<.5;sfx('coin');const o=$("diceOut");if(o)o.innerHTML=`🪙 <b style="color:var(--gold)">${h?'Heads':'Tails'}</b>`;log("sys",`🪙 ${h?'Heads':'Tails'}.`);}
 function setDiff(df){S.diff=df;$("diffNote").textContent=DIFF[df].note;[...$("diffSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.d===df));}
 /* P7.4: satchel items last a number of DESCENTS (default 1 = this descent only). When a new descent begins
    (restart / start-new), items the player set to last longer survive with their counter decremented; the rest
@@ -2114,8 +2114,33 @@ function satchelHTML(){const items=(S&&S.inv)||[];if(!items.length)return `<h2>�
 /* P7.4: a satchel passive/reminder lasts N descents (default 1). Adjust it here; on a new descent, items with >1 carry over (decremented). */
 function invDuration(i,n){const it=S.inv[i];if(!it)return;it.descents=Math.max(1,(it.descents||1)+n);render();openSatchel();}
 
-loadDB();
-fresh();setDiff("standard");render();setWarrenArt();setMenuArt();buildTabs();applyTabs();
+/* ===== P7.8: synthesized WebAudio SFX (no audio assets) — soft, low cues; persisted mute; first-gesture unlock.
+   Everything is wrapped so a context that blocks autoplay, an old browser, or a headless run silently no-ops. */
+let _audioCtx=null,_muted=false,_audioReady=false;
+function audioCtx(){if(_audioCtx)return _audioCtx;try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;_audioCtx=new AC();}catch(e){_audioCtx=null;}return _audioCtx;}
+function unlockAudio(){if(_audioReady)return;_audioReady=true;try{const c=audioCtx();if(c&&c.state==='suspended')c.resume();}catch(e){}}
+/* one soft oscillator blip with an attack/decay envelope; vol kept low (default-quiet) */
+function _tone(freq,dur,type,vol,when,glideTo){try{const c=audioCtx();if(!c||c.state!=='running')return;const t0=c.currentTime+(when||0);const o=c.createOscillator(),g=c.createGain();o.type=type||'sine';o.frequency.setValueAtTime(freq,t0);if(glideTo)o.frequency.exponentialRampToValueAtTime(glideTo,t0+dur);const v=(vol==null?0.10:vol);g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(v,t0+0.012);g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);o.connect(g);g.connect(c.destination);o.start(t0);o.stop(t0+dur+0.03);}catch(e){}}
+function sfx(name){if(_muted)return;try{switch(name){
+  case 'cast':_tone(440,0.15,'triangle',0.09);_tone(660,0.12,'sine',0.05,0.05);break;
+  case 'resolve':_tone(300,0.18,'sine',0.09,0,200);break;
+  case 'strike':_tone(180,0.14,'square',0.07,0,90);_tone(120,0.16,'sine',0.06,0.02);break;
+  case 'hit':_tone(140,0.18,'square',0.07,0,70);break;
+  case 'heal':_tone(520,0.16,'sine',0.07,0,760);break;
+  case 'button':_tone(680,0.05,'sine',0.045);break;
+  case 'coin':_tone(880,0.06,'square',0.05);_tone(1320,0.07,'square',0.04,0.05);break;
+  case 'die':_tone(260+Math.random()*260,0.05,'square',0.045);break;
+  case 'victory':[523,659,784,1047].forEach((f,i)=>_tone(f,0.32,'triangle',0.09,i*0.13));break;
+  case 'defeat':[392,330,262,196].forEach((f,i)=>_tone(f,0.36,'sine',0.09,i*0.15));break;
+}}catch(e){}}
+function loadMute(){try{_muted=!!(DB&&DB.muted);}catch(e){_muted=false;}}
+function toggleMute(){_muted=!_muted;try{DB.muted=_muted;saveDB();}catch(e){}if(!_muted){unlockAudio();sfx('button');}renderMuteBtn();}
+function renderMuteBtn(){['muteBtn','menuMuteBtn'].forEach(id=>{const b=$(id);if(b)b.textContent=_muted?'🔇 Muted':'🔊 Sound';});}
+
+loadDB();loadMute();
+fresh();setDiff("standard");render();setWarrenArt();setMenuArt();buildTabs();applyTabs();renderMuteBtn();
+/* P7.8: unlock WebAudio on the first user gesture (browsers block autoplay until then) */
+try{['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,unlockAudio,{once:true}));}catch(e){}
 log("sys",`The Warren breathes cold and ash from the dark below. Your chronicle begins here — every blow, spell, and bargain is remembered.`);
 beginIntro();
 try{if(typeof navigator!=='undefined'&&navigator.serviceWorker&&typeof location!=='undefined'&&/^https?:/.test(location.protocol)){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}}catch(e){}
