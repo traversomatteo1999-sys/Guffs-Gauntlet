@@ -334,7 +334,7 @@
       <li><b>Phase flow:</b> the enemy takes its turn, then you take yours, through every step (untap → upkeep → draw → main → combat → main → end). One <b>Continue</b> button walks the phases; the enemy spends visible mana, draws from its deck, and casts.</li>
       <li><b>Your attack:</b> pick attackers, Swing — the enemy assigns blocks by AI; the engine resolves trample, deathtouch, strikes, lifelink, protection, etc. <b>Enemy attack:</b> its attackers appear and you assign blockers.</li>
       <li><b>Resolve or counter</b> each spell the enemy draws and casts. Removal auto-applies to your board but skips hexproof, phased-out, and protected creatures (protection-from-red stops red sources, protection-from-black stops black ones); what it destroys goes to <b>your graveyard or exile</b> per the card's setting.</li>
-      <li><b>The descent:</b> you face <b>three generals</b> — Grakk (mono-red aggro), Murglax (mono-black attrition), and finally Vael (red-black, and the only one with a planeswalker). Between rooms your <b>life and loot carry over</b>; the battlefield, counters, and the enemy reset to a fresh game, and your commander waits in the command zone. Tap <b>📖 Lore</b> or <b>❓ Tutorial</b> any time.</li>
+      <li><b>The descent:</b> you face <b>three generals</b> — a mono-red aggro warlord, a mono-black attrition tyrant, and finally a red-black final boss (the only one fielding a planeswalker). You learn each one's name only by beating it. Between rooms your <b>life and loot carry over</b>; the battlefield, counters, and the enemy reset to a fresh game, and your commander waits in the command zone. Tap <b>📖 Lore</b> or <b>❓ Tutorial</b> any time.</li>
     </ol>
   </details>
 
@@ -515,7 +515,7 @@
     <div class="menubox">
       <div class="eyebrow">Guff's Gauntlet · Solo Commander RPG · Engine v40</div>
       <h1 style="margin:.08em 0 .18em"><span class="lvl">Level I</span> — The Warren of Embers</h1>
-      <p class="subtitle">A solo Commander dungeon crawl. Choose a profile, build a library of your own cards, then descend to face three generals — Grakk, Murglax, and Vael.</p>
+      <p class="subtitle">A solo Commander dungeon crawl. Choose a profile, build a library of your own cards, then descend to face three enemy generals — you learn each one's name only by beating it.</p>
       <div class="menugrid">
         <div class="menucard">
           <div class="subh"><span>Profile</span></div>
@@ -1110,7 +1110,7 @@ function approveCombat(){
 
 
 /* ===== RENDER ===== */
-function renderTrack(){const tr=$("track");tr.innerHTML="";DUNGEON.forEach((r,i)=>{if(i>0){const l=document.createElement("div");l.className="link"+(i<=S.roomIndex?" done":"");tr.appendChild(l);}const n=document.createElement("div");n.className="node"+(i===S.roomIndex?" cur":"")+(i<S.roomIndex?" done":"");n.innerHTML=`<div class="dot">${i<S.roomIndex?'✓':i+1}</div><div class="nm">${r.name}</div>`;tr.appendChild(n);});}
+function renderTrack(){const tr=$("track");tr.innerHTML="";DUNGEON.forEach((r,i)=>{if(i>0){const l=document.createElement("div");l.className="link"+(i<=S.roomIndex?" done":"");tr.appendChild(l);}const n=document.createElement("div");n.className="node"+(i===S.roomIndex?" cur":"")+(i<S.roomIndex?" done":"");n.innerHTML=`<div class="dot">${i<S.roomIndex?'✓':i+1}</div><div class="nm">${i<=S.roomIndex?r.name:'???'}</div>`;tr.appendChild(n);});}/* P7.6: room names are earned — an unseen room shows ??? (hides the final room's name too) */
 function kwSelect(scope,id){const cur=getCre(scope,id);const opts=KW_LIST.filter(k=>!(cur.kw||[]).includes(k));return `<select onchange="addKw('${scope}',${id===null?'null':id},this.value);this.value=''"><option value="">＋kw</option>${opts.map(k=>`<option>${k}</option>`).join("")}</select>`;}
 function getCre(scope,id){if(scope==='cmd')return S.cmd;if(scope==='token')return S.tokens.find(c=>c.id===id);return S.my.creatures.find(c=>c.id===id);}
 function kwBadges(scope,id,c){return (c.kw||[]).map(k=>`<span class="badge kw" onclick="delKw('${scope}',${id===null?'null':id},'${k}')">${k} ✕</span>`).join("");}
@@ -1827,31 +1827,45 @@ function showEncounterClear(){const room=DUNGEON[S.roomIndex]||DUNGEON[0];const 
      buttons:[{label:"Descend \u2192",on:advance,cls:"big ok"},{label:"Save & quit to Menu",on:quitToMenu,cls:"big"}]});}
 const TUTORIAL_HTML=`
 <h2>❓ How Guff's Gauntlet works</h2>
-<p style="color:var(--bone-dim);font-style:italic">You play a real Commander game in your head or on the table. This app is your <b>opponent and your bookkeeper</b> — it runs the enemy and holds the shared state, but it never hides math and never changes your side without showing you.</p>
-<h3>The descent</h3>
-<p>Three encounters, each a fresh game against a different general: <b>Grakk</b> (mono-red aggro), <b>Murglax</b> (mono-black attrition), and <b>Vael</b> (red-black, the final boss and the only one with a planeswalker). Between rooms the board, the enemy, and your counters reset — but your <b>life and loot carry over</b>. Life is the through-line that makes the crawl a campaign.</p>
-<h3>Setting up your board</h3>
-<p>When you <b>Descend</b>, the first thing you're asked is to <b>choose a commander</b> — pick one of your saved cards or build a new one on the spot. It starts in your <b>command zone</b>; you deploy it when you actually cast it. Then set the table:</p>
+<p style="color:var(--bone-dim);font-style:italic">You play a <b>real Commander game</b> — in your head, on the table, or just in your imagination. This app is your <b>opponent and your bookkeeper</b>: it runs the enemy general, holds the shared board, and does the math — but it never hides that math and never changes your side without showing you. Think of it as a very patient playgroup of one. <b>Role-play it</b> however you like; the engine trusts your inputs and you can always nudge any number by hand.</p>
+
+<h3>🜂 The loop</h3>
+<p>One <b>descent</b> is three encounters, each a fresh game against a different enemy general — a fire-wild aggro warlord, a patient attrition tyrant, and a red-black final boss. <b>You learn each one's name only by beating it.</b> Between rooms the battlefield, the enemy, and your counters reset, but your <b>life, loot, and gold carry over</b> — life is the through-line that makes the crawl a campaign. Clear all three to win Level I.</p>
+
+<h3>♛ Set up: commander, colours, board</h3>
+<p>When you <b>Descend</b> you first <b>choose a commander</b> — pick a saved card or build one on the spot. It waits in your <b>command zone</b>; deploy it when you cast it, and if it dies it returns there with a rising recast tax (2 → 6 → 14, reset each new game). Then:</p>
 <ol>
-<li><b>Difficulty</b> (Easy / Standard / Brutal) scales enemy life and mana — set it before the first turn, from the menu or the controls bar.</li>
-<li><b>Your deck colors</b> — tap the mana symbols at the top of the board. This is your identity, and it drives protection-from-color.</li>
-<li><b>Log your board</b> in “Your board” as you play cards: use <b>+ creature / artifact / enchantment / planeswalker / emblem</b>, type a name, and set power/toughness. Open the <b>⚙ properties</b> drawer for everything else (below).</li>
-<li><b>Each card's buttons:</b> <b>tap</b>, <b>sick</b>, the counter controls (<b>+1/+1</b>, <b>−1/−1</b>, <b>＋ctr</b> to add a named counter, <b>⊖ ctr</b> or a tap on a counter badge to remove one), <b>P/T ±</b>, <b>⧉ copy</b> to duplicate, and <b>★ save</b> to store the card in your library.</li>
-<li><b>Library</b> (🃏, in the controls bar or the menu) holds your saved cards and tokens per profile. <b>Cast</b> puts one on the Stack, <b>Deploy</b> drops it straight onto your board, <b>✦ New card</b> builds one from scratch, and tokens <b>Deploy ×N</b> in bulk.</li>
+<li><b>Difficulty</b> (Easy / Standard / Brutal) scales enemy life and mana, and a small <b>luck</b> knob on the rolls the enemy makes — set it before turn one.</li>
+<li><b>Your deck colours</b> — tap the mana symbols up top. This is your identity and drives protection-from-colour.</li>
+<li><b>Log your board</b> in <b>Your Board</b>: <b>+ creature / artifact / enchantment / planeswalker / emblem</b>, name it, set power/toughness. Each card has <b>tap</b>, <b>sick</b>, counters (<b>+1/+1</b>, <b>−1/−1</b>, <b>＋ctr</b>, <b>⊖ ctr</b>), <b>P/T ±</b>, <b>↺ reset</b>, <b>⧉ copy</b>, and <b>★ save</b> to your library.</li>
+<li><b>Library</b> (🃏) keeps your cards and tokens per profile, with a search box. <b>Cast</b> → the Stack; <b>Deploy</b> → straight onto your board; tokens <b>Deploy ×N</b> in bulk.</li>
 </ol>
-<h3>The card drawer (⚙)</h3>
-<p>Every permanent has a ⚙ drawer: color, legendary/token, passive/active abilities, mana it taps for, whether it <b>dies to graveyard or exile</b>, <b>phase out</b>, <b>protection from a color</b>, and an <b>attack tax</b> (mana or life the enemy must pay to attack into it). Set these once and the engine respects them.</p>
-<h3>Your commander</h3>
-<p>You choose it at the start — from your library or freshly built — or mark any creature/planeswalker as commander (♛) later via its ⚙ drawer. It lives in the <b>command zone</b>; hit <b>Deploy to battlefield</b> when you cast it, and if it dies it returns there with a rising recast tax (2 → 6 → 14). It persists across rooms; the tax resets each game.</p>
-<h3>Taking turns</h3>
-<p>The enemy goes first, then you, each through all seven phases (untap, upkeep, draw, main 1, combat, main 2, end). One <b>Continue ▸</b> button walks the steps. On the enemy's turn it untaps, draws from a real library, spends visible mana, and casts — each spell appears in its <b>plays</b> for you to <b>resolve</b> or mark <b>countered</b>. Targeted removal auto-applies to your tracked board but skips hexproof, phased-out, and protected creatures.</p>
-<h3>Combat</h3>
-<p><b>Your attack:</b> tap attackers, hit Swing; the enemy proposes blocks (you can edit them), then approve to resolve trample, deathtouch, first/double strike, lifelink, menace, and protection. <b>Enemy attack:</b> its attackers appear and you assign your blockers. Direct damage (burn, walker abilities) hits enemy life directly via the boss panel.</p>
-<h3>The enemy planeswalker (Vael only)</h3>
-<p>Vael fields a planeswalker with a loyalty suite: a repeatable <b>+1</b>, a stronger <b>minus</b>, and an <b>ultimate</b> that only fires once loyalty climbs to its threshold — so it takes several turns. Attack the walker (Attack walker) to push its loyalty down and deny the finisher.</p>
-<h3>Zones, life & loot</h3>
-<p>Destroyed permanents route to <b>your graveyard or exile</b> per the card's setting; from the graveyard you can return them to play or exile them. Clear a room to roll loot (boons that move life, add max life, or grant passives). Reach 0 life and the descent ends — restart to try again.</p>
-<p style="color:var(--bone-dim);font-style:italic">Tip: the engine trusts your inputs. If a corner case comes up that it doesn't model, use the manual adjusters (±life, ±loyalty, counters, dice) to keep the real game state honest.</p>`;
+
+<h3>⚙ The card drawer & ⚠ threat</h3>
+<p>Every permanent's ⚙ drawer holds: colour, legendary/token, <b>expires (end of turn)</b> for temporary tokens, passive/active abilities, mana it taps for, <b>dies to graveyard or exile</b>, <b>phase out</b>, <b>protection from a colour</b>, a <b>ward</b> (the enemy must pay mana/life to target it), an <b>attack tax</b>, and <b>set as commander</b>. The gold <b>⚠ AI threat</b> control (low / mid / top) tells the enemy how dangerous a card is — <b>set it honestly</b>: the AI removes, blocks, and burns your <b>top</b> threats first, so a mislabelled bomb gets ignored.</p>
+
+<h3>🜟 The Stack & casting</h3>
+<p>Spells wait on <b>the Stack</b> (a pop-up — open it any time with the floating 🜟 button) and resolve <b>top-down</b>. <b>✦ Cast a spell</b> opens the full builder; <b>⚡ Quick cast</b> is the fast path (name, colours, stats, threat — all optional) into the same pipeline. After you cast, the enemy gets a window to <b>respond</b> with an instant — it shows you a visible <b>proposal</b> you approve, edit, or wave off. Resolve each item, <b>counter</b> it, or <b>redirect</b> single-target removal. The enemy can also play instants at instant speed on your turn when it's worth it.</p>
+
+<h3>↻ Phases & turns</h3>
+<p>The enemy goes first, then you, through seven phases (untap, upkeep, draw, main 1, combat, main 2, end). <b>Continue ▸</b> walks the steps; <b>◂ Back</b> steps back without re-firing a phase's one-time effects. Phase gating is <b>soft</b> — it warns but never blocks. On its turn the enemy untaps, draws from a real library, plays a land, spends <b>visible mana</b>, and casts by value (not just cost).</p>
+
+<h3>⚔ Combat</h3>
+<p><b>Your attack:</b> pick attackers (or <b>✓ Select all</b>), Swing; the enemy proposes blocks you can edit, then approve. The engine resolves trample, deathtouch, first/double strike, lifelink, menace, vigilance, and protection in a centred resolver pop-up. <b>Enemy attack:</b> its attackers appear and you assign blockers. Direct damage (burn, walker abilities) hits enemy life via the boss panel.</p>
+
+<h3>☠ The enemy: mana, freeze, emblems, deck</h3>
+<p>The boss panel shows the enemy's <b>colours and mana</b> and lets you adjust its pool, add a per-turn ritual/stax modifier, or <b>❄ freeze</b> mana (tapped-down mana it can't spend until end of turn). Give the enemy classic <b>emblems</b> (some fire automatically on its upkeep; others are reminders). Its <b>zones</b> show library / hand / graveyard / exile counts; <b>🂠 Manipulate enemy deck</b> lets you look, scry, mill, exile, shuffle, force a discard, and <b>🎴 inspect & play</b> any of its cards (onto the stack, spend-or-free).</p>
+
+<h3>🜨 Battles & the planar die</h3>
+<p>In <b>Battles &amp; Planes</b> (Action tab) you can track a <b>battle</b> — a permanent with <b>defense counters</b> you attack down to defeat. The final boss fields a <b>Siege</b> that heals it each upkeep until you break it (breaking it turns its defenses on the boss). The <b>planar die</b> is a neutral Planechase roll (mostly blank, sometimes planeswalk or chaos) — name a current plane and interpret the rest yourself.</p>
+
+<h3>⚰ Zones, life, loot & the store</h3>
+<p>Destroyed permanents route to <b>your graveyard or exile</b> (tokens just cease to exist); from the graveyard you can return or exile them. Clear a room to roll <b>loot</b> and earn <b>gold</b> — spend gold at the <b>🛒 Merchant</b> between runs on potions, charms, and relics. Loot lives in your <b>🎒 Satchel</b>; a passive's <b>⏳ duration</b> sets how many descents it lasts.</p>
+
+<h3>💾 Saving & sound</h3>
+<p>The game <b>autosaves</b> continuously — close any time and pick up with <b>▶ Continue last game</b>. Saving is optional and exact. <b>🔊 Sound</b> (controls bar or menu) toggles soft synthesized cues; your choice is remembered.</p>
+
+<p style="color:var(--bone-dim);font-style:italic">Tip: the engine trusts your inputs. If a corner case comes up that it doesn't model, use the manual adjusters (±life, ±loyalty, counters, dice, mana) to keep the real game state honest. ↩ <b>Undo</b> reverses your last action.</p>`;
 
 /* ===== PHASE 5 — profiles, library, persistence ===== */
 const SKEY='guffsGauntlet.v1';
