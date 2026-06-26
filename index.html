@@ -800,11 +800,35 @@ function deckScryApply(decisions){const n=decisions.length;const top=S.lib.slice
 function deckDiscard(indices){const sorted=indices.slice().filter(i=>S.hand[i]).sort((a,b)=>b-a);const moved=[];sorted.forEach(i=>{moved.push(S.hand[i]);S.hand.splice(i,1);});moved.forEach(c=>S.gy.push(c));if(moved.length)log("you",`${ENs()} discards ${libNames(moved).join(", ")}.`);return moved;}
 function deckDiscardRandom(n){n=Math.max(0,n|0);const pool=S.hand.map((_,i)=>i),idx=[];for(let k=0;k<n&&pool.length;k++)idx.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);return deckDiscard(idx);}
 
-function openDeckTools(){if(S.over)return;_dt={mode:'main',n:3,reveal:null,scry:null};$("modalBody").innerHTML=deckToolsHTML();$("overlay").classList.add("show");}
+function openDeckTools(){if(S.over)return;_dt={mode:'main',n:3,reveal:null,scry:null,payMana:true};$("modalBody").innerHTML=deckToolsHTML();$("overlay").classList.add("show");}
+/* ===== P6.5: INSPECT + PLAY an enemy card =====
+   Inspect = show a card's cost + colours + full text. Play = put it on the stack via mkPlay (it then resolves
+   through the normal enemy-spell path: applyRun / applyTarget / selfLoss), with a spend-vs-free mana choice.
+   Playable from the hand, the top of the library (cast-from-deck), or the graveyard (recursion). Lands add a
+   mana source instead of going on the stack. */
+function fxColorDots(fx){const cols=(fx&&fx.color)?String(fx.color).split('').filter(c=>'WUBRGC'.indexOf(c)>=0):[];return cols.map(col=>`<span class="cdot" title="${col}" style="background:${COLOR_HEX[col]||'#888'}"></span>`).join('');}
+function dtPlayZone(zone){return zone==='hand'?S.hand:zone==='lib'?S.lib:zone==='gy'?S.gy:null;}
+function dtPlayCard(zone,i){if(S.over)return;const arr=dtPlayZone(zone);if(!arr)return;const card=arr[i];if(!card)return;const fx=FX[card.key];if(!fx)return;
+  if(fx.type==='land'){arr.splice(i,1);S.bossLands=(S.bossLands||0)+1;S.bossMana=(S.bossMana||0)+1;S.bossManaMax=(S.bossManaMax||0)+1;log("dm",`${ENs()} plays <b>${fx.n}</b> from its ${zone==='gy'?'graveyard':zone==='lib'?'library':'hand'} — ${S.bossLands} mana source${S.bossLands===1?'':'s'} (usable ${usableMana()}).`);render();dtRender();return;}
+  const pay=_dt.payMana!==false;if(pay){S.bossMana=Math.max(0,(S.bossMana||0)-(fx.cost||0));}
+  arr.splice(i,1);const p=mkPlay(fx);p._card=card;p._fromZone=zone;S.plays.push(p);
+  log("dm",`🎴 ${ENs()} plays <b>${fx.n}</b> from its ${zone==='gy'?'graveyard':zone==='lib'?'library':'hand'}${pay?` (spent ${fx.cost||0}, ${S.bossMana} mana left)`:' — for free'}. It's on the stack.`);
+  render();dtRender();showPlays();}
 function dtRender(){$("modalBody").innerHTML=deckToolsHTML();}
 function deckToolsHTML(){
   const disc=`<p class="manaline" style="margin:2px 0 8px;line-height:1.5">The dungeon keeps ${ENs()}'s deck as a known, ordered pile (top first). You can look, reorder, mill, exile, shuffle, and force discards. Anything fancier — tutoring a specific card into play, casting from their deck, transforming cards — the abstract model can't represent, so those effects simply don't apply.</p>`;
-  const fxItem=(c,actions)=>`<div class="libitem"><div class="li-h"><span class="li-n">${(FX[c.key]&&FX[c.key].n)||'card'}</span><span class="cost">${(FX[c.key]&&FX[c.key].cost)||0}</span></div>${actions?`<div class="li-a">${actions}</div>`:''}</div>`;
+  const fxItem=(c,actions)=>{const fx=FX[c.key]||{};return `<div class="libitem"><div class="li-h"><span class="li-n">${fx.n||'card'}</span><span class="cost">${fx.cost||0}</span><span class="typechip ${fx.type||'spell'}">${fx.type||'spell'}</span>${fxColorDots(fx)}</div>${actions?`<div class="li-a">${actions}</div>`:''}${fx.text?`<div class="manaline" style="flex:1 0 100%;margin-top:3px;color:var(--bone-dim)">${fx.text}</div>`:''}</div>`;};
+  if(_dt.mode==='play'){const pay=_dt.payMana!==false;
+    const playRow=(c,zone,i)=>fxItem(c,`<button class="tiny ember" onclick="dtPlayCard('${zone}',${i})">▸ play</button>`);
+    const libTop=S.lib.slice(0,Math.min(S.lib.length,dtN()));
+    const sect=(label,rows,emptyMsg)=>`<div class="subh" style="margin-top:12px"><span>${label}</span></div>${rows.length?rows.join(''):`<p class="manaline">${emptyMsg}</p>`}`;
+    return `<h2>🎴 Play a card for ${ENs()}</h2>${disc}
+    <div class="btnrow"><span class="lab">mana</span><button class="tiny ${pay?'on gold':''}" onclick="_dt.payMana=true;dtRender()">⛁ spend mana</button><button class="tiny ${pay?'':'on'}" onclick="_dt.payMana=false;dtRender()">free (no cost)</button><span class="manaline">usable <b style="color:var(--gold)">${usableMana()}</b> / pool ${S.bossMana||0}</span></div>
+    <p class="manaline" style="margin:6px 0 0">Puts the card on the stack — it resolves like any enemy spell (removal hits your board, burn/drain applies, permanents spawn). Lands instead add a mana source.</p>
+    ${sect(`From hand (${S.hand.length})`,S.hand.map((c,i)=>playRow(c,'hand',i)),"Their hand is empty.")}
+    ${sect(`From the top of the library (${libTop.length} of ${S.lib.length})`,libTop.map((c,i)=>playRow(c,'lib',i)),"Library is empty.")}
+    ${sect(`From the graveyard (${S.gy.length})`,S.gy.map((c,i)=>playRow(c,'gy',i)),"Graveyard is empty.")}
+    <div class="btnrow" style="margin-top:12px"><button class="tiny" onclick="_dt.mode='main';dtRender()">‹ back</button></div>`;}
   if(_dt.mode==='scry'){const s=_dt.scry;return `<h2>🔮 Scry ${s.cards.length}</h2>${disc}<p style="color:var(--bone-dim)">Top of library first. Send any card to the bottom; the rest stay on top in this order.</p>
     ${s.cards.map((c,i)=>fxItem(c,`<button class="tiny ${s.dec[i]==='top'?'ok':''}" onclick="dtScryDec(${i},'top')">keep top</button><button class="tiny ${s.dec[i]==='bottom'?'ember':''}" onclick="dtScryDec(${i},'bottom')">→ bottom</button>`)).join('')}
     <div class="btnrow" style="margin-top:10px"><button class="ok" onclick="dtScryApply()">Apply</button><button class="tiny" onclick="_dt.mode='main';dtRender()">Cancel</button></div>`;}
@@ -823,6 +847,7 @@ function deckToolsHTML(){
       <button class="tiny" onclick="deckShuffle();dtRender()">🔀 Shuffle</button>
       <button class="tiny azor" onclick="dtReveal()">🤚 Reveal hand</button>
       <button class="tiny ember" onclick="_dt.mode='discard';dtRender()">🗑 Force discard</button>
+      <button class="tiny ok" onclick="_dt.mode='play';dtRender()">🎴 Inspect &amp; play a card</button>
     </div>
     ${_dt.reveal?`<div class="menucard" style="margin-top:10px"><div class="subh"><span>${_dt.reveal.label}</span></div><div class="zchips">${_dt.reveal.cards.length?_dt.reveal.cards.map(c=>`<span class="chip">${(FX[c.key]&&FX[c.key].n)||'card'} <span class="manaline">${(FX[c.key]&&FX[c.key].cost)||0}</span></span>`).join(''):'<span class="manaline">(none)</span>'}</div></div>`:''}
     <div class="btnrow" style="margin-top:12px"><button class="tiny" onclick="closeOverlay()">Done</button></div>`;}
