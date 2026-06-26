@@ -947,7 +947,7 @@ function aiBlocks(attackers){
   const assign={};let avail=vaelDefenders();
   attackers.slice().sort((a,b)=>threatScore(b)-threatScore(a)).forEach(att=>{
     const need=kw(att,'menace')?2:1;let elig=avail.filter(b=>legalBlock(att,b));if(elig.length<need)return;
-    const kills=b=>effP(b)>=effT(att)||kw(b,'deathtouch');const survives=b=>(effT(b)>effP(att)&&!kw(att,'deathtouch'))||kw(b,'indestructible');const ts=combatThreat(att);/* P6.1: block-decision GATES read the legacy-equivalent metric (effP+strength), never the enriched threatScore — so thresholds are byte-identical to pre-P6.1 while the sort above prioritises by full threat */
+    const kills=b=>(effP(b)>=effT(att)||kw(b,'deathtouch'))&&!kw(att,'indestructible');/* P6.3 (folded-in, pre-existing): the enemy can't kill an INDESTRUCTIBLE player attacker by damage or deathtouch — matches resolveAttack — so it won't try a "favorable" block, only chump a big one */const survives=b=>(effT(b)>effP(att)&&!kw(att,'deathtouch'))||kw(b,'indestructible');const ts=combatThreat(att);/* P6.1: block-decision GATES read the legacy-equivalent metric (effP+strength), never the enriched threatScore — so thresholds are byte-identical to pre-P6.1 while the sort above prioritises by full threat */
     if(need===1){
       let pick=elig.filter(b=>!b._cmd&&kills(b)&&survives(b)).sort((a,b)=>effP(a)-effP(b))[0];
       if(!pick&&ts>=4)pick=elig.filter(b=>!b._cmd&&kills(b)).sort((a,b)=>effP(a)-effP(b))[0];
@@ -968,7 +968,28 @@ function swing(){ // YOUR attack -> Vael proposes blocks
   if(PHASES[S.phase]!=='combat')log("sys",`⚠ You're attacking outside your Combat phase — allowed here, but normally you'd Continue ▸ to Combat first.`);
   openCombat('you',attackers,vaelDefenders(),aiBlocks(attackers));
 }
-function vaelAttackers(){let a=S.tokens.filter(c=>(!c.sick||kw(c,'haste'))&&!c.tapped&&!c.phased&&!kw(c,'defender'));if(S.cmd.inPlay&&(!S.cmd.sick||kw(S.cmd,'haste'))&&!S.cmd.tapped&&!S.cmd.phased&&!kw(S.cmd,'defender'))a.push(S.cmd);/* P5.2: haste (innate or anthem-granted, e.g. Warren Overrun / War Horn) overrides summoning sickness for attacking */a=a.filter(c=>effP(c)>0||kw(c,'must attack'));a.sort((x,y)=>effP(y)-effP(x));const maxA=parseInt($("maxAtk").value,10)||0;if(maxA>0&&a.length>maxA)a=a.slice(0,maxA);return a;}
+function vaelAttackers(){let a=S.tokens.filter(c=>(!c.sick||kw(c,'haste'))&&!c.tapped&&!c.phased&&!kw(c,'defender'));if(S.cmd.inPlay&&(!S.cmd.sick||kw(S.cmd,'haste'))&&!S.cmd.tapped&&!S.cmd.phased&&!kw(S.cmd,'defender'))a.push(S.cmd);/* P5.2: haste (innate or anthem-granted, e.g. Warren Overrun / War Horn) overrides summoning sickness for attacking — so a hasty creature can attack the turn it arrives */a=a.filter(c=>effP(c)>0||kw(c,'must attack'));
+  /* P6.3: attack only when EV-POSITIVE. Hold a creature back when the player has a PROFITABLE block for it
+     (a blocker that kills it AND either survives or trades up by threatScore) — UNLESS it must attack, it's
+     evasive (a flyer with no flyer/reach blocker), or the enemy is going wide (more ground attackers than the
+     player has blockers, so the excess connects). This stops suicidal lone attacks while keeping aggro's
+     alpha-strikes and evasive damage — and a hasty arrival still swings the turn it lands when that's EV+. */
+  const blockers=S.my.creatures.filter(c=>!c.tapped&&!c.phased&&!kw(c,"can't block"));
+  const flyDef=blockers.filter(b=>kw(b,'flying')||kw(b,'reach')).length;
+  const evasive=c=>kw(c,'flying')&&flyDef===0;                                  // a flyer with no flyer/reach blocker
+  const need=c=>kw(c,'menace')?2:1;                                            // menace needs two blockers
+  const profitableBlock=at=>{
+    const able=blockers.filter(b=>!(kw(at,'flying')&&!(kw(b,'flying')||kw(b,'reach'))));  // blockers that can legally block it
+    if(able.length<need(at))return false;                                      // can't be legally blocked → it connects
+    return able.some(b=>{                                                      // does a single blocker remove it for value? (proxy incl. a menace gang)
+      const kills=((effP(b)>=effT(at))||kw(b,'deathtouch'))&&!kw(at,'indestructible');/* P6.3: neither damage nor deathtouch kills an INDESTRUCTIBLE attacker (matches resolveAttack) — so it's never "profitably blockable" and always attacks */
+      const survives=(effT(b)>effP(at)&&!kw(at,'deathtouch'))||kw(b,'indestructible');
+      return kills&&(survives||threatScore(b)<threatScore(at));
+    });
+  };
+  const wide=a.filter(c=>!evasive(c)&&!kw(c,'must attack')).length>blockers.length;
+  if(!wide)a=a.filter(c=>kw(c,'must attack')||evasive(c)||!profitableBlock(c));
+  a.sort((x,y)=>effP(y)-effP(x));const maxA=parseInt($("maxAtk").value,10)||0;if(maxA>0&&a.length>maxA)a=a.slice(0,maxA);return a;}
 /* P4.1: resolve every pending item top-down, then CLEAR the resolved/countered items off the stack — WITHOUT advancing the phase. Phase advance is solely Continue ▸ (flowClick→advancePhase), so you can cast → resolve → cast again within one phase (multiple stacks per phase). */
 function resolveStack(){if(S.over)return;S.stackProposal=null;for(let i=S.plays.length-1;i>=0;i--){const p=S.plays[i];if(p&&p.status==='pending')resolvePlay(i);}S.plays=S.plays.filter(p=>p.status==='pending');if(!S.plays.length)hidePlays();render();}
 function openCombat(dir,attackers,pool,assign,target){S.stackProposal=null;/* P4.4: an instant-speed window proposal's window closes when combat begins (avoids a proposal layered over the combat resolver) */S.combat={dir,attackers,pool,assign,target:target||{}};$("combatTitle").textContent=dir==='you'?`Your attack — ${ENs()} proposes blocks. Edit, then approve.`:`${ENs()} attacks — assign your blockers (and check targets), then approve.`;renderCombat();$("resolver").classList.add("show");}
