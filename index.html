@@ -399,7 +399,7 @@
 
   <div class="panel" style="margin-top:12px">
     <h2>🂠 Enemy's zones <span class="tag">deck · graveyard · exile</span></h2>
-    <div class="deckmeta"><span>Library: <b id="libCount">0</b></span><span>Hand: <b id="handCount">0</b></span></div>
+    <div class="deckmeta"><span>Library: <b id="libCount">0</b></span><span>Hand: <b id="handCount">0</b></span><span>Graveyard: <b id="gyCount">0</b></span><span>Exile: <b id="exCount">0</b></span></div>
     <div class="btnrow" style="margin-top:2px"><button class="tiny azor" onclick="openDeckTools()">🂠 Manipulate enemy deck</button><span class="manaline">scry · look · mill · exile · discard · shuffle</span></div>
     <div class="zones duoz" id="vaelZones">
       <div class="zone"><div class="zh"><span>Graveyard</span><span>black can interact</span></div><div class="zchips" id="gyList"></div></div>
@@ -432,8 +432,8 @@
   <div class="panel" id="myZonesPanel" style="margin-top:12px;display:none">
     <h2>⚰ Your zones <span class="tag">graveyard · exile</span></h2>
     <div class="zones duoz">
-      <div class="zone"><div class="zh"><span>Graveyard</span><span>↑ return to play · ⊘ exile</span></div><div class="zchips" id="myGyList"></div></div>
-      <div class="zone ex"><div class="zh"><span>Exile</span><span>out of the game</span></div><div class="zchips" id="myExList"></div></div>
+      <div class="zone"><div class="zh"><span>Graveyard <b id="myGyCount">0</b></span><span>↑ return to play · ⊘ exile</span></div><div class="zchips" id="myGyList"></div></div>
+      <div class="zone ex"><div class="zh"><span>Exile <b id="myExCount">0</b></span><span>out of the game</span></div><div class="zchips" id="myExList"></div></div>
     </div>
   </div>
 
@@ -809,12 +809,13 @@ function openDeckTools(){if(S.over)return;_dt={mode:'main',n:3,reveal:null,scry:
    mana source instead of going on the stack. */
 function fxColorDots(fx){const cols=(fx&&fx.color)?String(fx.color).split('').filter(c=>'WUBRGC'.indexOf(c)>=0):[];return cols.map(col=>`<span class="cdot" title="${col}" style="background:${COLOR_HEX[col]||'#888'}"></span>`).join('');}
 function dtPlayZone(zone){return zone==='hand'?S.hand:zone==='lib'?S.lib:zone==='gy'?S.gy:null;}
+function dtRenderIfOpen(){if($("overlay")&&$("overlay").classList.contains("show"))dtRender();}/* P7.5: dtPlayCard can be called from a zone chip (deck-tools modal closed) — only refresh it when it's open */
 function dtPlayCard(zone,i){if(S.over)return;const arr=dtPlayZone(zone);if(!arr)return;const card=arr[i];if(!card)return;const fx=FX[card.key];if(!fx)return;
-  if(fx.type==='land'){arr.splice(i,1);S.bossLands=(S.bossLands||0)+1;S.bossMana=(S.bossMana||0)+1;S.bossManaMax=(S.bossManaMax||0)+1;log("dm",`${ENs()} plays <b>${fx.n}</b> from its ${zone==='gy'?'graveyard':zone==='lib'?'library':'hand'} — ${S.bossLands} mana source${S.bossLands===1?'':'s'} (usable ${usableMana()}).`);render();dtRender();return;}
+  if(fx.type==='land'){arr.splice(i,1);S.bossLands=(S.bossLands||0)+1;S.bossMana=(S.bossMana||0)+1;S.bossManaMax=(S.bossManaMax||0)+1;log("dm",`${ENs()} plays <b>${fx.n}</b> from its ${zone==='gy'?'graveyard':zone==='lib'?'library':'hand'} — ${S.bossLands} mana source${S.bossLands===1?'':'s'} (usable ${usableMana()}).`);render();dtRenderIfOpen();return;}
   const pay=_dt.payMana!==false;if(pay){S.bossMana=Math.max(0,(S.bossMana||0)-(fx.cost||0));}
   arr.splice(i,1);const p=mkPlay(fx);p._card=card;p._fromZone=zone;S.plays.push(p);
   log("dm",`🎴 ${ENs()} plays <b>${fx.n}</b> from its ${zone==='gy'?'graveyard':zone==='lib'?'library':'hand'}${pay?` (spent ${fx.cost||0}, ${S.bossMana} mana left)`:' — for free'}. It's on the stack.`);
-  render();dtRender();showPlays();}
+  render();dtRenderIfOpen();showPlays();}
 function dtRender(){$("modalBody").innerHTML=deckToolsHTML();}
 function deckToolsHTML(){
   const disc=`<p class="manaline" style="margin:2px 0 8px;line-height:1.5">The dungeon keeps ${ENs()}'s deck as a known, ordered pile (top first). You can look, reorder, mill, exile, shuffle, and force discards. Anything fancier — tutoring a specific card into play, casting from their deck, transforming cards — the abstract model can't represent, so those effects simply don't apply.</p>`;
@@ -1235,7 +1236,7 @@ function renderPlayerCmd(){const box=$("pcmdBox");if(!box)return;const onBoard=S
   if(S.pcmd){const c=S.pcmd,isW=c.kind==='walkers';box.style.display="";box.className="cmdbox mine";box.innerHTML=`<div class="cn">♛ ${c.name} <span class="tag prep">command zone</span>${infoBtn('commander')}</div><div class="cpt">${isW?`${c.loyalty}<span class="cptsub">loyalty</span>`:`${c.p}/${c.t}`}</div><div class="cstat">Recast tax <b style="color:var(--azor)">+${c.cmdTax||0}</b>${c.cmdDeaths?` · deaths ${c.cmdDeaths}`:''} — pay base + tax yourself.</div><div class="acts"><button class="tiny azor" onclick="castCmd()">♛ Cast to Stack</button><button class="tiny gold" onclick="deployCmd()">Deploy direct</button></div>`;}
   else if(onBoard){const c=onBoard;box.style.display="";box.className="cmdbox mine";box.innerHTML=`<div class="cn">♛ ${c.name} <span class="tag">your commander · on the battlefield ↓</span></div><div class="cstat">Recast if it dies: <b style="color:var(--azor)">base + tax +${c.cmdTax||0}</b> · deaths ${c.cmdDeaths||0}. Controls are on its card below.</div><div class="acts"><button class="tiny" onclick="cmdToZone()">→ command zone</button></div>`;}
   else{box.style.display="none";box.innerHTML="";}}
-function renderMyZones(){const p=$("myZonesPanel");if(!p)return;if(!(S.myGy.length||S.myExile.length)){p.style.display="none";return;}p.style.display="";
+function renderMyZones(){const p=$("myZonesPanel");if(!p)return;{const g=$("myGyCount");if(g)g.textContent=S.myGy.length;const e=$("myExCount");if(e)e.textContent=S.myExile.length;}if(!(S.myGy.length||S.myExile.length)){p.style.display="none";return;}p.style.display="";
   $("myGyList").innerHTML=S.myGy.length?S.myGy.map((c,i)=>`<span class="zchip">${colorDots(c)}${c.name}<b class="zg" title="return to battlefield" onclick="myGyReturn(${i})">↑</b><b class="zx" title="exile" onclick="myGyToExile(${i})">⊘</b></span>`).join(""):'<span class="empty">empty</span>';
   $("myExList").innerHTML=S.myExile.length?S.myExile.map(c=>`<span class="zchip ex">${colorDots(c)}${c.name}</span>`).join(""):'<span class="empty">empty</span>';}
 function myGyReturn(i){const c=S.myGy.splice(i,1)[0];if(!c)return;const cat=c._cat||'creatures';if(cat==='creatures')c.sick=true;c.tapped=false;S.my[cat].push(c);log("you",`Returned <b>${c.name}</b> from graveyard to the battlefield.`);render();}
@@ -1524,9 +1525,17 @@ function renderFlow(){const chips=$("phaseChips");if(chips){chips.innerHTML="";P
   const btn=$("dmBtn");if(btn){btn.disabled=S.over||!!S.combat||S.paused;btn.textContent=flowLabel();}
   const bb=$("backBtn");if(bb)bb.disabled=S.over||!!S.combat||S.paused||S.activeTurn===null||S.phase<=0;
   const sb=$("swingBtn");if(sb)sb.classList.toggle('offphase',!(S.activeTurn==='you'&&PHASES[S.phase]==='combat'));}
+/* P7.5: enemy zone chips show colour dots + mana cost + full text on hover, with per-card affordances —
+   a graveyard card can be ▸ played (recursion, via P6.5's dtPlayCard) or ⊘ exiled; an exiled card returned. */
+function enemyZoneChip(c,i,kind){const fx=FX[c.key]||{};const dots=fxColorDots(fx);const cost=`<span style="font-family:'Space Mono';color:var(--gold)">${fx.cost||0}</span>`;
+  const acts=kind==='gy'
+    ?`<b class="zg" title="play this card for ${ENs()} — onto the stack" style="color:var(--ember)" onclick="dtPlayCard('gy',${i})">▸</b><b class="zx" title="move to exile" onclick="gyToExile(${i})">⊘</b>`
+    :`<b class="zg" title="return to graveyard" onclick="exToGy(${i})">↩</b>`;
+  return `<span class="zchip ${kind==='ex'?'ex':''}" title="${embEsc(fx.n||'card')} — ${fx.type||''} ${fx.cost||0}◇${fx.text?' · '+embEsc(fx.text):''}">${dots}${fx.n||'card'} ${cost}${acts}</span>`;}
 function renderZones(){if(!$("vaelZones"))return;$("libCount").textContent=S.lib.length;$("handCount").textContent=S.hand.length;
-  const gy=$("gyList");gy.innerHTML=S.gy.length?S.gy.map((c,i)=>`<span class="zchip">${FX[c.key].n}<b class="zx" title="move to exile" onclick="gyToExile(${i})">⊘</b></span>`).join(""):'<span class="empty">empty</span>';
-  const ex=$("exList");ex.innerHTML=S.exile.length?S.exile.map((c,i)=>`<span class="zchip ex">${FX[c.key].n}<b class="zg" title="return to graveyard" onclick="exToGy(${i})">↩</b></span>`).join(""):'<span class="empty">empty</span>';}
+  {const g=$("gyCount");if(g)g.textContent=S.gy.length;const e=$("exCount");if(e)e.textContent=S.exile.length;}
+  const gy=$("gyList");gy.innerHTML=S.gy.length?S.gy.map((c,i)=>enemyZoneChip(c,i,'gy')).join(""):'<span class="empty">empty</span>';
+  const ex=$("exList");ex.innerHTML=S.exile.length?S.exile.map((c,i)=>enemyZoneChip(c,i,'ex')).join(""):'<span class="empty">empty</span>';}
 function gyToExile(i){const c=S.gy.splice(i,1)[0];if(c){S.exile.push(c);log("you",`Exiled <b>${FX[c.key].n}</b> from the enemy's graveyard.`);render();}}
 function exToGy(i){const c=S.exile.splice(i,1)[0];if(c){S.gy.push(c);log("you",`Returned <b>${FX[c.key].n}</b> from exile to ${ENs()}'s graveyard.`);render();}}
 function cmdPT(s,n){S.cmd[s]=Math.max(0,S.cmd[s]+n);render();}
