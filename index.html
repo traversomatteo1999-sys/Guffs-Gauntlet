@@ -746,7 +746,9 @@ function buildDeck(room){const lib=[];const add=(k,n)=>{for(let j=0;j<n;j++)lib.
   if(sw){(sw.cut||[]).forEach(k=>{if(pool[k]>0){pool[k]--;if(!pool[k])delete pool[k];}else if(lands[k]>0){lands[k]--;if(!lands[k])delete lands[k];}});Object.keys(sw.add||{}).forEach(k=>{const isLand=FX[k]&&FX[k].type==='land';const tgt=isLand?lands:pool;tgt[k]=(tgt[k]||0)+sw.add[k];});}
   Object.keys(pool).forEach(k=>add(k,pool[k]));Object.keys(lands).forEach(k=>add(k,lands[k]));
   for(let a=lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[lib[a],lib[b]]=[lib[b],lib[a]];}return lib;}
-function vaelDraw(n){for(let i=0;i<n;i++){if(!S.lib.length){if(!S.gy.length)break;S.lib=S.gy.splice(0);for(let a=S.lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[S.lib[a],S.lib[b]]=[S.lib[b],S.lib[a]];}log("dm",`${EN()} shuffles its graveyard into a fresh library.`);}if(S.lib.length)S.hand.push(S.lib.shift());}}
+function vaelDraw(n){for(let i=0;i<n;i++){if(!S.lib.length){bossDeckOut();return;}S.hand.push(S.lib.shift());}}
+/* P5.2: real deck-out — if the enemy must draw from an empty library it loses (routes through bossDown so Vael's 2nd phase still triggers; milling the enemy out is now a win path). */
+function bossDeckOut(){if(S.over)return;log("dm",`📚 <b>${ENs()} reaches for a card and finds none — its library is empty. It decks out!</b>`);bossDown();}
 
 /* ===== ENEMY DECK MANIPULATION =====
    The dungeon models the enemy deck as a known, ordered pile of cards (top = front). You can look,
