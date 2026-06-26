@@ -99,6 +99,8 @@
   .stackfabn{position:absolute;top:-5px;right:-5px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--ember);color:#fff;font-family:"Space Mono",monospace;font-size:.66rem;font-weight:700;display:flex;align-items:center;justify-content:center;border:1px solid var(--ink)} .stackfabn:empty{display:none}
   @media(max-width:560px){.stackpop{padding:10px} .stackmodal{width:100%;max-height:88vh} .stackfab{right:12px;bottom:12px} .resolver{padding:10px} .resolvermodal{width:100%}}
   .playcard{border:1px solid var(--line);border-radius:var(--r-tile);background:var(--ink-2);padding:10px 12px;margin:7px 0} .playcard.resolved{border-color:rgba(123,178,116,.4)} .playcard.countered{opacity:.4;text-decoration:line-through}
+  /* P7.9: subtle per-type accent on stack cards (inset bar — never fights the status/mine borders) */
+  .playcard.ty-creature{box-shadow:inset 3px 0 0 rgba(123,178,116,.55)} .playcard.ty-instant{box-shadow:inset 3px 0 0 rgba(77,168,218,.55)} .playcard.ty-sorcery{box-shadow:inset 3px 0 0 rgba(224,83,61,.55)} .playcard.ty-artifact{box-shadow:inset 3px 0 0 rgba(183,176,160,.5)} .playcard.ty-enchantment,.playcard.ty-enchant{box-shadow:inset 3px 0 0 rgba(154,134,196,.55)} .playcard.ty-planeswalker{box-shadow:inset 3px 0 0 rgba(217,164,65,.55)}
   .crea,.item,.libitem,.playcard{transition:border-color .15s} .crea:hover,.item:hover,.libitem:hover,.playcard:hover{border-color:var(--bone-dim)} /* P1.9: tiles get the same subtle hover the store/lore tiles already have */
   .playcard .ph{display:flex;align-items:center;gap:8px;flex-wrap:wrap} .playcard .pn{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:1rem}
   .cost{font-family:"Space Mono",monospace;font-size:.62rem;color:var(--gold);border:1px solid rgba(217,164,65,.4);border-radius:6px;padding:1px 6px}
@@ -460,7 +462,7 @@
   </div>
 
   <div class="panel" id="battlesPanel" style="margin-top:12px">
-    <h2>🜨 Battles &amp; Planes <span class="tag" id="battlesInfoSlot">defense counters · planar die</span></h2>
+    <h2>🜨 Battles &amp; Planes <span class="tag">defense counters · planar die</span></h2>
     <div class="btnrow"><span class="lab">Planar die</span><button class="mini gold" onclick="rollPlaneDie()">🎲 Roll planar die</button><span id="planeOut" class="manaline"></span></div>
     <div class="btnrow"><span class="lab">Current plane</span><input type="text" id="planeName" placeholder="(none — set a plane to role-play)" oninput="setPlaneName(this.value)" style="flex:1;min-width:0"></div>
     <div class="subh"><span>Battles <span class="tag">attack to remove defense counters</span></span><button class="tiny ok" onclick="addBattle('you')">+ add a battle</button></div>
@@ -822,7 +824,7 @@ function dtRenderIfOpen(){if($("overlay")&&$("overlay").classList.contains("show
 function dtPlayCard(zone,i){if(S.over)return;const arr=dtPlayZone(zone);if(!arr)return;const card=arr[i];if(!card)return;const fx=FX[card.key];if(!fx)return;
   if(fx.type==='land'){arr.splice(i,1);S.bossLands=(S.bossLands||0)+1;S.bossMana=(S.bossMana||0)+1;S.bossManaMax=(S.bossManaMax||0)+1;log("dm",`${ENs()} plays <b>${fx.n}</b> from its ${zone==='gy'?'graveyard':zone==='lib'?'library':'hand'} — ${S.bossLands} mana source${S.bossLands===1?'':'s'} (usable ${usableMana()}).`);render();dtRenderIfOpen();return;}
   const pay=_dt.payMana!==false;if(pay){S.bossMana=Math.max(0,(S.bossMana||0)-(fx.cost||0));}
-  arr.splice(i,1);const p=mkPlay(fx);p._card=card;p._fromZone=zone;S.plays.push(p);
+  arr.splice(i,1);const p=mkPlay(fx);p._card=card;S.plays.push(p);
   log("dm",`🎴 ${ENs()} plays <b>${fx.n}</b> from its ${zone==='gy'?'graveyard':zone==='lib'?'library':'hand'}${pay?` (spent ${fx.cost||0}, ${S.bossMana} mana left)`:' — for free'}. It's on the stack.`);
   render();dtRenderIfOpen();showPlays();}
 function dtRender(){$("modalBody").innerHTML=deckToolsHTML();}
@@ -1600,7 +1602,7 @@ function renderPlays(){const box=$("playCards");box.innerHTML="";if(!S.plays.len
   let topIdx=-1;for(let k=S.plays.length-1;k>=0;k--){if(S.plays[k].status==='pending'){topIdx=k;break;}}
   S.plays.forEach((p,i)=>{const mine=!!p._player;const nm=p.n||p.name;const ty=p.type||p.ctype||'spell';const txt=p.text||p.note||playerItemDesc(p);const single=['destroyMaxPow','destroyMinPow','wither3'].includes(p.target);
     const pcols=Array.isArray(p.color)?p.color:(p.color||'').split('').filter(Boolean);const colChips=pcols.map(col=>`<span class="cdot" title="${col}" style="background:${COLOR_HEX[col]||'#888'}"></span>`).join("");
-    const el=document.createElement("div");el.className="playcard "+p.status+(mine?" mine":"");let acts="";
+    const el=document.createElement("div");el.className="playcard ty-"+ty+" "+p.status+(mine?" mine":"");let acts="";
     if(p.status==="pending"){acts=`<button class="mini ember" onclick="resolvePlay(${i})">${mine?'Resolve':'It resolves'}</button>`;
       if(single)acts+=`<select class="redir" onchange="resolvePlayOn(${i},this.value)"><option value="">↪ redirect / fizzle…</option>${S.my.creatures.filter(c=>!c.phased).map(c=>`<option value="c${c.id}">→ ${c.name} ${effP(c)}/${effT(c)}</option>`).join("")}<option value="fizzle">✖ it fizzles (protected/hexproof)</option></select>`;
       if(!mine)acts+=`<button class="mini azor" onclick="counterPlay(${i})">I countered it</button>`;
@@ -1882,7 +1884,7 @@ function prof(){return DB.profiles[DB.active]||null;}
    once a game is actually live (so the menu/initial render never clobber a real
    save), and never while S.over (a defeat/victory keeps the last good save).
    migrate() backfills fields missing on older saves so they never throw. */
-const SAVE_V=39;/* P6.1: strength now persisted/backfilled on creatures/artifacts/enchants/walkers for the generalized threat hierarchy */
+const SAVE_V=40;/* P7: satchel `descents`, functional `expires`/`battles`/`plane`; migrate backfills them so older saves never throw */
 let _liveGame=false,_autosaveT=null;
 function scheduleAutosave(){if(_autosaveT)return;try{_autosaveT=setTimeout(()=>{_autosaveT=null;doAutosave();},600);}catch(e){_autosaveT=null;doAutosave();}}
 function doAutosave(){try{if(!_liveGame||typeof S==='undefined'||!S||S.over)return;DB.save={v:SAVE_V,ts:Date.now(),profile:DB.active,room:S.roomIndex,turn:S.turn,S:JSON.parse(JSON.stringify(S))};saveDB();}catch(e){}}
