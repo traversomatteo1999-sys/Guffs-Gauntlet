@@ -847,7 +847,40 @@ function usableMana(){return Math.max(0,(S.bossMana||0)-(S.bossManaFrozen||0));}
 function effP(c){return Math.max(0,c.p+(c.plus||0)-(c.minus||0)+(c._tp||0));} /* _tp/_tt = temporary until-end-of-turn buffs (e.g. Warren Overrun anthem) */
 function effT(c){return c.t+(c.plus||0)-(c.minus||0)+(c._tt||0);}
 function kw(c,k){return (c.kw||[]).some(x=>(''+x).toLowerCase()===k);}
-function threatScore(c){const s={low:-2,mid:0,top:3}[c.strength||'mid'];return effP(c)+(s||0);}
+/* ===== P6.1: generalized threat assessment — score ANY object/stack-spell on one hierarchy
+   (planeswalkers > creatures > artifacts/enchantments > instants/sorceries), layered over the
+   low/mid/top strength hint, enriched for creatures with keyword/evasion value. PURE read (no mutation).
+   Creature tier is pinned at 0 so a creature's score stays on the legacy power scale; the combat AI's
+   numeric gates read combatThreat() (the verbatim legacy body) so they NEVER see tier/keyword shifts. */
+const STR_VAL={low:-2,mid:0,top:3};
+const THREAT_TIER={walker:4,creature:0,perm:-3,spell:-6};
+function strengthOf(o){return (o&&o.strength)||(o&&o.props&&o.props.strength)||'mid';}
+function strengthVal(o){return STR_VAL[strengthOf(o)]||0;}
+function objKind(o){ /* shape detection: declared ctype (stack item) first, else infer from board fields */
+  if(!o||typeof o!=='object')return 'spell';
+  const ct=o.ctype;
+  if(ct){if(ct==='creature')return 'creature';if(ct==='planeswalker')return 'walker';if(ct==='artifact'||ct==='enchantment')return 'perm';return 'spell';}
+  if(typeof o.loyalty==='number')return 'walker';
+  if(typeof o.p==='number'&&typeof o.t==='number')return 'creature';
+  return 'perm';}
+function creatureKwVal(o){ /* evasion + combat danger + resilience; only colors sort/targeting/value, never combat gates */
+  let v=0;
+  if(kw(o,'flying'))v+=1.5;if(kw(o,'menace'))v+=1;if(kw(o,'trample'))v+=1;if(kw(o,'lure'))v+=0.5;
+  if(kw(o,'deathtouch'))v+=1.5;if(kw(o,'double strike'))v+=2;if(kw(o,'first strike'))v+=0.5;
+  if(kw(o,'lifelink'))v+=1;if(kw(o,'vigilance'))v+=0.5;if(kw(o,'indestructible'))v+=1.5;if(kw(o,'hexproof'))v+=1;
+  if(kw(o,'defender'))v-=2;
+  return v;}
+/* COMBAT-ONLY metric == the verbatim legacy threatScore body. aiBlocks' thresholds (4, 5) read THIS, not the
+   enriched threatScore — so combatThreat(c) === legacy threatScore(c) for every creature (proven no-regression). */
+function combatThreat(c){return effP(c)+strengthVal(c);}
+function threatScore(o){
+  if(!o||typeof o!=='object')return 0;
+  const k=objKind(o),s=strengthVal(o);
+  if(k==='creature')return THREAT_TIER.creature+effP(o)+s+creatureKwVal(o);
+  if(k==='walker'){const L=(o.loyalty!=null?o.loyalty:(o.loy!=null?o.loy:0));const base=(o.baseLoy!=null?o.baseLoy:L);const grown=Math.max(0,L-base)*0.5;const ult=L>=7?3:(L>=5?1.5:0);return THREAT_TIER.walker+L+grown+ult+s;}
+  if(k==='perm'){const dmg=(typeof o.dmg==='number'?o.dmg:0)*0.5;const atk=o.catk?1:0;return THREAT_TIER.perm+1+dmg+atk+s;}
+  let body=0;if(o.auto&&typeof o.auto.n==='number')body=Math.min(o.auto.n,6)*0.5;
+  return THREAT_TIER.spell+body+s;}
 function applyRun(run){if(!run)return;if(Array.isArray(run[0])){run.forEach(applyRun);return;}switch(run[0]){
   case "spawn":S.tokens.push({id:S.nextId++,name:run[1],p:run[2],t:run[3],baseP:run[2],baseT:run[3],kw:[...run[4]],color:(run[5]?String(run[5]).split(''):((S.boss&&S.boss.colors)?S.boss.colors.slice():[])),sick:!run[4].includes("haste"),tapped:false,plus:0,minus:0,other:[],expires:false});break;
   case "ramp":S.bossLands=(S.bossLands||0)+(run[1]||1);S.bossMana+=(run[1]||1);S.bossManaMax+=(run[1]||1);log("dm",`${ENs()} taps a new source — +${run[1]||1} mana (${S.bossLands} total).`);break;
@@ -914,7 +947,7 @@ function aiBlocks(attackers){
   const assign={};let avail=vaelDefenders();
   attackers.slice().sort((a,b)=>threatScore(b)-threatScore(a)).forEach(att=>{
     const need=kw(att,'menace')?2:1;let elig=avail.filter(b=>legalBlock(att,b));if(elig.length<need)return;
-    const kills=b=>effP(b)>=effT(att)||kw(b,'deathtouch');const survives=b=>(effT(b)>effP(att)&&!kw(att,'deathtouch'))||kw(b,'indestructible');const ts=threatScore(att);
+    const kills=b=>effP(b)>=effT(att)||kw(b,'deathtouch');const survives=b=>(effT(b)>effP(att)&&!kw(att,'deathtouch'))||kw(b,'indestructible');const ts=combatThreat(att);/* P6.1: block-decision GATES read the legacy-equivalent metric (effP+strength), never the enriched threatScore — so thresholds are byte-identical to pre-P6.1 while the sort above prioritises by full threat */
     if(need===1){
       let pick=elig.filter(b=>!b._cmd&&kills(b)&&survives(b)).sort((a,b)=>effP(a)-effP(b))[0];
       if(!pick&&ts>=4)pick=elig.filter(b=>!b._cmd&&kills(b)).sort((a,b)=>effP(a)-effP(b))[0];
@@ -1149,7 +1182,7 @@ function payAttackTax(cands){const tx=attackTax();if(!tx.mana&&!tx.life)return{k
   S.bossMana-=pm;if(pl){S.boss.life-=pl;}/* P5.1: spend only what was paid; the frozen portion stays in the pool */
   return{kept,skipped,pm,pl,tx};}
 function aiTargets(attackers){const t={};attackers.forEach(a=>t[a.id]='you');const wks=S.my.walkers.filter(w=>!w.phased);if(!wks.length)return t;
-  const target=wks.slice().sort((x,y)=>y.loyalty-x.loyalty)[0];const totalP=attackers.reduce((s,a)=>s+effP(a),0);
+  const target=wks.slice().sort((x,y)=>threatScore(y)-threatScore(x))[0];/* P6.1: attack the highest-THREAT walker (loyalty + ult-proximity + strength), not just the beefiest */const totalP=attackers.reduce((s,a)=>s+effP(a),0);
   if(totalP<target.loyalty)return t; // can't kill it this turn — go for the face
   let need=target.loyalty;attackers.slice().sort((a,b)=>effP(b)-effP(a)).forEach(a=>{if(need>0){t[a.id]=''+target.id;need-=effP(a);}});
   return t;}
@@ -1159,9 +1192,9 @@ function toggleDeckColor(col){const i=S.deckColors.indexOf(col);if(i>=0)S.deckCo
 /* ===== EDITS ===== */
 function addKw(scope,id,k){if(!k)return;const c=getCre(scope,id);if(!c)return;c.kw=c.kw||[];if(!c.kw.includes(k))c.kw.push(k);render();}
 function delKw(scope,id,k){const c=getCre(scope,id);if(!c)return;c.kw=(c.kw||[]).filter(x=>x!==k);render();}
-function addC(){S.my.creatures.push({id:S.nextId++,name:"Creature",p:2,t:2,baseP:2,baseT:2,tapped:false,plus:0,minus:0,other:[],kw:[],color:[],legendary:false,token:false,dies:"graveyard",phased:false,abilP:0,abilA:0,mana:0,prot:[],catk:null,isCmd:false,_drawer:false});log("you","Added a creature to your board.");render();}
-function addP(cat){S.my[cat].push({id:S.nextId++,name:cat==='artifacts'?"Artifact":"Enchantment",kind:"passive",mana:0,dmg:0,note:"",color:[],legendary:false,token:false,dies:"graveyard",phased:false,prot:[],catk:null,_drawer:false});log("you",`Added ${cat==='artifacts'?'an artifact':'an enchantment'} to your board.`);render();}
-function addW(){S.my.walkers.push({id:S.nextId++,name:"Planeswalker",loyalty:3,baseLoy:3,abilities:3,note:"",color:[],legendary:true,dies:"graveyard",isCmd:false,_drawer:false});log("you","Added a planeswalker to your board.");render();}
+function addC(){S.my.creatures.push({id:S.nextId++,name:"Creature",p:2,t:2,baseP:2,baseT:2,tapped:false,plus:0,minus:0,other:[],kw:[],color:[],legendary:false,token:false,dies:"graveyard",phased:false,abilP:0,abilA:0,mana:0,prot:[],catk:null,isCmd:false,strength:"mid",_drawer:false});log("you","Added a creature to your board.");render();}
+function addP(cat){S.my[cat].push({id:S.nextId++,name:cat==='artifacts'?"Artifact":"Enchantment",kind:"passive",mana:0,dmg:0,note:"",color:[],legendary:false,token:false,dies:"graveyard",phased:false,prot:[],catk:null,strength:"mid",_drawer:false});log("you",`Added ${cat==='artifacts'?'an artifact':'an enchantment'} to your board.`);render();}
+function addW(){S.my.walkers.push({id:S.nextId++,name:"Planeswalker",loyalty:3,baseLoy:3,abilities:3,note:"",color:[],legendary:true,dies:"graveyard",isCmd:false,strength:"mid",_drawer:false});log("you","Added a planeswalker to your board.");render();}
 function addEm(){S.my.emblems.push({id:S.nextId++,name:"Emblem",note:""});log("you","Added an emblem.");render();}
 /* ===== P3.2: Enemy emblems — classic templates + optional automation (auto ones fire on the enemy's upkeep; others are reminders). Stored on S.emblemsEnemy, rendered in the Enemy Board. ===== */
 const ENEMY_EMBLEMS=[
@@ -1357,7 +1390,7 @@ function youMain(){/* freeform: use your board tools */}
 function youCombat(){log("you",`Combat — pick attackers in “Your attack,” hit Swing, or Continue to skip.`);enemyInstant("your combat");}
 function youEnd(){enemyInstant("your end step");log("you",`You end your turn.`);}
 /* P4.4: at instant-speed windows during YOUR turn the enemy MAY (not must) propose an instant — a freedom like a player holding up mana, NOT an every-window event. Reuses the P4.2 visible proposal (context 'window'); the random gate is a placeholder for the P6 when/whether judgment, and the affordable+would-do filter keeps instant-light enemies quiet. Skipped while a combat resolver is open — the mid-combat block-removal hook (kill a blocker AFTER blocks are declared, prune + re-predict combat) is a documented P4.4 follow-up. */
-function enemyInstant(win){if(S.over||S.activeTurn!=='you'||S.stackProposal||S.combat)return;const cands=buildEnemyCandidates();if(!cands.length)return;if(Math.random()>0.4)return;
+function enemyInstant(win){if(S.over||S.activeTurn!=='you'||S.stackProposal||S.combat)return;const cands=buildEnemyCandidates(null);/* P6.1: explicit null — a proactive instant-speed window answers no specific spell (the 'counter' value case is dormant) */if(!cands.length)return;if(Math.random()>0.4)return;
   S.stackProposal={context:'window',forName:win,win:win,candidates:cands,choice:cands[0].key};
   log("dm",`⚡ ${ENs()} weighs an instant (${win})…`);showPlays();}
 
@@ -1408,8 +1441,8 @@ function resolvePlay(i){const p=S.plays[i];if(!p||p.status==="resolved")return;i
   if(p.run)applyRun(p.run);if(p.target){const msg=applyTarget(p.target,(p.color||'').split('').filter(Boolean));if(msg)log("dm",`${p.n}: ${ENs()} ${msg}.`);else log("dm",`${p.n} — no valid target on your tracked board.`);}if(p.selfLoss){S.youLife-=p.selfLoss;log("dm",`${p.n} → you lose <b>${p.selfLoss}</b>. (${S.youLife})`);}else if(!p.target&&!p.run)log("dm",`${p.n} resolves.`);if(p._card&&!p._copy&&p.type!=='enchant')S.gy.push(p._card);checkLose();renderPlays();render();}
 function resolvePlayerItem(p){const t=p.ctype;const pr=p.props||{};const tok=!!p._copy||!!pr.token;
   if(t==='creature'){const kwl=(p.kw||[]).slice();if(pr.defender&&kwl.indexOf('defender')<0)kwl.push('defender');S.my.creatures.push({id:S.nextId++,name:p.name,p:(p.p==null?1:p.p),t:(p.t==null?1:p.t),baseP:(p.p==null?1:p.p),baseT:(p.t==null?1:p.t),kw:kwl,color:(p.color||[]).slice(),plus:0,minus:0,other:[],tapped:false,sick:true,token:tok,expires:false,legendary:!!pr.legendary,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',abilP:pr.abilP||0,abilA:pr.abilA||0,mana:pr.mana||0,strength:pr.strength||'mid',isCmd:false});log("you",`<b>${p.name}</b> resolves onto your board (${p.p}/${p.t}${tok?' · token':''}).`);}
-  else if(t==='artifact'||t==='enchantment'){const cat=t==='artifact'?'artifacts':'enchants';S.my[cat].push({id:S.nextId++,name:p.name,kind:'passive',mana:pr.mana||0,dmg:0,note:p.note||'',color:(p.color||[]).slice(),token:tok,legendary:!!pr.legendary,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard'});log("you",`<b>${p.name}</b> resolves into play.`);}
-  else if(t==='planeswalker'){S.my.walkers.push({id:S.nextId++,name:p.name,loyalty:p.loy||3,baseLoy:p.loy||3,abilities:0,note:p.note||'',color:(p.color||[]).slice(),legendary:true,token:tok,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard'});log("you",`<b>${p.name}</b> resolves (loyalty ${p.loy||3}).`);}
+  else if(t==='artifact'||t==='enchantment'){const cat=t==='artifact'?'artifacts':'enchants';S.my[cat].push({id:S.nextId++,name:p.name,kind:'passive',mana:pr.mana||0,dmg:0,note:p.note||'',color:(p.color||[]).slice(),token:tok,legendary:!!pr.legendary,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',strength:pr.strength||'mid'});log("you",`<b>${p.name}</b> resolves into play.`);}
+  else if(t==='planeswalker'){S.my.walkers.push({id:S.nextId++,name:p.name,loyalty:p.loy||3,baseLoy:p.loy||3,abilities:0,note:p.note||'',color:(p.color||[]).slice(),legendary:true,token:tok,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',strength:pr.strength||'mid'});log("you",`<b>${p.name}</b> resolves (loyalty ${p.loy||3}).`);}
   else{if(p.auto){if(p.auto.k==='dmgBoss'){S.boss.life-=p.auto.n;log("you",`<b>${p.name}</b> resolves — ${p.auto.n} to ${S.boss.name}. (${Math.max(0,S.boss.life)})`);if(S.boss.life<=0)bossDown();}else if(p.auto.k==='gainLife'){S.youLife+=p.auto.n;if(S.youLife>S.youMax)S.youMax=S.youLife;log("you",`<b>${p.name}</b> resolves — you gain ${p.auto.n}. (${S.youLife})`);}else if(p.auto.k==='loseLife'){S.youLife-=p.auto.n;log("you",`<b>${p.name}</b> resolves — you lose ${p.auto.n}. (${S.youLife})`);}}else log("you",`<b>${p.name}</b> resolves${p.note?` — ${p.note}`:''}. Apply its effect with the controls as needed.`);}}
 function resolvePlayOn(i,val){const p=S.plays[i];if(!p||p.status==="resolved"||!val)return;if(S.stackProposal&&S.stackProposal.forId===p.id)S.stackProposal=null;
   if(val==='fizzle'){p.status="resolved";log("you",`<b>${p.n||p.name}</b> fizzles — no legal target (protected / hexproof / out of range).`);if(p._card&&!p._copy&&p.type!=='enchant')S.gy.push(p._card);renderPlays();render();return;}
@@ -1477,8 +1510,8 @@ function submitCast(){castConfig(readCastForm());}
 function submitQuickCast(){castConfig(readQuickForm());}
 /* P4.2: after every player cast the enemy PROPOSES a visible stack response (or "let it resolve") — like the attack/block proposal. Only affordable instants that would actually do something are offered (target validity). The player approves/edits the enemy's play. Deeper threat/value selection of WHICH response & WHETHER to respond is P6.1/P6.2; for now the default pick is the costliest candidate and the player drives the rest. */
 /* P4.4: shared candidate list — the enemy's affordable instants that would actually do something (no fizzles). Default order = costliest (placeholder for P6 value selection). Reused by the cast-response (P4.2) and the proactive instant-speed windows (P4.4). */
-function buildEnemyCandidates(){const seen={},cands=[];S.hand.forEach(c=>{const fx=FX[c.key];if(!fx||fx.type!=='instant')return;if(fx.cost>usableMana())return;if(!enemyInstantWouldDo(fx))return;if(seen[c.key])return;seen[c.key]=true;cands.push({key:c.key,n:fx.n,cost:fx.cost,target:!!fx.target});});cands.sort((a,b)=>b.cost-a.cost);return cands;}
-function enemyRespondToCast(item){if(S.over||!item)return;const cands=buildEnemyCandidates();if(!cands.length){S.stackProposal=null;return;}S.stackProposal={context:'cast',forId:item.id,forName:item.name||item.n||'your spell',candidates:cands,choice:cands[0].key};showPlays();}
+function buildEnemyCandidates(item){const seen={},cands=[];S.hand.forEach(c=>{const fx=FX[c.key];if(!fx||fx.type!=='instant')return;if(fx.cost>usableMana())return;if(!enemyInstantWouldDo(fx))return;if(seen[c.key])return;seen[c.key]=true;cands.push({key:c.key,n:fx.n,cost:fx.cost,target:!!fx.target,value:bestTargetThreat(fx,item)});});/* P6.1: order by VALUE (best threat answered), then by efficiency (cheapest) — replaces the P4.2 costliest placeholder; default choice (cands[0]) is now the smartest response */cands.sort((a,b)=>(b.value-a.value)||(a.cost-b.cost));return cands;}
+function enemyRespondToCast(item){if(S.over||!item)return;const cands=buildEnemyCandidates(item);if(!cands.length){S.stackProposal=null;return;}S.stackProposal={context:'cast',forId:item.id,forName:item.name||item.n||'your spell',candidates:cands,choice:cands[0].key};showPlays();}
 /* lightweight, non-mutating target-validity guard — mirrors applyTarget's "is there a legal target?" branches so the enemy never proposes a fizzle. Ward affordability is deferred to P6.2. Non-targeted instants (burn/heal/spawn/rule) always do something. */
 function enemyInstantWouldDo(fx){const t=fx&&fx.target;if(!t)return true;
   const sc=fx.color?String(fx.color).split(''):((S.boss&&S.boss.colors)||[]);
@@ -1490,6 +1523,22 @@ function enemyInstantWouldDo(fx){const t=fx&&fx.target;if(!t)return true;
     case 'minusAll2':case 'wither3':return cr.length>0;
     case 'walkerMinLoy3':return wk.length>0;
     default:return true;}}
+/* P6.1: value a candidate response by the MAX threatScore of what it can legally ANSWER — removal by the best
+   victim on your board, a (future) counter by the threat of the stack spell itself. Non-targeted burn answers
+   nothing specific → 0, so real removal of a real threat always out-ranks face-chip. top() is floored at 0 so a
+   pool of only negative-threat permanents (a lone defender) never inverts the ordering. */
+function bestTargetThreat(fx,item){const t=fx&&fx.target;if(!t)return 0;
+  const sc=fx.color?String(fx.color).split(''):((S.boss&&S.boss.colors)||[]);
+  const safe=c=>!kw(c,'hexproof')&&!c.phased&&!(c.prot||[]).some(p=>sc.indexOf(p)>=0);
+  const cr=S.my.creatures.filter(safe),crD=cr.filter(c=>!kw(c,'indestructible')),wk=S.my.walkers.filter(w=>!w.phased);
+  const top=a=>a.reduce((m,o)=>Math.max(m,threatScore(o)),0);
+  switch(t){
+    case 'destroyMaxPow':case 'destroyMinPow':case 'destroyTop2':return top(crD);
+    case 'destroyToughLE2':return top(crD.filter(c=>effT(c)<=2));
+    case 'minusAll2':case 'wither3':return top(cr);
+    case 'walkerMinLoy3':return top(wk);
+    case 'counter':return threatScore(item);
+    default:return 0;}}
 /* a proposal is live only while its window is open: context 'cast' (default/back-compat) → its spell is still PENDING on the stack; 'combat' → a combat resolver is open; 'window' (P4.4 instant-speed windows) → live until acted on or a boundary clears it (advancePhase/enterRoom/resolveStack/openCombat). Gates render + approve so a stale proposal can never render or fire an out-of-window enemy play. */
 function proposalLive(){const pr=S.stackProposal;if(!pr)return false;if(pr.context==='combat')return !!S.combat;if(pr.context&&pr.context!=='cast')return true;return Array.isArray(S.plays)&&S.plays.some(p=>p&&p.id===pr.forId&&p.status==='pending');}
 function renderStackProposal(){const box=$("stackProposal");if(!box)return;const pr=S.stackProposal;
@@ -1636,7 +1685,7 @@ function prof(){return DB.profiles[DB.active]||null;}
    once a game is actually live (so the menu/initial render never clobber a real
    save), and never while S.over (a defeat/victory keeps the last good save).
    migrate() backfills fields missing on older saves so they never throw. */
-const SAVE_V=38;
+const SAVE_V=39;/* P6.1: strength now persisted/backfilled on creatures/artifacts/enchants/walkers for the generalized threat hierarchy */
 let _liveGame=false,_autosaveT=null;
 function scheduleAutosave(){if(_autosaveT)return;try{_autosaveT=setTimeout(()=>{_autosaveT=null;doAutosave();},600);}catch(e){_autosaveT=null;doAutosave();}}
 function doAutosave(){try{if(!_liveGame||typeof S==='undefined'||!S||S.over)return;DB.save={v:SAVE_V,ts:Date.now(),profile:DB.active,room:S.roomIndex,turn:S.turn,S:JSON.parse(JSON.stringify(S))};saveDB();}catch(e){}}
@@ -1653,6 +1702,7 @@ function migrate(s){if(!s||typeof s!=='object')return s;
   const bp=c=>{if(!c)return;if(c.p!=null&&c.baseP==null)c.baseP=c.p;if(c.t!=null&&c.baseT==null)c.baseT=c.t;if(c.loyalty!=null&&c.baseLoy==null)c.baseLoy=c.loyalty;if(c.token&&c.expires==null)c.expires=false;};
   (s.my.creatures||[]).forEach(bp);(s.my.walkers||[]).forEach(bp);(s.tokens||[]).forEach(t=>{bp(t);if(t.expires==null)t.expires=false;});if(s.cmd)bp(s.cmd);if(s.pcmd)bp(s.pcmd);
   (s.my.walkers||[]).forEach(w=>{if(w)w.legendary=true;});if(s.pcmd&&s.pcmd.kind==='walkers')s.pcmd.legendary=true; // P2.7: planeswalkers are always legendary
+  ['creatures','artifacts','enchants','walkers'].forEach(k=>(s.my[k]||[]).forEach(o=>{if(o&&!o.strength)o.strength='mid';})); // P6.1: backfill strength so the generalized threat hierarchy can read it on old saves (behavior-neutral — strengthOf() already defaults to 'mid')
   // defensive scalar backfills so a partial/corrupt save never throws in render()
   if(typeof s.youLife!=='number')s.youLife=40;if(typeof s.youMax!=='number')s.youMax=Math.max(40,s.youLife||40);
   if(typeof s.roomIndex!=='number'||!DUNGEON[s.roomIndex])s.roomIndex=0;if(typeof s.diff!=='string'||!DIFF[s.diff])s.diff='standard';
@@ -1779,8 +1829,8 @@ function saveCardEdits(){const p=prof();if(!p){alert('Open the Menu and create a
 function lidStamp(){return 'L'+Date.now()+Math.floor(Math.random()*1000);}
 function saveBoardToLibrary(cat,id){const p=prof();if(!p){alert('Create a profile first (open the Menu).');return;}const o=S.my[cat].find(x=>x.id===id);if(!o)return;let cfg;
   if(cat==='creatures'){cfg={name:o.name,ctype:'creature',p:o.p,t:o.t,loy:3,color:(o.color||[]).slice(),note:'',commander:!!o.isCmd,kw:(o.kw||[]).filter(k=>k!=='defender'),props:{legendary:!!o.legendary,token:!!o.token,defender:(o.kw||[]).indexOf('defender')>=0,prot:(o.prot||[]).slice(),cward:o.cward||null,catk:o.catk||null,dies:o.dies||'graveyard',abilP:o.abilP||0,abilA:o.abilA||0,mana:o.mana||0,strength:o.strength||'mid'}};}
-  else if(cat==='artifacts'||cat==='enchants'){cfg={name:o.name,ctype:cat==='artifacts'?'artifact':'enchantment',color:(o.color||[]).slice(),note:o.note||'',kw:[],props:{legendary:!!o.legendary,token:!!o.token,defender:false,prot:(o.prot||[]).slice(),cward:o.cward||null,catk:o.catk||null,dies:o.dies||'graveyard',abilP:0,abilA:0,mana:o.mana||0,strength:'mid'}};}
-  else if(cat==='walkers'){cfg={name:o.name,ctype:'planeswalker',loy:o.loyalty||o.baseLoy||3,color:(o.color||[]).slice(),note:o.note||'',commander:!!o.isCmd,kw:[],props:{legendary:true,token:!!o.token,defender:false,prot:(o.prot||[]).slice(),cward:o.cward||null,catk:o.catk||null,dies:o.dies||'graveyard',abilP:0,abilA:0,mana:0,strength:'mid'}};}
+  else if(cat==='artifacts'||cat==='enchants'){cfg={name:o.name,ctype:cat==='artifacts'?'artifact':'enchantment',color:(o.color||[]).slice(),note:o.note||'',kw:[],props:{legendary:!!o.legendary,token:!!o.token,defender:false,prot:(o.prot||[]).slice(),cward:o.cward||null,catk:o.catk||null,dies:o.dies||'graveyard',abilP:0,abilA:0,mana:o.mana||0,strength:o.strength||'mid'}};}
+  else if(cat==='walkers'){cfg={name:o.name,ctype:'planeswalker',loy:o.loyalty||o.baseLoy||3,color:(o.color||[]).slice(),note:o.note||'',commander:!!o.isCmd,kw:[],props:{legendary:true,token:!!o.token,defender:false,prot:(o.prot||[]).slice(),cward:o.cward||null,catk:o.catk||null,dies:o.dies||'graveyard',abilP:0,abilA:0,mana:0,strength:o.strength||'mid'}};}
   else return;
   cfg.lid=lidStamp();p.library.push(cfg);saveDB();log("loot",`★ Saved <b>${o.name}</b> to your library.`);render();}
 function saveStackToLibrary(i){const it=S.plays[i];if(!it||!it._player){return;}const p=prof();if(!p){alert('Create a profile first (open the Menu).');return;}const cfg=JSON.parse(JSON.stringify(it));['id','_player','side','status','_copy','_instant','_respondingTo','_pcmd','_pcmdObj','_enemyCmd'].forEach(k=>delete cfg[k]);cfg.lid=lidStamp();p.library.push(cfg);saveDB();log("loot",`★ Saved <b>${it.name||it.n}</b> to your library.`);renderPlays();}
@@ -1788,7 +1838,7 @@ function cfgToItem(cfg){const it=JSON.parse(JSON.stringify(cfg));delete it.lid;r
 let _cmdChooseActive=false;let _cmdCreating=false;let _editLid=null;let _castCommander=false;
 function cmdObjFromCfg(cfg){const pr=cfg.props||{};
   if(cfg.ctype==='creature'){const kwl=(cfg.kw||[]).slice();if(pr.defender&&kwl.indexOf('defender')<0)kwl.push('defender');return {id:S.nextId++,name:cfg.name,p:(cfg.p==null?1:cfg.p),t:(cfg.t==null?1:cfg.t),baseP:(cfg.p==null?1:cfg.p),baseT:(cfg.t==null?1:cfg.t),kw:kwl,color:(cfg.color||[]).slice(),plus:0,minus:0,other:[],tapped:false,sick:true,token:!!pr.token,expires:false,legendary:!!pr.legendary,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',abilP:pr.abilP||0,abilA:pr.abilA||0,mana:pr.mana||0,strength:pr.strength||'mid',isCmd:true,kind:'creatures',cmdTax:0,cmdDeaths:0};}
-  if(cfg.ctype==='planeswalker'){return {id:S.nextId++,name:cfg.name,loyalty:cfg.loy||3,baseLoy:cfg.loy||3,abilities:0,note:cfg.note||'',color:(cfg.color||[]).slice(),legendary:true,token:!!pr.token,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',isCmd:true,kind:'walkers',cmdTax:0,cmdDeaths:0};}
+  if(cfg.ctype==='planeswalker'){return {id:S.nextId++,name:cfg.name,loyalty:cfg.loy||3,baseLoy:cfg.loy||3,abilities:0,note:cfg.note||'',color:(cfg.color||[]).slice(),legendary:true,token:!!pr.token,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',strength:pr.strength||'mid',isCmd:true,kind:'walkers',cmdTax:0,cmdDeaths:0};}
   return null;}
 function setStartCommander(cfg){const o=cmdObjFromCfg(cfg);if(!o){alert('A commander must be a creature or a planeswalker.');return false;}S.my.creatures.forEach(c=>c.isCmd=false);S.my.walkers.forEach(w=>w.isCmd=false);S.pcmd=o;log("you",`♛ <b>${o.name}</b> begins in your command zone — deploy it when you cast it.`);render();return true;}
 function chooseCommander(){_cmdChooseActive=true;$("modalBody").innerHTML=cmdChooseHTML();$("overlay").classList.add("show");}
