@@ -459,6 +459,14 @@
     <textarea id="notes" placeholder="Scratchpad — anything you want to remember between turns…" style="width:100%;min-height:54px;margin-top:8px;font-family:Spectral;background:var(--ink);color:var(--bone);border:1px solid var(--line);border-radius:8px;padding:8px" oninput="S.notes=this.value"></textarea>
   </div>
 
+  <div class="panel" id="battlesPanel" style="margin-top:12px">
+    <h2>🜨 Battles &amp; Planes <span class="tag" id="battlesInfoSlot">defense counters · planar die</span></h2>
+    <div class="btnrow"><span class="lab">Planar die</span><button class="mini gold" onclick="rollPlaneDie()">🎲 Roll planar die</button><span id="planeOut" class="manaline"></span></div>
+    <div class="btnrow"><span class="lab">Current plane</span><input type="text" id="planeName" placeholder="(none — set a plane to role-play)" oninput="setPlaneName(this.value)" style="flex:1;min-width:0"></div>
+    <div class="subh"><span>Battles <span class="tag">attack to remove defense counters</span></span><button class="tiny ok" onclick="addBattle('you')">+ add a battle</button></div>
+    <div id="battleList"></div>
+  </div>
+
   <div class="panel" style="margin-top:12px">
     <h2>🜂 Turn flow <span class="tag" id="turnTag">Turn 0</span></h2>
     <div class="phasebar">
@@ -776,6 +784,7 @@ function enterRoom(i,first){S.roomIndex=i;const room=DUNGEON[i];const m=DIFF[S.d
   S.pw=room.pw?{name:room.pw.name,loy:room.pw.loy,baseLoy:room.pw.loy,colors:(room.pw.colors||room.colors||[]).slice(),ultThreshold:room.pw.ultThreshold||7,plus:room.pw.plus,minus:room.pw.minus,ult:room.pw.ult}:null;
   S.bossManaMod=0;S.bossLands=Math.max(0,(room.landStart||0)+(DIFF[S.diff].manaBonus||0));S.bossLandPlayed=false;S.bossManaMax=S.bossLands;S.bossMana=S.bossLands;/* P5.2: mana now comes from sources (lands/rocks/dorks); start with landStart±difficulty already developed, then play a land per turn */
   S.activeTurn=null;S.phase=0;S.plays=[];S.combat=null;S.paused=false;S.lib=buildDeck(room);S.hand=[];S.gy=[];S.exile=[];vaelDraw(4);
+  if(room.isVael)fieldVaelBattle();/* P7.7: Vael fields a boss-side Siege the player must break */
   if(!first)log("sys",`— You descend into <b>${room.name}</b>. ${S.boss.name} [${S.boss.colors.join("/")}]: ${life} life. Commander ${S.cmd.n} (${S.cmd.cost} mana). Deck: ${S.lib.length} cards. —`);}
 function buildDeck(room){const lib=[];const add=(k,n)=>{for(let j=0;j<n;j++)lib.push({id:S.nextId++,key:k});};
   let pool={},lands=Object.assign({},(room&&room.lands)||{});const rp=(room&&room.pool)||[];
@@ -890,6 +899,7 @@ function objKind(o){ /* shape detection: declared ctype (stack item) first, else
   if(!o||typeof o!=='object')return 'spell';
   const ct=o.ctype;
   if(ct){if(ct==='creature')return 'creature';if(ct==='planeswalker')return 'walker';if(ct==='artifact'||ct==='enchantment')return 'perm';return 'spell';}
+  if(typeof o.maxDef==='number')return 'battle';/* P7.7: a battle is scorable in the hierarchy (feeds P6.1) */
   if(typeof o.loyalty==='number')return 'walker';
   if(typeof o.p==='number'&&typeof o.t==='number')return 'creature';
   return 'perm';}
@@ -908,6 +918,7 @@ function threatScore(o){
   const k=objKind(o),s=strengthVal(o);
   if(k==='creature')return THREAT_TIER.creature+effP(o)+s+creatureKwVal(o);
   if(k==='walker'){const L=(o.loyalty!=null?o.loyalty:(o.loy!=null?o.loy:0));const base=(o.baseLoy!=null?o.baseLoy:L);const grown=Math.max(0,L-base)*0.5;const ult=L>=7?3:(L>=5?1.5:0);return THREAT_TIER.walker+L+grown+ult+s;}
+  if(k==='battle'){return THREAT_TIER.perm+(o.def||0)*0.4+s;}/* P7.7: defense-counter battle scored as a permanent-tier clock (forward hook for AI battle priority) */
   if(k==='perm'){const dmg=(typeof o.dmg==='number'?o.dmg:0)*0.5;const atk=o.catk?1:0;return THREAT_TIER.perm+1+dmg+atk+s;}
   let body=0;if(o.auto&&typeof o.auto.n==='number')body=Math.min(o.auto.n,6)*0.5;
   return THREAT_TIER.spell+body+s;}
@@ -1154,7 +1165,7 @@ function render(){
   const cf=$("creaField");cf.innerHTML="";const creaN=S.tokens.length+(S.cmd.inPlay?1:0);$("creaCount").textContent=creaN;$("creaEmpty").style.display=creaN?"none":"block";
   if(S.cmd.inPlay){const el=document.createElement("div");el.className="crea cmdcard"+(S.cmd.sick?" sick":"")+(S.cmd.tapped?" tapped":"");el.innerHTML=cmdFieldCard();cf.appendChild(el);}
   S.tokens.forEach(c=>{const el=document.createElement("div");el.className="crea"+(c.sick?" sick":"")+(c.tapped?" tapped":"");el.innerHTML=enemyCard(c);cf.appendChild(el);});
-  renderMy();renderAtkPick();renderCounters();renderStackFab();renderEnemyEmblems();renderStackProposal();
+  renderMy();renderAtkPick();renderCounters();renderStackFab();renderEnemyEmblems();renderStackProposal();renderBattles();
   const rp=$("rulesPanel"),rf=$("rulesField");if(S.rules.length){rp.style.display="";rf.innerHTML="";S.rules.forEach(r=>{const el=document.createElement("div");el.className="ruleperm"+(r.side==="boss"?" bossr":"");el.innerHTML=`<div class="rn">${r.name}</div><div class="rt">${r.text}</div><div class="acts">${r.die?`<button class="mini gold" onclick="rollRule(${r.id})">Roll d${r.die}</button>`:''}<button class="mini ember" onclick="destroyRule(${r.id})">Destroy</button></div>`;rf.appendChild(el);});}else rp.style.display="none";
   const sc=$("satchelCount");if(sc)sc.textContent=S.inv.length?`${S.inv.length} item${S.inv.length===1?'':'s'}`:'empty';
   $("turnTag").textContent="Turn "+S.turn+" · "+DUNGEON[S.roomIndex].name;renderFlow();renderZones();renderMyZones();renderDeckColors();renderBoardTokens();const gn=$("goldNote");if(gn)gn.textContent="💰 "+getGold();
@@ -1254,6 +1265,37 @@ function aiTargets(attackers){const t={};attackers.forEach(a=>t[a.id]='you');con
   return t;}
 function renderDeckColors(){const box=$("deckColorRow");if(!box)return;box.innerHTML=["W","U","B","R","G"].map(col=>`<button class="manapip ${S.deckColors.indexOf(col)>=0?'on':''}" style="--mc:${COLOR_HEX[col]}" onclick="toggleDeckColor('${col}')">${col}</button>`).join("");}
 function toggleDeckColor(col){const i=S.deckColors.indexOf(col);if(i>=0)S.deckColors.splice(i,1);else S.deckColors.push(col);render();}
+/* ===== P7.7: Battles + planar die (D3) =====
+   A battle is a tracked permanent with DEFENSE COUNTERS — you attack it to remove counters; at 0 it's defeated
+   (flips / its siege breaks). Player battles are a manual tracker; Vael fields a boss-side Siege that heals it
+   each upkeep (the AI's "defend with priority" pressure — break it to stop the heal and punish Vael). The planar
+   die is a neutral Planechase roll (1 planeswalk · 1 chaos · 4 blank) the player interprets. Murglax battles and
+   deeper Planechase are deferred (P7.7-opt). */
+function getBattle(id){return (S.battles||[]).find(b=>b.id===id);}
+function addBattle(side){S.battles=S.battles||[];const b={id:S.nextId++,name:side==='boss'?"Siege":"Battle",def:5,maxDef:5,side:side||'you',note:'',defeated:false,tick:0};S.battles.push(b);log(side==='boss'?'dm':'you',`🜨 A battle enters — <b>${b.name}</b>, defense ${b.def}.`);render();}
+function setBattle(id,f,v){const b=getBattle(id);if(b){b[f]=v;render();}}
+function battleAdjDef(id,n){const b=getBattle(id);if(!b||b.defeated)return;b.def=Math.max(0,(b.def||0)+n);if(n>0&&b.def>b.maxDef)b.maxDef=b.def;if(b.def<=0)battleDefeat(b);else render();}
+function battleDmg(id,n){const b=getBattle(id);if(!b||b.defeated)return;n=Math.max(0,n|0);if(!n)return;b.def=Math.max(0,(b.def||0)-n);log("you",`⚔ <b>${b.name}</b> takes ${n} — defense ${b.def}/${b.maxDef}.`);if(b.def<=0)battleDefeat(b);else render();}
+function battleDealInput(id){const f=$("bdmg_"+id);battleDmg(id,f?parseInt(f.value,10)||1:1);}
+function battleDefeat(b){if(b.defeated)return;b.defeated=true;b.def=0;log("you",`🜨 <b>${b.name}</b> is defeated — its defenses fall.`);
+  if(b.side==='boss'){const dmg=b.maxDef||5;S.boss.life-=dmg;log("you",`The siege breaks — ${ENs()} takes <b>${dmg}</b> as its own defenses turn on it. (${Math.max(0,S.boss.life)})`);if(S.boss.life<=0){bossDown();return;}}
+  else log("you",`Flip it to its back face — apply its reward yourself.${b.note?` (${b.note})`:''}`);
+  render();}
+function rmBattle(id){const i=(S.battles||[]).findIndex(b=>b.id===id);if(i>=0){const nm=S.battles[i].name;S.battles.splice(i,1);log("sys",`Removed the battle <b>${nm}</b>.`);render();}}
+/* Vael fields a Siege on arrival (boss-side). It heals Vael each upkeep while it stands — the player must break it. */
+function fieldVaelBattle(){S.battles=S.battles||[];if(S.battles.some(b=>b.side==='boss'&&b._vael))return;S.battles.push({id:S.nextId++,name:"Siege of the Ember Throne",def:6,maxDef:6,side:'boss',_vael:true,tick:2,defeated:false,note:"Heals the Tyrant 2 each of its upkeeps while it stands. Attack it (remove defense) to break it — that deals 6 to Vael."});}
+function tickBossBattles(){if(S.over)return;(S.battles||[]).filter(b=>b.side==='boss'&&!b.defeated&&(b.tick||0)>0).forEach(b=>{bossHealLife(b.tick);log("dm",`🜨 <b>${b.name}</b> stands — ${ENs()} gains ${b.tick} life. (${S.boss.life}) Break it to stop this.`);});}
+/* neutral planar die — 1 planeswalk · 1 chaos · 4 blank (matches the real die's 4 blanks); player interprets (open-question default). */
+function rollPlaneDie(){const r=d(6);let sym,out;if(r===1){sym='✦';out='PLANESWALK — leave this plane; turn to a new one.';}else if(r===2){sym='⊛';out="CHAOS — trigger this plane's chaos effect (you interpret it).";}else{sym='—';out='blank — nothing happens this roll.';}const o=$("planeOut");if(o)o.innerHTML=`${sym} <b style="color:var(--gold)">${out}</b>`;log("sys",`🎲 Planar die → ${sym} ${out}`);}
+function setPlaneName(v){if(!S.plane||typeof S.plane!=='object')S.plane={name:''};S.plane.name=v;}
+function renderBattles(){const box=$("battleList");if(!box)return;const pn=$("planeName");if(pn&&document.activeElement!==pn)pn.value=(S.plane&&S.plane.name)||'';
+  const list=S.battles||[];
+  if(!list.length){box.innerHTML='<span class="empty">No battles in play. Add one to track its defense counters — or reach Vael\'s Throne, where the Tyrant fields a Siege you must break.</span>';return;}
+  box.innerHTML='';
+  list.forEach(b=>{const el=document.createElement('div');el.className='brow'+(b.side==='boss'?' cmdmine':'');
+    if(b.defeated){el.innerHTML=`<span class="li-n">${embEsc(b.name)}</span> <span class="badge ok">defeated ✓</span>${b.side==='boss'?'<span class="badge tax">enemy</span>':''}<button class="tiny ember" onclick="rmBattle(${b.id})">✕</button>`;}
+    else{el.innerHTML=`<input type="text" value="${embEsc(b.name)}" style="width:128px" onchange="setBattle(${b.id},'name',this.value)">${b.side==='boss'?'<span class="badge tax">enemy siege</span>':'<span class="badge">yours</span>'}<span class="lab">defense</span><button class="tiny" onclick="battleAdjDef(${b.id},-1)">−1</button><b style="font-family:'Space Mono';color:var(--gold);min-width:16px;text-align:center">${b.def}</b><span class="lab">/${b.maxDef}</span><button class="tiny" onclick="battleAdjDef(${b.id},1)">+1</button><span class="lab">attack for</span><input type="number" id="bdmg_${b.id}" value="1" min="1" style="width:42px"><button class="tiny ember" onclick="battleDealInput(${b.id})">⚔ hit</button>${(b.tick||0)>0?`<span class="badge tax" title="heals the enemy each upkeep while it stands">⟳ heals ${b.tick}</span>`:''}<button class="tiny ember" onclick="rmBattle(${b.id})">✕</button>${b.note?`<span class="manaline" style="flex:1 0 100%;margin-top:3px">${embEsc(b.note)}</span>`:''}`;}
+    box.appendChild(el);});}
 
 /* ===== EDITS ===== */
 function addKw(scope,id,k){if(!k)return;const c=getCre(scope,id);if(!c)return;c.kw=c.kw||[];if(!c.kw.includes(k))c.kw.push(k);render();}
@@ -1405,6 +1447,7 @@ function playEnemyLand(){if(S.over||S.bossLandPlayed)return;const li=S.hand.find
   if((S.bossLands||0)<S.turn-1&&S.turn>1){S.bossLands=(S.bossLands||0)+1;S.bossMana++;S.bossManaMax++;S.bossLandPlayed=true;log("dm",`${ENs()} scrounges a mana source (mana-light) — now ${S.bossLands}.`);}}
 function vaelUpkeep(){S.rules.filter(r=>r.side==="boss"&&r.heal).forEach(r=>{bossHealLife(r.heal);log("dm",`${r.name}: ${ENs()} gains ${r.heal}. (${S.boss.life})`);});
   fireEnemyEmblems();if(S.over)return;/* a drain emblem can end the game on the enemy's upkeep — stop the rest of the upkeep */
+  tickBossBattles();if(S.over)return;/* P7.7: Vael's Siege heals it each upkeep while it stands */
   if(S.pw)pwAct();}
 function pwAct(){if(S.over)return;const pw=S.pw;let ab;
   if(pw.loy>=pw.ultThreshold){ab=pw.ult;pw.loy+=ab.sign;}
@@ -1733,6 +1776,7 @@ const INFO_TEXT={
   threat:{t:"⚔ Threat (AI hint)",h:`<p>Tells the enemy AI how dangerous this permanent is. The AI works to remove or block your <b>top</b> threats ahead of <b>mid</b> and <b>low</b> ones — set it honestly so the opponent plays sensibly.</p>`},
   ward:{t:"🛡 Ward",h:`<p>Ward makes the enemy <b>pay</b> before it can target this permanent — mana or life, your choice. If the enemy can't (or won't) pay the ward, it simply can't target it.</p>`},
   freeze:{t:"❄ Freeze mana",h:`<p>When you tap down or freeze the enemy's lands, set the <b>frozen</b> amount here. It lowers the enemy's <b>usable mana</b> this turn — the frozen part stays in the pool but can't be spent, so the AI casts and pays for less.</p><p>It <b>thaws automatically</b> at the end of the enemy's turn; re-apply it each turn for a lasting lock.</p>`},
+  battles:{t:"🜨 Battles & Planes",h:`<p>A <b>battle</b> is a permanent with <b>defense counters</b> — attack it (use ⚔ hit, or − / +) to remove them; at <b>0</b> it's defeated and flips to its back face. Track your own battles here. When you reach the Throne, <b>Vael fields a Siege</b> that <b>heals the Tyrant each upkeep</b> until you break it — break it and the siege's defenses turn on Vael.</p><p>The <b>planar die</b> is a neutral Planechase roll: mostly blank, occasionally <b>✦ planeswalk</b> (turn to a new plane) or <b>⊛ chaos</b> (trigger this plane's effect). Name a <b>current plane</b> to role-play; you interpret the outcomes.</p>`},
 };
 function infoBtn(key){return `<span class="ibtn" role="button" tabindex="0" onclick="event.stopPropagation();showInfo('${key}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();showInfo('${key}')}" title="What's this?">i</span>`;}
 function showInfo(key){const o=INFO_TEXT[key];if(!o)return;$("infoBody").innerHTML=`<h2 class="loreh">${o.t}</h2>${o.h}`;$("infoOverlay").classList.add("show");}
@@ -2046,13 +2090,14 @@ function buildTabs(){const byId=id=>document.getElementById(id),q=s=>document.qu
   const youPanel=q('.panel.you'),youBoss=youPanel&&youPanel.closest('.grid.duo'),deck=q('.deckcolors'),pcmd=byId('pcmdBox'),logEl=q('.log'); /* youBoss = the REAL you/foe duo (via .panel.you), not #tb-action-top which also has class "grid duo" */
   const pw=byId('pwPanel'),enemyCrea=byId('creaField')&&byId('creaField').closest('.panel'),enemyEmb=byId('enemyEmbList')&&byId('enemyEmbList').closest('.panel'),enemyZones=byId('vaelZones')&&byId('vaelZones').closest('.panel');
   const yourBoard=byId('myCrea')&&byId('myCrea').closest('.panel'),yourAttack=byId('atkPick')&&byId('atkPick').closest('.panel'),yourZones=byId('myZonesPanel'),rules=byId('rulesPanel');
-  const tools=byId('bwMode')&&byId('bwMode').closest('.panel'),turnflow=byId('dmBtn')&&byId('dmBtn').closest('.panel');
+  const tools=byId('bwMode')&&byId('bwMode').closest('.panel'),turnflow=byId('dmBtn')&&byId('dmBtn').closest('.panel'),battles=byId('battlesPanel');
   mv(tbInfo,youBoss);if(youPanel){mv(youPanel,deck);mv(youPanel,byId('satchelRow'));mv(youPanel,pcmd);}mv(tbInfo,logEl); // Info: you(+deck/satchel btn/cmd) & foe, then log
-  mv(tbActTop,turnflow);mv(tbActTop,yourAttack);mv(tbActTools,tools);                                // Action: flow+attack, tools below
+  mv(tbActTop,turnflow);mv(tbActTop,yourAttack);mv(tbActTools,tools);mv(tbActTools,battles);          // Action: flow+attack, tools + battles below
   mv(tbEnemy,enemyCrea);mv(tbEnemy,pw);mv(tbEnemy,enemyEmb);mv(tbEnemy,enemyZones);                   // Enemy board
   mv(tbPlayer,yourBoard);mv(tbPlayer,yourZones);mv(tbPlayer,rules);
   [['info','tab-info'],['action','tab-action'],['enemy','tab-enemy'],['player','tab-player']].forEach(([k,id])=>{const t=byId(id),lab=t&&t.querySelector('.tabnote');if(lab&&!lab.querySelector('.ibtn'))lab.insertAdjacentHTML('beforeend',' '+infoBtn(k));});
-  const sh=byId('plays')&&byId('plays').querySelector('h3');if(sh&&!sh.querySelector('.ibtn'))sh.insertAdjacentHTML('beforeend',infoBtn('stack'));}                                 // Your board
+  const sh=byId('plays')&&byId('plays').querySelector('h3');if(sh&&!sh.querySelector('.ibtn'))sh.insertAdjacentHTML('beforeend',infoBtn('stack'));
+  const bph=byId('battlesPanel')&&byId('battlesPanel').querySelector('h2');if(bph&&!bph.querySelector('.ibtn'))bph.insertAdjacentHTML('beforeend',infoBtn('battles'));}                                 // Your board
 /* Tabs default CLOSED: a never-toggled tab (undefined) is collapsed; only an explicit `false` means the player opened it. */
 function applyTabs(){if(typeof S==='undefined'||!S||!S.ui||!S.ui.tabs)return;TABS.forEach(k=>{const el=document.getElementById('tab-'+k);if(el)el.classList.toggle('collapsed',S.ui.tabs[k]!==false);});}
 function toggleTab(k){if(!S.ui)S.ui={tabs:{}};if(!S.ui.tabs)S.ui.tabs={};S.ui.tabs[k]=(S.ui.tabs[k]===false);applyTabs();scheduleAutosave();}
