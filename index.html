@@ -966,7 +966,18 @@ function killMy(c){/* route a destroyed player permanent: commander→command zo
   if(c.isCmd){sendCmdToZone(c,true);return;}
   let cat=null;["creatures","artifacts","enchants","walkers","emblems"].forEach(k=>{if(S.my[k].indexOf(c)>=0)cat=k;});
   if(cat){c._cat=cat;S.my[cat].splice(S.my[cat].indexOf(c),1);}
+  if(c.token){log("you",`<b>${c.name}</b> (token) is destroyed and ceases to exist.`);return;}/* P7.1: a dying token leaves NO graveyard/exile entry — it simply ceases to exist (matches enemy tokens, which removeRef already splices) */
   if(c.dies==='exile'){S.myExile.push(c);log("you",`<b>${c.name}</b> is exiled.`);}else{S.myGy.push(c);log("you",`<b>${c.name}</b> goes to your graveyard.`);}
+}
+/* P7.1: token/treasure EXPIRY infra (the `expires` flag from P0.4). A token marked "expires" lasts only
+   "until end of turn" — it ceases to exist at the next end step (either player's), on BOTH boards. Ceasing
+   is not a death (no graveyard, no Pit's Tithe). The flag is a manual toggle in the token's ⚙ drawer so the
+   enemy can also hold expiring tokens (a temporary copy, a convoke body, a treasure spent at cleanup). */
+function clearExpiringTokens(){
+  const goneMine=S.my.creatures.filter(c=>c.token&&c.expires);goneMine.forEach(c=>{const i=S.my.creatures.indexOf(c);if(i>=0)S.my.creatures.splice(i,1);});
+  const goneEnemy=(S.tokens||[]).filter(c=>c.expires);goneEnemy.forEach(c=>{const i=S.tokens.indexOf(c);if(i>=0)S.tokens.splice(i,1);});
+  const all=[...goneMine,...goneEnemy];
+  if(all.length)log("sys",`⌛ Until-end-of-turn token${all.length===1?'':'s'} cease to exist: ${all.map(c=>c.name).join(', ')}.`);
 }
 
 /* ===== YOUR ATTACK → VAEL BLOCKS (AI) ===== */
@@ -1093,7 +1104,7 @@ function kwBadges(scope,id,c){return (c.kw||[]).map(k=>`<span class="badge kw" o
 function enemyCard(c){const buff=c.plus||0,deb=c.minus||0;return `<button class="slay mini ember" onclick="slay(${c.id})">Slay</button>
   <div class="cn">${c.name}${c.sick?' <span class="tag">sick</span>':''}</div>
   <div class="cpt">${effP(c)}/${effT(c)}${buff?` <span class="buff">+${buff}</span>`:''}${deb?` <span class="deb">−${deb}</span>`:''} ${colorDots(c)}</div>
-  <div class="badges">${c.tapped?'<span class="badge tap">tapped</span>':''}${c.phased?'<span class="badge ph">phased out</span>':''}${c.legendary?'<span class="badge leg">legendary</span>':''}${c.token?'<span class="badge tok">token</span>':''}${(c.prot||[]).length?`<span class="badge prot">prot ${c.prot.join("")}</span>`:''}${c.noAbil?'<span class="badge no">no-abil</span>':''}${kwBadges('token',c.id,c)}${(c.other||[]).map((o,oi)=>`<span class="badge" style="cursor:pointer" title="click to remove" onclick="remCtrOther('token',${c.id},${oi})">${o} ✕</span>`).join("")}</div>
+  <div class="badges">${c.tapped?'<span class="badge tap">tapped</span>':''}${c.phased?'<span class="badge ph">phased out</span>':''}${c.legendary?'<span class="badge leg">legendary</span>':''}${c.token?'<span class="badge tok">token</span>':''}${c.expires?'<span class="badge ph" title="ceases to exist at end of turn">⌛ EOT</span>':''}${(c.prot||[]).length?`<span class="badge prot">prot ${c.prot.join("")}</span>`:''}${c.noAbil?'<span class="badge no">no-abil</span>':''}${kwBadges('token',c.id,c)}${(c.other||[]).map((o,oi)=>`<span class="badge" style="cursor:pointer" title="click to remove" onclick="remCtrOther('token',${c.id},${oi})">${o} ✕</span>`).join("")}</div>
   <div class="ctr"><button class="${c.tapped?'on':''}" onclick="tapT(${c.id})">tap</button><button class="${c.noAbil?'on':''}" onclick="noAbilT('token',${c.id})">no-abil</button><button onclick="cctr(${c.id},'plus',1)">+1/+1</button><button onclick="cctr(${c.id},'minus',1)">−1/−1</button><button onclick="cctrCustom(${c.id})">＋ctr</button><button onclick="remCtr('token',${c.id})">⊖ ctr</button><button onclick="cp(${c.id},'p',1)">P+</button><button onclick="cp(${c.id},'p',-1)">P−</button><button onclick="cp(${c.id},'t',1)">T+</button><button onclick="cp(${c.id},'t',-1)">T−</button></div>
   ${kwSelect('token',c.id)}
   <button class="drawtoggle tiny" onclick="toggleDrawer('token',${c.id})">${c._drawer?'▾ properties':'▸ properties'}</button><button class="tiny" onclick="resetCard('token',${c.id})" title="reset to original — base P/T, clear counters">↺ reset</button>
@@ -1181,12 +1192,12 @@ function setCward(cat,id,f,v){const o=getMy(cat,id);if(!o)return;o.cward=o.cward
 function colorDots(c){return (c.color||[]).map(col=>`<span class="cdot" style="background:${COLOR_HEX[col]}" title="${col}"></span>`).join("");}
 function colorToggles(scope,id,field){const o=getObj(scope,id)||{};const cur=o[field]||[];const idl=id===null?'null':id;return COLORS.map(col=>`<button class="manapip ${cur.indexOf(col)>=0?'on':''}" style="--mc:${COLOR_HEX[col]}" onclick="toggleColorField('${scope}',${idl},'${field}','${col}')">${col}</button>`).join("");}
 function enemyDrawer(scope,id,c){const idl=id===null?'null':id;return `<div class="drawer">
-  <div class="drow"><span class="dlab">flags</span><button class="tiny ${c.legendary?'on':''}" onclick="flagObj('${scope}',${idl},'legendary')">legendary</button><button class="tiny ${c.token?'on':''}" onclick="flagObj('${scope}',${idl},'token')">token</button><button class="tiny ${c.phased?'on':''}" onclick="flagObj('${scope}',${idl},'phased')">phase out</button></div>
+  <div class="drow"><span class="dlab">flags</span><button class="tiny ${c.legendary?'on':''}" onclick="flagObj('${scope}',${idl},'legendary')">legendary</button><button class="tiny ${c.token?'on':''}" onclick="flagObj('${scope}',${idl},'token')">token</button>${scope==='token'?`<button class="tiny ${c.expires?'on':''}" onclick="flagObj('${scope}',${idl},'expires')" title="ceases to exist at the next end of turn">expires (EOT)</button>`:''}<button class="tiny ${c.phased?'on':''}" onclick="flagObj('${scope}',${idl},'phased')">phase out</button></div>
   <div class="drow"><span class="dlab">color</span><div class="setbtns">${colorToggles(scope,id,'color')}</div></div>
   <div class="drow"><span class="dlab">protection from</span><div class="setbtns">${colorToggles(scope,id,'prot')}</div></div></div>`;}
-function propBadges(c){let b="";if(c.isCmd)b+='<span class="badge cmd">♛ cmd</span>';if(c.legendary)b+='<span class="badge leg">legendary</span>';if(c.token)b+='<span class="badge tok">token</span>';if(c.phased)b+='<span class="badge ph">phased out</span>';if(c.dies==='exile')b+='<span class="badge ex">→exile</span>';if((c.prot||[]).length)b+=`<span class="badge prot">prot ${c.prot.join("")}</span>`;if(c.abilP||c.abilA)b+=`<span class="badge">${c.abilP||0}P/${c.abilA||0}A</span>`;if(c.mana)b+=`<span class="badge mana">⛁${c.mana}</span>`;if(c.catk)b+=`<span class="badge tax">atk: ${c.catk.amt} ${c.catk.type}${c.catk.tgt?'·tgt':''}</span>`;if(c.cward)b+=`<span class="badge tax">ward ${c.cward.amt} ${c.cward.type}</span>`;return b;}
+function propBadges(c){let b="";if(c.isCmd)b+='<span class="badge cmd">♛ cmd</span>';if(c.legendary)b+='<span class="badge leg">legendary</span>';if(c.token)b+='<span class="badge tok">token</span>';if(c.token&&c.expires)b+='<span class="badge ph" title="ceases to exist at end of turn">⌛ EOT</span>';if(c.phased)b+='<span class="badge ph">phased out</span>';if(c.dies==='exile')b+='<span class="badge ex">→exile</span>';if((c.prot||[]).length)b+=`<span class="badge prot">prot ${c.prot.join("")}</span>`;if(c.abilP||c.abilA)b+=`<span class="badge">${c.abilP||0}P/${c.abilA||0}A</span>`;if(c.mana)b+=`<span class="badge mana">⛁${c.mana}</span>`;if(c.catk)b+=`<span class="badge tax">atk: ${c.catk.amt} ${c.catk.type}${c.catk.tgt?'·tgt':''}</span>`;if(c.cward)b+=`<span class="badge tax">ward ${c.cward.amt} ${c.cward.type}</span>`;return b;}
 function creatureDrawer(c){const id=c.id;return `<div class="drawer">
-  <div class="drow"><span class="dlab">flags</span><button class="tiny ${c.legendary?'on':''}" onclick="flagMy('creatures',${id},'legendary')">legendary</button><button class="tiny ${c.token?'on':''}" onclick="flagMy('creatures',${id},'token')">token</button><button class="tiny ${c.phased?'on':''}" onclick="flagMy('creatures',${id},'phased')">phase out</button><button class="tiny ${kw(c,'defender')?'on':''}" onclick="toggleKwMy('creatures',${id},'defender')">defender</button></div>
+  <div class="drow"><span class="dlab">flags</span><button class="tiny ${c.legendary?'on':''}" onclick="flagMy('creatures',${id},'legendary')">legendary</button><button class="tiny ${c.token?'on':''}" onclick="flagMy('creatures',${id},'token')">token</button><button class="tiny ${c.expires?'on':''}" onclick="flagMy('creatures',${id},'expires')" title="ceases to exist at the next end of turn (no graveyard)">expires (EOT)</button><button class="tiny ${c.phased?'on':''}" onclick="flagMy('creatures',${id},'phased')">phase out</button><button class="tiny ${kw(c,'defender')?'on':''}" onclick="toggleKwMy('creatures',${id},'defender')">defender</button></div>
   <div class="drow"><span class="dlab">color</span><div class="setbtns">${colorToggles('creatures',id,'color')}</div></div>
   <div class="drow"><span class="dlab">protection from</span><div class="setbtns">${colorToggles('creatures',id,'prot')}</div></div>
   <div class="drow"><span class="dlab">abilities</span><span class="lab">passive</span><input type="number" min="0" value="${c.abilP||0}" style="width:42px" onchange="setMy('creatures',${id},'abilP',+this.value)"><span class="lab">active</span><input type="number" min="0" value="${c.abilA||0}" style="width:42px" onchange="setMy('creatures',${id},'abilA',+this.value)"></div>
@@ -1484,6 +1495,7 @@ function vaelCombat(){resolveLeftoverPlays();if(S.over)return;const cands=vaelAt
 function vaelEnd(){resolveLeftoverPlays();if(S.bossManaFrozen){log("dm",`❄ ${ENs()}'s frozen mana thaws (was ${S.bossManaFrozen}).`);S.bossManaFrozen=0;}
   /* P5.2: clear until-end-of-turn anthem buffs (Warren Overrun) — reset temp P/T and strip the granted keywords */
   [...S.tokens,S.cmd].forEach(c=>{if(c&&(c._tp||c._tt||((c._grantKw||[]).length))){c._tp=0;c._tt=0;(c._grantKw||[]).forEach(k=>{const i=(c.kw||[]).indexOf(k);if(i>=0)c.kw.splice(i,1);});c._grantKw=[];}});
+  clearExpiringTokens();/* P7.1: until-end-of-turn tokens cease at the enemy's end step */
   log("dm",`${ENs()} ends its turn.`);}
 
 /* --- Your phases --- */
@@ -1492,7 +1504,7 @@ function youUpkeep(){if(S.rules.some(r=>r.side==='you'))log("you",`Your upkeep �
 function youDraw(){log("you",`Draw step — draw your card for the turn.`);}
 function youMain(){/* freeform: use your board tools */}
 function youCombat(){log("you",`Combat — pick attackers in “Your attack,” hit Swing, or Continue to skip.`);enemyInstant("your combat");}
-function youEnd(){enemyInstant("your end step");log("you",`You end your turn.`);}
+function youEnd(){enemyInstant("your end step");clearExpiringTokens();/* P7.1: until-end-of-turn tokens cease at your end step */log("you",`You end your turn.`);}
 /* P4.4: at instant-speed windows during YOUR turn the enemy MAY (not must) propose an instant — a freedom like a player holding up mana, NOT an every-window event. Reuses the P4.2 visible proposal (context 'window'); the random gate is a placeholder for the P6 when/whether judgment, and the affordable+would-do filter keeps instant-light enemies quiet. Skipped while a combat resolver is open — the mid-combat block-removal hook (kill a blocker AFTER blocks are declared, prune + re-predict combat) is a documented P4.4 follow-up. */
 function enemyInstant(win){if(S.over||S.activeTurn!=='you'||S.stackProposal||S.combat)return;const cands=buildEnemyCandidates(null);/* P6.1: explicit null — a proactive instant-speed window answers no specific spell (the 'counter' value case is dormant) */if(!cands.length)return;
   if((cands[0].value||0)<enemyActThreshold())return;/* P6.2: HOLD — the freedom to act at a window is a value judgment (would-be best play below the bar), not a coin flip; an enemy with mana + a usable instant but no worthy target stays quiet, like a thinking player */
