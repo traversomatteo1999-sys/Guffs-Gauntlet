@@ -1320,11 +1320,11 @@ function enemyCastUseless(fx,which){
   if(!fx)return false;
   const runs=Array.isArray(fx.run)?(Array.isArray(fx.run[0])?fx.run:[fx.run]):[];
   if(runs.some(r=>r&&r[0]==='anthem')){if(which===2)return true;if(S.tokens.length===0&&!(S.cmd&&S.cmd.inPlay))return true;}
-  if(fx.target){let hasTarget;if(fx.target==='walkerMinLoy3')hasTarget=(S.my.walkers||[]).length>0;else if(fx.target==='destroyToughLE2')hasTarget=S.my.creatures.some(c=>effT(c)<=2);else hasTarget=S.my.creatures.length>0;if(!hasTarget)return true;}
+  if(fx.target&&!enemyInstantWouldDo(fx))return true;/* precise target-validity (hexproof/indestructible/protection-aware) — reuse enemyInstantWouldDo so removal isn't cast into a fizzle */
   return false;
 }
 /* P5.2 AI: max unpreventable direct damage (burn/drain selfLoss) the enemy can afford this turn + which hand cards deliver it. */
-function enemyLethalReach(){let mana=usableMana(),dmg=0,picks=[];const reach=S.hand.map((c,i)=>({i,fx:FX[c.key]})).filter(o=>o.fx&&o.fx.type!=='land'&&!o.fx.target&&((o.fx.selfLoss||0)>0));reach.sort((a,b)=>((b.fx.selfLoss||0)/(b.fx.cost||1))-((a.fx.selfLoss||0)/(a.fx.cost||1)));reach.forEach(o=>{if(o.fx.cost<=mana){mana-=o.fx.cost;dmg+=(o.fx.selfLoss||0);picks.push(o.i);}});return{dmg:dmg,picks:picks};}
+function enemyLethalReach(){let mana=usableMana(),dmg=0,picks=[];const reach=S.hand.map((c,i)=>({i,fx:FX[c.key]})).filter(o=>o.fx&&o.fx.type!=='land'&&!o.fx.target&&!o.fx.dieLoss&&((o.fx.selfLoss||0)>0));/* exclude variable die-roll burn (e.g. Gate-Meteor) — only count deterministic unpreventable damage as lethal */reach.sort((a,b)=>((b.fx.selfLoss||0)/(b.fx.cost||1))-((a.fx.selfLoss||0)/(a.fx.cost||1)));reach.forEach(o=>{if(o.fx.cost<=mana){mana-=o.fx.cost;dmg+=(o.fx.selfLoss||0);picks.push(o.i);}});return{dmg:dmg,picks:picks};}
 function vaelMain(which){
   let summonedCmd=false;
   if(which===1)playEnemyLand();
