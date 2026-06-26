@@ -38,12 +38,12 @@
 | &nbsp;&nbsp;P3.1 commander = saved-as-commander + trap rewrite | ✅ **DONE** |
 | &nbsp;&nbsp;P3.2 enemy emblems | ✅ **DONE** |
 | &nbsp;&nbsp;P3.3 player-commander fixes (walker parity · blue board · zone routing) | ✅ **DONE** |
-| **Phase 4 — Stack & turn-phase engine** | 🔨 in progress |
+| **Phase 4 — Stack & turn-phase engine** | ✅ **DONE** (P4.1–P4.4) |
 | &nbsp;&nbsp;P4.1 Resolve clears the stack without skipping a phase | ✅ **DONE** |
 | &nbsp;&nbsp;P4.2 Enemy proposes a visible stack response per player cast | ✅ **DONE** (flow now, smart selection deferred to P6) |
 | &nbsp;&nbsp;P4.3 Soft phase gating + ◂ back-a-phase | ✅ **DONE** (light gating) |
 | &nbsp;&nbsp;P4.4 Enemy casts instants at instant speed in any phase (event-hooked) | ✅ **DONE (v1)** — window proposals; mid-resolver hook deferred |
-| **Phase 5 — Enemy mana & deck rework** | 🔨 in progress |
+| **Phase 5 — Enemy mana & deck rework** | ✅ **DONE** *(balance estimates pending playtest)* |
 | &nbsp;&nbsp;P5.1 Enemy colours · freeze-mana · `usableMana()` accessor | ✅ **DONE** |
 | &nbsp;&nbsp;P5.2 Enemies as real Commander decks (land-driven mana, singleton, archetypes) | ✅ mana · 3 decks @99 · deck-out · AI logic · blind balance pass *(playtest to validate)* |
 | **Phase 6 — AI intelligence & balance** | ✅ **DONE** |
