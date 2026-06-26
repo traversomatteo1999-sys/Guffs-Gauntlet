@@ -1348,13 +1348,55 @@ function pwAct(){if(S.over)return;const pw=S.pw;let ab;
   const p=mkPlay({n:`${pw.name}: ${ab.n} (${ab.sign>0?'+':''}${ab.sign})`,type:'instant',text:ab.text,selfLoss:ab.selfLoss,run:ab.run,target:ab.target,color:ab.color,cost:0});
   S.plays.push(p);log("dm",`\u2726 ${pw.name} uses <b>${ab.n}</b>${ab.ult?' — ULTIMATE':''} (loyalty ${pw.loy}).`);showPlays();}
 function vaelDrawStep(){vaelDraw(1);log("dm",`${ENs()} draws. (hand ${S.hand.length} · library ${S.lib.length})`);}
-/* P5.2 AI: would this enemy cast whiff? Skip removal with no valid target (hold it for threats), and an anthem with no board or after combat (land the finishers when they matter). */
-function enemyCastUseless(fx,which){
+/* ===== P6.2: the AI thinks before casting — one fizzle filter + one comparable VALUE scale (threat units,
+   ~1 pt = 1 power of a fair creature, the same unit P6.1's threatScore/bestTargetThreat speak in) so every
+   cast site filters by wouldDoSomething and chooses by value, not cost; and the freedom to act at instant
+   windows is a value/threat judgment, not a coin flip. Replaces the old enemyCastUseless. ===== */
+/* Difficulty-INDEPENDENT smart baseline (in threat units): only spend premium removal / instant-freedom on a
+   threat at least as scary as a 3-power body, a 2-power flyer (2+1.5), or any planeswalker. Governs all three
+   instant gates + the main-loop removal floor. P6.4 SEAM: raise enemyAggression() to LOWER the bar (more
+   trigger-happy on Brutal / lucky rolls); P6.2 leaves it at 0 so baseline logic stays difficulty-independent. */
+const ENEMY_ACT_BASELINE=3;
+function enemyAggression(){return 0;}
+function enemyActThreshold(){return ENEMY_ACT_BASELINE-enemyAggression();}
+/* The SINGLE fizzle filter for EVERY card shape — a pure board-legality read (no phase/value logic; those are
+   castValue's job). Returns false only for genuine no-ops: lands, removal with no legal victim, an anthem with
+   no creatures to pump, or a recurring rule/bossrule engine already in play (applyRun dedupes by name). */
+function wouldDoSomething(fx){
   if(!fx)return false;
+  if(fx.type==='land')return false;
+  if(fx.target)return enemyInstantWouldDo(fx);
   const runs=Array.isArray(fx.run)?(Array.isArray(fx.run[0])?fx.run:[fx.run]):[];
-  if(runs.some(r=>r&&r[0]==='anthem')){if(which===2)return true;if(S.tokens.length===0&&!(S.cmd&&S.cmd.inPlay))return true;}
-  if(fx.target&&!enemyInstantWouldDo(fx))return true;/* precise target-validity (hexproof/indestructible/protection-aware) — reuse enemyInstantWouldDo so removal isn't cast into a fizzle */
-  return false;
+  if(runs.length&&runs.every(r=>r&&r[0]==='anthem')){if(S.tokens.length===0&&!(S.cmd&&S.cmd.inPlay))return false;}
+  if(runs.length&&!(fx.selfLoss>0||fx.dieLoss)
+     &&runs.every(r=>r&&(r[0]==='rule'||r[0]==='bossrule'))
+     &&runs.every(r=>S.rules&&S.rules.some(x=>x.name===r[1])))return false;/* fizzle only when EVERY effect is a recurring engine ALREADY in play (a card mixing a dupe rule with a NEW rule / spawn / burn still does something) */
+  return true;
+}
+/* a SPAWN scored as if its token were already on the board — the parallel of bestTargetThreat, on the same
+   threatScore hierarchy (tokens carry no strength tier, so strengthVal falls to mid/0, matching reality). */
+function bodyValue(p,t,kwl){return threatScore({ctype:'creature',p:p||0,t:t||0,kw:kwl||[]});}
+/* Comparable VALUE of casting fx NOW, in threat units; sums every shape on the card. ctx.phase/.which gates the
+   anthem (no swing value once combat is past). PURE read — reuses bestTargetThreat (P6.1) for removal. */
+function castValue(fx,ctx){
+  if(!fx)return 0;ctx=ctx||{};
+  const main2=(ctx.phase==='main2'||ctx.which===2);let v=0;
+  if(fx.target)v+=bestTargetThreat(fx,ctx.item||null);            // removal: worth the best threat it can answer
+  if(fx.dieLoss&&fx.die)v+=(fx.die+1)/2;                          // variable burn: expected roll (real roll only at mkPlay)
+  else if((fx.selfLoss||0)>0)v+=fx.selfLoss;                      // deterministic burn / drain rider: 1:1 face damage
+  const runs=Array.isArray(fx.run)?(Array.isArray(fx.run[0])?fx.run:[fx.run]):[];
+  const boardCount=S.tokens.length+((S.cmd&&S.cmd.inPlay)?1:0);
+  runs.forEach(r=>{if(!r)return;switch(r[0]){
+    case 'spawn':v+=bodyValue(r[2],r[3],r[4]||[]);break;
+    case 'bossHeal':{const dmg=(S.boss&&S.boss.max)?Math.max(0,S.boss.max-S.boss.life):(r[1]||0);v+=Math.min(r[1]||0,dmg)*0.5;break;}/* lifegain at full life is worth 0 */
+    case 'cmdBuff':v+=(r[1]||0)*((S.cmd&&S.cmd.inPlay)?1:0.6);break;/* perm +N power; discounted while in the command zone */
+    case 'anthem':{const ap=r[1]||0,akw=r[3]||[];const perCreature=ap+creatureKwVal({kw:akw});v+=main2?0:perCreature*boardCount;break;}/* extra attack damage this turn; 0 post-combat */
+    case 'ramp':v+=(r[1]||0)*1.5;break;
+    case 'rule':{const per=(r[3]&&r[3]>0)?((r[3]+1)/2):1;v+=per*2;break;}/* recurring player upkeep loss, ~2-turn horizon */
+    case 'bossrule':v+=(r[3]||0)*1.0;break;/* recurring enemy heal */
+    case 'bloodpact':v+=(r[1]||0)*1.5;break;/* per-death drain engine */
+  }});
+  return v;
 }
 /* P5.2 AI: max unpreventable direct damage (burn/drain selfLoss) the enemy can afford this turn + which hand cards deliver it. */
 function enemyLethalReach(){let mana=usableMana(),dmg=0,picks=[];const reach=S.hand.map((c,i)=>({i,fx:FX[c.key]})).filter(o=>o.fx&&o.fx.type!=='land'&&!o.fx.target&&!o.fx.dieLoss&&((o.fx.selfLoss||0)>0));/* exclude variable die-roll burn (e.g. Gate-Meteor) — only count deterministic unpreventable damage as lethal */reach.sort((a,b)=>((b.fx.selfLoss||0)/(b.fx.cost||1))-((a.fx.selfLoss||0)/(a.fx.cost||1)));reach.forEach(o=>{if(o.fx.cost<=mana){mana-=o.fx.cost;dmg+=(o.fx.selfLoss||0);picks.push(o.i);}});return{dmg:dmg,picks:picks};}
@@ -1364,8 +1406,21 @@ function vaelMain(which){
   if(which===1&&!S.cmd.inPlay&&!S.plays.some(p=>p._enemyCmd&&p.status==='pending')&&usableMana()>=S.cmd.cost){S.bossMana-=S.cmd.cost;S.plays.push({id:S.nextId++,_enemyCmd:true,side:'boss',status:'pending',n:S.cmd.n,type:'creature',cost:S.cmd.cost,color:(S.boss.colors||['R']).join(''),text:`♛ ${ENs()}'s commander — resolves to its battlefield, summoning-sick.`});summonedCmd=true;log("dm",`♛ ${ENs()} casts <b>${S.cmd.n}</b> from its command zone (spent ${S.cmd.cost}, ${S.bossMana} left). It's on the stack.`);}
   /* P5.2 AI — LETHAL: when the enemy can deal >= your life in unpreventable burn/drain it can afford, it goes for the throat (prioritised over developing). Runs in main2 too, so post-combat burn closes a chipped player. */
   if(!S.over){const lr=enemyLethalReach();if(lr.picks.length&&lr.dmg>=S.youLife){log("dm",`🎯 <b>${ENs()} sees lethal</b> — ${lr.dmg} unpreventable damage in hand!`);lr.picks.slice().sort((a,b)=>b-a).forEach(pick=>{const card=S.hand[pick],fx=FX[card.key];if(fx&&fx.cost<=usableMana()){S.bossMana-=fx.cost;S.hand.splice(pick,1);const p=mkPlay(fx);p._card=card;S.plays.push(p);log("dm",`Casts <b>${fx.n}</b> — for the throat.`);}});}}
-  let cast=0,guard=24;
-  while(guard-->0){const idxs=S.hand.map((c,i)=>i).filter(i=>FX[S.hand[i].key].type!=='land'&&FX[S.hand[i].key].cost<=usableMana()&&!enemyCastUseless(FX[S.hand[i].key],which));if(!idxs.length)break;idxs.sort((a,b)=>FX[S.hand[b].key].cost-FX[S.hand[a].key].cost);const topCost=FX[S.hand[idxs[0]].key].cost;const top=idxs.filter(i=>FX[S.hand[i].key].cost===topCost);const pick=top[Math.floor(Math.random()*top.length)];const card=S.hand[pick],fx=FX[card.key];S.bossMana-=fx.cost;S.hand.splice(pick,1);const p=mkPlay(fx);p._card=card;S.plays.push(p);log("dm",`Casts <b>${fx.n}</b> (spent ${fx.cost}, ${S.bossMana} left).`);cast++;}
+  /* P6.2: choose by VALUE, not cost — filter to non-fizzles the enemy can afford, score each with castValue, and
+     hold premium removal for a real target (the removal floor mirrors the instant windows). Develops with the best
+     body when nothing better; tie-break favours the cheaper card (mana left for a second play), then a true tie. */
+  let cast=0,guard=24;const phase=(which===2)?'main2':'main1';
+  while(guard-->0){
+    const opts=S.hand.map((c,i)=>({i,fx:FX[c.key]}))
+      .filter(o=>o.fx&&o.fx.type!=='land'&&o.fx.cost<=usableMana()&&wouldDoSomething(o.fx))
+      .map(o=>({i:o.i,fx:o.fx,val:castValue(o.fx,{phase})}))
+      .filter(o=>o.fx.target?(o.val>=enemyActThreshold()):(o.val>0));/* removal: hold unless a real target; develop: any positive value */
+    if(!opts.length)break;
+    opts.sort((a,b)=>(b.val-a.val)||(a.fx.cost-b.fx.cost));
+    const bv=opts[0].val,bc=opts[0].fx.cost,top=opts.filter(o=>o.val===bv&&o.fx.cost===bc);
+    const o=top[Math.floor(Math.random()*top.length)];const card=S.hand[o.i],fx=o.fx;
+    S.bossMana-=fx.cost;S.hand.splice(o.i,1);const p=mkPlay(fx);p._card=card;S.plays.push(p);
+    log("dm",`Casts <b>${fx.n}</b> (spent ${fx.cost}, ${S.bossMana} left).`);cast++;}/* value drives the pick but is NOT logged — the enemy's internal threat math stays hidden (matches the instant-window/lethal cast logs) */
   if(which===1&&S.tokens.length===0&&!S.cmd.inPlay&&!summonedCmd&&!S.plays.some(p=>p._enemyCmd&&p.status==='pending')){const rb=S.boss.colors||["R"];const rn=rb.includes('B')&&!rb.includes('R')?"Pit Spawn":(rb.includes('R')&&!rb.includes('B')?"Goblin Whelp":"Ember Servant");applyRun(["spawn",rn,1,1,[],rb.join('')]);log("dm",`🜂 <b>Resurgence</b> — a 1/1 ${rn}.`);}
   if(S.plays.some(p=>p.status==='pending'))showPlays();
   if(!cast&&!summonedCmd&&which===1&&!S.cmd.inPlay)log("dm",`${ENs()} can't afford a cast — still ramping.`);
@@ -1390,7 +1445,8 @@ function youMain(){/* freeform: use your board tools */}
 function youCombat(){log("you",`Combat — pick attackers in “Your attack,” hit Swing, or Continue to skip.`);enemyInstant("your combat");}
 function youEnd(){enemyInstant("your end step");log("you",`You end your turn.`);}
 /* P4.4: at instant-speed windows during YOUR turn the enemy MAY (not must) propose an instant — a freedom like a player holding up mana, NOT an every-window event. Reuses the P4.2 visible proposal (context 'window'); the random gate is a placeholder for the P6 when/whether judgment, and the affordable+would-do filter keeps instant-light enemies quiet. Skipped while a combat resolver is open — the mid-combat block-removal hook (kill a blocker AFTER blocks are declared, prune + re-predict combat) is a documented P4.4 follow-up. */
-function enemyInstant(win){if(S.over||S.activeTurn!=='you'||S.stackProposal||S.combat)return;const cands=buildEnemyCandidates(null);/* P6.1: explicit null — a proactive instant-speed window answers no specific spell (the 'counter' value case is dormant) */if(!cands.length)return;if(Math.random()>0.4)return;
+function enemyInstant(win){if(S.over||S.activeTurn!=='you'||S.stackProposal||S.combat)return;const cands=buildEnemyCandidates(null);/* P6.1: explicit null — a proactive instant-speed window answers no specific spell (the 'counter' value case is dormant) */if(!cands.length)return;
+  if((cands[0].value||0)<enemyActThreshold())return;/* P6.2: HOLD — the freedom to act at a window is a value judgment (would-be best play below the bar), not a coin flip; an enemy with mana + a usable instant but no worthy target stays quiet, like a thinking player */
   S.stackProposal={context:'window',forName:win,win:win,candidates:cands,choice:cands[0].key};
   log("dm",`⚡ ${ENs()} weighs an instant (${win})…`);showPlays();}
 
@@ -1511,7 +1567,9 @@ function submitQuickCast(){castConfig(readQuickForm());}
 /* P4.2: after every player cast the enemy PROPOSES a visible stack response (or "let it resolve") — like the attack/block proposal. Only affordable instants that would actually do something are offered (target validity). The player approves/edits the enemy's play. Deeper threat/value selection of WHICH response & WHETHER to respond is P6.1/P6.2; for now the default pick is the costliest candidate and the player drives the rest. */
 /* P4.4: shared candidate list — the enemy's affordable instants that would actually do something (no fizzles). Default order = costliest (placeholder for P6 value selection). Reused by the cast-response (P4.2) and the proactive instant-speed windows (P4.4). */
 function buildEnemyCandidates(item){const seen={},cands=[];S.hand.forEach(c=>{const fx=FX[c.key];if(!fx||fx.type!=='instant')return;if(fx.cost>usableMana())return;if(!enemyInstantWouldDo(fx))return;if(seen[c.key])return;seen[c.key]=true;cands.push({key:c.key,n:fx.n,cost:fx.cost,target:!!fx.target,value:bestTargetThreat(fx,item)});});/* P6.1: order by VALUE (best threat answered), then by efficiency (cheapest) — replaces the P4.2 costliest placeholder; default choice (cands[0]) is now the smartest response */cands.sort((a,b)=>(b.value-a.value)||(a.cost-b.cost));return cands;}
-function enemyRespondToCast(item){if(S.over||!item)return;const cands=buildEnemyCandidates(item);if(!cands.length){S.stackProposal=null;return;}S.stackProposal={context:'cast',forId:item.id,forName:item.name||item.n||'your spell',candidates:cands,choice:cands[0].key};showPlays();}
+function enemyRespondToCast(item){if(S.over||!item)return;const cands=buildEnemyCandidates(item);
+  if(!cands.length||(cands[0].value||0)<enemyActThreshold()){S.stackProposal=null;return;}/* P6.2: hold a low-value response (the deferred P4.2 "WHETHER to respond") — only answer a cast when the best response clears the act bar */
+  S.stackProposal={context:'cast',forId:item.id,forName:item.name||item.n||'your spell',candidates:cands,choice:cands[0].key};showPlays();}
 /* lightweight, non-mutating target-validity guard — mirrors applyTarget's "is there a legal target?" branches so the enemy never proposes a fizzle. Ward affordability is deferred to P6.2. Non-targeted instants (burn/heal/spawn/rule) always do something. */
 function enemyInstantWouldDo(fx){const t=fx&&fx.target;if(!t)return true;
   const sc=fx.color?String(fx.color).split(''):((S.boss&&S.boss.colors)||[]);
