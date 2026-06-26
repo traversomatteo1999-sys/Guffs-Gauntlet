@@ -1315,12 +1315,20 @@ function pwAct(){if(S.over)return;const pw=S.pw;let ab;
   const p=mkPlay({n:`${pw.name}: ${ab.n} (${ab.sign>0?'+':''}${ab.sign})`,type:'instant',text:ab.text,selfLoss:ab.selfLoss,run:ab.run,target:ab.target,color:ab.color,cost:0});
   S.plays.push(p);log("dm",`\u2726 ${pw.name} uses <b>${ab.n}</b>${ab.ult?' — ULTIMATE':''} (loyalty ${pw.loy}).`);showPlays();}
 function vaelDrawStep(){vaelDraw(1);log("dm",`${ENs()} draws. (hand ${S.hand.length} · library ${S.lib.length})`);}
+/* P5.2 AI: would this enemy cast whiff? Skip removal with no valid target (hold it for threats), and an anthem with no board or after combat (land the finishers when they matter). */
+function enemyCastUseless(fx,which){
+  if(!fx)return false;
+  const runs=Array.isArray(fx.run)?(Array.isArray(fx.run[0])?fx.run:[fx.run]):[];
+  if(runs.some(r=>r&&r[0]==='anthem')){if(which===2)return true;if(S.tokens.length===0&&!(S.cmd&&S.cmd.inPlay))return true;}
+  if(fx.target){let hasTarget;if(fx.target==='walkerMinLoy3')hasTarget=(S.my.walkers||[]).length>0;else if(fx.target==='destroyToughLE2')hasTarget=S.my.creatures.some(c=>effT(c)<=2);else hasTarget=S.my.creatures.length>0;if(!hasTarget)return true;}
+  return false;
+}
 function vaelMain(which){
   let summonedCmd=false;
   if(which===1)playEnemyLand();
   if(which===1&&!S.cmd.inPlay&&!S.plays.some(p=>p._enemyCmd&&p.status==='pending')&&usableMana()>=S.cmd.cost){S.bossMana-=S.cmd.cost;S.plays.push({id:S.nextId++,_enemyCmd:true,side:'boss',status:'pending',n:S.cmd.n,type:'creature',cost:S.cmd.cost,color:(S.boss.colors||['R']).join(''),text:`♛ ${ENs()}'s commander — resolves to its battlefield, summoning-sick.`});summonedCmd=true;log("dm",`♛ ${ENs()} casts <b>${S.cmd.n}</b> from its command zone (spent ${S.cmd.cost}, ${S.bossMana} left). It's on the stack.`);}
   let cast=0,guard=24;
-  while(guard-->0){const idxs=S.hand.map((c,i)=>i).filter(i=>FX[S.hand[i].key].type!=='land'&&FX[S.hand[i].key].cost<=usableMana());if(!idxs.length)break;idxs.sort((a,b)=>FX[S.hand[b].key].cost-FX[S.hand[a].key].cost);const topCost=FX[S.hand[idxs[0]].key].cost;const top=idxs.filter(i=>FX[S.hand[i].key].cost===topCost);const pick=top[Math.floor(Math.random()*top.length)];const card=S.hand[pick],fx=FX[card.key];S.bossMana-=fx.cost;S.hand.splice(pick,1);const p=mkPlay(fx);p._card=card;S.plays.push(p);log("dm",`Casts <b>${fx.n}</b> (spent ${fx.cost}, ${S.bossMana} left).`);cast++;}
+  while(guard-->0){const idxs=S.hand.map((c,i)=>i).filter(i=>FX[S.hand[i].key].type!=='land'&&FX[S.hand[i].key].cost<=usableMana()&&!enemyCastUseless(FX[S.hand[i].key],which));if(!idxs.length)break;idxs.sort((a,b)=>FX[S.hand[b].key].cost-FX[S.hand[a].key].cost);const topCost=FX[S.hand[idxs[0]].key].cost;const top=idxs.filter(i=>FX[S.hand[i].key].cost===topCost);const pick=top[Math.floor(Math.random()*top.length)];const card=S.hand[pick],fx=FX[card.key];S.bossMana-=fx.cost;S.hand.splice(pick,1);const p=mkPlay(fx);p._card=card;S.plays.push(p);log("dm",`Casts <b>${fx.n}</b> (spent ${fx.cost}, ${S.bossMana} left).`);cast++;}
   if(which===1&&S.tokens.length===0&&!S.cmd.inPlay&&!summonedCmd&&!S.plays.some(p=>p._enemyCmd&&p.status==='pending')){const rb=S.boss.colors||["R"];const rn=rb.includes('B')&&!rb.includes('R')?"Pit Spawn":(rb.includes('R')&&!rb.includes('B')?"Goblin Whelp":"Ember Servant");applyRun(["spawn",rn,1,1,[],rb.join('')]);log("dm",`🜂 <b>Resurgence</b> — a 1/1 ${rn}.`);}
   if(S.plays.some(p=>p.status==='pending'))showPlays();
   if(!cast&&!summonedCmd&&which===1&&!S.cmd.inPlay)log("dm",`${ENs()} can't afford a cast — still ramping.`);
