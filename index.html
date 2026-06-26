@@ -424,6 +424,7 @@
   <div class="panel" style="margin-top:12px">
     <h2>🗡 Your attack <span class="tag">pick attackers · enemy blocks</span></h2>
     <p class="manaline">Tap an attacker to select it, then Swing. Tapped/defender creatures can't attack.</p>
+    <div class="btnrow" style="margin-top:4px"><button class="mini azor" id="selAllAtk" onclick="selectAllAttackers()">✓ Select all attackers</button></div>
     <div class="creatures" id="atkPick"></div>
     <div class="btnrow"><button class="big azor inline" id="swingBtn" onclick="swing()">⚔ Swing! (enemy declares blocks)</button></div>
   </div>
@@ -1159,7 +1160,11 @@ function render(){
   if(S.combat)renderCombat();
   applyTabs();applyLog();
 }
-function renderAtkPick(){const box=$("atkPick");box.innerHTML="";const av=S.my.creatures.filter(c=>!c.tapped&&!c.sick&&!c.phased&&!kw(c,'defender'));if(!av.length){box.innerHTML='<span class="empty">No untapped creatures to attack with. Log your board above.</span>';return;}
+/* P7.3: one-click select-all (toggles to clear-all when everything eligible is already picked). */
+function selectAllAttackers(){const av=S.my.creatures.filter(c=>!c.tapped&&!c.sick&&!c.phased&&!kw(c,'defender'));if(!av.length){log("sys","No untapped, non-sick, non-defender creatures to attack with.");return;}const allOn=av.every(c=>c._atk);av.forEach(c=>c._atk=!allOn);log("you",allOn?"Cleared all attackers.":`Selected all ${av.length} eligible attacker${av.length===1?'':'s'}.`);render();}
+function renderAtkPick(){const box=$("atkPick");box.innerHTML="";const av=S.my.creatures.filter(c=>!c.tapped&&!c.sick&&!c.phased&&!kw(c,'defender'));
+  const selBtn=$("selAllAtk");if(selBtn){selBtn.disabled=!av.length;const allOn=av.length&&av.every(c=>c._atk);selBtn.textContent=allOn?'✕ Clear all attackers':'✓ Select all attackers';}
+  if(!av.length){box.innerHTML='<span class="empty">No untapped creatures to attack with. Log your board above.</span>';return;}
   av.forEach(c=>{const el=document.createElement("div");el.className="crea";el.innerHTML=`<div class="cn">${c.name}</div><div class="cpt">${effP(c)}/${effT(c)}</div><div class="badges">${(c.kw||[]).map(k=>`<span class="badge kw">${k}</span>`).join("")}</div><button class="atk mini ${c._atk?'sel':''}" style="margin-top:6px;width:100%" onclick="toggleAtk(${c.id})">${c._atk?'attacking ✓':'attack'}</button>`;box.appendChild(el);});}
 function renderMy(){
   const mc=$("myCrea");mc.innerHTML="";if(!S.my.creatures.length)mc.innerHTML='<span class="empty">none logged</span>';
