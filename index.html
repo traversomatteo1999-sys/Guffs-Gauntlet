@@ -323,7 +323,7 @@
   <header>
     <div class="eyebrow">Guff's Gauntlet · Solo Commander RPG · Engine v40</div>
     <h1><span class="lvl">Level I</span> — The Warren of Embers</h1>
-    <p class="subtitle">Three enemy generals, one descent. Log your board; declare attacks and the enemy blocks; the enemy attacks and you block. Each room is a fresh game against a new foe — only your life and loot carry deeper.</p>
+    <p class="subtitle">One descent, three wardens, no road back up. Each room is a fresh game against a foe you have not yet met — you declare attacks and it blocks; it strikes and you answer. Only your life and your loot carry deeper into the dark.</p>
     <div class="track" id="track"></div>
   </header>
 
@@ -517,7 +517,7 @@
     <div class="menubox">
       <div class="eyebrow">Guff's Gauntlet · Solo Commander RPG · Engine v40</div>
       <h1 style="margin:.08em 0 .18em"><span class="lvl">Level I</span> — The Warren of Embers</h1>
-      <p class="subtitle">A solo Commander dungeon crawl. Choose a profile, build a library of your own cards, then descend to face three enemy generals — you learn each one's name only by beating it.</p>
+      <p class="subtitle">A solo Commander dungeon-crawl. Build a library of your own cards, choose your difficulty, and descend the Warren of Embers — three wardens hold the dark between you and its bottom, and you learn each one's name only by beating it out of them.</p>
       <div class="menugrid">
         <div class="menucard">
           <div class="subh"><span>Profile</span></div>
@@ -1790,7 +1790,7 @@ function openLore(){const who=(prof()&&prof().name)||'Adventurer';let h=`<h2 cla
     const frame=(seen&&key&&typeof ART!=='undefined'&&ART[key])?`<div class="loreframe" style="--acc:${acc}" onclick="openArt('${key}','${(room.villain||'').replace(/'/g,"")}')" title="Open ${room.villain} — full art in a new window"><img src="${ART[key]}" alt="${room.villain}"><span class="lf-hint">⤢ view</span></div>`:`<div class="loreframe locked"><span>?</span></div>`;
     h+=`<div class="loreent has-art${cur?' cur':''}">${frame}<div class="lorebody"><div class="loretitle">${seen?room.villain:'???'} <span class="lorecol">[${seen?(room.colors||[]).join("/"):'??'}]</span>${cur?'<span class="lorenow">— you are here</span>':''}</div><div class="loredom">${room.name}${room.isVael?' · final boss':''}</div><div class="loretext">${seen?room.lore:'A foe you have not yet faced. Descend to learn its name and its nature.'}</div></div></div>`;});
   h+=`<div class="loreent has-art">${(typeof ART!=='undefined'&&ART.merchant)?`<div class="loreframe" style="--acc:var(--gold)" onclick="openArt('merchant','The Wandering Merchant')" title="Open The Wandering Merchant — full art in a new window"><img src="${ART.merchant}" alt="The Wandering Merchant"><span class="lf-hint">⤢ view</span></div>`:`<div class="loreframe locked"><span>?</span></div>`}<div class="lorebody"><div class="loretitle">The Wandering Merchant <span class="lorecol">[?]</span></div><div class="loredom">Between the gates</div><div class="loretext">No one sells torches to people walking into a fire — unless the torches are the point. The Merchant keeps no name and is always one step further down than you last saw them. Spend your gold; it is the only thing the Warren cannot take back from you.</div></div></div>`;
-  h+=`<p class="manaline" style="margin-top:12px">Beneath Vael's throne the slag turns wet underfoot. The <b>Drowned Conclave</b> — Level II — waits in colder water below. But that is a descent for another day.</p>`;
+  h+=`<p class="manaline" style="margin-top:12px">Beneath the Warren's lowest fires the slag turns wet underfoot. The <b>Drowned Conclave</b> — Level II — waits in colder water below. But that is a descent for another day.</p>`;
   $("modalBody").innerHTML=h;$("overlay").classList.add("show");}
 function villainAccent(room){const c=((room&&room.colors)||[])[0];return c==='B'?'var(--purp)':c==='R'?'var(--ember)':c==='U'?'var(--azor)':c==='G'?'var(--ok)':'var(--gold)';}
 function openArt(key,name){if(typeof ART==='undefined'||!ART[key])return;if(typeof window==='undefined'||!window.open)return;const w=window.open('','_blank');if(!w)return;w.document.write(`<!doctype html><html style="background:#0b0c10"><head><meta charset="utf-8"><title>${name||'Warden'} — Guff's Gauntlet</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;padding:0;height:100%;background:#0b0c10;overflow:hidden}body{display:flex;align-items:center;justify-content:center}img{max-width:100%;max-height:100vh;display:block;border:0;outline:0}</style></head><body><img src="${ART[key]}" alt="${name||''}"></body></html>`);w.document.close();}
