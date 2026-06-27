@@ -68,8 +68,8 @@
 | &nbsp;&nbsp;P8.3 ✦ Cast a spell = combined launcher (retire ⚡ Quick Cast) | ✅ **done** — all 3 board ✦ Cast buttons → `openCardSearch`; ⚡ Quick Cast retired (functions + buttons deleted) |
 | &nbsp;&nbsp;P8.4 ✎ Create a card (homebrew creator, Library-homed) | ✅ **done** — creator relabeled **✎ Create a card** in the Library + reachable from the launcher's "can't find it?" link *(creator's now-redundant From-library row left as minor cleanup → P9.5)* |
 | &nbsp;&nbsp;P8.5 Decklist paste-import (bulk, vendor-neutral) | ✅ **built & verified** (📋 Paste-a-decklist mode in the launcher; resolve → review → add-all; lands skipped+counted) |
-| **Phase 9 — Player toolbox + instruction overhaul** | ⬜ **PLANNED** |
-| &nbsp;&nbsp;P9.1 Universal move-to-zone engine (incl. return-to-hand) | ⬜ planned |
+| **Phase 9 — Player toolbox + instruction overhaul** | 🔨 **IN PROGRESS** (branch `phase-9-toolbox`) |
+| &nbsp;&nbsp;P9.1 Universal move-to-zone engine (incl. return-to-hand) | 🔨 **board→zone done & verified** (↩ return-to-hand + tuck/clean-exile/graveyard, both boards, death-safe); reanimate-from-zone + player-exile-return paths next |
 | &nbsp;&nbsp;P9.2 Change control (steal / give) | ⬜ planned |
 | &nbsp;&nbsp;P9.3 Per-permanent extras (copy · flip · markers · direct dmg) | ⬜ planned |
 | &nbsp;&nbsp;P9.4 Enemy hand &amp; library completeness (tutor / reanimate / draw) | ⬜ planned |
@@ -666,6 +666,23 @@ One shared mover replaces the scattered one-off zone fns and closes most gaps at
   stay; the menu is the complete set.
 - **Refactor, don't duplicate** (principles 1 & 6): `myGyReturn`/`myGyToExile`/`gyToExile`/`exToGy`/
   `dtPlayCard` become thin callers of `moveCard`; dead one-offs removed.
+
+**P9.1a landed (2026-06-27, branch `phase-9-toolbox`).** The **board→zone** half is built & verified:
+`moveBoardCard(obj,to)` + `moveBoardById(scope,id,to)` route a board permanent to `hand · library
+(top/bottom/shuffle) · exile · graveyard`, **owner-aware** (enemy → modelled `S.hand/lib/gy/exile`, the
+keyless body carried by `name`; player hand/library are **physical** → leaves the app; player graveyard/exile
+→ `S.myGy/myExile`). **NON-death** — no Pit's Tithe (destroy/sacrifice via `killMy`/`removeRef`/`slay` still
+fire it); a **token ceases** when it leaves the battlefield; a **commander** routes to the command zone
+(`sendCmdToZone`). Affordance: a one-tap **↩ hand** on enemy cards + a **"move to" row** (`moveRow`) in the
+enemy drawer (token only) and all three player drawers. Zone chips (`libNames`/`enemyZoneChip`/dt reveal/
+`gyToExile`/`exToGy`) gained a **`c.name` fallback** so a keyless moved card still labels — and that fixed a
+**real crash** (`gyToExile`/`exToGy` did unguarded `FX[c.key].n`). **Verified:** syntax gate · id-diff = no
+ids changed (handler-only UI) · **26 jsdom assertions** (return-to-hand no-Tithe + name; tuck top/bottom/
+shuffle; clean exile/graveyard; death still bleeds; player physical hand + clean gy/exile; token cease; zone
+buttons don't crash on a moved card; drawers render the row) · **adversarial review (3 lenses) = 0 findings**.
+**Still TODO for P9.1: zone→battlefield reanimate (enemy gy/exile → board; today only player `myGyReturn`),
+the player exile-return paths (your exile is still a dead end for some routes), and folding the one-off zone
+fns into one `moveCard`.**
 
 ### P9.2 — Change control (steal / give)
 

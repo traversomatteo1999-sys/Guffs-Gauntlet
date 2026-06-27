@@ -804,7 +804,7 @@ function bossDeckOut(){if(S.over)return;log("dm",`📚 <b>${ENs()} reaches for a
    reorder, mill, exile, shuffle, and force discards — i.e. move cards between library / hand / graveyard
    / exile. Anything fancier (tutoring a card into play, casting from their deck, transforming cards) the
    abstract model can't represent, so those effects simply don't apply. */
-function libNames(arr){return arr.map(c=>(FX[c.key]&&FX[c.key].n)||'card');}
+function libNames(arr){return arr.map(c=>(FX[c.key]&&FX[c.key].n)||c.name||'card');}
 function deckShuffle(){for(let a=S.lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[S.lib[a],S.lib[b]]=[S.lib[b],S.lib[a]];}log("you",`You shuffle ${ENs()}'s library (${S.lib.length} cards).`);render();}
 function deckMill(n){n=Math.max(0,n|0);const moved=[];for(let i=0;i<n&&S.lib.length;i++)moved.push(S.lib.shift());moved.forEach(c=>S.gy.push(c));if(moved.length)log("you",`You mill the top ${moved.length} of ${ENs()}'s library: ${libNames(moved).join(", ")} → graveyard.`);else log("you",`${ENs()}'s library is empty — nothing to mill.`);return moved;}
 function deckExileTop(n){n=Math.max(0,n|0);const moved=[];for(let i=0;i<n&&S.lib.length;i++)moved.push(S.lib.shift());moved.forEach(c=>S.exile.push(c));if(moved.length)log("you",`You exile the top ${moved.length}: ${libNames(moved).join(", ")}.`);else log("you",`${ENs()}'s library is empty — nothing to exile.`);return moved;}
@@ -830,7 +830,7 @@ function dtPlayCard(zone,i){if(S.over)return;const arr=dtPlayZone(zone);if(!arr)
 function dtRender(){$("modalBody").innerHTML=deckToolsHTML();}
 function deckToolsHTML(){
   const disc=`<p class="manaline" style="margin:2px 0 8px;line-height:1.5">The dungeon keeps ${ENs()}'s deck as a known, ordered pile (top first). You can look, reorder, mill, exile, shuffle, and force discards. Anything fancier — tutoring a specific card into play, casting from their deck, transforming cards — the abstract model can't represent, so those effects simply don't apply.</p>`;
-  const fxItem=(c,actions)=>{const fx=FX[c.key]||{};return `<div class="libitem"><div class="li-h"><span class="li-n">${fx.n||'card'}</span><span class="cost">${fx.cost||0}</span><span class="typechip ${fx.type||'spell'}">${fx.type||'spell'}</span>${fxColorDots(fx)}</div>${actions?`<div class="li-a">${actions}</div>`:''}${fx.text?`<div class="manaline" style="flex:1 0 100%;margin-top:3px;color:var(--bone-dim)">${fx.text}</div>`:''}</div>`;};
+  const fxItem=(c,actions)=>{const fx=FX[c.key]||{};return `<div class="libitem"><div class="li-h"><span class="li-n">${fx.n||c.name||'card'}</span><span class="cost">${fx.cost||0}</span><span class="typechip ${fx.type||'spell'}">${fx.type||'spell'}</span>${fxColorDots(fx)}</div>${actions?`<div class="li-a">${actions}</div>`:''}${fx.text?`<div class="manaline" style="flex:1 0 100%;margin-top:3px;color:var(--bone-dim)">${fx.text}</div>`:''}</div>`;};
   if(_dt.mode==='play'){const pay=_dt.payMana!==false;
     const playRow=(c,zone,i)=>fxItem(c,`<button class="tiny ember" onclick="dtPlayCard('${zone}',${i})">▸ play</button>`);
     const libTop=S.lib.slice(0,Math.min(S.lib.length,dtN()));
@@ -862,7 +862,7 @@ function deckToolsHTML(){
       <button class="tiny ember" onclick="_dt.mode='discard';dtRender()">🗑 Force discard</button>
       <button class="tiny ok" onclick="_dt.mode='play';dtRender()">🎴 Inspect &amp; play a card</button>
     </div>
-    ${_dt.reveal?`<div class="menucard" style="margin-top:10px"><div class="subh"><span>${_dt.reveal.label}</span></div><div class="zchips">${_dt.reveal.cards.length?_dt.reveal.cards.map(c=>`<span class="chip">${(FX[c.key]&&FX[c.key].n)||'card'} <span class="manaline">${(FX[c.key]&&FX[c.key].cost)||0}</span></span>`).join(''):'<span class="manaline">(none)</span>'}</div></div>`:''}
+    ${_dt.reveal?`<div class="menucard" style="margin-top:10px"><div class="subh"><span>${_dt.reveal.label}</span></div><div class="zchips">${_dt.reveal.cards.length?_dt.reveal.cards.map(c=>`<span class="chip">${(FX[c.key]&&FX[c.key].n)||c.name||'card'} <span class="manaline">${(FX[c.key]&&FX[c.key].cost)||0}</span></span>`).join(''):'<span class="manaline">(none)</span>'}</div></div>`:''}
     <div class="btnrow" style="margin-top:12px"><button class="tiny" onclick="closeOverlay()">Done</button></div>`;}
 function dtN(){const f=$("dtN");const v=f?parseInt(f.value,10):NaN;return Math.max(1,isNaN(v)?(_dt.n||3):v);}
 function dtLook(where){const n=dtN();_dt.n=n;const cards=where==='top'?S.lib.slice(0,n):S.lib.slice(Math.max(0,S.lib.length-n));_dt.reveal={label:where==='top'?`Top ${cards.length} of library`:`Bottom ${cards.length} of library`,cards};log("you",`You look at the ${where} ${cards.length} of ${ENs()}'s library: ${cards.length?libNames(cards).join(", "):'(empty)'}.`);dtRender();}
@@ -984,6 +984,24 @@ function killMy(c){/* route a destroyed player permanent: commander→command zo
   if(c.token){log("you",`<b>${c.name}</b> (token) is destroyed and ceases to exist.`);return;}/* P7.1: a dying token leaves NO graveyard/exile entry — it simply ceases to exist (matches enemy tokens, which removeRef already splices) */
   if(c.dies==='exile'){S.myExile.push(c);log("you",`<b>${c.name}</b> is exiled.`);}else{S.myGy.push(c);log("you",`<b>${c.name}</b> goes to your graveyard.`);}
 }
+/* ===== P9.1: universal move-to-zone for a BOARD permanent (bounce / tuck / clean exile|graveyard) =====
+   These are NON-death moves — they do NOT fire the Pit's Tithe (that stays on destroy/sacrifice via
+   killMy/removeRef). Owner-aware: the player's hand & library are PHYSICAL (the card simply leaves the
+   app — you hold it); the enemy's hidden zones are modelled, and a board body (which has no FX key) is
+   moved carrying its name so the zone chips can still label it. A token that leaves the battlefield ceases. */
+function _movedCard(obj){return {key:obj.key||null,name:obj.name||'card',_moved:true,color:(obj.color||[]).slice()};}
+function _detachBoard(obj){let i=S.tokens.indexOf(obj);if(i>=0){S.tokens.splice(i,1);return 'enemy';}let cat=null;["creatures","artifacts","enchants","walkers"].forEach(k=>{if(S.my[k].indexOf(obj)>=0)cat=k;});if(cat){obj._cat=cat;S.my[cat].splice(S.my[cat].indexOf(obj),1);return 'player';}return null;}
+function moveBoardCard(obj,to){if(!obj)return;
+  if(obj.isCmd){sendCmdToZone(obj,false);return;}/* a commander to any zone → command zone (clean) */
+  const nm=obj.name||'card';const side=_detachBoard(obj);if(!side)return;const enemy=(side==='enemy');const who=enemy?ENs()+"'s":'your';
+  if(obj.token){log("you",`<b>${nm}</b> (token) ceases to exist.`);render();return;}/* a token leaving the battlefield ceases */
+  if(to==='hand'){if(enemy)S.hand.push(_movedCard(obj));log("you",`↩ <b>${nm}</b> returns to ${who} hand.`);}
+  else if(to==='graveyard'){if(enemy)S.gy.push(_movedCard(obj));else S.myGy.push(obj);log("you",`<b>${nm}</b> is put into ${who} graveyard.`);}
+  else if(to==='exile'){if(enemy)S.exile.push(_movedCard(obj));else S.myExile.push(obj);log("you",`⊘ <b>${nm}</b> is exiled.`);}
+  else if(to==='libtop'||to==='libbottom'||to==='libshuffle'){if(enemy){const card=_movedCard(obj);if(to==='libtop')S.lib.unshift(card);else S.lib.push(card);if(to==='libshuffle'){for(let a=S.lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[S.lib[a],S.lib[b]]=[S.lib[b],S.lib[a]];}}}log("you",`<b>${nm}</b> ${to==='libtop'?'goes to the top of':to==='libbottom'?'goes to the bottom of':'is shuffled into'} ${who} library.`);}
+  render();}
+function moveBoardById(scope,id,to){let obj=scope==='token'?S.tokens.find(x=>x.id===id):(S.my[scope]||[]).find(x=>x.id===id);if(obj)moveBoardCard(obj,to);}
+function moveRow(scope,id,enemy){const idl=id===null?'null':id;const lib=enemy?`<button class="tiny" onclick="moveBoardById('${scope}',${idl},'libtop')">lib top</button><button class="tiny" onclick="moveBoardById('${scope}',${idl},'libbottom')">lib bottom</button><button class="tiny" onclick="moveBoardById('${scope}',${idl},'libshuffle')">🔀 lib</button>`:`<button class="tiny" onclick="moveBoardById('${scope}',${idl},'libtop')">→ library</button>`;return `<div class="drow"><span class="dlab">move to</span><button class="tiny" onclick="moveBoardById('${scope}',${idl},'hand')" title="bounce — not a death">↩ hand</button>${lib}<button class="tiny" onclick="moveBoardById('${scope}',${idl},'exile')">⊘ exile</button><button class="tiny" onclick="moveBoardById('${scope}',${idl},'graveyard')">⚰ grave</button></div>`;}
 /* P7.1: token/treasure EXPIRY infra (the `expires` flag from P0.4). A token marked "expires" lasts only
    "until end of turn" — it ceases to exist at the next end step (either player's), on BOTH boards. Ceasing
    is not a death (no graveyard, no Pit's Tithe). The flag is a manual toggle in the token's ⚙ drawer so the
@@ -1116,7 +1134,7 @@ function renderTrack(){const tr=$("track");tr.innerHTML="";DUNGEON.forEach((r,i)
 function kwSelect(scope,id){const cur=getCre(scope,id);const opts=KW_LIST.filter(k=>!(cur.kw||[]).includes(k));return `<select onchange="addKw('${scope}',${id===null?'null':id},this.value);this.value=''"><option value="">＋kw</option>${opts.map(k=>`<option>${k}</option>`).join("")}</select>`;}
 function getCre(scope,id){if(scope==='cmd')return S.cmd;if(scope==='token')return S.tokens.find(c=>c.id===id);return S.my.creatures.find(c=>c.id===id);}
 function kwBadges(scope,id,c){return (c.kw||[]).map(k=>`<span class="badge kw" onclick="delKw('${scope}',${id===null?'null':id},'${k}')">${k} ✕</span>`).join("");}
-function enemyCard(c){const buff=c.plus||0,deb=c.minus||0;return `<button class="slay mini ember" onclick="slay(${c.id})">Slay</button>
+function enemyCard(c){const buff=c.plus||0,deb=c.minus||0;return `<button class="slay mini ember" onclick="slay(${c.id})">Slay</button><button class="mini" onclick="moveBoardById('token',${c.id},'hand')" title="bounce — return to ${ENs()}'s hand (not a death)">↩ hand</button>
   <div class="cn">${c.name}${c.sick?' <span class="tag">sick</span>':''}</div>
   <div class="cpt">${effP(c)}/${effT(c)}${buff?` <span class="buff">+${buff}</span>`:''}${deb?` <span class="deb">−${deb}</span>`:''} ${colorDots(c)}</div>
   <div class="badges">${c.tapped?'<span class="badge tap">tapped</span>':''}${c.phased?'<span class="badge ph">phased out</span>':''}${c.legendary?'<span class="badge leg">legendary</span>':''}${c.token?'<span class="badge tok">token</span>':''}${c.expires?'<span class="badge ph" title="ceases to exist at end of turn">⌛ EOT</span>':''}${(c.prot||[]).length?`<span class="badge prot">prot ${c.prot.join("")}</span>`:''}${c.noAbil?'<span class="badge no">no-abil</span>':''}${kwBadges('token',c.id,c)}${(c.other||[]).map((o,oi)=>`<span class="badge" style="cursor:pointer" title="click to remove" onclick="remCtrOther('token',${c.id},${oi})">${o} ✕</span>`).join("")}</div>
@@ -1213,11 +1231,12 @@ function colorToggles(scope,id,field){const o=getObj(scope,id)||{};const cur=o[f
 function enemyDrawer(scope,id,c){const idl=id===null?'null':id;return `<div class="drawer">
   <div class="drow"><span class="dlab">flags</span><button class="tiny ${c.legendary?'on':''}" onclick="flagObj('${scope}',${idl},'legendary')">legendary</button><button class="tiny ${c.token?'on':''}" onclick="flagObj('${scope}',${idl},'token')">token</button>${scope==='token'?`<button class="tiny ${c.expires?'on':''}" onclick="flagObj('${scope}',${idl},'expires')" title="ceases to exist at the next end of turn">expires (EOT)</button>`:''}<button class="tiny ${c.phased?'on':''}" onclick="flagObj('${scope}',${idl},'phased')">phase out</button></div>
   <div class="drow"><span class="dlab">color</span><div class="setbtns">${colorToggles(scope,id,'color')}</div></div>
-  <div class="drow"><span class="dlab">protection from</span><div class="setbtns">${colorToggles(scope,id,'prot')}</div></div></div>`;}
+  <div class="drow"><span class="dlab">protection from</span><div class="setbtns">${colorToggles(scope,id,'prot')}</div></div>${scope==='token'?moveRow(scope,id,true):''}</div>`;}
 function propBadges(c){let b="";if(c.isCmd)b+='<span class="badge cmd">♛ cmd</span>';if(c.legendary)b+='<span class="badge leg">legendary</span>';if(c.token)b+='<span class="badge tok">token</span>';if(c.token&&c.expires)b+='<span class="badge ph" title="ceases to exist at end of turn">⌛ EOT</span>';if(c.phased)b+='<span class="badge ph">phased out</span>';if(c.dies==='exile')b+='<span class="badge ex">→exile</span>';if((c.prot||[]).length)b+=`<span class="badge prot">prot ${c.prot.join("")}</span>`;if(c.abilP||c.abilA)b+=`<span class="badge">${c.abilP||0}P/${c.abilA||0}A</span>`;if(c.mana)b+=`<span class="badge mana">⛁${c.mana}</span>`;if(c.catk)b+=`<span class="badge tax">atk: ${c.catk.amt} ${c.catk.type}${c.catk.tgt?'·tgt':''}</span>`;if(c.cward)b+=`<span class="badge tax">ward ${c.cward.amt} ${c.cward.type}</span>`;return b;}
 function creatureDrawer(c){const id=c.id;return `<div class="drawer">
   <div class="drow"><span class="dlab">flags</span><button class="tiny ${c.legendary?'on':''}" onclick="flagMy('creatures',${id},'legendary')">legendary</button><button class="tiny ${c.token?'on':''}" onclick="flagMy('creatures',${id},'token')">token</button><button class="tiny ${c.expires?'on':''}" onclick="flagMy('creatures',${id},'expires')" title="ceases to exist at the next end of turn (no graveyard)">expires (EOT)</button><button class="tiny ${c.phased?'on':''}" onclick="flagMy('creatures',${id},'phased')">phase out</button><button class="tiny ${kw(c,'defender')?'on':''}" onclick="toggleKwMy('creatures',${id},'defender')">defender</button></div>
   <div class="drow"><span class="dlab">color</span><div class="setbtns">${colorToggles('creatures',id,'color')}</div></div>
+  ${moveRow('creatures',id,false)}
   <div class="drow"><span class="dlab">protection from</span><div class="setbtns">${colorToggles('creatures',id,'prot')}</div></div>
   <div class="drow"><span class="dlab">abilities</span><span class="lab">passive</span><input type="number" min="0" value="${c.abilP||0}" style="width:42px" onchange="setMy('creatures',${id},'abilP',+this.value)"><span class="lab">active</span><input type="number" min="0" value="${c.abilA||0}" style="width:42px" onchange="setMy('creatures',${id},'abilA',+this.value)"></div>
   <div class="drow"><span class="dlab">taps for mana</span><input type="number" min="0" value="${c.mana||0}" style="width:42px" onchange="setMy('creatures',${id},'mana',+this.value)"></div>
@@ -1229,12 +1248,14 @@ function creatureDrawer(c){const id=c.id;return `<div class="drawer">
 function permDrawer(cat,p){const id=p.id;return `<div class="drawer">
   <div class="drow"><span class="dlab">flags</span><button class="tiny ${p.legendary?'on':''}" onclick="flagMy('${cat}',${id},'legendary')">legendary</button><button class="tiny ${p.token?'on':''}" onclick="flagMy('${cat}',${id},'token')">token</button><button class="tiny ${p.phased?'on':''}" onclick="flagMy('${cat}',${id},'phased')">phase out</button></div>
   <div class="drow"><span class="dlab">color</span><div class="setbtns">${colorToggles(cat,id,'color')}</div></div>
+  ${moveRow(cat,id,false)}
   <div class="drow"><span class="dlab">dies to</span><select onchange="setMy('${cat}',${id},'dies',this.value)"><option value="graveyard" ${p.dies!=='exile'?'selected':''}>graveyard</option><option value="exile" ${p.dies==='exile'?'selected':''}>exile</option></select></div>
   <div class="drow"><span class="dlab">attack tax (enemy pays)</span><input type="number" min="0" value="${p.catk?p.catk.amt:0}" style="width:42px" onchange="setCatk('${cat}',${id},'amt',+this.value)"><select onchange="setCatk('${cat}',${id},'type',this.value)"><option value="mana" ${!p.catk||p.catk.type==='mana'?'selected':''}>mana</option><option value="life" ${p.catk&&p.catk.type==='life'?'selected':''}>life</option></select></div>
   <div class="drow"><span class="dlab">ward (enemy pays to target)${infoBtn('ward')}</span><input type="number" min="0" value="${p.cward?p.cward.amt:0}" style="width:42px" onchange="setCward('${cat}',${id},'amt',+this.value)"><select onchange="setCward('${cat}',${id},'type',this.value)"><option value="mana" ${!p.cward||p.cward.type==='mana'?'selected':''}>mana</option><option value="life" ${p.cward&&p.cward.type==='life'?'selected':''}>life</option></select></div></div>`;}
 function walkerDrawer(w){const id=w.id;return `<div class="drawer">
   <div class="drow"><span class="dlab">legendary</span><span style="color:var(--gold);font-size:.62rem">★ always — planeswalkers are legendary</span></div>
   <div class="drow"><span class="dlab">color</span><div class="setbtns">${colorToggles('walkers',id,'color')}</div></div>
+  ${moveRow('walkers',id,false)}
   <div class="drow"><span class="dlab">dies to</span><select onchange="setMy('walkers',${id},'dies',this.value)"><option value="graveyard" ${w.dies!=='exile'?'selected':''}>graveyard</option><option value="exile" ${w.dies==='exile'?'selected':''}>exile</option></select></div>
   <div class="drow"><span class="dlab">attack tax (enemy pays)</span><input type="number" min="0" value="${w.catk?w.catk.amt:0}" style="width:42px" onchange="setCatk('walkers',${id},'amt',+this.value)"><select onchange="setCatk('walkers',${id},'type',this.value)"><option value="mana" ${!w.catk||w.catk.type==='mana'?'selected':''}>mana</option><option value="life" ${w.catk&&w.catk.type==='life'?'selected':''}>life</option></select></div>
   <div class="drow"><span class="dlab">ward (enemy pays to target)${infoBtn('ward')}</span><input type="number" min="0" value="${w.cward?w.cward.amt:0}" style="width:42px" onchange="setCward('walkers',${id},'amt',+this.value)"><select onchange="setCward('walkers',${id},'type',this.value)"><option value="mana" ${!w.cward||w.cward.type==='mana'?'selected':''}>mana</option><option value="life" ${w.cward&&w.cward.type==='life'?'selected':''}>life</option></select></div>
@@ -1557,13 +1578,14 @@ function enemyZoneChip(c,i,kind){const fx=FX[c.key]||{};const dots=fxColorDots(f
   const acts=kind==='gy'
     ?`<b class="zg" title="play this card for ${ENs()} — onto the stack" style="color:var(--ember)" onclick="dtPlayCard('gy',${i})">▸</b><b class="zx" title="move to exile" onclick="gyToExile(${i})">⊘</b>`
     :`<b class="zg" title="return to graveyard" onclick="exToGy(${i})">↩</b>`;
-  return `<span class="zchip ${kind==='ex'?'ex':''}" title="${embEsc(fx.n||'card')} — ${fx.type||''} ${fx.cost||0}◇${fx.text?' · '+embEsc(fx.text):''}">${dots}${fx.n||'card'} ${cost}${acts}</span>`;}
+  const nm=fx.n||c.name||'card';
+  return `<span class="zchip ${kind==='ex'?'ex':''}" title="${embEsc(nm)} — ${fx.type||''} ${fx.cost||0}◇${fx.text?' · '+embEsc(fx.text):''}">${dots}${embEsc(nm)} ${cost}${acts}</span>`;}
 function renderZones(){if(!$("vaelZones"))return;$("libCount").textContent=S.lib.length;$("handCount").textContent=S.hand.length;
   {const g=$("gyCount");if(g)g.textContent=S.gy.length;const e=$("exCount");if(e)e.textContent=S.exile.length;}
   const gy=$("gyList");gy.innerHTML=S.gy.length?S.gy.map((c,i)=>enemyZoneChip(c,i,'gy')).join(""):'<span class="empty">empty</span>';
   const ex=$("exList");ex.innerHTML=S.exile.length?S.exile.map((c,i)=>enemyZoneChip(c,i,'ex')).join(""):'<span class="empty">empty</span>';}
-function gyToExile(i){const c=S.gy.splice(i,1)[0];if(c){S.exile.push(c);log("you",`Exiled <b>${FX[c.key].n}</b> from the enemy's graveyard.`);render();}}
-function exToGy(i){const c=S.exile.splice(i,1)[0];if(c){S.gy.push(c);log("you",`Returned <b>${FX[c.key].n}</b> from exile to ${ENs()}'s graveyard.`);render();}}
+function gyToExile(i){const c=S.gy.splice(i,1)[0];if(c){S.exile.push(c);log("you",`Exiled <b>${(FX[c.key]&&FX[c.key].n)||c.name||'card'}</b> from the enemy's graveyard.`);render();}}
+function exToGy(i){const c=S.exile.splice(i,1)[0];if(c){S.gy.push(c);log("you",`Returned <b>${(FX[c.key]&&FX[c.key].n)||c.name||'card'}</b> from exile to ${ENs()}'s graveyard.`);render();}}
 function cmdPT(s,n){S.cmd[s]=Math.max(0,S.cmd[s]+n);render();}
 function cmdFieldCard(){const c=S.cmd,buff=c.plus||0,deb=c.minus||0;return `<button class="slay mini ember" onclick="slayCmdBtn()">Slay</button>
   <div class="cn">♛ ${c.n}${c.sick?' <span class="tag">sick</span>':''}${c.tax?` <span class="tag" style="color:var(--ember)">tax +${c.tax}</span>`:''}</div>
