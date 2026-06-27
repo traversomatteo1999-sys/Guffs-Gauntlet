@@ -67,7 +67,7 @@
 | &nbsp;&nbsp;P8.2 Effect-inference layer (AI bits + on-cast effects) | ✅ **built & verified** (`inferEffects` · `buildImportedCard` · inline review chips in result rows) |
 | &nbsp;&nbsp;P8.3 ✦ Cast a spell = combined launcher (retire ⚡ Quick Cast) | 🔨 combined **search-and-add launcher BUILT & verified** (additive, from 🃏 Library); entry-point rewire (✦ Cast a spell → launcher, retire ⚡ Quick Cast) pending |
 | &nbsp;&nbsp;P8.4 ✎ Create &amp; Cast (homebrew creator, Library-homed) | ⬜ planned |
-| &nbsp;&nbsp;P8.5 Decklist paste-import (bulk, vendor-neutral) | ⬜ planned |
+| &nbsp;&nbsp;P8.5 Decklist paste-import (bulk, vendor-neutral) | ✅ **built & verified** (📋 Paste-a-decklist mode in the launcher; resolve → review → add-all; lands skipped+counted) |
 | **Phase 9 — Player toolbox + instruction overhaul** | ⬜ **PLANNED** |
 | &nbsp;&nbsp;P9.1 Universal move-to-zone engine (incl. return-to-hand) | ⬜ planned |
 | &nbsp;&nbsp;P9.2 Change control (steal / give) | ⬜ planned |
@@ -467,8 +467,17 @@ cast → real player stack-item; **imported creature resolves to a 2/2, imported
 offline note; `sfSearch` URL/`-type:land`) · **124 pure-layer unit assertions** · **adversarial integration
 review** (1 medium found & fixed: launcher casts now `closeLibrary()` so the stack/enemy-response window
 aren't occluded by the z50 library overlay). **Next:** entry-point rewire (P8.3 repoint ✦ Cast a spell →
-launcher; P8.4 retire ⚡ Quick Cast + Create & Cast relocation) and the decklist paste mode (P8.5).
+launcher; P8.4 retire ⚡ Quick Cast + Create & Cast relocation).
 *(Dev harness in scratchpad: `scryimport.js`/`fixtures.js`/`test.js` + `boot.js`/`gate.js`/`iddiff.js`.)*
+
+**P8.5 decklist mode landed (2026-06-27).** A **📋 Paste a decklist** tab inside the launcher: paste a
+Moxfield/MTGGoldfish export → **Resolve & review** (`parseDecklist` → `sfCollection` batch) → a review list
+of ✓ matched (preview) · ⛰ N lands skipped (with an *include lands* checkbox) · ✗ not-found names → **★ Add
+N to library** (each via `buildImportedCard` with one global threat). Built entirely on the already-verified
+parser + batch endpoint + combiner. **Verified:** syntax gate · id-diff (only new deck-mode ids added,
+nothing removed) · **44 jsdom assertions** (now incl. mode toggle, land-skip, not-found, add-all). **Phase 8
+import is feature-complete except the entry-point rework (P8.3 repoint ✦ Cast a spell, P8.4 retire ⚡ Quick
+Cast / Create & Cast relocation) and a manual live-online smoke.**
 
 ### P8.1 — Scryfall service layer + pure descriptive mapper (+ DFC faces)
 

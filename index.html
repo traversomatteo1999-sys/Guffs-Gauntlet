@@ -2151,17 +2151,28 @@ async function sfCollection(names){const ids=names.map((n)=>({name:n}));const ou
 
 /* ---- "Add real cards" launcher (search your library + all of Magic; cast or save) ---- */
 let _scryResults=[],_scryFace={},_scryThreat={},_scryCC=false,_scryT=null,_scryAdded={};
-function _scryReset(){_scryResults=[];_scryFace={};_scryThreat={};_scryCC=false;_scryAdded={};if(_scryT){clearTimeout(_scryT);_scryT=null;}}
+let _scryMode='search',_scryDeckThreat='mid',_scryDeckResolved=[],_scryDeckNotFound=[],_scryDeckSkipped=0;
+function _scryReset(){_scryResults=[];_scryFace={};_scryThreat={};_scryCC=false;_scryAdded={};_scryMode='search';_scryDeckThreat='mid';_scryDeckResolved=[];_scryDeckNotFound=[];_scryDeckSkipped=0;if(_scryT){clearTimeout(_scryT);_scryT=null;}}
 function openCardSearch(){if(S.over){alert('The game is over — restart to cast.');return;}_scryReset();$("modalBody").innerHTML=cardSearchHTML();$("overlay").classList.add("show");setTimeout(()=>{const i=$("scryQ");if(i)i.focus();},30);scryDoSearch();}
 function cardSearchHTML(){return `
 <h2>📥 Cast or add a real card</h2>
-<p style="color:var(--bone-dim);font-style:italic">Search your library and all of Magic at once. <b>✦ Cast</b> puts a card on the stack; <b>★ Save</b> keeps it in your library. Set its ⚠ threat so the enemy AI plays sensibly. Lands are skipped — to cast one as a creature, use <b>✦ New card</b>.</p>
-<div class="btnrow" style="margin:4px 0 8px"><input type="text" id="scryQ" placeholder="🔍 type a card name…" oninput="scryDoSearch()" style="flex:1;min-width:0"><button class="mini" id="scryCCBtn" onclick="scryToggleCC()" title="cast as uncounterable">can't be countered: off</button></div>
-<div id="scryOffline" class="manaline" style="color:var(--ember);display:none">Offline — searching your library only. Saved cards still work; Scryfall search needs a connection.</div>
-<div class="subh"><span>Your library <span class="tag" id="scryLibN"></span></span></div>
-<div id="scryLib" class="liblist"></div>
-<div class="subh" style="margin-top:10px"><span>Magic cards <span class="tag" id="scryHits"></span></span><span class="manaline" id="scryStatus"></span></div>
-<div id="scryResults" class="liblist"></div>`;}
+<div class="btnrow" style="margin:2px 0 8px;gap:5px"><button class="tiny ${_scryMode!=='deck'?'on gold':''}" id="scryTabSearch" onclick="scrySetMode('search')">🔍 Search</button><button class="tiny ${_scryMode==='deck'?'on gold':''}" id="scryTabDeck" onclick="scrySetMode('deck')">📋 Paste a decklist</button></div>
+<div id="scrySearchPane"${_scryMode==='deck'?' style="display:none"':''}>
+  <p style="color:var(--bone-dim);font-style:italic">Search your library and all of Magic at once. <b>✦ Cast</b> puts a card on the stack; <b>★ Save</b> keeps it. Set its ⚠ threat so the enemy AI plays sensibly. Lands are skipped — to cast one as a creature, use <b>✦ New card</b>.</p>
+  <div class="btnrow" style="margin:4px 0 8px"><input type="text" id="scryQ" placeholder="🔍 type a card name…" oninput="scryDoSearch()" style="flex:1;min-width:0"><button class="mini" id="scryCCBtn" onclick="scryToggleCC()" title="cast as uncounterable">can't be countered: ${_scryCC?'on':'off'}</button></div>
+  <div id="scryOffline" class="manaline" style="color:var(--ember);display:none">Offline — searching your library only. Saved cards still work; Scryfall search needs a connection.</div>
+  <div class="subh"><span>Your library <span class="tag" id="scryLibN"></span></span></div>
+  <div id="scryLib" class="liblist"></div>
+  <div class="subh" style="margin-top:10px"><span>Magic cards <span class="tag" id="scryHits"></span></span><span class="manaline" id="scryStatus"></span></div>
+  <div id="scryResults" class="liblist"></div>
+</div>
+<div id="scryDeckPane"${_scryMode==='deck'?'':' style="display:none"'}>
+  <p style="color:var(--bone-dim);font-style:italic">Paste a decklist exported from <b>Moxfield</b> or <b>MTGGoldfish</b> (one card per line, e.g. <i>1 Lightning Bolt</i>). Every card is looked up and the matches are added to your library. Lands are skipped.</p>
+  <textarea id="scryDeckText" rows="7" placeholder="1 Lightning Bolt&#10;1 Llanowar Elves&#10;1 Sol Ring" style="width:100%;box-sizing:border-box"></textarea>
+  <div class="btnrow" style="margin:6px 0;flex-wrap:wrap;gap:6px"><span class="lab">threat for all</span><span class="threatseg" style="transform:scale(.85);transform-origin:left">${['low','mid','top'].map((v)=>`<button type="button" id="scryDeckTh_${v}" class="${_scryDeckThreat===v?'on':''}" onclick="scrySetDeckThreat('${v}')">${v}</button>`).join('')}</span><label class="manaline" style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="scryDeckLands">include lands</label><button class="mini ok" onclick="scryDeckResolve()">Resolve &amp; review</button></div>
+  <div id="scryDeckStatus" class="manaline"></div>
+  <div id="scryDeckReview"></div>
+</div>`;}
 function scryToggleCC(){_scryCC=!_scryCC;const b=$("scryCCBtn");if(b){b.textContent="can't be countered: "+(_scryCC?'on':'off');b.classList.toggle('on',_scryCC);}}
 function scryDoSearch(){const q=(($("scryQ")&&$("scryQ").value)||'').trim();renderScryLib(q);const off=$("scryOffline");if(off)off.style.display=importOnline()?'none':'';const st=$("scryStatus");if(_scryT){clearTimeout(_scryT);_scryT=null;}
   if(q.length<2){if(st)st.textContent='';_scryResults=[];renderScryResults();return;}
@@ -2186,6 +2197,27 @@ function scryBuild(i){return SCRY.buildImportedCard(_scryResults[i],{faceIndex:_
 function scryAct(i,mode){if(!_scryResults[i])return;const cfg=scryBuild(i);if(mode==='save'){scrySaveCfg(cfg);_scryAdded[i]=true;renderScryResults();return;}if(mode==='both')scrySaveCfg(cfg);castImportedCfg(JSON.parse(JSON.stringify(cfg)));}
 function scrySaveCfg(cfg){const p=prof();if(!p){alert('Open the Menu and create a profile first.');return;}const c=JSON.parse(JSON.stringify(cfg));c.lid=lidStamp();p.library.push(c);saveDB();log("loot",`★ Added <b>${embEsc(cfg.name)}</b> to your library.`);try{renderLibrary();}catch(e){}}
 function castImportedCfg(cfg){if(S.over){alert('The game is over — restart to cast.');return;}closeLibrary();/* the launcher opens from inside #library (z50) — close it so the stack popup + enemy-response window aren't occluded (mirrors libCast) */castConfig(cfg);}
+/* ---- P8.5: decklist paste-import (bulk, vendor-neutral via parseDecklist + sfCollection) ---- */
+function scrySetMode(m){_scryMode=m;const sp=$("scrySearchPane"),dp=$("scryDeckPane"),ts=$("scryTabSearch"),td=$("scryTabDeck");if(sp)sp.style.display=m==='deck'?'none':'';if(dp)dp.style.display=m==='deck'?'':'none';if(ts){ts.classList.toggle('on',m!=='deck');ts.classList.toggle('gold',m!=='deck');}if(td){td.classList.toggle('on',m==='deck');td.classList.toggle('gold',m==='deck');}}
+function scrySetDeckThreat(v){_scryDeckThreat=v;['low','mid','top'].forEach((x)=>{const b=$("scryDeckTh_"+x);if(b)b.classList.toggle('on',x===v);});}
+function _scryIsLand(sc){return SCRY.isLandType(sc.type_line||(sc.card_faces&&sc.card_faces[0]&&sc.card_faces[0].type_line)||'');}
+async function scryDeckResolve(){const ta=$("scryDeckText"),st=$("scryDeckStatus");const entries=SCRY.parseDecklist(ta?ta.value:'');
+  if(!entries.length){if(st)st.textContent='No card lines found — paste a list like "1 Lightning Bolt".';_scryDeckResolved=[];_scryDeckNotFound=[];_scryDeckSkipped=0;renderDeckReview();return;}
+  if(!importOnline()){if(st)st.textContent='Offline — decklist import needs a connection.';return;}
+  if(st)st.textContent=`Looking up ${entries.length} card${entries.length===1?'':'s'}…`;
+  try{const res=await sfCollection(entries.map((e)=>e.name));const inclLands=$("scryDeckLands")&&$("scryDeckLands").checked;
+    const matched=[],skipped=[];(res.data||[]).forEach((sc)=>{if(!inclLands&&_scryIsLand(sc))skipped.push(sc);else matched.push(sc);});
+    _scryDeckResolved=matched;_scryDeckSkipped=skipped.length;_scryDeckNotFound=(res.not_found||[]).map((x)=>(x&&x.name)||(typeof x==='string'?x:JSON.stringify(x)));
+    if(st)st.textContent='';renderDeckReview();}
+  catch(e){if(st)st.textContent='Scryfall unreachable — try again.';}}
+function renderDeckReview(){const box=$("scryDeckReview");if(!box)return;const m=_scryDeckResolved,nf=_scryDeckNotFound;
+  if(!m.length&&!nf.length&&!_scryDeckSkipped){box.innerHTML='';return;}
+  let h='';
+  if(m.length){h+=`<div class="subh" style="margin-top:8px"><span>✓ Matched <span class="tag">${m.length}</span></span><button class="tiny ok" onclick="scryDeckAddAll()">★ Add ${m.length} to library</button></div><div class="liblist">`+m.slice(0,80).map((sc)=>{const c=SCRY.buildImportedCard(sc,{strength:_scryDeckThreat});return `<div class="libitem"><div class="li-h"><span class="li-n">${embEsc(c.name)}</span>${c.cost!=null?`<span class="cost">${c.cost}</span>`:''}<span class="typechip ${c.ctype}">${c.ctype}</span></div></div>`;}).join('')+`</div>`;}
+  if(_scryDeckSkipped)h+=`<div class="manaline" style="margin-top:6px">⛰ ${_scryDeckSkipped} land${_scryDeckSkipped===1?'':'s'} skipped (tick “include lands” to keep them).</div>`;
+  if(nf.length)h+=`<div class="manaline" style="margin-top:6px;color:var(--ember)">✗ Not found (${nf.length}): ${nf.map(embEsc).join(', ')}</div>`;
+  box.innerHTML=h;}
+function scryDeckAddAll(){const p=prof();if(!p){alert('Open the Menu and create a profile first.');return;}if(!_scryDeckResolved.length)return;let n=0;_scryDeckResolved.forEach((sc)=>{const c=SCRY.buildImportedCard(sc,{strength:_scryDeckThreat});c.lid=lidStamp()+n;p.library.push(c);n++;});saveDB();try{renderLibrary();}catch(e){}log("loot",`★ Added <b>${n}</b> card${n===1?'':'s'} from your decklist to your library.`);const st=$("scryDeckStatus");_scryDeckResolved=[];_scryDeckSkipped=0;_scryDeckNotFound=[];renderDeckReview();if(st)st.textContent=`Added ${n} card${n===1?'':'s'} to your library.`;}
 
 /* ===== PHASE 1 — cornice tabs: regroup the existing panels into 4 collapsible frames =====
    We relocate the live panel nodes (selected by stable inner ids) into the tab bodies, so
