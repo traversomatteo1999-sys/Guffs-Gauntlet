@@ -1,4 +1,4 @@
-# Guff's Gauntlet — installable PWA (v40)
+# Guff's Gauntlet — installable PWA (Level I)
 
 This folder is a self-contained Progressive Web App. The whole game lives in
 `index.html` (all art embedded); the other files just make it installable and
@@ -31,9 +31,21 @@ python3 -m http.server 8000
 
 then open `http://localhost:8000/` in Chrome or Edge.
 
-**Free private hosting** (drag-and-drop or a couple of clicks):
-- Netlify Drop — drag this folder onto https://app.netlify.com/drop
-- Cloudflare Pages, Vercel, or GitHub Pages — push/upload the folder
+**Free private hosting — Netlify (keep ONE site so the URL never changes):**
+1. **First time only:** at https://app.netlify.com create a site and drag this folder
+   in. Note its name/URL (e.g. `guffsgauntlet.netlify.app`).
+2. **Every update after that — deploy to the SAME site:** open that site in the
+   dashboard → **Deploys** tab → drag this folder onto *that page's* drop area. The
+   URL stays the same, so installed players auto-update (see "Updating" below) and
+   never need a new link.
+   > ⚠️ Do **not** use https://app.netlify.com/drop to update — Netlify **Drop creates a
+   > brand-new, randomly-named site every time** (e.g. `sweet-otter-…`), which changes the
+   > URL and orphans your players' saves. Drop is for one-off throwaways only.
+3. **Optional, fully automatic:** in the site's *Build & deploy → Continuous deployment*,
+   link this GitHub repo (build command empty, publish directory `/`). Then every
+   `git push` redeploys the same site by itself — no dragging.
+
+(Cloudflare Pages, Vercel, or GitHub Pages work too — same rule: one project, push/upload to it.)
 
 **Then install:**
 - **Desktop Chrome / Edge** — click the install icon in the address bar (or
@@ -44,10 +56,16 @@ then open `http://localhost:8000/` in Chrome or Edge.
 Once installed it opens in its own window, works offline, and uses the gauntlet
 icon.
 
-## Updating to a newer build
+## Updating to a newer build (same URL, players auto-update)
 
-Replace the files (especially `index.html`) and bump the cache name in `sw.js`
-(this build uses `gg-cache-v40`). The service worker deletes the old cache on
-activate, so installed users pick up the new build on their next launch (or two).
-Your saved profiles, card library, and gold live in the browser's local storage
-and are **not** touched by an update.
+1. Change the files (especially `index.html`).
+2. **Bump the cache name in `sw.js`** — this build uses `gg-cache-v44`; increment it
+   (`v45`, …). The service worker deletes the old cache on activate, so installed
+   players pick up the new build on their next launch (or two).
+3. **Deploy to the SAME Netlify site** (its *Deploys* tab — not Netlify Drop). Same
+   URL → no new link, everyone updates automatically.
+
+Saved profiles, card library, and gold live in the browser's local storage and are
+**not** touched by an update — **as long as the URL (origin) stays the same.** A
+different domain means a fresh, empty local storage, so keeping one stable site name
+also keeps everyone's saves.
