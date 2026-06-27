@@ -411,7 +411,7 @@
 
   <div class="panel" style="margin-top:12px">
     <h2>🛡 Your board <span class="tag">the enemy reads &amp; fights this</span></h2>
-    <div class="btnrow" style="margin-top:4px"><button class="big azor inline" onclick="openCast()">✦ Cast a spell</button><button class="mini gold" onclick="quickCast()" title="Quick cast">⚡ Quick cast</button><button class="mini gold" onclick="chooseCommander()" title="Choose or change your commander">♛ + commander</button><span class="manaline">→ onto the Stack; permanents resolve onto this board</span></div>
+    <div class="btnrow" style="margin-top:4px"><button class="big azor inline" onclick="openCardSearch()">✦ Cast a spell</button><button class="mini gold" onclick="chooseCommander()" title="Choose or change your commander">♛ + commander</button><span class="manaline">→ search your library or all of Magic; onto the Stack</span></div>
     <div class="btnrow" style="margin-top:4px"><span class="lab">Deploy token</span><select id="boardTokSel" style="max-width:180px"></select><input type="number" id="boardTokQty" min="1" value="1" style="width:48px"><button class="ok" style="padding:8px 14px;font-weight:700" onclick="deploySavedToken()">Deploy ×N</button><button class="tiny" onclick="openLibrary()">＋ make / manage</button></div>
     <div class="cmdbox" id="pcmdBox" style="display:none"></div>
     <div class="subh"><span>Creatures</span><button class="tiny ok" onclick="addC()">+ creature</button></div>
@@ -476,7 +476,7 @@
       <div class="phasechips" id="phaseChips"></div>
       <div class="flowmana" id="flowMana"></div>
       <div class="flowbtns"><button class="backphase" id="backBtn" onclick="backPhase()" title="Step back one phase — one-time effects won't re-fire" disabled>◂ Back</button><button class="big" id="dmBtn" onclick="flowClick()">▶ Begin the first turn</button></div>
-      <div class="btnrow" style="justify-content:center;margin-top:10px"><button class="big azor inline" onclick="openCast()">✦ Cast a spell</button><button class="mini gold" onclick="quickCast()" title="Quick cast">⚡ Quick cast</button></div>
+      <div class="btnrow" style="justify-content:center;margin-top:10px"><button class="big azor inline" onclick="openCardSearch()">✦ Cast a spell</button></div>
     </div>
   </div>
 
@@ -495,7 +495,7 @@
     <div class="stackmodal">
       <div class="stackhead">
         <h3>🜟 The Stack <span class="tag">top-down</span></h3>
-        <div class="stackhacts"><button class="mini azor" onclick="openCast()">✦ Cast a spell</button><button class="mini gold" onclick="quickCast()" title="Quick cast">⚡ Quick</button><button class="mini stackx" onclick="hidePlays()" aria-label="dismiss the stack">✕</button></div>
+        <div class="stackhacts"><button class="mini azor" onclick="openCardSearch()">✦ Cast a spell</button><button class="mini stackx" onclick="hidePlays()" aria-label="dismiss the stack">✕</button></div>
       </div>
       <div class="stackbody"><div id="stackProposal" class="stackproposal"></div><p class="stacknote">Your casts and the enemy's responses pile up here — the <b>TOP</b> resolves first. Enemy targeted spells auto-hit your tracked board on resolve; your permanents auto-enter your board.</p><div id="playCards"></div></div>
       <div class="btnrow" style="align-items:center;gap:10px"><button class="big ember inline" onclick="resolveStack()">▸ Resolve the stack</button><span class="manaline">resolves &amp; clears — the phase advances only on <b>Continue ▸</b></span></div>
@@ -544,9 +544,9 @@
   <div class="overlay" id="library" onclick="if(event.target===this)closeLibrary()">
     <div class="modal libmodal"><button class="modalx" onclick="closeLibrary()">✕</button>
       <h2 class="loreh">🃏 Card Library <span class="lorecol">— <b id="libWho">—</b></span></h2>
-      <p style="color:var(--bone-dim);font-style:italic">Build a card in “✦ Cast a spell” and hit ★ Save to keep it here. <b>Deploy</b> drops it onto your board; <b>Cast</b> puts it on the stack. Tokens use the quick-make below and deploy in bulk.</p>
+      <p style="color:var(--bone-dim);font-style:italic"><b>📥 Add real cards</b> to import from Scryfall or a decklist, or <b>✎ Create a card</b> to build your own. <b>Deploy</b> drops a card onto your board; <b>Cast</b> puts it on the stack. Tokens use the quick-make below and deploy in bulk.</p>
       <div class="btnrow" style="margin:6px 0 2px"><input type="text" id="libSearch" placeholder="🔍 search your library — name · type · colour · keyword" oninput="renderLibrary()" style="flex:1;min-width:0"></div>
-      <div class="subh"><span>Cards <span class="tag" id="libCardCount"></span></span><span class="btnrow" style="gap:5px"><button class="tiny gold" onclick="openCardSearch()" title="search real Magic cards and your library">📥 Add real cards</button><button class="tiny ok" onclick="openCast()">✦ New card</button></span></div>
+      <div class="subh"><span>Cards <span class="tag" id="libCardCount"></span></span><span class="btnrow" style="gap:5px"><button class="tiny gold" onclick="openCardSearch()" title="search real Magic cards and your library">📥 Add real cards</button><button class="tiny ok" onclick="openCast()">✎ Create a card</button></span></div>
       <div id="libCards" class="liblist"></div>
       <div class="subh" style="margin-top:14px"><span>Tokens</span></div>
       <div id="libTokens" class="liblist"></div>
@@ -1418,27 +1418,8 @@ function resolveLeftoverPlays(){S.plays.forEach((p,i)=>{if(p.status==='pending'&
 function showPlays(){renderPlays();renderStackProposal();$("plays").classList.add("show");renderStackFab();}
 function hidePlays(){$("plays").classList.remove("show");renderStackFab();}
 function toggleStack(){const pl=$("plays");if(pl&&pl.classList.contains("show"))hidePlays();else showPlays();}
-/* P2.4: quick-cast — a fast, all-optional path into the SAME stack-item pipeline (castConfig); refine afterward from the board or the full editor. */
-function quickCast(){if(S.over)return;_editLid=null;_castCommander=false;$("modalBody").innerHTML=quickCastHTML();$("overlay").classList.add("show");}
-function quickCastHTML(){const types=['creature','instant','sorcery','artifact','enchantment','planeswalker'];return `
-<h2>⚡ Quick cast</h2>
-<p style="color:var(--bone-dim);font-style:italic">Straight onto the stack — everything's optional. Refine it afterward from the board, or open the full editor for keywords, wards, abilities, and more.</p>
-<div class="lab" style="margin:2px 0 4px">Type</div>
-<div class="typepick" id="qcTypePick">${types.map(t=>`<button type="button" class="typebtn${t==='creature'?' on':''}" data-t="${t}" onclick="setQuickType('${t}')">${t}</button>`).join("")}</div>
-<select id="qcType" style="display:none">${types.map(t=>`<option value="${t}"${t==='creature'?' selected':''}>${t}</option>`).join("")}</select>
-<div class="castgrid ct-creature" id="qcGrid">
-  <label>Name<input type="text" id="qcName" placeholder="optional"></label>
-  <label>Colours${castColorPicker('qcColorPills')}</label>
-  <label class="cf-cre">Power<input type="number" id="qcP" value="2"></label>
-  <label class="cf-cre">Toughness<input type="number" id="qcT" value="2"></label>
-  <label class="cf-pw">Loyalty<input type="number" id="qcLoy" value="3"></label>
-  <label class="cf-perm threatrow" style="grid-column:1/-1"><span class="threatlbl">⚠ AI threat${infoBtn('threat')}</span><div class="threatseg" id="qcThreatSeg"><button type="button" data-v="low" onclick="setQuickThreat('low')">low</button><button type="button" data-v="mid" class="on" onclick="setQuickThreat('mid')">mid</button><button type="button" data-v="top" onclick="setQuickThreat('top')">top</button></div></label>
-</div>
-<div class="btnrow" style="margin-top:12px"><button class="big azor inline" onclick="submitQuickCast()">⚡ Cast it</button><button class="mini gold" onclick="openCast()">⚙ Full editor</button><button class="mini" onclick="closeOverlay()">cancel</button></div>`;}
-function setQuickType(t){const sel=$("qcType");if(sel)sel.value=t;const g=$("qcGrid");if(g)g.className='castgrid ct-'+t;const tp=$("qcTypePick");if(tp)[...tp.querySelectorAll('.typebtn')].forEach(b=>b.classList.toggle('on',b.dataset.t===t));}
-function setQuickThreat(v){const seg=$("qcThreatSeg");if(seg)[...seg.querySelectorAll('button')].forEach(b=>b.classList.toggle('on',b.dataset.v===v));}
-function readQuickForm(){const type=$("qcType").value;const dn={creature:'Creature',instant:'Instant',sorcery:'Sorcery',artifact:'Artifact',enchantment:'Enchantment',planeswalker:'Planeswalker'}[type]||'Spell';const ts=$("qcThreatSeg")&&$("qcThreatSeg").querySelector('button.on');
-  return {name:(($("qcName").value||'').trim())||dn,ctype:type,color:readColorPills('qcColorPills'),note:'',cantCounter:false,commander:false,p:_int($("qcP").value,2),t:_int($("qcT").value,2),loy:parseInt($("qcLoy").value,10)||3,kw:[],props:{legendary:type==='planeswalker',token:false,defender:false,prot:[],cward:null,catk:null,dies:'graveyard',abilP:0,abilA:0,mana:0,strength:ts?ts.dataset.v:'mid'}};}
+/* P8.4: ⚡ Quick Cast retired — the 📥 "Add real cards" launcher (openCardSearch) is now the fast cast
+   path (your library + all of Scryfall in one search); ad-hoc homebrew is "✎ Create a card" (openCast). */
 function renderStackFab(){const fab=$("stackFab");if(!fab)return;const live=_liveGame&&typeof S!=='undefined'&&S&&!S.over;const open=!!($("plays")&&$("plays").classList.contains("show"));const n=(S&&Array.isArray(S.plays))?S.plays.filter(p=>p&&p.status==='pending').length:0;fab.style.display=(live&&!open)?'flex':'none';fab.classList.toggle('hot',n>0);const b=$("stackFabN");if(b)b.textContent=n||'';}
 
 /* --- Vael's phases --- */
@@ -1685,7 +1666,6 @@ function castConfig(cfg){const item=Object.assign({id:S.nextId++,_player:true,si
   S.plays.push(item);sfx('cast');log("you",`✦ You cast <b>${item.name}</b> (${item.ctype})${item.cantCounter?" — can't be countered":""}. It's on the stack.`);
   closeOverlayCommit();render();enemyRespondToCast(item);showPlays();return item;}
 function submitCast(){castConfig(readCastForm());}
-function submitQuickCast(){castConfig(readQuickForm());}
 /* P4.2: after every player cast the enemy PROPOSES a visible stack response (or "let it resolve") — like the attack/block proposal. Only affordable instants that would actually do something are offered (target validity). The player approves/edits the enemy's play. Deeper threat/value selection of WHICH response & WHETHER to respond is P6.1/P6.2; for now the default pick is the costliest candidate and the player drives the rest. */
 /* P4.4: shared candidate list — the enemy's affordable instants that would actually do something (no fizzles). Default order = costliest (placeholder for P6 value selection). Reused by the cast-response (P4.2) and the proactive instant-speed windows (P4.4). */
 function buildEnemyCandidates(item){const seen={},cands=[];S.hand.forEach(c=>{const fx=FX[c.key];if(!fx||fx.type!=='instant')return;if(fx.cost>usableMana())return;if(!enemyInstantWouldDo(fx))return;if(seen[c.key])return;seen[c.key]=true;cands.push({key:c.key,n:fx.n,cost:fx.cost,target:!!fx.target,value:bestTargetThreat(fx,item)});});/* P6.1: order by VALUE (best threat answered), then by efficiency (cheapest) — replaces the P4.2 costliest placeholder; default choice (cands[0]) is now the smartest response */cands.sort((a,b)=>(b.value-a.value)||(a.cost-b.cost));return cands;}
@@ -1847,7 +1827,7 @@ const TUTORIAL_HTML=`
 <p>Every permanent's ⚙ drawer holds: colour, legendary/token, <b>expires (end of turn)</b> for temporary tokens, passive/active abilities, mana it taps for, <b>dies to graveyard or exile</b>, <b>phase out</b>, <b>protection from a colour</b>, a <b>ward</b> (the enemy must pay mana/life to target it), an <b>attack tax</b>, and <b>set as commander</b>. The gold <b>⚠ AI threat</b> control (low / mid / top) tells the enemy how dangerous a card is — <b>set it honestly</b>: the AI removes, blocks, and burns your <b>top</b> threats first, so a mislabelled bomb gets ignored.</p>
 
 <h3>🜟 The Stack & casting</h3>
-<p>Spells wait on <b>the Stack</b> (a pop-up — open it any time with the floating 🜟 button) and resolve <b>top-down</b>. <b>✦ Cast a spell</b> opens the full builder; <b>⚡ Quick cast</b> is the fast path (name, colours, stats, threat — all optional) into the same pipeline. After you cast, the enemy gets a window to <b>respond</b> with an instant — it shows you a visible <b>proposal</b> you approve, edit, or wave off. Resolve each item, <b>counter</b> it, or <b>redirect</b> single-target removal. The enemy can also play instants at instant speed on your turn when it's worth it.</p>
+<p>Spells wait on <b>the Stack</b> (a pop-up — open it any time with the floating 🜟 button) and resolve <b>top-down</b>. <b>✦ Cast a spell</b> opens a search of your library and all of Magic (via Scryfall) — pick a card to put it on the stack, or build your own with <b>✎ Create a card</b> in the Library. After you cast, the enemy gets a window to <b>respond</b> with an instant — it shows you a visible <b>proposal</b> you approve, edit, or wave off. Resolve each item, <b>counter</b> it, or <b>redirect</b> single-target removal. The enemy can also play instants at instant speed on your turn when it's worth it.</p>
 
 <h3>↻ Phases & turns</h3>
 <p>The enemy goes first, then you, through seven phases (untap, upkeep, draw, main 1, combat, main 2, end). <b>Continue ▸</b> walks the steps; <b>◂ Back</b> steps back without re-firing a phase's one-time effects. Phase gating is <b>soft</b> — it warns but never blocks. On its turn the enemy untaps, draws from a real library, plays a land, spends <b>visible mana</b>, and casts by value (not just cost).</p>
@@ -2161,6 +2141,7 @@ function cardSearchHTML(){return `
   <p style="color:var(--bone-dim);font-style:italic">Search your library and all of Magic at once. <b>✦ Cast</b> puts a card on the stack; <b>★ Save</b> keeps it. Set its ⚠ threat so the enemy AI plays sensibly. Lands are skipped — to cast one as a creature, use <b>✦ New card</b>.</p>
   <div class="btnrow" style="margin:4px 0 8px"><input type="text" id="scryQ" placeholder="🔍 type a card name…" oninput="scryDoSearch()" style="flex:1;min-width:0"><button class="mini" id="scryCCBtn" onclick="scryToggleCC()" title="cast as uncounterable">can't be countered: ${_scryCC?'on':'off'}</button></div>
   <div id="scryOffline" class="manaline" style="color:var(--ember);display:none">Offline — searching your library only. Saved cards still work; Scryfall search needs a connection.</div>
+  <div class="manaline" style="margin:0 0 6px">Can't find it, or want a custom card? <button class="tiny" onclick="openCast()">✎ Create a card</button></div>
   <div class="subh"><span>Your library <span class="tag" id="scryLibN"></span></span></div>
   <div id="scryLib" class="liblist"></div>
   <div class="subh" style="margin-top:10px"><span>Magic cards <span class="tag" id="scryHits"></span></span><span class="manaline" id="scryStatus"></span></div>

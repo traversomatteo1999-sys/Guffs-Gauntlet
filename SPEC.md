@@ -62,11 +62,11 @@
 | &nbsp;&nbsp;P7.7 Battles + planar die + Vael's Siege | ✅ **DONE** |
 | &nbsp;&nbsp;P7.8 Synthesized WebAudio SFX + persisted mute | ✅ **DONE** |
 | &nbsp;&nbsp;P7.9 Final polish (per-type accents · dead-code · review) | ✅ **DONE** |
-| **Phase 8 — Real MTG card import (Scryfall)** | ⬜ **PLANNED** (post-lore) |
+| **Phase 8 — Real MTG card import (Scryfall)** | 🔨 **built & verified** on branch `phase-8-card-import` (search+decklist+launcher rework); live-online smoke + P9.5 doc overhaul pending |
 | &nbsp;&nbsp;P8.1 Scryfall service layer + descriptive mapper (+DFC faces) | ✅ **built & verified in `index.html`** (`SCRY` IIFE · `sfFetch/Search/Autocomplete/Collection` · offline gating · `sw.js` v43); live online smoke pending (manual) |
 | &nbsp;&nbsp;P8.2 Effect-inference layer (AI bits + on-cast effects) | ✅ **built & verified** (`inferEffects` · `buildImportedCard` · inline review chips in result rows) |
-| &nbsp;&nbsp;P8.3 ✦ Cast a spell = combined launcher (retire ⚡ Quick Cast) | 🔨 combined **search-and-add launcher BUILT & verified** (additive, from 🃏 Library); entry-point rewire (✦ Cast a spell → launcher, retire ⚡ Quick Cast) pending |
-| &nbsp;&nbsp;P8.4 ✎ Create &amp; Cast (homebrew creator, Library-homed) | ⬜ planned |
+| &nbsp;&nbsp;P8.3 ✦ Cast a spell = combined launcher (retire ⚡ Quick Cast) | ✅ **done** — all 3 board ✦ Cast buttons → `openCardSearch`; ⚡ Quick Cast retired (functions + buttons deleted) |
+| &nbsp;&nbsp;P8.4 ✎ Create a card (homebrew creator, Library-homed) | ✅ **done** — creator relabeled **✎ Create a card** in the Library + reachable from the launcher's "can't find it?" link *(creator's now-redundant From-library row left as minor cleanup → P9.5)* |
 | &nbsp;&nbsp;P8.5 Decklist paste-import (bulk, vendor-neutral) | ✅ **built & verified** (📋 Paste-a-decklist mode in the launcher; resolve → review → add-all; lands skipped+counted) |
 | **Phase 9 — Player toolbox + instruction overhaul** | ⬜ **PLANNED** |
 | &nbsp;&nbsp;P9.1 Universal move-to-zone engine (incl. return-to-hand) | ⬜ planned |
@@ -475,9 +475,18 @@ Moxfield/MTGGoldfish export → **Resolve & review** (`parseDecklist` → `sfCol
 of ✓ matched (preview) · ⛰ N lands skipped (with an *include lands* checkbox) · ✗ not-found names → **★ Add
 N to library** (each via `buildImportedCard` with one global threat). Built entirely on the already-verified
 parser + batch endpoint + combiner. **Verified:** syntax gate · id-diff (only new deck-mode ids added,
-nothing removed) · **44 jsdom assertions** (now incl. mode toggle, land-skip, not-found, add-all). **Phase 8
-import is feature-complete except the entry-point rework (P8.3 repoint ✦ Cast a spell, P8.4 retire ⚡ Quick
-Cast / Create & Cast relocation) and a manual live-online smoke.**
+nothing removed) · **44 jsdom assertions** (now incl. mode toggle, land-skip, not-found, add-all).
+
+**P8.3/P8.4 entry-point rework landed (2026-06-27).** All three board **✦ Cast a spell** buttons (action
+panel · empty-stack · stack hacts) now open the launcher (`openCardSearch`); **⚡ Quick Cast is retired**
+(buttons + `quickCast`/`quickCastHTML`/`readQuickForm`/`submitQuickCast`/`setQuickType`/`setQuickThreat`
+deleted). The creator (`openCast`) is relabeled **✎ Create a card**, homed in the 🃏 Library and reachable
+from a "can't find it? ✎ Create a card" link in the launcher (so homebrew + land-as-creature stay reachable
+from the board). Stale Library/tutorial copy referencing Quick Cast was fixed (full doc overhaul = P9.5).
+**Verified:** syntax gate · id-diff = launcher ids added, the **`qc*` quick-cast ids removed (intended)**,
+nothing else removed · **48 jsdom assertions** (now incl. quick-cast retired + a Cast-a-spell button →
+`openCardSearch`). **Phase 8 import is now FEATURE-COMPLETE** — remaining: a manual live-online Scryfall
+smoke, the optional removal of the creator's redundant From-library row, and the P9.5 doc overhaul.
 
 ### P8.1 — Scryfall service layer + pure descriptive mapper (+ DFC faces)
 
