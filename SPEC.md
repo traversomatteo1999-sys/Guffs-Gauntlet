@@ -68,12 +68,12 @@
 | &nbsp;&nbsp;P8.3 ✦ Cast a spell = combined launcher (retire ⚡ Quick Cast) | ✅ **done** — all 3 board ✦ Cast buttons → `openCardSearch`; ⚡ Quick Cast retired (functions + buttons deleted) |
 | &nbsp;&nbsp;P8.4 ✎ Create a card (homebrew creator, Library-homed) | ✅ **done** — creator relabeled **✎ Create a card** in the Library + reachable from the launcher's "can't find it?" link *(creator's now-redundant From-library row left as minor cleanup → P9.5)* |
 | &nbsp;&nbsp;P8.5 Decklist paste-import (bulk, vendor-neutral) | ✅ **built & verified** (📋 Paste-a-decklist mode in the launcher; resolve → review → add-all; lands skipped+counted) |
-| **Phase 9 — Player toolbox + instruction overhaul** | 🔨 **IN PROGRESS** (branch `phase-9-toolbox`) |
+| **Phase 9 — Player toolbox + instruction overhaul** | ✅ **DONE & verified** (branch `phase-9-toolbox`, P9.1–P9.5; adversarially reviewed) |
 | &nbsp;&nbsp;P9.1 Universal move-to-zone engine (incl. return-to-hand) | ✅ **done & verified** — board→zone (↩ return-to-hand · tuck · clean exile/graveyard) **+** zone-card moves (**player-exile dead-end fixed**, reanimate, bounce/tuck-from-zone), both boards, death-safe *(direct enemy gy→battlefield still uses the existing ▸ play; one-off fn refactor deferred)* |
 | &nbsp;&nbsp;P9.2 Change control (steal / give) | ✅ **done & verified** — `takeControl`/`giveControl` move a creature across boards (stats/keywords intact, ⇄ controlled badge, round-trips); ⇄ take on enemy cards, ⇄ give in the player creature drawer |
 | &nbsp;&nbsp;P9.3 Per-permanent extras (copy · flip · markers · direct dmg) | ✅ **done & verified** — `copyPermanent` (token clone) · status markers (goad/monarch/initiative/can't-block/day/night) · `dealDmg` (⚔ deathtouch/lethal-aware) · `flipPermanent` for DFCs (`_faces` carried import→board) |
 | &nbsp;&nbsp;P9.4 Enemy hand &amp; library completeness (tutor / reanimate / draw) | ✅ **done & verified** — `dtMoveObj` (a card from any enemy zone → hand/library/gy/exile, or a creature → battlefield via spawn) · `dtRevealMove` (👁 look / 🤚 hand-reveal now actionable) · `dtDraw` (🃏 enemy draws N); disclaimer updated |
-| &nbsp;&nbsp;P9.5 Instruction overhaul (LAST — documents Phase 8 + 9) | ⬜ planned |
+| &nbsp;&nbsp;P9.5 Instruction overhaul (LAST — documents Phase 8 + 9) | ✅ **done** — tutorial rewritten for Phase 8 (launcher/search/decklist/Create-a-card) + Phase 9 (new 🔀 Moving-cards section: move-to-zone/return-to-hand · control · copy · flip · markers · damage · tutor/reanimate/draw); no stale Quick Cast ref *(deferred cosmetic: remove the creator's redundant From-library row)* |
 
 ---
 
