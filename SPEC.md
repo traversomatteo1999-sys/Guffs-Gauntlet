@@ -71,7 +71,7 @@
 | **Phase 9 — Player toolbox + instruction overhaul** | 🔨 **IN PROGRESS** (branch `phase-9-toolbox`) |
 | &nbsp;&nbsp;P9.1 Universal move-to-zone engine (incl. return-to-hand) | ✅ **done & verified** — board→zone (↩ return-to-hand · tuck · clean exile/graveyard) **+** zone-card moves (**player-exile dead-end fixed**, reanimate, bounce/tuck-from-zone), both boards, death-safe *(direct enemy gy→battlefield still uses the existing ▸ play; one-off fn refactor deferred)* |
 | &nbsp;&nbsp;P9.2 Change control (steal / give) | ✅ **done & verified** — `takeControl`/`giveControl` move a creature across boards (stats/keywords intact, ⇄ controlled badge, round-trips); ⇄ take on enemy cards, ⇄ give in the player creature drawer |
-| &nbsp;&nbsp;P9.3 Per-permanent extras (copy · flip · markers · direct dmg) | ⬜ planned |
+| &nbsp;&nbsp;P9.3 Per-permanent extras (copy · flip · markers · direct dmg) | ✅ **done & verified** — `copyPermanent` (token clone) · status markers (goad/monarch/initiative/can't-block/day/night) · `dealDmg` (⚔ deathtouch/lethal-aware) · `flipPermanent` for DFCs (`_faces` carried import→board) |
 | &nbsp;&nbsp;P9.4 Enemy hand &amp; library completeness (tutor / reanimate / draw) | ⬜ planned |
 | &nbsp;&nbsp;P9.5 Instruction overhaul (LAST — documents Phase 8 + 9) | ⬜ planned |
 
