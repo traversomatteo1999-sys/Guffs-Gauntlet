@@ -69,7 +69,7 @@
 | &nbsp;&nbsp;P8.4 ✎ Create a card (homebrew creator, Library-homed) | ✅ **done** — creator relabeled **✎ Create a card** in the Library + reachable from the launcher's "can't find it?" link *(creator's now-redundant From-library row left as minor cleanup → P9.5)* |
 | &nbsp;&nbsp;P8.5 Decklist paste-import (bulk, vendor-neutral) | ✅ **built & verified** (📋 Paste-a-decklist mode in the launcher; resolve → review → add-all; lands skipped+counted) |
 | **Phase 9 — Player toolbox + instruction overhaul** | 🔨 **IN PROGRESS** (branch `phase-9-toolbox`) |
-| &nbsp;&nbsp;P9.1 Universal move-to-zone engine (incl. return-to-hand) | 🔨 **board→zone done & verified** (↩ return-to-hand + tuck/clean-exile/graveyard, both boards, death-safe); reanimate-from-zone + player-exile-return paths next |
+| &nbsp;&nbsp;P9.1 Universal move-to-zone engine (incl. return-to-hand) | ✅ **done & verified** — board→zone (↩ return-to-hand · tuck · clean exile/graveyard) **+** zone-card moves (**player-exile dead-end fixed**, reanimate, bounce/tuck-from-zone), both boards, death-safe *(direct enemy gy→battlefield still uses the existing ▸ play; one-off fn refactor deferred)* |
 | &nbsp;&nbsp;P9.2 Change control (steal / give) | ⬜ planned |
 | &nbsp;&nbsp;P9.3 Per-permanent extras (copy · flip · markers · direct dmg) | ⬜ planned |
 | &nbsp;&nbsp;P9.4 Enemy hand &amp; library completeness (tutor / reanimate / draw) | ⬜ planned |
@@ -680,9 +680,14 @@ enemy drawer (token only) and all three player drawers. Zone chips (`libNames`/`
 ids changed (handler-only UI) · **26 jsdom assertions** (return-to-hand no-Tithe + name; tuck top/bottom/
 shuffle; clean exile/graveyard; death still bleeds; player physical hand + clean gy/exile; token cease; zone
 buttons don't crash on a moved card; drawers render the row) · **adversarial review (3 lenses) = 0 findings**.
-**Still TODO for P9.1: zone→battlefield reanimate (enemy gy/exile → board; today only player `myGyReturn`),
-the player exile-return paths (your exile is still a dead end for some routes), and folding the one-off zone
-fns into one `moveCard`.**
+**P9.1b landed (2026-06-27) — the zone-card half.** `moveZoneCard(from,i,to)` moves a card *from* a
+graveyard/exile zone elsewhere: **player exile is no longer a dead end** (its chips now offer ↑ battlefield ·
+↩ hand · ⚰ graveyard — player gy/exile hold full objects, so reanimate restores them); player gy gained
+↩ hand; **enemy gy/exile** chips gained ✋ return-to-hand (a keyed card re-enters the deck **recastable**) and
+⤴ tuck-to-library-top (the existing ▸ play / ⊘ exile / ↩ graveyard stay). Non-death; refreshes the deck-tools
+modal via `dtRenderIfOpen`. **Verified:** gate · id-diff clean · **+6 jsdom assertions (32 total)**. *(Deferred:
+direct enemy gy→battlefield — the ▸ play path already reanimates via the stack; and folding the one-off zone
+fns into a single `moveCard` — cosmetic.)* **P9.1 is complete.**
 
 ### P9.2 — Change control (steal / give)
 

@@ -1271,10 +1271,21 @@ function renderPlayerCmd(){const box=$("pcmdBox");if(!box)return;const onBoard=S
   else if(onBoard){const c=onBoard;box.style.display="";box.className="cmdbox mine";box.innerHTML=`<div class="cn">♛ ${c.name} <span class="tag">your commander · on the battlefield ↓</span></div><div class="cstat">Recast if it dies: <b style="color:var(--azor)">base + tax +${c.cmdTax||0}</b> · deaths ${c.cmdDeaths||0}. Controls are on its card below.</div><div class="acts"><button class="tiny" onclick="cmdToZone()">→ command zone</button></div>`;}
   else{box.style.display="none";box.innerHTML="";}}
 function renderMyZones(){const p=$("myZonesPanel");if(!p)return;{const g=$("myGyCount");if(g)g.textContent=S.myGy.length;const e=$("myExCount");if(e)e.textContent=S.myExile.length;}if(!(S.myGy.length||S.myExile.length)){p.style.display="none";return;}p.style.display="";
-  $("myGyList").innerHTML=S.myGy.length?S.myGy.map((c,i)=>`<span class="zchip">${colorDots(c)}${c.name}<b class="zg" title="return to battlefield" onclick="myGyReturn(${i})">↑</b><b class="zx" title="exile" onclick="myGyToExile(${i})">⊘</b></span>`).join(""):'<span class="empty">empty</span>';
-  $("myExList").innerHTML=S.myExile.length?S.myExile.map(c=>`<span class="zchip ex">${colorDots(c)}${c.name}</span>`).join(""):'<span class="empty">empty</span>';}
+  $("myGyList").innerHTML=S.myGy.length?S.myGy.map((c,i)=>`<span class="zchip">${colorDots(c)}${c.name}<b class="zg" title="return to battlefield" onclick="myGyReturn(${i})">↑</b><b class="zg" title="return to your hand" onclick="moveZoneCard('pGy',${i},'hand')">↩</b><b class="zx" title="exile" onclick="myGyToExile(${i})">⊘</b></span>`).join(""):'<span class="empty">empty</span>';
+  $("myExList").innerHTML=S.myExile.length?S.myExile.map((c,i)=>`<span class="zchip ex">${colorDots(c)}${c.name}<b class="zg" title="return to battlefield" onclick="moveZoneCard('pExile',${i},'battlefield')">↑</b><b class="zg" title="return to your hand" onclick="moveZoneCard('pExile',${i},'hand')">↩</b><b class="zx" title="to your graveyard" onclick="moveZoneCard('pExile',${i},'graveyard')">⚰</b></span>`).join(""):'<span class="empty">empty</span>';}
 function myGyReturn(i){const c=S.myGy.splice(i,1)[0];if(!c)return;const cat=c._cat||'creatures';if(cat==='creatures')c.sick=true;c.tapped=false;S.my[cat].push(c);log("you",`Returned <b>${c.name}</b> from graveyard to the battlefield.`);render();}
 function myGyToExile(i){const c=S.myGy.splice(i,1)[0];if(c){S.myExile.push(c);log("you",`Exiled <b>${c.name}</b> from your graveyard.`);render();}}
+/* P9.1b: move a card FROM a graveyard/exile zone elsewhere — reanimate / bounce-from-zone / tuck. Non-death.
+   Player gy/exile hold full permanent objects (so → battlefield restores them); their hand/library are
+   PHYSICAL (the card just leaves the app). Enemy gy/exile hold card refs → hand/library re-enter the deck. */
+function moveZoneCard(from,i,to){const src={pGy:S.myGy,pExile:S.myExile,eGy:S.gy,eExile:S.exile}[from];if(!src)return;const c=src[i];if(!c)return;const player=(from==='pGy'||from==='pExile');const nm=player?(c.name||'card'):((FX[c.key]&&FX[c.key].n)||c.name||'card');src.splice(i,1);
+  if(to==='battlefield'){const cat=c._cat||'creatures';if(cat==='creatures')c.sick=true;c.tapped=false;(S.my[cat]||S.my.creatures).push(c);log("you",`↑ <b>${nm}</b> returns to your battlefield.`);}
+  else if(to==='hand'){if(player)log("you",`↩ <b>${nm}</b> returns to your hand.`);else{S.hand.push(c);log("you",`↩ <b>${nm}</b> returns to ${ENs()}'s hand.`);}}
+  else if(to==='graveyard'){if(player)S.myGy.push(c);else S.gy.push(c);log("you",`<b>${nm}</b> goes to ${player?'your':ENs()+"'s"} graveyard.`);}
+  else if(to==='exile'){if(player)S.myExile.push(c);else S.exile.push(c);log("you",`⊘ <b>${nm}</b> is exiled.`);}
+  else if(to==='libtop'){S.lib.unshift(c);log("you",`<b>${nm}</b> goes to the top of ${ENs()}'s library.`);}
+  else if(to==='libbottom'){S.lib.push(c);log("you",`<b>${nm}</b> goes to the bottom of ${ENs()}'s library.`);}
+  render();dtRenderIfOpen();/* refresh the deck-tools modal if it's showing this zone */}
 function attackTax(){let mana=0,life=0;[...S.my.creatures,...S.my.artifacts,...S.my.enchants,...S.my.walkers].forEach(o=>{if(o.catk&&!o.phased){if(o.catk.type==='life')life+=o.catk.amt;else mana+=o.catk.amt;}});return{mana,life};}
 function payAttackTax(cands){const tx=attackTax();if(!tx.mana&&!tx.life)return{kept:cands,skipped:[],pm:0,pl:0,tx};
   const ranked=cands.slice().sort((a,b)=>effP(b)-effP(a));let manaLeft=usableMana(),lifeLeft=Math.max(0,S.boss.life-1),pm=0,pl=0;const kept=[],skipped=[];
@@ -1576,8 +1587,8 @@ function renderFlow(){const chips=$("phaseChips");if(chips){chips.innerHTML="";P
    a graveyard card can be ▸ played (recursion, via P6.5's dtPlayCard) or ⊘ exiled; an exiled card returned. */
 function enemyZoneChip(c,i,kind){const fx=FX[c.key]||{};const dots=fxColorDots(fx);const cost=`<span style="font-family:'Space Mono';color:var(--gold)">${fx.cost||0}</span>`;
   const acts=kind==='gy'
-    ?`<b class="zg" title="play this card for ${ENs()} — onto the stack" style="color:var(--ember)" onclick="dtPlayCard('gy',${i})">▸</b><b class="zx" title="move to exile" onclick="gyToExile(${i})">⊘</b>`
-    :`<b class="zg" title="return to graveyard" onclick="exToGy(${i})">↩</b>`;
+    ?`<b class="zg" title="play this card for ${ENs()} — onto the stack" style="color:var(--ember)" onclick="dtPlayCard('gy',${i})">▸</b><b class="zg" title="return to ${ENs()}'s hand" onclick="moveZoneCard('eGy',${i},'hand')">✋</b><b class="zg" title="to top of ${ENs()}'s library" onclick="moveZoneCard('eGy',${i},'libtop')">⤴</b><b class="zx" title="move to exile" onclick="gyToExile(${i})">⊘</b>`
+    :`<b class="zg" title="return to graveyard" onclick="exToGy(${i})">↩</b><b class="zg" title="return to ${ENs()}'s hand" onclick="moveZoneCard('eExile',${i},'hand')">✋</b><b class="zg" title="to top of ${ENs()}'s library" onclick="moveZoneCard('eExile',${i},'libtop')">⤴</b>`;
   const nm=fx.n||c.name||'card';
   return `<span class="zchip ${kind==='ex'?'ex':''}" title="${embEsc(nm)} — ${fx.type||''} ${fx.cost||0}◇${fx.text?' · '+embEsc(fx.text):''}">${dots}${embEsc(nm)} ${cost}${acts}</span>`;}
 function renderZones(){if(!$("vaelZones"))return;$("libCount").textContent=S.lib.length;$("handCount").textContent=S.hand.length;
