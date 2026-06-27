@@ -546,7 +546,7 @@
       <h2 class="loreh">🃏 Card Library <span class="lorecol">— <b id="libWho">—</b></span></h2>
       <p style="color:var(--bone-dim);font-style:italic">Build a card in “✦ Cast a spell” and hit ★ Save to keep it here. <b>Deploy</b> drops it onto your board; <b>Cast</b> puts it on the stack. Tokens use the quick-make below and deploy in bulk.</p>
       <div class="btnrow" style="margin:6px 0 2px"><input type="text" id="libSearch" placeholder="🔍 search your library — name · type · colour · keyword" oninput="renderLibrary()" style="flex:1;min-width:0"></div>
-      <div class="subh"><span>Cards <span class="tag" id="libCardCount"></span></span><button class="tiny ok" onclick="openCast()">✦ New card</button></div>
+      <div class="subh"><span>Cards <span class="tag" id="libCardCount"></span></span><span class="btnrow" style="gap:5px"><button class="tiny gold" onclick="openCardSearch()" title="search real Magic cards and your library">📥 Add real cards</button><button class="tiny ok" onclick="openCast()">✦ New card</button></span></div>
       <div id="libCards" class="liblist"></div>
       <div class="subh" style="margin-top:14px"><span>Tokens</span></div>
       <div id="libTokens" class="liblist"></div>
@@ -2094,6 +2094,98 @@ function importLibrary(input){const f=input.files&&input.files[0];if(!f)return;c
     const seen=new Set((p.library||[]).map(c=>c.lid).filter(Boolean));let added=0;(o.library||[]).forEach(c=>{if(!c||typeof c!=='object')return;if(!c.lid||!seen.has(c.lid)){if(!c.lid)c.lid=lidStamp();p.library.push(c);seen.add(c.lid);added++;}});
     const tseen=new Set((p.tokens||[]).map(t=>t.tid).filter(Boolean));let tadded=0;(o.tokens||[]).forEach(t=>{if(!t||typeof t!=='object')return;if(!t.tid||!tseen.has(t.tid)){if(!t.tid)t.tid='T'+Date.now()+Math.floor(Math.random()*1000);p.tokens.push(t);tseen.add(t.tid);tadded++;}});
     saveDB();renderMenu();try{renderLibrary();}catch(e){}alert(`Imported ${added} card${added===1?'':'s'} and ${tadded} token${tadded===1?'':'s'} into ${p.name}. (Gold and record unchanged.)`);}catch(e){alert('Could not read that library file.');}};r.readAsText(f);input.value='';}
+
+/* ========================= PHASE 8 — Scryfall real-card import =========================
+   SCRY = the pure data layer (Scryfall JSON -> library-card `cfg`), wrapped in an IIFE so
+   its internals (RECOGNISED_KW, etc.) never collide with game globals. Headlessly verified
+   (124 assertions). The cfg it emits is exactly readCastForm()'s shape, so an imported card
+   casts / saves / resolves identically to a hand-made one. */
+const SCRY=(function(){
+  const RECOGNISED_KW=new Set(['flying','reach','trample','menace','deathtouch','first strike','double strike','lifelink','vigilance','indestructible','defender','hexproof',"can't block",'must attack','lure','haste']);
+  const DFC_LAYOUTS=new Set(['transform','modal_dfc','double_faced_token']);
+  const COLOR_WORD={white:'W',blue:'U',black:'B',red:'R',green:'G'};
+  const WORDNUM={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
+  const isNum=(v)=>v!=null&&/^-?\d+$/.test((''+v).trim());
+  const numOr0=(v)=>{if(v==null)return 0;const n=parseInt(v,10);return isNaN(n)?0:n;};
+  const frontType=(t)=>(''+(t||'')).split('//')[0];
+  const isLandType=(t)=>/\bland\b/i.test(frontType(t).split('—')[0]);
+  function cmcFromCost(mc){if(mc==null||mc==='')return null;let total=0;((''+mc).match(/\{[^}]+\}/g)||[]).forEach((s)=>{const inner=s.slice(1,-1);if(/^\d+$/.test(inner))total+=parseInt(inner,10);else if(/^[xyz]$/i.test(inner))total+=0;else total+=1;});return total;}
+  function manaProduced(txt){const i=txt.indexOf('add ');if(i<0)return 1;const clause=txt.slice(i).split('.')[0];let m;if((m=clause.match(/add (one|two|three|four|five|six|seven|eight|nine|ten|\d+) mana/)))return WORDNUM[m[1]]||parseInt(m[1],10)||1;const syms=clause.match(/\{[wubrgcs0-9/p]+\}/gi);if(!syms||!syms.length)return 1;if(/\bor\b/.test(clause))return 1;return syms.length;}
+  function faceKeywords(faceOracle,scKeywords){const text=(''+(faceOracle||'')).toLowerCase().replace(/\([^)]*\)/g,' ');return (scKeywords||[]).filter((k)=>text.indexOf((''+k).toLowerCase())>=0);}
+  function faceObj(f,sc){const oracle=f.oracle_text!=null?f.oracle_text:(sc.oracle_text||'');return {name:f.name!=null?f.name:sc.name,type_line:f.type_line!=null?f.type_line:(sc.type_line||''),oracle_text:oracle,colors:f.colors!=null?f.colors:(sc.colors||[]),cmc:typeof f.cmc==='number'?f.cmc:(typeof sc.cmc==='number'?sc.cmc:0),power:f.power!=null?f.power:sc.power,toughness:f.toughness!=null?f.toughness:sc.toughness,loyalty:f.loyalty!=null?f.loyalty:sc.loyalty,keywords:faceKeywords(oracle,sc.keywords),mana_cost:f.mana_cost!=null?f.mana_cost:sc.mana_cost,image:(f.image_uris&&f.image_uris.normal)||(sc.image_uris&&sc.image_uris.normal)||null};}
+  function synthCombinedFace(sc){const base=(sc.card_faces&&sc.card_faces[0])||{};return {name:sc.name,type_line:base.type_line||sc.type_line||'',oracle_text:sc.card_faces.map((f)=>`${f.name}: ${f.oracle_text||''}`.trim()).join('\n//\n'),colors:(sc.colors&&sc.colors.length?sc.colors:base.colors)||[],cmc:typeof sc.cmc==='number'?sc.cmc:0,power:base.power!=null?base.power:sc.power,toughness:base.toughness!=null?base.toughness:sc.toughness,loyalty:base.loyalty!=null?base.loyalty:sc.loyalty,keywords:faceKeywords(sc.card_faces.map((f)=>f.oracle_text||'').join(' '),sc.keywords),mana_cost:base.mana_cost!=null?base.mana_cost:sc.mana_cost,image:(sc.image_uris&&sc.image_uris.normal)||(base.image_uris&&base.image_uris.normal)||null};}
+  function facesOf(sc){if(Array.isArray(sc.card_faces)&&sc.card_faces.length>=2){if(DFC_LAYOUTS.has(sc.layout))return sc.card_faces.map((f)=>faceObj(f,sc));return [synthCombinedFace(sc)];}return [faceObj(sc,sc)];}
+  function mapType(typeLine){const main=frontType(typeLine).split('—')[0].toLowerCase();if(/creature/.test(main))return 'creature';if(/planeswalker/.test(main))return 'planeswalker';if(/instant/.test(main))return 'instant';if(/sorcery/.test(main))return 'sorcery';if(/enchantment/.test(main))return 'enchantment';if(/artifact/.test(main))return 'artifact';if(/land/.test(main))return 'artifact';return 'artifact';}
+  function mapColors(arr){const valid=(arr||[]).filter((c)=>['W','U','B','R','G'].indexOf(c)>=0);return valid.length?valid.slice():['C'];}
+  function mapKeywords(arr){const seen={},out=[];(arr||[]).forEach((k)=>{const kk=(''+k).toLowerCase();if(RECOGNISED_KW.has(kk)&&!seen[kk]){seen[kk]=1;out.push(kk);}});return out;}
+  function scryfallToCard(sc,faceIndex){const faces=facesOf(sc);const fi=Math.min(faceIndex||0,faces.length-1);const face=faces[fi]||faces[0];const realType=face.type_line||'';const ctype=mapType(realType);const kw=mapKeywords(face.keywords);const ptStar=(face.power!=null&&!isNum(face.power))||(face.toughness!=null&&!isNum(face.toughness));
+    let note=(''+(face.oracle_text||'')).trim();
+    if(isLandType(realType)||/\b(battle|saga|tribal|kindred|conspiracy|plane|scheme|vanguard|dungeon)\b/i.test(realType))note=`[${realType}]`+(note?`\n${note}`:'');
+    if(ptStar)note+=`${note?'\n':''}[Printed P/T: ${face.power}/${face.toughness}]`;
+    if(faces.length>1){const other=faces.filter((_,i)=>i!==fi).map((f)=>`⟳ Other face — ${f.name}: ${(''+(f.oracle_text||'')).trim()}`).join('\n');if(other)note+=`${note?'\n':''}${other}`;}
+    return {name:face.name,ctype,note,color:mapColors(face.colors),cantCounter:false,commander:false,p:numOr0(face.power),t:numOr0(face.toughness),loy:isNum(face.loyalty)?parseInt(face.loyalty,10):3,kw,props:{legendary:/\blegendary\b/i.test(realType),token:false,defender:kw.indexOf('defender')>=0,prot:[],cward:null,catk:null,dies:'graveyard',abilP:0,abilA:0,mana:0,strength:'mid'},cost:(()=>{const c=cmcFromCost(face.mana_cost);return c!=null?c:Math.round(typeof face.cmc==='number'?face.cmc:0);})()};}
+  function strengthHint(face,ctype,txt){if(/win the game|take an extra turn|extra turn|each opponent loses the game/.test(txt))return 'top';if(ctype!=='creature')return 'mid';const pw=numOr0(face.power);const kws=(face.keywords||[]).map((k)=>(''+k).toLowerCase());const evasive=kws.some((k)=>['flying','menace','trample','double strike'].indexOf(k)>=0);if(pw>=5)return 'top';if(pw>=4&&evasive)return 'top';if(pw<=1||kws.indexOf('defender')>=0)return 'low';return 'mid';}
+  function inferEffects(face,ctype){const txt=(''+(face.oracle_text||'')).toLowerCase().replace(/\([^)]*\)/g,' ').replace(/\s+/g,' ').trim();const out={props:{}};let m;
+    if(ctype==='instant'||ctype==='sorcery'){
+      if((m=txt.match(/deals? (\d+) damage to (any target|target player|target opponent|each opponent|target player or planeswalker|target opponent or planeswalker)/)))out.auto={k:'dmgBoss',n:+m[1]};
+      else if((m=txt.match(/(?:target player|target opponent|each opponent|that player)(?: or planeswalker)? loses (\d+) life/)))out.auto={k:'dmgBoss',n:+m[1]};
+      else if((m=txt.match(/you gain (\d+) life/)))out.auto={k:'gainLife',n:+m[1]};
+      else if((m=txt.match(/you lose (\d+) life/)))out.auto={k:'loseLife',n:+m[1]};}
+    if(/\{t\}[^.]*add /.test(txt))out.props.mana=manaProduced(txt);
+    if((m=txt.match(/ward \{?(\d+)\}?/)))out.props.cward={amt:+m[1],type:'mana'};
+    else if((m=txt.match(/ward\s*[—-]\s*pay (\d+) life/)))out.props.cward={amt:+m[1],type:'life'};
+    if(/protection from/.test(txt)){const prot=[];let pm;const protRe=/\bfrom (white|blue|black|red|green)\b/g;while((pm=protRe.exec(txt)))prot.push(COLOR_WORD[pm[1]]);if(prot.length)out.props.prot=prot.filter((v,i)=>prot.indexOf(v)===i);}
+    out.strengthHint=strengthHint(face,ctype,txt);return out;}
+  function buildImportedCard(sc,opts){opts=opts||{};const faceIndex=opts.faceIndex||0;const cfg=scryfallToCard(sc,faceIndex);const faces=facesOf(sc);const face=faces[Math.min(faceIndex,faces.length-1)]||faces[0];const inf=inferEffects(face,cfg.ctype);if(inf.auto)cfg.auto=inf.auto;cfg.props=Object.assign({},cfg.props,inf.props||{});if(cfg.kw.indexOf('defender')>=0)cfg.props.defender=true;cfg.props.strength=opts.strength||inf.strengthHint||'mid';cfg.cantCounter=!!opts.cantCounter;return cfg;}
+  function cleanCardName(name){let s=(''+name).trim();s=s.replace(/\s+#.*$/,'').trim();let prev;do{prev=s;s=s.replace(/\s*\[[^\]]*\]\s*$/,'').replace(/\s*\*[^*]*\*\s*$/,'').replace(/\s*[★☆✦✯]\s*$/,'').trim();}while(s!==prev);s=s.replace(/\s+[([][0-9A-Za-z]{2,6}[)\]]\s+[0-9A-Za-z][0-9A-Za-z-]*\s*$/,'').trim();s=s.replace(/\s+[([]([0-9A-Za-z]{2,6})[)\]]\s*$/,(m,code)=>(/[0-9]/.test(code)||/^[A-Z]+$/.test(code))?'':m).trim();return s;}
+  function parseDecklist(text){const byKey={},order=[];(''+(text||'')).split(/\r?\n/).forEach((line)=>{let s=line.trim();if(!s||/^\/\//.test(s)||/^#/.test(s))return;s=s.replace(/^sb:\s*/i,'');if(/^(deck|sideboard|maybeboard|commander|companion|about|name)\b/i.test(s)&&!/^\d/.test(s))return;const m=s.match(/^(\d+)\s*x?\s+(.+)$/i);if(!m)return;const name=cleanCardName(m[2]);if(!name)return;const key=name.toLowerCase();if(byKey[key]==null){byKey[key]={qty:+m[1],name};order.push(key);}else byKey[key].qty+=+m[1];});return order.map((k)=>byKey[k]);}
+  return {facesOf,scryfallToCard,inferEffects,buildImportedCard,parseDecklist,cleanCardName,isLandType,mapColors};
+})();
+
+/* ---- Scryfall network layer (online only; saved cards then work offline forever) ---- */
+function importOnline(){return (typeof navigator==='undefined')||navigator.onLine!==false;}
+async function sfFetch(path,opts){const r=await fetch('https://api.scryfall.com'+path,Object.assign({headers:{Accept:'application/json'}},opts||{}));if(!r.ok&&r.status!==404)throw new Error('Scryfall '+r.status);return r.json();}
+async function sfSearch(q){const j=await sfFetch('/cards/search?unique=cards&q='+encodeURIComponent(q+' -type:land'));return (j&&j.data)||[];}
+async function sfAutocomplete(q){try{const j=await sfFetch('/cards/autocomplete?q='+encodeURIComponent(q));return (j&&j.data)||[];}catch(e){return [];}}
+async function sfCollection(names){const ids=names.map((n)=>({name:n}));const out=[],notFound=[];for(let k=0;k<ids.length;k+=75){const j=await sfFetch('/cards/collection',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({identifiers:ids.slice(k,k+75)})});if(j&&j.data)out.push(...j.data);if(j&&j.not_found)notFound.push(...j.not_found);if(k+75<ids.length)await new Promise((r)=>setTimeout(r,90));}return {data:out,not_found:notFound};}
+
+/* ---- "Add real cards" launcher (search your library + all of Magic; cast or save) ---- */
+let _scryResults=[],_scryFace={},_scryThreat={},_scryCC=false,_scryT=null,_scryAdded={};
+function _scryReset(){_scryResults=[];_scryFace={};_scryThreat={};_scryCC=false;_scryAdded={};if(_scryT){clearTimeout(_scryT);_scryT=null;}}
+function openCardSearch(){if(S.over){alert('The game is over — restart to cast.');return;}_scryReset();$("modalBody").innerHTML=cardSearchHTML();$("overlay").classList.add("show");setTimeout(()=>{const i=$("scryQ");if(i)i.focus();},30);scryDoSearch();}
+function cardSearchHTML(){return `
+<h2>📥 Cast or add a real card</h2>
+<p style="color:var(--bone-dim);font-style:italic">Search your library and all of Magic at once. <b>✦ Cast</b> puts a card on the stack; <b>★ Save</b> keeps it in your library. Set its ⚠ threat so the enemy AI plays sensibly. Lands are skipped — to cast one as a creature, use <b>✦ New card</b>.</p>
+<div class="btnrow" style="margin:4px 0 8px"><input type="text" id="scryQ" placeholder="🔍 type a card name…" oninput="scryDoSearch()" style="flex:1;min-width:0"><button class="mini" id="scryCCBtn" onclick="scryToggleCC()" title="cast as uncounterable">can't be countered: off</button></div>
+<div id="scryOffline" class="manaline" style="color:var(--ember);display:none">Offline — searching your library only. Saved cards still work; Scryfall search needs a connection.</div>
+<div class="subh"><span>Your library <span class="tag" id="scryLibN"></span></span></div>
+<div id="scryLib" class="liblist"></div>
+<div class="subh" style="margin-top:10px"><span>Magic cards <span class="tag" id="scryHits"></span></span><span class="manaline" id="scryStatus"></span></div>
+<div id="scryResults" class="liblist"></div>`;}
+function scryToggleCC(){_scryCC=!_scryCC;const b=$("scryCCBtn");if(b){b.textContent="can't be countered: "+(_scryCC?'on':'off');b.classList.toggle('on',_scryCC);}}
+function scryDoSearch(){const q=(($("scryQ")&&$("scryQ").value)||'').trim();renderScryLib(q);const off=$("scryOffline");if(off)off.style.display=importOnline()?'none':'';const st=$("scryStatus");if(_scryT){clearTimeout(_scryT);_scryT=null;}
+  if(q.length<2){if(st)st.textContent='';_scryResults=[];renderScryResults();return;}
+  if(!importOnline()){_scryResults=[];renderScryResults();return;}
+  if(st)st.textContent='searching…';
+  _scryT=setTimeout(async()=>{try{const res=await sfSearch(q);if(((($("scryQ")&&$("scryQ").value)||'').trim())!==q)return;_scryResults=res;_scryFace={};_scryThreat={};_scryAdded={};renderScryResults();if(st)st.textContent=res.length?'':'no matches';}catch(e){if(((($("scryQ")&&$("scryQ").value)||'').trim())!==q)return;_scryResults=[];renderScryResults();if(st)st.textContent='Scryfall unreachable — try again';}},280);}
+function _scryLibMatches(q){const p=prof();const lib=(p&&p.library)||[];const ql=(q||'').toLowerCase();return lib.map((c,i)=>({c,i})).filter(({c})=>!ql||(''+(c.name||'')).toLowerCase().indexOf(ql)>=0||(''+(c.ctype||'')).indexOf(ql)>=0||(c.kw||[]).join(' ').toLowerCase().indexOf(ql)>=0||(c.color||[]).join('').toLowerCase().indexOf(ql)>=0);}
+function renderScryLib(q){const box=$("scryLib");if(!box)return;const matches=_scryLibMatches(q);const n=$("scryLibN");if(n)n.textContent=matches.length;
+  box.innerHTML=matches.length?matches.slice(0,30).map(({c,i})=>`<div class="libitem"><div class="li-h"><span class="li-n">${embEsc(c.name||'card')}</span>${c.cost!=null?`<span class="cost">${c.cost}</span>`:''}<span class="typechip ${c.ctype||'spell'}">${c.ctype||'spell'}</span></div><div class="li-a"><button class="tiny ok" onclick="scryLibCast(${i})">✦ Cast</button></div></div>`).join(''):`<span class="empty">${(q||'').length?'no library card matches':'your library is empty — search Magic below'}</span>`;}
+function scryLibCast(i){const p=prof();if(!p||!p.library[i])return;const it=JSON.parse(JSON.stringify(p.library[i]));delete it.lid;if(_scryCC)it.cantCounter=true;castImportedCfg(it);}
+function renderScryResults(){const box=$("scryResults");if(!box)return;const h=$("scryHits");if(h)h.textContent=_scryResults.length||'';box.innerHTML=_scryResults.length?_scryResults.slice(0,40).map((sc,i)=>scryRow(sc,i)).join(''):'';}
+function scryRow(sc,i){const faces=SCRY.facesOf(sc);const fi=_scryFace[i]||0;const cfg=SCRY.buildImportedCard(sc,{faceIndex:fi});const th=_scryThreat[i]||cfg.props.strength;
+  const dots=(cfg.color||[]).map((c)=>`<span class="manapip" style="--mc:${COLOR_HEX[c]||'#999'};padding:0 5px">${c}</span>`).join('');
+  const pt=cfg.ctype==='creature'?`${cfg.p}/${cfg.t}`:(cfg.ctype==='planeswalker'?`${cfg.loy} loy`:'');
+  const img=faces[fi]&&faces[fi].image;const auto=cfg.auto?`⚡ ${cfg.auto.k} ${cfg.auto.n}`:'';
+  const det=[];if(cfg.props.mana)det.push(`⛁${cfg.props.mana}`);if(cfg.props.cward)det.push(`ward ${cfg.props.cward.amt}`);if(cfg.props.prot&&cfg.props.prot.length)det.push(`prot ${cfg.props.prot.join('')}`);if(cfg.props.defender)det.push('defender');
+  const meta=[cfg.kw.join(', '),auto,det.join(' · ')].filter(Boolean).join(' · ');
+  return `<div class="libitem"><div class="li-h">${img?`<img src="${img}" alt="" style="height:34px;border-radius:3px;margin-right:6px" loading="lazy">`:''}<span class="li-n">${embEsc(cfg.name)}</span>${cfg.cost!=null?`<span class="cost">${cfg.cost}</span>`:''}<span class="typechip ${cfg.ctype}">${cfg.ctype}</span>${pt?`<span class="manaline">${pt}</span>`:''}${dots}</div>${meta?`<div class="manaline" style="flex:1 0 100%;margin:2px 0;color:var(--bone-dim)">${embEsc(meta)}</div>`:''}<div class="li-a" style="flex-wrap:wrap;gap:5px"><span class="threatseg" style="transform:scale(.82);transform-origin:left">${['low','mid','top'].map((v)=>`<button type="button" class="${th===v?'on':''}" onclick="scrySetThreat(${i},'${v}')">${v}</button>`).join('')}</span>${faces.length>1?`<button class="tiny" onclick="scryFlip(${i})" title="other face">⤺ ${embEsc(faces[(fi+1)%faces.length].name)}</button>`:''}<button class="tiny ok" onclick="scryAct(${i},'cast')">✦ Cast</button><button class="tiny gold" onclick="scryAct(${i},'save')">★ Save</button><button class="tiny azor" onclick="scryAct(${i},'both')" title="cast and save">✦+★</button>${_scryAdded[i]?'<span class="ir" style="color:var(--ok);font-family:Space Mono;font-size:.64rem">✓ added</span>':''}</div></div>`;}
+function scrySetThreat(i,v){_scryThreat[i]=v;renderScryResults();}
+function scryFlip(i){const faces=SCRY.facesOf(_scryResults[i]);if(!faces||faces.length<2)return;_scryFace[i]=((_scryFace[i]||0)+1)%faces.length;delete _scryThreat[i];renderScryResults();}
+function scryBuild(i){return SCRY.buildImportedCard(_scryResults[i],{faceIndex:_scryFace[i]||0,strength:_scryThreat[i],cantCounter:_scryCC});}
+function scryAct(i,mode){if(!_scryResults[i])return;const cfg=scryBuild(i);if(mode==='save'){scrySaveCfg(cfg);_scryAdded[i]=true;renderScryResults();return;}if(mode==='both')scrySaveCfg(cfg);castImportedCfg(JSON.parse(JSON.stringify(cfg)));}
+function scrySaveCfg(cfg){const p=prof();if(!p){alert('Open the Menu and create a profile first.');return;}const c=JSON.parse(JSON.stringify(cfg));c.lid=lidStamp();p.library.push(c);saveDB();log("loot",`★ Added <b>${embEsc(cfg.name)}</b> to your library.`);try{renderLibrary();}catch(e){}}
+function castImportedCfg(cfg){if(S.over){alert('The game is over — restart to cast.');return;}closeLibrary();/* the launcher opens from inside #library (z50) — close it so the stack popup + enemy-response window aren't occluded (mirrors libCast) */castConfig(cfg);}
 
 /* ===== PHASE 1 — cornice tabs: regroup the existing panels into 4 collapsible frames =====
    We relocate the live panel nodes (selected by stable inner ids) into the tab bodies, so

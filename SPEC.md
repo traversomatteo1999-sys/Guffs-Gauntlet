@@ -62,6 +62,18 @@
 | &nbsp;&nbsp;P7.7 Battles + planar die + Vael's Siege | ✅ **DONE** |
 | &nbsp;&nbsp;P7.8 Synthesized WebAudio SFX + persisted mute | ✅ **DONE** |
 | &nbsp;&nbsp;P7.9 Final polish (per-type accents · dead-code · review) | ✅ **DONE** |
+| **Phase 8 — Real MTG card import (Scryfall)** | ⬜ **PLANNED** (post-lore) |
+| &nbsp;&nbsp;P8.1 Scryfall service layer + descriptive mapper (+DFC faces) | ✅ **built & verified in `index.html`** (`SCRY` IIFE · `sfFetch/Search/Autocomplete/Collection` · offline gating · `sw.js` v43); live online smoke pending (manual) |
+| &nbsp;&nbsp;P8.2 Effect-inference layer (AI bits + on-cast effects) | ✅ **built & verified** (`inferEffects` · `buildImportedCard` · inline review chips in result rows) |
+| &nbsp;&nbsp;P8.3 ✦ Cast a spell = combined launcher (retire ⚡ Quick Cast) | 🔨 combined **search-and-add launcher BUILT & verified** (additive, from 🃏 Library); entry-point rewire (✦ Cast a spell → launcher, retire ⚡ Quick Cast) pending |
+| &nbsp;&nbsp;P8.4 ✎ Create &amp; Cast (homebrew creator, Library-homed) | ⬜ planned |
+| &nbsp;&nbsp;P8.5 Decklist paste-import (bulk, vendor-neutral) | ⬜ planned |
+| **Phase 9 — Player toolbox + instruction overhaul** | ⬜ **PLANNED** |
+| &nbsp;&nbsp;P9.1 Universal move-to-zone engine (incl. return-to-hand) | ⬜ planned |
+| &nbsp;&nbsp;P9.2 Change control (steal / give) | ⬜ planned |
+| &nbsp;&nbsp;P9.3 Per-permanent extras (copy · flip · markers · direct dmg) | ⬜ planned |
+| &nbsp;&nbsp;P9.4 Enemy hand &amp; library completeness (tutor / reanimate / draw) | ⬜ planned |
+| &nbsp;&nbsp;P9.5 Instruction overhaul (LAST — documents Phase 8 + 9) | ⬜ planned |
 
 ---
 
@@ -315,6 +327,408 @@ Visual-hierarchy convention (primary/secondary/tertiary), subtle per-surface bac
   **How.** A tiny **WebAudio synth** (no audio assets): `_tone(freq,dur,type,vol,when,glideTo)` plays one soft oscillator with an attack/decay gain envelope (low volume ≤0.10 — *default-quiet*), and `sfx(name)` composes those into cues — **cast** (two-note chime), **resolve** (down-glide), **strike**/**hit** (low thuds), **coin**/**die** (blips), **victory** (rising arpeggio), **defeat** (falling). Wired into the events that matter: player cast (`castConfig`), `resolvePlay`, combat damage both ways (`approveCombat`), encounter clear + final win (`bossDown`/`win`), defeat (`lose`), and the dice/coin tools — *not* every phase tick (kept un-naggy). **Persisted mute:** `_muted` ↔ **`DB.muted`** (saved via `saveDB`); `loadMute()` reads it at boot; a **🔊 Sound / 🔇 Muted** toggle (`toggleMute`/`renderMuteBtn`) sits in both the controls bar (`muteBtn`) and the menu (`menuMuteBtn`). **First-gesture unlock:** the audio context is created lazily and `unlockAudio()` resumes it on the first `pointerdown`/`keydown`/`touchstart` (browsers block autoplay until then). **Everything is wrapped** — no `AudioContext`, a suspended context, or a headless run silently no-ops (`audioCtx()` returns null; `_tone` early-returns unless the context is `running`). Default = **sound on, soft**. Verified: syntax gate, **id-set diff `+muteBtn +menuMuteBtn`**, **17-assertion jsdom driver** (default unmuted + buttons; sfx/_tone never throw with no context; toggle flips + persists to `DB.muted` + relabels; `loadMute` reads DB; a **mock AudioContext proves the synth path builds oscillators+gains** for cast/victory; muted produces no oscillators; a live resolve emits a cue; serialise), smoke green.
 - **P7.9 — Final polish:** subtle per-type backgrounds, tasteful transitions, dead-code sweep, reduced-motion re-verify. ✅ **DONE.**
   **How.** **Dead-code sweep** of the Phase 6.5/7 additions: removed the unreferenced `battlesInfoSlot` id (the battles ⓘ is injected into the panel `<h2>` in `buildTabs`, not that span) and the write-only `p._fromZone` field on played stack items — both verified zero-reference. **Subtle per-type backgrounds:** stack cards (`renderPlays`) gain a `ty-<type>` class and a faint **inset left-accent bar** colour-keyed by type (creature green · instant azor · sorcery ember · artifact bone · enchantment purple · walker gold) — implemented as `box-shadow:inset` so it never fights the existing `.resolved`/`.countered`/`.mine` borders. **Transitions** already conform (the P1.9 `.15s` tile/button transitions); **no new animations** were introduced, so **reduced-motion** is unaffected (the global `@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}` still covers everything — re-verified). **`SAVE_V` 39→40** to match the new migrate backfill (`descents`) + the functional `expires`/`battles`/`plane`, and to align with the "Engine v40" label. **Adversarially reviewed** (5-dimension workflow — logic · state/persistence · render · combat/AI-flow · edge-cases — each finding **verified by writing & running a real jsdom repro test** against the booted engine): **0 confirmed defects, 0 nits** (four dimensions returned no findings; the one flow concern — "a non-spawn enemy spell disappears from the stack" — was **refuted** by a jsdom test showing the card correctly routes to the graveyard while the play stays `resolved`). Final verification: syntax gate, id-set diff (only the intended Phase-7 additions; the dead `battlesInfoSlot` removed), and a **full reusable jsdom test suite** — 11 feature drivers (**192 assertions**) plus a **full 3-room descent driver** (boot → clear all rooms → Vael's Siege fielded → phase-2 ENRAGED → final win, zero console errors, deterministic over repeated runs).
+
+---
+
+# PHASE 8 — Real MTG card import (Scryfall) ⬜ PLANNED
+
+> **Goal.** Let the player play from *real Magic cards* instead of hand-typing every one — and in doing
+> so **collapse the casting UX**. `✦ Cast a spell` becomes one **combined search** over your library +
+> all of Scryfall; `⚡ Quick Cast` retires; the full creator becomes `✎ Create & Cast` for homebrew.
+> A bulk **decklist paste** rides on the same backend. Acquisition runs an **effect-inference layer** so
+> imported cards carry the bits the AI and resolution need (on-cast damage/lifegain, mana, ward, a threat
+> hint), with a manual fallback. Everything resolves against **[Scryfall](https://scryfall.com/docs/api)**
+> and feeds the **existing** library-card schema — *the card model, board, stack, and resolution engine
+> are untouched; only the entry points and an additive inference layer are new.*
+>
+> **Why this is low-risk.** The game's card model is a deliberately small abstraction: descriptive fields
+> the engine reads (`name, ctype, cost→`*see note*`, color, p/t, loy, kw[]`) plus a *freeform `note`* that
+> already carries any rules text the engine doesn't mechanise. Complex behaviour is **already** resolved
+> manually from the note — so import only ever auto-fills the descriptive 80%, and the two things that
+> were always human (**AI threat** and the optional **engine-effect verb**) stay human. Import is purely
+> **additive**: a new entry point + a pure mapping function. The engine is untouched.
+
+### Design decisions (adopted unless overridden)
+
+- **D8.1 — Backend = Scryfall, queried live; never bundled.** Free, no API key, **CORS-enabled** (browser
+  `fetch` works directly, no proxy), permissive for low volume. We store only the handful of cards the
+  player adds, in *our* format — never the bulk database (100–450 MB, a non-starter for a no-build PWA).
+- **D8.2 — Vendor-neutral, not Moxfield/Goldfish APIs.** Moxfield has restricted API scraping (ToS
+  friction) and MTGGoldfish has no clean public API. Both, however, **export the same universal plain-text
+  decklist** (`1 Lightning Bolt` per line). P8.3 consumes *that text* + Scryfall name-resolution — robust,
+  free, and independent of either vendor.
+- **D8.3 — Two front doors, one mapper.** P8.2 (search) and P8.3 (decklist) share **P8.1**'s
+  `scryfallToCard(card)` mapper and fetch helpers. Build P8.1+P8.2 first; P8.3 is a thin add-on.
+- **D8.4 — Online to import, offline to play.** Searching/resolving are live calls → require connectivity.
+  Once added, a card lives in `prof().library` and works offline forever. The import UI is **gated on
+  `navigator.onLine`** and degrades gracefully on fetch failure (never a silent hang).
+- **D8.5 — Card art is search-only, hotlinked.** Real WotC art (`image_uris`) is shown **only transiently
+  in search results** to help recognition (hotlinking, which Scryfall's guidelines allow). The stored
+  library card keeps the game's own text style — we never persist or redistribute WotC image assets.
+- **D8.6 — Best-effort effect inference + AI bits (NOT all-manual).** *(Supersedes the earlier all-manual
+  stance.)* Acquisition builds an **inference layer** (`inferEffects`) that best-effort reads `oracle_text`
+  and populates the engine bits the AI and resolution actually use — on-cast one-shots
+  (`auto.dmgBoss/gainLife/loseLife`), mana abilities (`props.mana`), `Ward N` (`props.cward`), `Defender`,
+  and a **threat hint** (suggested `strength` from P/T + impact) — leaving anything it can't confidently
+  parse to the **`note` + manual** path. Every auto-detection is **shown for review** before the card is
+  used (no silent guesses). The full `run`/`target` removal grammar stays manual (it's the enemy-deck
+  authoring vocabulary, not exposed on player cards).
+- **D8.7 — Three entry points collapse to two (retire Quick Cast).** **`✦ Cast a spell`** becomes a pure
+  **cast launcher** (no form): a **single combined search** over *your library + all of Scryfall*, your
+  saved cards first. **`⚡ Quick Cast` is removed** — the launcher is the quick path. **`✎ Create & Cast`**
+  (today's full creator) **moves into the Library** as the homebrew path and is also reachable from the
+  launcher ("can't find it? create a custom card"). Casting a real card is now ≤2 taps.
+- **D8.8 — Lands are excluded from the cast path.** The launcher search appends `-type:land` (and hides
+  pure lands from the library list); decklist import **skips lands** by default (counted). You don't cast
+  lands in this engine. The escape hatch for *"treat a land as a creature/permanent"* is **Create & Cast**
+  (manual type override), per the user's note.
+- **D8.9 — Double-faced cards: the player picks the face.** For DFC / MDFC / transform / modal cards
+  (`sc.card_faces[]`), the add/cast flow shows a **face toggle**; the mapper + inferrer run on the
+  **chosen face**, and the other face's name+text is stashed in `note` for reference.
+- **D8.10 — Both surfaces share the two classic toggles.** The launcher's per-card cast **and** the
+  Create & Cast form both expose **★ Save to library** and **"can't be countered"** (`cantCounter`),
+  exactly as the cast form does today.
+
+### Scryfall → library-card field map (the heart of P8.1)
+
+The library-card object (`readCastForm`'s `cfg`, saved to `prof().library` with a `lid`) is the target.
+`scryfallToCard(sc)` builds one from a Scryfall card object `sc`:
+
+| Library field | Source | Mapping rule |
+|---|---|---|
+| `name` | `sc.name` | direct (use `sc.card_faces[0].name` for DFCs) |
+| `ctype` | `sc.type_line` | parse the dash-split front; pick the engine type by priority **creature → planeswalker → instant → sorcery → artifact → enchantment**; **land → `artifact`** (engine has no player land type) with the real type kept in `note` |
+| **cost** | `sc.cmc` | **`cfg.cost = Math.round(cmc)`** — *code-verified additive*: `cfg` has no native cost, but `renderPlays` already shows `p.cost` when present and nothing reads it for resolution, so it's display-only (DFC: use the selected face's cmc) |
+| `color` | `sc.colors` | `["W","U","B","R","G"]` subset → same pills; **empty (colorless) → `["C"]`** (`COLORS=["W","U","B","R","G","C"]`) |
+| `p` / `t` | `sc.power`/`toughness` | numeric → int; non-numeric (`"*"`, `"1+*"`) → `0` and append the literal to `note` |
+| `loy` | `sc.loyalty` | int when present (planeswalkers); else form default `3` |
+| `kw` | `sc.keywords` | lowercase; the engine acts on the ones it recognises (flying, lifelink, deathtouch, trample, haste, menace, hexproof, indestructible, defender, vigilance, reach, first strike, double strike…), the rest ride along harmlessly |
+| `note` | `sc.oracle_text` | full rules text as the player's reference (join `card_faces[].oracle_text` for DFCs); prepend the real `type_line` when it was lossy (lands, tribal, `*` stats) |
+| `props.legendary` | `sc.type_line` | `true` if it contains `Legendary` (planeswalkers already forced legendary by the form) |
+| `props.defender` | `sc.keywords` | `true` if `Defender` present |
+| `props.prot` | `sc.oracle_text` | *(nice-to-have)* parse `Protection from {color}` → pills; default `[]` |
+| `props.strength` | — | **always `'mid'`** on import (D8.6); player adjusts |
+| `props` (rest) | — | form defaults (`token:false, dies:'graveyard', cward:null, catk:null, abilP/A:0, mana:0`) |
+| `auto` | — | **omitted** (manual resolution); player may add a one-shot later |
+| `commander`, `cantCounter` | — | `false`; player toggles |
+| `lid` | — | stamped on save via `lidStamp()`, exactly like every other library add |
+
+*Mapper is **pure** (Scryfall JSON in → `cfg` out) so it unit-tests headlessly with fixture JSON — no DOM, no network.*
+
+**Effect inference (`inferEffects(face)` → partial `cfg`).** A small, ordered **pattern table** over
+`oracle_text` (lower-cased, reminder-text in parens stripped) sets engine bits only on a **high-confidence**
+match; first match wins, ambiguous text sets **nothing** (falls to manual). **`auto` attaches ONLY to
+instant/sorcery** — code-verified that `resolvePlayerItem` ignores `auto` on creatures/permanents (it's
+dead there), so an ETB-damage creature keeps its text in `note` and resolves manually:
+
+| Pattern (oracle text) | Sets |
+|---|---|
+| `deal(s) N damage to … (player / opponent / them / each opponent)`, or `… loses N life` | `auto:{k:'dmgBoss',n:N}` |
+| `you gain N life` | `auto:{k:'gainLife',n:N}` |
+| `you lose N life` / `pay N life` | `auto:{k:'loseLife',n:N}` |
+| `{T}: Add {…}` (one mana) / `add one mana of any color` | `props.mana:1` |
+| `Ward {N}` / `Ward — Pay N life` | `props.cward:{amt:N,type:'mana'|'life'}` |
+| `Defender` (keyword) | `props.defender:true` |
+| **threat hint** — big body / evasive / repeatable impact | suggested `props.strength` (`top` for ≥5 power or game-ending text · `low` for ≤1 power / defender · else `mid`) |
+| anything else (targeted removal, draw, counters, tutor, ETB triggers…) | **nothing** → full text in `note`, manual resolution |
+
+**DFC handling (`facesOf(sc)` → face array).** Each entry: `{name,type_line,oracle_text,colors,cmc,power,
+toughness,loyalty,keywords,image}` (normal cards return one synthetic face). The UI offers a face toggle and
+runs `scryfallToCard`/`inferEffects` on the **selected** face.
+
+### Build progress — pure data layer ✅ (2026-06-27, verified in isolation)
+
+The pure, DOM-free core of P8.1+P8.2 is **built and headlessly verified** in the session scratchpad
+(`scryimport.js` + `fixtures.js` + `test.js`, **124 assertions green**), ready to transplant into
+`index.html`'s `<script>` (drop the `module.exports` tail). Functions: `facesOf` · `scryfallToCard` ·
+`inferEffects` · `buildImportedCard` · `parseDecklist` (+ helpers `cmcFromCost`, `manaProduced`,
+`cleanCardName`). **Code-verified contract decisions baked in:** `cfg.cost = cmcFromCost(face.mana_cost)`
+(per-face, falls back to `cmc`; additive/display-only); `auto` attached **only** for instant/sorcery;
+`kw` ⊆ `KW_LIST`+`haste` with ward/protection routed to `props`. A **5-lens adversarial review** (Scryfall
+schema · cfg-contract · inference · decklist · purity) found **8 real defects, all fixed + regression-tested**:
+adventure/flip P/T (read from `card_faces[0]`, not 0/0); MDFC back-face cost from `mana_cost`; drain
+`"…or planeswalker loses N life"`→`dmgBoss`; multi-mana counting (`Add {C}{C}`→2); decklist strip robust to
+trailing tags/foil-glyphs/`[SET]` while preserving in-name parens (`"Hazmat Suit (Used)"`); per-face keyword
+attribution + reminder-text stripping (no cross-face leak).
+
+**Integration landed (2026-06-27, branch `phase-8-card-import`).** The verified pure layer is transplanted
+into `index.html` as the **`SCRY` IIFE** (no global collisions — its private `COLORS`/`RECOGNISED_KW` stay
+inside), plus the **network layer** (`sfFetch`/`sfSearch` with `-type:land`/`sfAutocomplete`/`sfCollection`
+≤75 batch) + **`importOnline()`** gating, and the **"📥 Add real cards" launcher** (`openCardSearch`): one
+combined search over your library **and** Scryfall, result rows with image · cost · type · P/T · colour ·
+**inferred-effect/threat review chips**, a **low/mid/top** threat control, a **DFC face toggle**, a
+**can't-be-countered** modifier, and **✦ Cast / ★ Save / ✦+★**. Casting routes through the existing
+`castConfig` (enemy-response window + stack popup fire) and resolves identically to a hand-made card. **All
+ADDITIVE** — opened from the 🃏 Library beside *✦ New card*; existing cast / quick-cast / creator flows are
+untouched this pass. **`sw.js`** got the cross-origin early-return + `CACHE v42→v43`. **Verified:** syntax
+gate clean · id-diff = only the 8 launcher ids added, nothing removed · **36 jsdom integration assertions**
+(boot 0-error; launcher renders; results + DFC toggle; save persists w/ inferred auto + lid; threat-override
+cast → real player stack-item; **imported creature resolves to a 2/2, imported burn deals 3 to the boss**;
+offline note; `sfSearch` URL/`-type:land`) · **124 pure-layer unit assertions** · **adversarial integration
+review** (1 medium found & fixed: launcher casts now `closeLibrary()` so the stack/enemy-response window
+aren't occluded by the z50 library overlay). **Next:** entry-point rewire (P8.3 repoint ✦ Cast a spell →
+launcher; P8.4 retire ⚡ Quick Cast + Create & Cast relocation) and the decklist paste mode (P8.5).
+*(Dev harness in scratchpad: `scryimport.js`/`fixtures.js`/`test.js` + `boot.js`/`gate.js`/`iddiff.js`.)*
+
+### P8.1 — Scryfall service layer + pure descriptive mapper (+ DFC faces)
+
+A small, self-contained module (clearly-commented, near the library I/O fns):
+- **`facesOf(sc)`** — normalise normal vs double-faced cards into a **face array** (D8.9); normal cards
+  return a single synthetic face.
+- **`scryfallToCard(sc, faceIndex=0)`** — the pure **descriptive** mapper (field-map table) over the
+  selected face. Shared by every import path.
+- **`sfFetch(path)`** — thin `fetch('https://api.scryfall.com'+path,{headers:{Accept:'application/json'}})`
+  wrapper; parsed JSON or a typed error. **All callers wrapped in try/catch** (principle 8). *(Browsers
+  can't set `User-Agent`; Scryfall doesn't require it at this volume.)*
+- **`sfSearch(q)`** → `GET /cards/search?q=<q> -type:land&unique=cards` (lands excluded per D8.8; first
+  page, paginate lazily). **`sfAutocomplete(q)`** → `GET /cards/autocomplete?q=<q>`. **`sfCollection(ids)`**
+  → `POST /cards/collection` (≤**75**/request; `{data,not_found}`).
+- **Rate-limit courtesy** ~75–100 ms between sequential requests (only the paginated bulk path).
+- **Offline gating** `importOnline()` (`navigator.onLine`) disables the Scryfall affordances with
+  *"Card search needs a connection — your saved cards still work offline."*
+- **`sw.js` bump:** add an **early `return` for cross-origin requests**
+  (`new URL(req.url).origin !== self.location.origin`) so Scryfall calls hit the network with a real error
+  instead of the cached HTML shell; **`CACHE v42→v43`**. Same-origin shell caching unchanged.
+
+### P8.2 — Effect-inference layer (the AI / on-cast infrastructure)
+
+The infrastructure that *"makes the AI know the needed bits and the on-cast effects."*
+- **`inferEffects(face)`** — the pure, ordered **pattern table** above → a partial `cfg`
+  (`auto`, `props.mana/cward/defender`, a suggested `props.strength`). High-confidence matches only;
+  ambiguous text sets nothing.
+- **`buildImportedCard(sc,{faceIndex=0, strength, cantCounter})`** — the **one combiner** used by P8.3 &
+  P8.5: `{...scryfallToCard(sc,faceIndex), ...inferEffects(face)}`, then apply the player's threat
+  override + `cantCounter`; `lid` stamped on save. Pure → headless unit tests.
+- **Review-before-use:** whatever was auto-detected (effect, threat hint, mana, ward) is surfaced in the
+  add/cast UI as **editable chips** — the player confirms or clears them. No silent guesses (principle 5).
+- *Why a layer, not inline:* the launcher (P8.3) and decklist import (P8.5) need identical bits, and the
+  pattern set will grow — one tested function keeps it honest and extensible.
+
+### P8.3 — "✦ Cast a spell" = combined launcher (retire ⚡ Quick Cast)
+
+Replace `openCast`'s form-first behaviour and **delete `quickCast`** (dead code goes — principle 6):
+- **One combined search box** (`openCastLauncher`): typing filters **your library** *and* queries
+  **Scryfall** together (D8.7 / "combined single search"), **your saved cards listed first**, lands
+  excluded (D8.8). Debounced (~250 ms); the library half matches instantly **offline**.
+- **Result rows:** thumbnail (Scryfall hotlink) · name · cost · type · P/T-or-loyalty. DFC cards show a
+  **face toggle** (D8.9). A row exposes: a **low/mid/top** threat control (prefilled from the inferred
+  hint), **✦ Cast** and **✦ Cast + ★ Save**, and a **"can't be countered"** modifier (D8.10).
+- **Cast** = `castConfig(buildImportedCard(...))`; library cards reuse `libCast`/`cfgToItem`. **Cast +
+  Save** also `library.push` + `saveDB`. Permanents resolve to the board; the enemy gets its
+  `enemyRespondToCast` window — **unchanged downstream**.
+- A **"✎ can't find it? Create a custom card"** link opens P8.4 (e.g. casting a land as a creature).
+- Offline → the box still searches the **library only**, with a quiet "Scryfall offline" note.
+
+### P8.4 — "✎ Create & Cast" (homebrew creator, now Library-homed)
+
+Repurpose the existing `castFormHTML`/`readCastForm` (no rebuild — it already emits the exact `cfg`):
+- Reached as **"✎ Create & Cast" / "＋ Create a card"** from the **Library** (and the launcher's create
+  link). Keeps **full manual control** — including the **land-as-creature / any-type override** the user
+  called out — plus **★ Save to library**, **"can't be countered"**, and **♛ set as commander**.
+- The form's old inline **"From library" cast row is removed** (that job is now the launcher's), so the
+  creator is purely *create / edit*. **⚡ Quick Cast's minimal form is retired** (folded away here).
+- Everything it produces is a normal `cfg` — identical downstream to today.
+
+### P8.5 — Decklist paste-import (bulk, vendor-neutral)
+
+A **"📋 Paste a decklist"** mode in the launcher / library:
+- `parseDecklist(text)` accepts both sites' export shapes: `1 Lightning Bolt`, `1x …`, set/collector
+  suffix `(2X2) 117`, `SB:`/sideboard, `//` comments, blanks skipped → `[{qty,name}]` (dedupe by name).
+- Resolve via `sfCollection` (≤75 batched, throttled). **Lands skipped by default** with the count
+  reported (D8.8; an *"include lands"* checkbox for the rare want). **Review list:** ✓ matched (mapped
+  preview) vs **✗ not found**, nothing dropped silently (principle 5 / "no silent caps").
+- **One global threat default** + *"add all matched"* → each runs `buildImportedCard` and pushes to the
+  library. Built entirely on P8.1 / P8.2 — parser + batch-resolve + the shared combiner.
+
+### Acceptance criteria (Phase 8)
+
+1. **Cast launcher:** `✦ Cast a spell` opens one combined search; typing shows **library hits first**, then
+   Scryfall matches (**no lands**). Casting a result puts it on the stack with correct
+   name/type/cost/colours/P-T/keywords; **Cast + Save** also lands it in the library. **Quick Cast is gone.**
+2. **Effect inference:** a burn spell ("deals 3 damage to target player") imports with
+   `auto:{k:'dmgBoss',n:3}`; a mana dork with `props.mana:1`; a `Ward 2` creature with `props.cward`; a
+   vanilla 6/6 pre-suggests `strength:'top'` — each **shown for review** and editable before use; an
+   un-parseable removal spell sets **no** effect and keeps full text in `note`.
+3. **DFC:** adding a double-faced card lets the player **pick the face**; the stored/cast card is built from
+   the chosen face with the other face noted.
+4. **Create & Cast:** the homebrew creator lives in the Library, still allows any-type overrides (e.g. a
+   land cast as a creature), and keeps Save / can't-be-countered / commander.
+5. **Decklist:** pasting a ~60-card Moxfield/Goldfish export **adds all matched non-land cards** in one pass
+   (lands skipped + counted); unmatched names are **listed, not dropped**.
+6. **Parity:** imported cards are indistinguishable downstream — they cast, resolve, save, `exportLibrary`
+   round-trip, and survive `migrate()` with **no new `cfg` keys** that break old saves.
+7. **Offline:** with the network off the launcher searches the **library only** (clear note) and import is
+   disabled; existing cards still play; a mid-search disconnect errors cleanly, never the HTML shell.
+8. **Headless tests** cover `scryfallToCard`, `inferEffects`, `facesOf`, and `parseDecklist` over fixtures
+   (creature, instant, planeswalker, multicolour, colorless, DFC, `*`-power, land; the inference templates;
+   the decklist format variants).
+
+### Verification (matches the house harness)
+
+- **Pure-function unit tests** (Node, no DOM): `scryfallToCard`, `inferEffects`, `facesOf`,
+  `buildImportedCard` over fixture JSON (the card archetypes + the inference templates + a DFC). The bulk
+  of the safety net; no network.
+- **`parseDecklist` unit tests:** the format variants in P8.5 (plain, `x`, set-suffix, comments, blanks,
+  `SB:`), incl. dedupe, qty, and land-skip.
+- **jsdom driver:** open the launcher / import modal, **stub `sfFetch`/`sfSearch`/`sfCollection`** with
+  fixtures (no live network in CI), drive *cast*, *cast+save*, *paste→add-all*, and a **DFC face toggle**;
+  assert `prof().library` grew / the stack received the cast, `saveDB` called, library re-rendered, and the
+  offline path searches library-only.
+- **Syntax gate** (`node -e` + `vm.Script`) and **id-set diff** after the DOM changes (new launcher/import
+  ids appear; the **Quick-Cast button id is removed** — the one intended deletion; nothing else removed).
+- **`sw.js`:** confirm cross-origin early-return (a stubbed cross-origin request is **not** answered from
+  cache and **not** given the shell) and that same-origin shell caching is unchanged; `CACHE` is `v43`.
+- **Live smoke (manual, online):** one real search + one real ~60-card paste against Scryfall to confirm
+  field mapping holds against the live schema before shipping.
+
+### Open questions (Phase 8) — defaults assumed unless overridden
+
+- **Lands:** **Decided (D8.8):** excluded from the cast path and **skipped on decklist import** (counted),
+  with an *"include lands"* checkbox; treat-a-land-as-a-creature goes through Create & Cast.
+- **Cost storage:** **RESOLVED (2026-06-27, code-verified).** A *player* `cfg` carries **no** top-level
+  cost (`readCastForm` never sets one), but `renderPlays` (index.html ~1613) already renders `p.cost` when
+  present, and nothing reads `cost` for player resolution. So imported cards set **`cfg.cost = Math.round(cmc)`**
+  — purely **additive, display-only**; hand-made cards stay costless (unchanged). Implemented in the pure
+  mapper.
+- **Inference depth:** the starter set (D8.6 table) covers burn / lifegain / lifeloss / mana / ward /
+  defender / threat-hint. **Open:** how far to extend (draw, +N/+N buffs, ETB triggers)? **Default:** ship
+  the starter set, every match **player-reviewable**, and grow it from playtest misses.
+- **DFC default face:** **Default:** preselect the **front face**; the toggle switches to the back (modal
+  DFCs where both faces are castable still default front).
+
+---
+
+# PHASE 9 — Complete the player's toolbox + instruction overhaul ⬜ PLANNED
+
+> **Goal.** The app is the *bookkeeper for a real Commander game* — so the player must be able to represent
+> **any** board action a physical card produces, not just the subset wired today. Audit the current
+> affordances, fill the zone-move / control / state gaps (headline: **return an enemy permanent to hand**),
+> then **thoroughly rewrite the instructions** to cover the finished game (incl. Phase 8). Additive UI over
+> the existing state — no engine rewrite. *(Independent of Phase 8; can build in either order, but the
+> instruction overhaul P9.5 runs **last** so it documents everything.)*
+
+### Current toolbox vs gaps (audit — grep-verified 2026-06-27)
+
+**Already covered:** tap/untap (`tapT`), summoning-sick toggle (`sickMy`), phase out (`phased`), ±1/+1 &
+−1/−1 & custom & remove counters (`cctr`/`cctrCustom`/`remCtr`), P/T adjust (`cp`/`adjMy`), keyword
+grant/remove (`kwSelect`/`toggleKwMy`), the per-permanent drawer (legendary/token/expires/defender/colour/
+protection/abilities/mana/dies-to/threat/attack-tax/ward/commander), reset-to-original (`resetCard`),
+destroy→graveyard/exile per `dies` (`killMy`/`slay`→`removeRef`, Tithe-aware), your graveyard → battlefield
+(`myGyReturn`) / → exile (`myGyToExile`), enemy graveyard → play-to-stack (`dtPlayCard`) / → exile
+(`gyToExile`), enemy exile → graveyard (`exToGy`), deck tools (scry/look/mill/exile-from-library/discard/
+shuffle/reveal/inspect-&-play), set/return commander (`setCommander`/`sendCmdToZone`).
+
+| Gap (a player needs it; missing today) | Fix |
+|---|---|
+| **Return a permanent to hand (bounce)** — *requested* | enemy permanent → `S.hand` (AI can recast it); your permanent → off-board (you hold the card) |
+| Return a permanent to **library** (top / bottom / shuffle) — tuck/Terminus | enemy → `S.lib` at chosen position; yours → off-board |
+| **Your exile is a dead end** — `myExList` chips are inert | exile → battlefield / hand / graveyard (blink, "return at end of turn", cast-from-exile) |
+| Enemy exile only → graveyard | also → battlefield / hand / library |
+| **Reanimate directly** (gy → battlefield, no stack) for the enemy | enemy graveyard → battlefield |
+| **Flicker / blink** your own permanent (exile then return; resets auras/counters) | one-tap blink |
+| **Change control** (steal an enemy creature / donate yours) — Threaten, Mind Control | move the object across boards, stats preserved |
+| **Copy / clone** a *specific* permanent (not just blank tokens) | token copy of any card |
+| **Transform / flip** a DFC permanent on the battlefield | flip the active face (ties to P8.9) |
+| Common **status markers** (goad, monarch, the initiative, can't-block, day/night) | quick toggles atop the existing custom `other` markers |
+| **Tutor / move a named card** library → hand or battlefield (deck tools disclaim this today) | extend deck tools with a per-card destination |
+
+### P9.1 — Universal "move to zone" engine + affordance (the core)
+
+One shared mover replaces the scattered one-off zone fns and closes most gaps at once:
+- **`moveCard(obj, from, to, opts)`** — owner-aware routing between `battlefield · hand · library(top/
+  bottom/shuffle) · graveyard · exile · command-zone`. **Enemy** cards route into the modeled
+  `S.hand/S.lib/S.gy/S.exile/S.tokens` (so a bounced/tucked card re-enters the AI's real deck/hand);
+  **your** cards route into `S.my*`/`S.myGy`/`S.myExile` or **off-board** (your hand/library are physical —
+  log "returned to your hand", drop it from the app). **Death semantics preserved:** destroy & sacrifice
+  fire death + Pit's-Tithe (route through `killMy`/`removeRef`); **bounce / tuck / hand / library do NOT**
+  (not deaths). Commander replacement still intercepts (a bounced/dying commander offers the command zone).
+- **Affordance:** a compact **"move ▾"** menu on every board permanent (player + enemy) and every zone chip
+  (both graveyards/exiles), listing only the **legal destinations** for that object. The headline **↩ Return
+  to hand** sits at the top for board permanents. The existing one-tap shortcuts (↑ return, ⊘ exile, ▸ play)
+  stay; the menu is the complete set.
+- **Refactor, don't duplicate** (principles 1 & 6): `myGyReturn`/`myGyToExile`/`gyToExile`/`exToGy`/
+  `dtPlayCard` become thin callers of `moveCard`; dead one-offs removed.
+
+### P9.2 — Change control (steal / give)
+
+- **`changeControl(obj)`** moves a permanent across boards: enemy creature → `S.my.creatures` (Threaten/
+  Mind Control), your permanent → `S.tokens` (Donate), **preserving** P/T, counters, keywords, tapped/sick.
+  Sets a **⇄ controlled** marker + a reminder that control may end. A *"return control"* flips it back. (A
+  stolen token still ceases per the token rules at the relevant step.)
+
+### P9.3 — Per-permanent extras
+
+- **Copy/clone:** "⧉ copy" makes a **token copy** of *this* permanent (stats/keywords/colour cloned,
+  `token:true`, summoning-sick) on the same board — beyond today's blank-token quick-make.
+- **Transform/flip:** for DFC permanents (P8.9 `faces`), a **⤺ flip** swaps the active face (P/T, types,
+  text, colour) and logs it.
+- **Status markers:** quick toggles for common metagame states (**goad · monarch · the initiative · can't
+  block · day/night**) layered on the existing custom-`other` badges (one shared list, so the free-text
+  `＋ctr` still covers anything exotic).
+- **Direct damage to a creature:** a "⚔ deal N" quick action (deathtouch-/lethal-aware) for fights/pings,
+  instead of hand-counting T−.
+
+### P9.4 — Enemy hand & library completeness
+
+Make the things the deck-tools model currently disclaims ("tutoring a card into play, casting from their
+deck, transforming") representable:
+- From a **library look / scry**, a card can move **→ hand / → battlefield / → graveyard / → exile** (tutor,
+  reanimate, mill-with-choice), not only stay/bottom.
+- From the **hand reveal**, a card can move **→ battlefield / → library / → exile** (cheat-into-play, bounce,
+  exile).
+- A **"make the enemy draw N"** control (inverse of discard) for forced-draw / wheel effects.
+- Update the deck-tools disclaimer copy (it currently says these "simply don't apply").
+
+### P9.5 — Instruction overhaul (do LAST — documents the finished game)
+
+A thorough rewrite of `TUTORIAL_HTML` (+ the landing "How it plays" + the ⓘ `INFO_TEXT` entries) so the docs
+match the shipped game **after Phase 8 + P9.1–P9.4**:
+- The **role-play contract** sharpened: *the app is opponent + bookkeeper; for anything not auto-resolved you
+  tell it what happened — and the new **move ▾ / control / copy / flip** tools now let you represent
+  literally any board action.*
+- **New in Phase 8:** the **combined Cast launcher** (library + Scryfall, lands excluded), **Create & Cast**
+  for homebrew, decklist import, DFC face pick, the effect-review chips — and that **Quick Cast is gone**.
+- **New in Phase 9:** the **universal move-to-zone toolbox** (bounce/tuck/reanimate/blink), **steal/give
+  control**, **copy/flip**, **status markers**, the **richer deck tools**.
+- Keep it **scannable** (the P7.6 sectioning), keep **villain names earned-only**, and re-verify every named
+  control still exists (grep) so the tutorial never references a removed affordance.
+
+### Acceptance criteria (Phase 9)
+
+1. **Return to hand:** an enemy creature on the board is **returned to the enemy's hand** in one menu pick —
+   it leaves the board, enters `S.hand`, and the AI can recast it. Your own permanent's "return to hand"
+   removes it from the board with a clear log (you hold the physical card).
+2. **Every zone reachable:** from any board permanent or zone chip the **move ▾** menu offers all and only
+   the legal destinations (hand / library±pos / graveyard / exile / battlefield); your exile is no longer a
+   dead end.
+3. **Death semantics:** destroy/sacrifice fire death + Pit's-Tithe; **bounce/tuck/hand/library do not** —
+   asserted by a driver counting Tithe fires.
+4. **Control:** stealing an enemy creature moves it to your board with stats intact and a ⇄ marker; giving
+   one back reverses it.
+5. **Docs:** the tutorial covers Phase 8 + the new toolbox, names no unearned villain, and references no
+   removed control (Quick Cast gone) — grep-checked.
+6. **No regressions:** boot → full turn cycle → undo → autosave green; **id-set diff** shows only intended
+   additions (and any retired one-off zone-button ids intentionally removed); existing one-tap shortcuts
+   still work (they now delegate to `moveCard`).
+
+### Verification
+
+- **jsdom drivers:** `moveCard` over each (object × destination) pair on both boards (enemy bounce → `S.hand`
+  recastable; tuck → `S.lib` at position; your exile → battlefield/hand/graveyard; enemy reanimate);
+  `changeControl` round-trip with stat preservation; copy/flip/markers; the death-vs-bounce Tithe assertion.
+- **Refactor safety:** assert the legacy shortcuts (`myGyReturn` etc.) produce identical state via the new
+  `moveCard` path (no behavioural drift), plus **id-set diff** + the **syntax gate**.
+- **Docs:** a string-presence test over `TUTORIAL_HTML` (Phase-8 + Phase-9 topic keywords; names no general),
+  like the P7.6 driver.
+
+### Open questions (Phase 9) — defaults assumed unless overridden
+
+- **Menu vs buttons:** a single **move ▾** dropdown per object (less clutter) vs more one-tap shortcut
+  buttons (faster, busier)? **Default:** dropdown for the full set + keep today's 2–3 most-used shortcuts.
+- **Control-change duration:** auto-revert at end of turn, or purely manual? **Default:** manual (the player
+  flips it back) with a reminder badge — consistent with the app's "you drive the timing" model.
+- **Player hand/library stay physical:** confirm we **don't** model a player hand/library (returns just
+  leave the app). **Default:** yes — only the enemy's hidden zones are modeled.
 
 ---
 

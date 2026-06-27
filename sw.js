@@ -2,7 +2,7 @@
    The cache name is versioned (gg-cache-v42), so installing this build
    evicts any earlier cached version on activate. A fetch handler is present,
    which is what makes the app installable. */
-const CACHE = 'gg-cache-v42';
+const CACHE = 'gg-cache-v43';
 const SHELL = [
   './index.html',
   './manifest.webmanifest',
@@ -30,6 +30,9 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
+  // Cross-origin (e.g. Scryfall API/images): go straight to the network and let the
+  // app handle any error itself — never answer with the cached HTML shell.
+  if (new URL(req.url).origin !== self.location.origin) return;
   // Navigations: try the network (so a fresh build shows when online), fall back to the cached shell.
   if (req.mode === 'navigate') {
     e.respondWith(fetch(req).catch(() => caches.match('./index.html')));
