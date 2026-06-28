@@ -74,6 +74,9 @@
   .crea .ctr{display:flex;gap:3px;margin-top:5px;flex-wrap:wrap} .crea .ctr button{padding:2px 5px;font-size:.54rem} .crea select{font-size:.58rem;padding:2px 4px;margin-top:4px}
   .empty{color:var(--bone-dim);font-style:italic;margin-top:8px}
   .brow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:9px;padding:7px 9px;margin-top:6px;background:var(--ink-3)} .brow .lab{font-family:"Space Mono",monospace;font-size:.58rem;color:var(--bone-dim)}
+  .brow.vsyou{border-color:var(--ember);background:linear-gradient(180deg,rgba(224,83,61,.12),var(--ink-3))} /* an enemy effect that hits YOU — flagged red */
+  .kindchip{font-family:"Space Mono",monospace;font-size:.54rem;text-transform:uppercase;letter-spacing:.06em;color:var(--gold);border:1px solid rgba(217,164,65,.4);border-radius:6px;padding:1px 6px}
+  .enemyfx-sub{font-family:"Space Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--bone-dim);margin:11px 0 1px;display:flex;align-items:center;gap:6px}
   .subh{font-family:"Space Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-top:12px;display:flex;justify-content:space-between;align-items:center}
   .rules{display:grid;gap:8px;margin-top:10px} .ruleperm{border:1px solid rgba(154,134,196,.45);border-radius:10px;background:rgba(154,134,196,.06);padding:9px 11px} .ruleperm.bossr{border-color:rgba(224,83,61,.45);background:rgba(224,83,61,.06)} .ruleperm .rn{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:.92rem;color:var(--purp)} .ruleperm.bossr .rn{color:var(--ember)} .ruleperm .rt{font-size:.78rem;color:var(--bone-dim);margin-top:2px} .ruleperm .acts{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
   .inv{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:9px;margin-top:10px} .item{border:1px solid var(--line);border-radius:11px;background:var(--ink-3);padding:9px 11px} .item.rare{border-color:rgba(217,164,65,.6)} .item .in{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:.92rem;display:flex;justify-content:space-between;gap:6px} .item .ir{font-family:"Space Mono",monospace;font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)} .item .it{font-size:.76rem;color:var(--bone-dim);margin:4px 0 6px}
@@ -394,8 +397,8 @@
   </div>
 
   <div class="panel" style="margin-top:12px">
-    <h2>✶ <span id="enemyName2">Enemy</span>'s emblems <span class="tag">persistent effects · ⚡ auto on its upkeep</span></h2>
-    <div class="btnrow" style="margin-top:2px"><select id="embTemplate" style="max-width:240px"></select><button class="tiny ok" onclick="addEnemyEmblem()">+ add emblem</button></div>
+    <h2>✶ <span id="enemyName2">Enemy</span>'s artifacts, enchantments &amp; emblems <span class="tag">persistent effects · ⚡ auto on its upkeep</span></h2>
+    <div class="btnrow" style="margin-top:2px"><select id="embKind" style="max-width:128px"><option value="enchantment">Enchantment</option><option value="artifact">Artifact</option><option value="emblem">Emblem</option></select><select id="embTemplate" style="max-width:188px"></select><button class="tiny ok" onclick="addEnemyEmblem()">+ add</button></div>
     <div id="enemyEmbList" style="margin-top:6px"></div>
   </div>
 
@@ -1370,25 +1373,28 @@ function addC(){S.my.creatures.push({id:S.nextId++,name:"Creature",p:2,t:2,baseP
 function addP(cat){S.my[cat].push({id:S.nextId++,name:cat==='artifacts'?"Artifact":"Enchantment",kind:"passive",mana:0,dmg:0,note:"",color:[],legendary:false,token:false,dies:"graveyard",phased:false,prot:[],catk:null,strength:"mid",_drawer:false});log("you",`Added ${cat==='artifacts'?'an artifact':'an enchantment'} to your board.`);render();}
 function addW(){S.my.walkers.push({id:S.nextId++,name:"Planeswalker",loyalty:3,baseLoy:3,abilities:3,note:"",color:[],legendary:true,dies:"graveyard",isCmd:false,strength:"mid",_drawer:false});log("you","Added a planeswalker to your board.");render();}
 function addEm(){S.my.emblems.push({id:S.nextId++,name:"Emblem",note:""});log("you","Added an emblem.");render();}
-/* ===== P3.2: Enemy emblems — classic templates + optional automation (auto ones fire on the enemy's upkeep; others are reminders). Stored on S.emblemsEnemy, rendered in the Enemy Board. ===== */
+/* ===== P3.2: Enemy persistent effects — artifacts, enchantments & emblems. Classic templates + optional automation (auto ones fire on the enemy's upkeep; others are reminders). All stored on S.emblemsEnemy (each tagged with a `kind`), rendered grouped on the Enemy Board; the ones that hit YOU show a red box. The template's effect is kind-agnostic — the `kind` only labels/groups it. ===== */
 const ENEMY_EMBLEMS=[
-  {n:'Lifegain emblem',note:'At the beginning of its upkeep, the enemy gains 2 life.',auto:{k:'enemyGain',n:2}},
-  {n:'Drain emblem',note:'At the beginning of its upkeep, you lose 1 life.',auto:{k:'youLose',n:1}},
-  {n:'Card-advantage emblem',note:'At the beginning of its upkeep, the enemy draws a card.',auto:{k:'enemyDraw',n:1}},
-  {n:'Mana emblem',note:'At the beginning of its upkeep, the enemy gets +1 mana this turn.',auto:{k:'enemyMana',n:1}},
-  {n:'Growth emblem',note:'At the beginning of its upkeep, put a +1/+1 counter on each enemy creature.',auto:{k:'buffEnemyCreatures',n:1}},
+  {n:'Lifegain (its upkeep)',note:'At the beginning of its upkeep, the enemy gains 2 life.',auto:{k:'enemyGain',n:2}},
+  {n:'Drains you (its upkeep)',note:'At the beginning of its upkeep, you lose 1 life.',auto:{k:'youLose',n:1}},
+  {n:'Card draw (its upkeep)',note:'At the beginning of its upkeep, the enemy draws a card.',auto:{k:'enemyDraw',n:1}},
+  {n:'Ramp +1 mana (its upkeep)',note:'At the beginning of its upkeep, the enemy gets +1 mana this turn.',auto:{k:'enemyMana',n:1}},
+  {n:'Growth +1/+1 (its upkeep)',note:'At the beginning of its upkeep, put a +1/+1 counter on each enemy creature.',auto:{k:'buffEnemyCreatures',n:1}},
   {n:'Anthem (+1/+1)',note:'Enemy creatures get +1/+1. Reminder — track via each creature’s P/T.',auto:null},
   {n:'Menace anthem',note:'Enemy creatures have menace (must be blocked by two). Reminder.',auto:null},
-  {n:'Custom emblem',note:'',auto:null},
+  {n:'Custom',note:'',auto:null},
 ];
 function embEsc(s){return (''+(s==null?'':s)).replace(/"/g,'&quot;');}
 function fillEmblemTemplates(){const sel=$('embTemplate');if(sel&&!sel.options.length)sel.innerHTML=ENEMY_EMBLEMS.map((t,i)=>`<option value="${i}">${t.n}${t.auto?' ⚡':''}</option>`).join('');}
 function addEnemyEmblem(){const sel=$('embTemplate');const i=sel?parseInt(sel.value,10):ENEMY_EMBLEMS.length-1;const t=ENEMY_EMBLEMS[i]||ENEMY_EMBLEMS[ENEMY_EMBLEMS.length-1];
-  S.emblemsEnemy.push({id:S.nextId++,name:t.n,note:t.note,auto:t.auto?{k:t.auto.k,n:t.auto.n}:null,autoOn:!!t.auto});
-  log("dm",`✦ ${ENs()} gains an emblem: <b>${t.n}</b>${t.auto?' (⚡ auto on upkeep)':' (reminder)'}.`);render();}
+  const kindSel=$('embKind');const kind=(kindSel&&kindSel.value)||'emblem';
+  const vsYou=!!(t.auto&&t.auto.k==='youLose');/* effects that drain/damage YOU get the red box (toggle below for custom ones) */
+  S.emblemsEnemy.push({id:S.nextId++,name:t.n,note:t.note,auto:t.auto?{k:t.auto.k,n:t.auto.n}:null,autoOn:!!t.auto,kind,vsYou});
+  const article=kind==='artifact'?'an artifact':kind==='enchantment'?'an enchantment':'an emblem';
+  log("dm",`✦ ${ENs()} gains ${article}: <b>${t.n}</b>${t.auto?' (⚡ auto on upkeep)':' (reminder)'}.`);render();}
 function setEnemyEmblem(id,f,v){const em=(S.emblemsEnemy||[]).find(e=>e.id===id);if(em){em[f]=v;render();}}
 function toggleEmblemAuto(id){const em=(S.emblemsEnemy||[]).find(e=>e.id===id);if(em&&em.auto){em.autoOn=!em.autoOn;log("dm",`✦ <b>${em.name}</b>: automation ${em.autoOn?'on':'off'}.`);render();}}
-function rmEnemyEmblem(id){const i=(S.emblemsEnemy||[]).findIndex(e=>e.id===id);if(i>=0){const nm=S.emblemsEnemy[i].name;S.emblemsEnemy.splice(i,1);log("dm",`✦ ${ENs()} loses the emblem <b>${nm}</b>.`);render();}}
+function rmEnemyEmblem(id){const i=(S.emblemsEnemy||[]).findIndex(e=>e.id===id);if(i>=0){const em=S.emblemsEnemy[i],nm=em.name,kind=em.kind||'emblem';S.emblemsEnemy.splice(i,1);log("dm",`✦ ${ENs()} loses the ${kind} <b>${nm}</b>.`);render();}}
 function emblemEffect(em){if(!em||!em.auto)return;const a=em.auto,n=a.n||0;
   if(a.k==='enemyGain'){bossHealLife(n);log("dm",`✦ ${em.name}: ${ENs()} gains ${n} life. (${S.boss.life})`);}
   else if(a.k==='youLose'){S.youLife-=n;log("dm",`✦ ${em.name}: you lose ${n} life. (${S.youLife})`);}
@@ -1397,13 +1403,18 @@ function emblemEffect(em){if(!em||!em.auto)return;const a=em.auto,n=a.n||0;
   else if(a.k==='buffEnemyCreatures'){let c=0;S.tokens.forEach(t=>{t.plus=(t.plus||0)+n;c++;});if(S.cmd&&S.cmd.inPlay){S.cmd.plus=(S.cmd.plus||0)+n;c++;}log("dm",`✦ ${em.name}: +${n}/+${n} on ${c} enemy creature${c===1?'':'s'}.`);}}
 function fireEnemyEmblems(){const list=(S.emblemsEnemy||[]).filter(em=>em.auto&&em.autoOn!==false);if(!list.length)return;list.forEach(emblemEffect);checkLose();}
 function fireOneEmblem(id){if(S.over)return;const em=(S.emblemsEnemy||[]).find(e=>e.id===id);if(em&&em.auto){emblemEffect(em);checkLose();render();}}
+/* enemy persistent-effect kinds, in board order; each row renders under its group, red-boxed when it hits you */
+const ENEMY_FX_KINDS=[{k:'artifact',label:'⚙ Artifacts'},{k:'enchantment',label:'🪶 Enchantments'},{k:'emblem',label:'✶ Emblems'}];
+function toggleEmblemVsYou(id){const em=(S.emblemsEnemy||[]).find(e=>e.id===id);if(em){em.vsYou=!em.vsYou;log("dm",`✦ <b>${em.name}</b>${em.vsYou?' now flagged as affecting you (red).':' no longer flagged against you.'}`);render();}}
 function renderEnemyEmblems(){fillEmblemTemplates();const box=$('enemyEmbList');if(!box)return;const list=S.emblemsEnemy||[];
-  if(!list.length){box.innerHTML='<span class="empty">No emblems. Add a classic template above — ⚡ ones fire automatically on the enemy’s upkeep; the rest are reminders you apply yourself.</span>';return;}
+  if(!list.length){box.innerHTML='<span class="empty">None yet. Pick a type + template above — ⚡ ones fire automatically on the enemy’s upkeep; the rest are reminders you apply yourself. Effects that hit YOU show a red box.</span>';return;}
   box.innerHTML='';
-  list.forEach(em=>{const el=document.createElement('div');el.className='brow';
-    const ctrl=em.auto?`<button class="tiny ${em.autoOn?'gold on':''}" title="automation fires on the enemy’s upkeep — click to toggle" onclick="toggleEmblemAuto(${em.id})">⚡ ${em.autoOn?'auto':'off'}</button><button class="tiny" title="fire this emblem now" onclick="fireOneEmblem(${em.id})">▸ fire</button>`:'<span class="badge">reminder</span>';
-    el.innerHTML=`<input type="text" value="${embEsc(em.name)}" style="width:150px" onchange="setEnemyEmblem(${em.id},'name',this.value)"><input type="text" placeholder="effect" value="${embEsc(em.note)}" style="width:190px" onchange="setEnemyEmblem(${em.id},'note',this.value)">${ctrl}<button class="tiny ember" onclick="rmEnemyEmblem(${em.id})">✕</button>`;
-    box.appendChild(el);});}
+  ENEMY_FX_KINDS.forEach(group=>{const items=list.filter(em=>{const k=em.kind||'emblem';return group.k==='emblem'?(k!=='artifact'&&k!=='enchantment'):k===group.k;});if(!items.length)return;
+    const sub=document.createElement('div');sub.className='enemyfx-sub';sub.innerHTML=`${group.label} <span class="tag">${items.length}</span>`;box.appendChild(sub);
+    items.forEach(em=>{const el=document.createElement('div');el.className='brow'+(em.vsYou?' vsyou':'');
+      const ctrl=em.auto?`<button class="tiny ${em.autoOn?'gold on':''}" title="automation fires on the enemy’s upkeep — click to toggle" onclick="toggleEmblemAuto(${em.id})">⚡ ${em.autoOn?'auto':'off'}</button><button class="tiny" title="fire this now" onclick="fireOneEmblem(${em.id})">▸ fire</button>`:'<span class="badge">reminder</span>';
+      el.innerHTML=`<span class="kindchip">${em.kind||'emblem'}</span><input type="text" value="${embEsc(em.name)}" style="width:138px" onchange="setEnemyEmblem(${em.id},'name',this.value)"><input type="text" placeholder="effect" value="${embEsc(em.note)}" style="width:178px" onchange="setEnemyEmblem(${em.id},'note',this.value)">${ctrl}<button class="tiny ${em.vsYou?'ember on':''}" title="mark this as affecting YOU — shows a red box" onclick="toggleEmblemVsYou(${em.id})">⚠ vs you</button><button class="tiny ember" onclick="rmEnemyEmblem(${em.id})">✕</button>`;
+      box.appendChild(el);});});}
 function setMy(cat,id,f,v){const o=S.my[cat].find(x=>x.id===id);if(o){o[f]=v;render();}}
 function adjMy(cat,id,f,n){const o=S.my[cat].find(x=>x.id===id);if(!o)return;o[f]=Math.max(0,(o[f]||0)+n);if(cat==='walkers'&&f==='loyalty'&&o.loyalty<=0){log("you",`<b>${o.name}</b> falls to 0 loyalty.`);killMy(o);}render();}
 function rmMy(cat,id){const o=S.my[cat].find(x=>x.id===id);if(!o)return;if(o.isCmd){sendCmdToZone(o,false);return;}const i=S.my[cat].indexOf(o);if(i>=0)S.my[cat].splice(i,1);render();}
@@ -2004,6 +2015,7 @@ function clearSave(){try{if(typeof DB!=='undefined'&&DB){DB.save=null;saveDB();}
 function descentInProgress(){return hasSave()||!!(_liveGame&&typeof S!=='undefined'&&S&&!S.over);}
 function migrate(s){if(!s||typeof s!=='object')return s;
   ['tokens','rules','plays','inv','lib','hand','gy','exile','deckColors','myGy','myExile','battles','emblemsEnemy'].forEach(k=>{if(!Array.isArray(s[k]))s[k]=[];});
+  (s.emblemsEnemy||[]).forEach(e=>{if(e&&!e.kind)e.kind='emblem';if(e&&e.vsYou==null)e.vsYou=!!(e.auto&&e.auto.k==='youLose');});/* enemy persistent-effects gained a kind (artifact/enchantment/emblem) + vsYou flag */
   if(!s.my||typeof s.my!=='object')s.my={};['creatures','artifacts','enchants','walkers','emblems'].forEach(k=>{if(!Array.isArray(s.my[k]))s.my[k]=[];});
   if(!s.counters||typeof s.counters!=='object')s.counters={};['poison','energy','experience','cmdDmg'].forEach(k=>{if(typeof s.counters[k]!=='number')s.counters[k]=0;});
   if(!s.ui||typeof s.ui!=='object')s.ui={tabs:{}};if(!s.ui.tabs)s.ui.tabs={};
