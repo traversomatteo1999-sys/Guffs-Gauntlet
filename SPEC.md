@@ -772,6 +772,98 @@ match the shipped game **after Phase 8 + P9.1–P9.4**:
 
 ---
 
+# PHASE 12 — UI & card-mechanic upgrades (collapsible panels · combat block-restrictions · clone) ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** Three independent, additive features. All hooks grounded in the current `index.html` (re-grep names; line numbers drift). Each ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**STATUS-table rows to slot into the table at the top of this doc (kept out of the table here so this section commits in isolation from the in-flight P11 row):**
+```
+| **Phase 12 — UI & card-mechanic upgrades** | ⬜ **PLANNED** — collapsible tab panels · combat block-restrictions (+ Scryfall auto-parse + mechanic audit) · enter-as-a-copy clone |
+| &nbsp;&nbsp;P12.1 Collapsible boxes inside tabs | ⬜ planned |
+| &nbsp;&nbsp;P12.2 Block-restriction infrastructure + mechanic audit | ⬜ planned |
+| &nbsp;&nbsp;P12.3 Enter-as-a-copy (clone) with on-board picker | ⬜ planned |
+```
+
+## P12.1 — Collapsible boxes inside tabs
+
+**Goal:** every box (panel) inside a tab can expand/collapse. On a fresh load the **first (main) box of each tab is open and the rest are closed** — e.g. in the Action tab, **Turn flow** is open while **Your attack**, **Tools**, and **Battles & Planes** start closed. A tab that contains **only one box is left unchanged** (no collapse chrome).
+
+**Current structure (grounded):**
+- Tabs: `const TABS=['info','action','enemy','player']` (~2379). `buildTabs()` (~2381) reparents `.panel` nodes into `.tab` shells; `applyTabs()` (~2396) toggles `.collapsed` on each `.tab` from `S.ui.tabs[k]`; `toggleTab(k)` (~2397).
+- **Precedent to mirror:** the Dungeon Log's own collapse — `S.ui.logExpanded`, `applyLog()`/`toggleLog()` (~2399-2400), `#logToggle` button (HTML ~486), CSS `.log.expanded #log` (~117-118). Reuse this exact shape one level down (per-panel instead of per-log).
+- **Panel inventory (boxes per tab):**
+  - **Info** (2): the You/Boss vitals duo (`grid.duo`, ~362-383) · Dungeon Log (`#logBox`, ~486).
+  - **Action** (4): Turn flow (~475-484) · Your attack (~429-435) · Tools (~448-465) · Battles & Planes (`#battlesPanel`, ~467-473).
+  - **Enemy** (4): Enemy's creatures (~393) · Planeswalker (`#pwPanel`, ~385) · Enemy artifacts/enchantments/emblems (~399) · Enemy's zones (~405).
+  - **Player** (3): Your board (~415) · Your zones (`#myZonesPanel`, ~437) · Enchantments in play (`#rulesPanel`, ~445).
+  - NOTE: all four tabs currently hold multiple boxes, so the "single-box tab stays unchanged" rule is **future-proofing** — encode it (skip the toggle when a `.tab` has exactly one `.panel`).
+
+**How:**
+1. Give every collapsible `.panel` a stable `id`/`data-panel` (several already have ids; add to the ones that don't: the You/Boss duo, Turn flow, Your attack, Tools, Enemy's creatures, Your board). Hide content below the `<h2>` when collapsed — either wrap each panel body in `.panelbody`, or CSS `.panel.collapsed > :not(h2){display:none}`.
+2. State: `S.ui.panels = {[panelId]: open(bool)}`. When empty, compute defaults from DOM order within each `.tab`: first `.panel` open, the rest closed.
+3. `togglePanel(id)` — flip `S.ui.panels[id]`, `applyPanels()`, `scheduleAutosave()` (mirrors `toggleTab`).
+4. `applyPanels()` — toggle `.collapsed` on each known panel; call from `render()` right after `applyTabs()` (~1226) and from `buildTabs()` init.
+5. UI: add a chevron toggle into each panel `<h2>` (reuse the `#logToggle` look + CSS rotation); clicking the header toggles. Single-`.panel` tabs: no chevron.
+6. Persist: backfill in `migrate()` (~2021) — `if(!s.ui.panels||typeof s.ui.panels!=='object')s.ui.panels={};`.
+7. Coexistence: panels already hidden when empty (`#pwPanel`, `#myZonesPanel`, `#rulesPanel`) keep that `display:none` behavior — collapse only affects a *shown* panel.
+8. **Info-duo decision:** treat the You+Boss `grid.duo` as the single "main" box of the Info tab (always open — core vitals stay visible); only the Dungeon Log collapses. (Rejected alt: independently collapse You vs Boss — a half-collapsed side-by-side grid looks broken and hides vitals.)
+
+**ACs:** fresh load → first box of each multi-box tab open, rest collapsed; toggles persist across reload (autosave/migrate); single-box tabs show no chevron; empty `display:none` panels stay hidden; the You/Boss duo never breaks layout.
+**Verify:** jsdom — default first-open-per-tab, `togglePanel` flips+autosaves, `applyPanels` sets `.collapsed`, migrate backfill; id-diff (only new panel ids); syntax gate.
+
+## P12.2 — Combat block-restriction infrastructure (+ Scryfall auto-parse + mechanic audit)
+
+**Goal:** model cards blockable only by a certain NUMBER of creatures — the menace family: **"can't be blocked except by N or more creatures"** (min blockers) and **"can't be blocked by more than N creatures"** (max blockers). Auto-detect from Scryfall oracle text, surface/edit in card details, enforce in combat for both sides, and fold the existing menace handling into it.
+
+**Data model:** add `block:{min:N|null, max:N|null}` to the creature object + `cfg.props.block`. Helpers:
+- `minBlockers(c) = (c.block&&c.block.min) || (kw(c,'menace')?2:1)` — menace folds in as min 2.
+- `maxBlockers(c) = (c.block&&c.block.max) || Infinity`.
+Round-trip the field wherever the other per-permanent props go: `cmdObjFromCfg` (~2170), `resolvePlayerItem` creature branch (~1679), `saveBoardToLibrary` (~2161), `buildImportedCard`/import (~2289), `migrate` backfill (default null).
+
+**Enforcement (grounded):**
+- **Player blocking — `combatAdd(attId)` (~1120):** before pushing a blocker, if `assign[attId].length >= maxBlockers(att)` → reject + `log("sys", …"can be blocked by at most N")`. Hard cap.
+- **Min/menace at approve time:** when the player approves combat, a creature with `minBlockers>1` blocked by `1..(min-1)` is an ILLEGAL partial block → warn and refuse approval until it is blocked by `≥min` or by `0`. This **finally enforces menace in the player UI too** (today menace is only enforced for the AI — see audit).
+- **`legalBlock(att,b)` (~971):** optional secondary guard (reject when already at max). Keep the primary cap in `combatAdd`.
+- **AI blocking — `aiBlocks` (~1051-1065):** replace hardcoded `const need=kw(att,'menace')?2:1` with `const need=minBlockers(att)` and respect `maxBlockers(att)` when committing blockers — so when the PLAYER's attacker carries a restriction, the enemy honors it.
+- **`resolveAttack` (~972):** no change — resolves whatever assignment passes the gates.
+- **Combat UI — `renderCombat`/attacker row (~1103/1111):** show the restriction next to the attacker (`[blocked by 2+]`, `[max 1 blocker]`).
+
+**Scryfall auto-parse — `inferEffects` (~2278):** add regexes → `out.props.block` (+ a small `word2num` for one…five and digits):
+- `/can't be blocked except by (\w+) or more creatures/` and `/can only be blocked by (\w+) or more creatures/` → `block.min`.
+- `/can't be blocked by more than (\w+) creatures?/` → `block.max`.
+- Leave `menace` as the recognized keyword (don't double-count — the helper already maps it to min 2).
+
+**Card-details UI:** add a "blocked by min/max" pair of number inputs to `castFormHTML` (~1709, permanent-properties area) and the live `creatureDrawer` (~1269); read into `cfg.props.block` in `readCastForm` (~2137). Import-review chips (`scryRow` ~2341) auto-show the parsed restriction.
+
+**"Don't leave out any mechanic" — full coverage audit (from the 3-agent research).** The block-restriction family is the headline build; this table records EVERY card mechanic's status so nothing is silently dropped. Legend: ✅ modeled+parsed · ◐ partial · ⬜ gap.
+- **Evasion:** flying ✅ · reach ✅ · menace ✅ (→ unified into min) · **can't-be-blocked-except-by-N ⬜→BUILD** · **can't-be-blocked-by-more-than-N ⬜→BUILD** · can't-be-blocked / unblockable ✅ (kw) · lure ◐ (parsed as kw but NOT enforced) · shadow / horsemanship / skulk / daunt / landwalk / fear / intimidate ⬜ (rare — model later as conditional block-eligibility, else manual note).
+- **Combat:** trample / deathtouch / first & double strike / lifelink ✅ · vigilance ◐ (label only, no attack-without-tapping logic).
+- **Static/defensive:** defender ✅ · indestructible ✅ · hexproof ✅ · protection ✅ · ward ✅.
+- **Other:** haste ✅ in engine but **MISSING from `KW_LIST` (~583)** though present in `RECOGNISED_KW` (~2254) → add to KW_LIST · "can't attack" ⬜ (only "can't block" exists) · flash ⬜ · enters-tapped ⬜ · prowess ⬜ · goad ◐ (manual marker, not parsed) · draw / tutor one-shots ⬜ (not parsed).
+- **Scoped INTO P12.2 (so the block-adjacent set isn't "left out"):** (a) the two block-count families (core); (b) add `haste` to `KW_LIST`; (c) enforce **lure** ("all creatures able to block this do") at approve time — require every legal untapped player blocker to block a lure attacker; (d) add **"can't attack"** alongside "can't block" (parse + gate in `vaelAttackers` ~1076 and the your-attack picker). Everything else (shadow/flash/enters-tapped/prowess/goad-parse/draw-tutor) is **cataloged above as an explicit deferred backlog** — listed, not silently omitted.
+
+**ACs:** a min-2 creature can't be approved blocked by 1 (player) and the AI won't single-block it; a max-1 creature can't get a 2nd blocker assigned; importing a "can't be blocked except by two or more" / "can't be blocked by more than one creature" card auto-fills `props.block` and the chip shows it; menace still works via the unified helper; the field round-trips through save/library/import.
+**Verify:** jsdom — `minBlockers`/`maxBlockers`; `combatAdd` cap; AI honors min/max on a player attacker; `inferEffects` parses each phrasing → `props.block`; round-trip; menace parity; syntax + id-diff.
+
+## P12.3 — Enter as a copy of an on-board permanent (clone)
+
+**Goal:** a card can be set to **enter as a copy of a permanent already on the battlefield** (the MTG Clone mechanic). On resolve, a **popup lists the copyable on-board permanents**; the player picks one and the card enters as a copy of it. **Legendary permanents are NOT copyable unless the player ticks "copy won't be legendary" in the popup** — the copy then enters non-legendary, sidestepping the legend rule.
+
+**Current building blocks (grounded):**
+- `copyPermanent(scope,id)` (~1030) already deep-copies a board permanent as a TOKEN clone (new id, `token:true`, `sick:true`, `isCmd:false`) — reuse its copy logic.
+- Player spells resolve into play via `resolvePlayerItem(p)` (~1678); `legendary` lives on `cfg.props.legendary` and on board objects; cast-form toggles `castLeg`/`castTok`/`castDef` are the pattern for a new toggle. Permanents live in `S.my.creatures/artifacts/enchants/walkers` (yours) + `S.tokens` and `S.cmd` (enemy).
+
+**How:**
+1. **Cast-form flag:** add a "⧉ enters as a copy" toggle to `castFormHTML` (~1709) → `cfg.props.clone=true` via `readCastForm` (~2137). Applies to creature / artifact / enchantment / planeswalker card types.
+2. **Resolve hook:** in `resolvePlayerItem` (~1678), if `pr.clone`, skip building from cfg and call `openClonePicker(p)`.
+3. **Picker popup `openClonePicker(p)`** (reuse the overlay/modal): list every on-board permanent — "Your permanents" (`S.my.creatures/artifacts/enchants/walkers`) and "Enemy permanents" (`S.tokens` + `S.cmd` when `inPlay`) — each row: name · type · P/T or loyalty · legendary badge · "⧉ copy" button. A top checkbox **"copy won't be legendary"** (`#cloneNoLeg`). Legendary rows: copy button DISABLED unless `#cloneNoLeg` is ticked (hint: "legendary — tick 'copy won't be legendary' to clone"). No copyable permanents → "nothing on the battlefield to copy" + an "enter as a plain card / cancel" choice.
+4. **On pick `cloneInto(p, scope, id, noLeg)`:** deep-copy the chosen permanent's COPIABLE characteristics (name, p/t + baseP/baseT, kw, color, abilP/abilA, prot, cward, catk, dies, strength, kind) into a NEW player permanent of the matching array; `legendary = noLeg ? false : target.legendary`; reset non-copiable state (`plus/minus=0, other=[], tapped:false, sick:true, isCmd:false, _controlled:false`) and **`token:false`** — unlike `copyPermanent`, the clone is a REAL permanent so it routes to graveyard/exile on death. Log "⧉ <card> enters as a copy of <target>"; then `checkLose();renderPlays();render()`.
+5. **Legend rule:** because legendaries are only copyable as non-legendary, a clone never triggers the legend rule — no extra handling. (A future "legendary copy" opt-in + manual legend-rule resolution is out of scope.)
+
+**ACs:** a creature card with "enters as a copy" → on resolve, popup lists on-board permanents; picking a non-legendary creature makes the card enter as a 1:1 copy (summoning-sick, untapped, non-token, dies to graveyard); legendary targets unselectable until "copy won't be legendary" is ticked, after which the copy enters non-legendary; empty board → graceful "nothing to copy" path; the copy is independent (later buffs to the original don't affect it).
+**Verify:** jsdom — clone flag round-trips; resolving a clone card opens the picker (overlay shown + permanents listed); `cloneInto` yields a non-token copy with copied P/T+kw and reset counters; legendary gating (button disabled → enabled with `noLeg`, result `legendary:false`); empty-board path; syntax + id-diff.
+
+
 ## Open questions (non-blocking — assume the stated default unless overridden)
 
 - **Passive item duration (P7.4):** are any satchel items meant to last >1 descent? *Default:* all single-descent (counter shows 1).
