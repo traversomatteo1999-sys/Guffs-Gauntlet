@@ -59,8 +59,8 @@ icon.
 ## Updating to a newer build (same URL, players auto-update)
 
 1. Change the files (especially `index.html`).
-2. **Bump the cache name in `sw.js`** — this build uses `gg-cache-v44`; increment it
-   (`v45`, …). The service worker deletes the old cache on activate, so installed
+2. **Bump the cache name in `sw.js`** — this build uses `gg-cache-v45`; increment it
+   (`v46`, …). The service worker deletes the old cache on activate, so installed
    players pick up the new build on their next launch (or two).
 3. **Deploy to the SAME Netlify site** (its *Deploys* tab — not Netlify Drop). Same
    URL → no new link, everyone updates automatically.
