@@ -74,6 +74,7 @@
 | &nbsp;&nbsp;P9.3 Per-permanent extras (copy · flip · markers · direct dmg) | ✅ **done & verified** — `copyPermanent` (token clone) · status markers (goad/monarch/initiative/can't-block/day/night) · `dealDmg` (⚔ deathtouch/lethal-aware) · `flipPermanent` for DFCs (`_faces` carried import→board) |
 | &nbsp;&nbsp;P9.4 Enemy hand &amp; library completeness (tutor / reanimate / draw) | ✅ **done & verified** — `dtMoveObj` (a card from any enemy zone → hand/library/gy/exile, or a creature → battlefield via spawn) · `dtRevealMove` (👁 look / 🤚 hand-reveal now actionable) · `dtDraw` (🃏 enemy draws N); disclaimer updated |
 | &nbsp;&nbsp;P9.5 Instruction overhaul (LAST — documents Phase 8 + 9) | ✅ **done** — tutorial rewritten for Phase 8 (launcher/search/decklist/Create-a-card) + Phase 9 (new 🔀 Moving-cards section: move-to-zone/return-to-hand · control · copy · flip · markers · damage · tutor/reanimate/draw); no stale Quick Cast ref *(deferred cosmetic: remove the creator's redundant From-library row)* |
+| **Phase 11 — Chapter I: Story foundation (L1 re-lore)** | ⬜ **PLANNED** — Arrival cutscene · Vael **death→escape** (3-beat `win()` chain) · Guff-freed · L2-bridge epilogue rewrite · 📖 Lore-page rewrite · framing copy. **Text-only; no deck/stat changes.** Copy drafted + canon/feasibility-reviewed; see Phase 11 below |
 
 ---
 
@@ -771,6 +772,245 @@ match the shipped game **after Phase 8 + P9.1–P9.4**:
   leave the app). **Default:** yes — only the enemy's hidden zones are modeled.
 
 ---
+
+---
+
+# PHASE 11 — Chapter I: Story Foundation (Level 1 re-lore) ⬜ PLANNED
+
+**Goal.** Re-lore Level 1 ("re-lore, not rebuild") to establish Chapter I canon: the player is an **off-plane planeswalker** drawn to **Ashveil** with nothing to gain, descending the **Warren of Embers** to free **Commodore Guff** (caged founder of **the Conclave**) from the Ember-tyrant **Vael**. The marquee change is the victory flip — Vael does **not die**; his deathless **Ember** relights him elsewhere and he **flees weakened**, while Guff walks free. All text-only: new Arrival cutscene, a 3-beat victory chain, a Lore-page rewrite, and four framing strings.
+
+**HARD OUT OF SCOPE (do not touch):** every `pool` / `lands` / `swaps` / `hp` / `cmd` / `pw` / `reborn` / `colors` field; the two-phase Vael fight mechanics (`bossDown()`, reborn/enrage, decks, stats); the warden-card `forEach` hidden-until-earned loop logic; Grakk/Murglax/Vael **intros, quotes, deathQuotes, lore, decks, stats** stay VERBATIM. Only **TEXT fields** and the listed `function` bodies (text/flow) are edited.
+
+**Canon enforced across this phase:** `plane`/`Multiverse` only, never "realm" · player is deck-agnostic (no colors assigned to the player) · Vael deathless **because he forged the Ember**; bond is NEVER severed in L1 (that is L3) · the two on-board deaths = the Ember relighting him; the final fall = his **escape**, not his end · Guff is 100% sympathetic — no winks, cracks, or foreshadowing of his Level-4 turn · faction = "the Conclave"; "Drowned Conclave" = the L2 **place** only, framed as ally/cause, never a target · warden names stay hidden until beaten.
+
+Verified anchors (current `C:\Users\trave\Documents\Guffs-Gauntlet\index.html`): `win()` = line 1790 · `lose()` = 1791 · `DUNGEON[2].epilogue` = 758 · `openLore()` = 1831–1839 · `proceedAfterCommander()` = 2109 (existing `if(!S._introShown){S._introShown=true; …}` guard) · resume forces `S._introShown=true` = 1960 · `SAVE_V=40` = 1935 · Engine eyebrows = 324 & 518 · header subtitle = 326 · how-it-plays item 7 = 339 · menu subtitle = 520 · tutorial loop `<p>` = 1880 · `villainCutOpts(room,quote)` = 1854 · `sw.js` `CACHE='gg-cache-v45'` = line 5 (comment line 2).
+
+---
+
+### P11.1 — Arrival opening cutscene
+**Do:** Fire a new ARRIVAL cutscene once per descent **before** the Ember-Gate intro, then chain into it. Reuse the existing `S._introShown` once-per-descent guard (it is rebuilt falsy by `fresh()` each new descent and forced `true` only on resume at line 1960, which never calls `proceedAfterCommander()`), so **no new persisted field is needed** and there is no double-fire risk. Add a module-level `ARRIVAL_LINES` const beside `DUNGEON`. The Continue button's `on:()` calls the existing `showCutscene(DUNGEON[0].intro,…,"Ember Gate · Level I",…)`.
+
+**Touchpoints:** `ARRIVAL_LINES` (new const), `proceedAfterCommander()` (line 2109), `showCutscene`, `villainCutOpts(DUNGEON[0])`.
+
+**Canon enforced:** establishes outsider-nothing-to-gain, the deathless Ember **forged by its maker** (critic fix applied: "maker," not "keeper"), Guff caged as keystone, zero Guff foreshadowing, no Vael-death/escape content (reserved for victory). `<em>` only on the three load-bearing nouns.
+
+`ARRIVAL_LINES`:
+```js
+const ARRIVAL_LINES=[
+ "Your spark wakes between worlds and will not be argued with. A plea catches it — thin, far, the way water finds a crack — and drags you down through dark after dark to a plane you have never walked. <em>Ashveil</em>, where you have nothing to win and no reason to stay.",
+ "The air reeks of old smoke. Beneath your boots the rock splits into a downward maze of goblin-fire and grave-cold, and at its heart a flame is burning that will not die. They call it the <em>Ember</em>; they call its maker Vael; and Vael has already won the war.",
+ "Yet something dragged you to this exact wound, and now you know its name. Caged in the deep, in iron of Vael's own forging, the founder of the beaten Conclave still breathes — <em>Commodore Guff</em>. Free him, and a lost cause has its keystone again.",
+ "You owe this plane nothing. You go down anyway. Below, the Ember Gate yawns open, breathing heat up into the cold."
+];
+```
+
+Refactored `proceedAfterCommander()`:
+```js
+function proceedAfterCommander(){_cmdChooseActive=false;_cmdCreating=false;$("overlay").classList.remove("show");
+  if(!S._introShown){S._introShown=true;
+    showCutscene(ARRIVAL_LINES,"Nothing to Gain","Arrival · Ashveil","Descend into the Warren ▸",{
+      sigil:'✦',accent:'var(--gold)',speaker:"the Conclave's plea",
+      quote:"Find Guff. Free him. He is the last of us who can still build.",
+      buttons:[{label:"Descend into the Warren ▸",cls:"big",on:()=>{
+        if(DUNGEON[0].intro)showCutscene(DUNGEON[0].intro,DUNGEON[0].villain,"Ember Gate · Level I","Enter the gate ▸",villainCutOpts(DUNGEON[0]));
+      }}]
+    });
+  }
+}
+```
+*(Alternative only if a distinct persisted `S.arrivalSeen` is wanted instead of `S._introShown`: add `arrivalSeen:false` to the `fresh()` S-literal, append `'arrivalSeen'` to the migrate boolean-coerce `.forEach(...)` list, and bump `SAVE_V` per P11.7. The reuse-`_introShown` form above is preferred — fewer moving parts, no save-version churn, gate intro reachable ONLY via the arrival button.)*
+
+---
+
+### P11.2 — Vael death→escape: `win()` 3-beat chain (beat 1 = escape)
+**Do:** Refactor `win()` into a chained `showCutscene` finale: **beat 1 escape → beat 2 Guff freed → beat 3 L2 bridge**. Keep `recordResult(true)`, `S.boss.life=0`, `lootRoll()`, `goldReward()`, `addGold()` at the **TOP** of `win()` (fire exactly once); capture `lr` and `gold` in closure. Attach `opts.spoils` to **beat 3 only** (where restart/quit live) so the styled spoils banner survives. **Re-lore the surviving `sys` log line** (both critics, MAJOR) so the log no longer prints "VAEL FALLS." Beat 1 reuses Vael's verbatim death-line as an **escape taunt/curse**. Restart/quit buttons move to beat 3.
+
+**Touchpoints:** `win()` (line 1790), `lootRoll`, `goldReward`, `addGold`, `getGold`, `recordResult`, `showCutscene`, `restart`, `quitToMenu`; new TEXT fields `DUNGEON[2].vaelEscape` / `.guffFreed` and repurposed `.epilogue` (P11.3/P11.4).
+
+**Canon enforced:** death→escape flip; survival-not-flex ("could not kill the deathless thing, only broke its hold here"); Ember stays Vael's; eyebrow carries no "Falls"/"dies"; loot/gold/record fire once (no double-fire inside callbacks).
+
+Beat-1 TEXT field `DUNGEON[2].vaelEscape`:
+```js
+vaelEscape:[
+ "You put Vael down a second time — and a second time the slag-throne should cradle a corpse. It does not.",
+ "His own Ember will not let its maker end. Somewhere past the Warren's reach a flame catches, drags him out through the back of his own death, and leaves only heat-shimmer and the cold print of where a tyrant stood.",
+ "You could not kill the deathless thing. You only broke its hold on this place — and that, tonight, is enough. The Warren's cages have gone quiet, and one of them is not empty."
+],
+```
+
+Refactored `win()` (note the re-lored `sys` log — the MAJOR fix from both critics):
+```js
+function win(){if(S.over)return;S.over=true;sfx('victory');
+  recordResult(true);S.boss.life=0;
+  const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);
+  log("loot",`💰 You claim <b>${gold} gold</b> from the Tyrant's abandoned hoard (account balance ${getGold()}).`);
+  log("sys",`🏆 <b>THE WARREN BREAKS — VAEL FLEES.</b> You could not kill the deathless thing; the Ember relit him beyond your reach. You broke his hold here — and freed the prisoner.`);
+  render();const v=DUNGEON[2];
+  /* BEAT 1 — Vael escapes */
+  showCutscene(v.vaelEscape,"The Ember Keeps Its Own","The Tyrant slips the leash","Find Guff ▸",{
+    sigil:'🔥',accent:'var(--ember)',speaker:'Vael',quote:"Embers... do not... choose... twice...",
+    buttons:[{label:"Find Guff ▸",cls:"big ember",on:()=>
+      /* BEAT 2 — Guff freed */
+      showCutscene(v.guffFreed,"The Commodore Rises","The Cage Breaks · Level I","Climb out of the dark ▸",{
+        sigil:'✦',accent:'var(--azor)',eyebrowAcc:'var(--gold)',speaker:'Commodore Guff',
+        quote:"I did not call for a weapon. I called into the dark — and a friend answered. I will not forget which you chose to be.",
+        buttons:[{label:"Climb out of the dark ▸",cls:"big ok",on:()=>
+          /* BEAT 3 — L2 bridge (carries spoils + restart/quit) */
+          showCutscene(v.epilogue,"The Long Way Back","Level I complete · The road ahead",null,{
+            sigil:'✦',accent:'var(--gold)',eyebrowAcc:'var(--gold)',speaker:'Commodore Guff',
+            quote:"The Conclave is not dead while one of us still stands. Walk with me.",
+            spoils:`🎲 Spoils: ${lr.names.join(" + ")}!  ·  💰 +${gold} gold (account ${getGold()})`,
+            buttons:[{label:"↻ Descend again",on:restart,cls:"big ok"},{label:"Quit to Menu",on:quitToMenu,cls:"big"}]
+          })
+        }]
+      })
+    }]
+  });
+}
+```
+
+---
+
+### P11.3 — Guff-freed cutscene (beat 2 of `win()`)
+**Do:** Store the beat-2 lines as a new TEXT field `DUNGEON[2].guffFreed`; rendered by the beat-2 `showCutscene` in P11.2 (accent `var(--azor)`, `eyebrowAcc:'var(--gold)'`, sigil `✦`, speaker/quote in `opts`).
+
+**Touchpoints:** `DUNGEON[2].guffFreed` (new TEXT field), `win()` beat-2 callback.
+
+**Canon enforced:** Guff magnificent/gracious/grateful, principled; off-plane outsider honored; "plane"/"off-plane" only; no Vael death and no Ember-severing here (he already fled in beat 1); zero foreshadowing — "I will not forget which you chose to be" is gratitude for the player's choice, not a self-hint.
+
+`DUNGEON[2].guffFreed`:
+```js
+guffFreed:[
+ "Past the guttering throne the Warren narrows to one last vault — grave-cold, lit only by dying goblin-fire. In a cage of ember-iron a broad-shouldered man waits: grey-bearded, seamed with old scars, and in all this dark he has not knelt.",
+ "The lock yields to your spark. The bars fall away, and <b>Commodore Guff</b> rises to his full height — slow and certain, the way a tide is certain of its shore.",
+ "He closes a broad, scarred hand around your wrist — not to be lifted, but to be certain you are real. He takes your measure — an outsider, off-plane, owed nothing on this burning ground — and bows his head to you all the same."
+],
+```
+
+---
+
+### P11.4 — L2-bridge epilogue rewrite (beat 3 of `win()`)
+**Do:** **Replace** the existing `DUNGEON[2].epilogue` (line 758) text with the L2-bridge beat (this reuses the field so it does not go dead). Beat 3 carries the spoils banner + restart/quit (see P11.2). **Apply the anti-telegraph MAJOR fix:** the old "almost smiles … turned toward the deep water" enigmatic half-smile is removed; warmth is now unmistakable and grief-driven.
+
+**Touchpoints:** `DUNGEON[2].epilogue` (replace TEXT only — leave any sibling stat fields on the row untouched), `win()` beat-3 callback.
+
+**Canon enforced:** Vael lives, fled with the Ember to recover ("nurses his deathless Ember and waits to burn again") — no clean kill/flex; Ember stays his; Conclave = ally/cause ("a cause to put back together"), not a target; "Drowned Conclave" = the L2 **place**; L2 hook = the scattered generals; Guff hopeful/principled with no wink.
+
+`DUNGEON[2].epilogue` (replaces line 758 text):
+```js
+epilogue:[
+ "The Warren's fires gutter at your back, and for the first time in an age they warm nothing. <b>Guff</b> climbs free beside you, and the dark you carved through feels thinner now — a road out instead of a grave.",
+ "Somewhere in the plane's deeper dark, <b>Vael</b> nurses his deathless <b>Ember</b> and waits to burn again. Let him. You have the founder at your side now, and a cause to put back together.",
+ "Far below, in the cold halls of the <b>Drowned Conclave</b>, the remnant still holds — and its scattered generals wait to be found. Guff turns toward the deep water, and for the first time in an age the grief eases out of his face — something like hope settles there instead."
+]
+```
+
+---
+
+### P11.5 — Lore page rewrite (`openLore()`)
+**Do:** In `openLore()` (lines 1831–1839) replace the premise `<p>` (1832) and the wardens lead-in `<p>` (1833) inside the opening `let h=` template; improve the merchant `h+=` (1837); insert two NEW `h+=` concept cards (Ember, Conclave/Guff) after the merchant card; and replace the L2 teaser `h+=` (1838). **Do NOT touch** the `DUNGEON.forEach` warden-card loop (1834–1836) — hidden-until-earned (`seen`, `???`, "A foe you have not yet faced", gated ART frame + lore) stays intact. New cards reuse `.loreent.has-art` + `.loreframe.locked` (glyph icon, no art). Keep the literal `<b>${who}</b>` token. Page title stays `📖 The Warren of Embers` (line 1831).
+
+**Touchpoints:** `openLore()` template + `h+=` blocks only; `ART` guards reused; warden loop untouched.
+
+**Canon enforced:** off-plane planeswalker, nothing to gain, drawn by the Conclave's grief; Ember = Vael's forged deathless flame (kill only relights him; bond intact in L1); Guff W/U/R, 100% sympathetic, zero foreshadow; faction = "the Conclave", "Drowned Conclave" = place; L2 flipped to cause-not-conquest; "plane"/"Multiverse" only. **Lead-in MINOR fix applied:** the absolute "You do not know their names yet" (which contradicted naming Vael on the same page) is replaced with "Their names are not given freely."
+
+Premise `<p>` (replaces line 1832 — keep inside `let h=`):
+```html
+  <p style="color:var(--bone-dim);font-style:italic">You are <b>${who}</b> — a planeswalker from off this plane, with nothing to win on Ashveil and no reason to stay. But grief travels between worlds, and this one's had a name: <b>Commodore Guff</b>, founder of the Conclave — his war lost, his city drowned, himself caged alive beneath the throne of the tyrant who beat him. Ashveil belongs to <b>Vael</b> now, and he keeps it by fire, by fear, and by an ember that will not let him die. You crossed the Multiverse to break one good man out of the worst place on this plane. The only road to him runs down — into the Warren of Embers.</p>
+```
+
+Wardens lead-in `<p>` (replaces line 1833; ends `;` to close the template and thread into the loop):
+```html
+  <p class="manaline" style="margin:-2px 0 10px">Three wardens hold the dark between you and Guff's cage, each set there to make the next step down cost more than the last. Their names are not given freely — the Warren surrenders a name only to the one who beats it out of its keeper. The wardens of the descent:</p>`;
+```
+
+Merchant entry (replaces line 1837):
+```js
+  h+=`<div class="loreent has-art">${(typeof ART!=='undefined'&&ART.merchant)?`<div class="loreframe" style="--acc:var(--gold)" onclick="openArt('merchant','The Wandering Merchant')" title="Open The Wandering Merchant — full art in a new window"><img src="${ART.merchant}" alt="The Wandering Merchant"><span class="lf-hint">⤢ view</span></div>`:`<div class="loreframe locked"><span>?</span></div>`}<div class="lorebody"><div class="loretitle">The Wandering Merchant <span class="lorecol">[?]</span></div><div class="loredom">Between the gates</div><div class="loretext">No one sells torches to people walking into a fire — unless the torches are the point. The Merchant keeps no name and is always one step further down than you last saw them, trading the gold of the dead back to the living. Spend it freely: gold is the one thing the Warren cannot take back from you.</div></div></div>`;
+```
+
+NEW — Ember card (insert after merchant, before L2 teaser):
+```js
+  h+=`<div class="loreent has-art"><div class="loreframe locked"><span>🔥</span></div><div class="lorebody"><div class="loretitle">The Ember <span class="lorecol">[the deathless flame]</span></div><div class="loredom">Vael's forged masterwork</div><div class="loretext">Vael's masterwork, and his leash. He forged the Ember with his own hands — a flame that does not consume and does not gutter, fed on death the way lesser fires are fed on wood. It is the well of his power and the root of his deathlessness: smith and fire are bound as one thing, so while the Ember burns, Vael cannot truly be killed. Cut him down and it only lights him again, somewhere the killing did not reach.</div></div></div>`;
+```
+
+NEW — Conclave/Guff card (insert after the Ember card):
+```js
+  h+=`<div class="loreent has-art"><div class="loreframe locked"><span>⚓</span></div><div class="lorebody"><div class="loretitle">Commodore Guff &amp; the Conclave <span class="lorecol">[W/U/R]</span></div><div class="loredom">The caged founder · your cause</div><div class="loretext">Two powers warred for Ashveil, and the Conclave were the ones worth saving — keepers of law, of learning, of a stubborn decent hope — and they lost. Their capital sank; their armies scattered; their banner went under the water. Only their founder was taken alive: <b>Commodore Guff</b> — brilliant, gracious, unbowed — the keystone of everything the Conclave might still become. Vael did not kill him. He caged him in the Warren, where hope could be made to sit in the dark and watch. Free him, and the Conclave has a future again.</div></div></div>`;
+```
+
+L2 teaser (replaces line 1838):
+```js
+  h+=`<p class="manaline" style="margin-top:12px">Break the Warren and you still will not kill its tyrant — the Ember saves him, and <b>Vael</b> flees with his flame to heal in the deep. But <b>Guff</b> walks out at your side, and you carry him home to where the Conclave still breathes: a flooded ruin called the <b>Drowned Conclave</b>, Level II. Not a place to conquer — a cause to raise. There the real work begins: gathering the Conclave's scattered generals, one drowned road at a time.</p>`;
+```
+
+---
+
+### P11.6 — Framing copy (4 line-for-line replacements)
+**Do:** Replace four strings; indentation matches the target line so each is a literal paste. Every mechanical/teaching clause is preserved word-for-word — only story is added.
+
+**Touchpoints:** menu subtitle (line 520, 6-space indent), header subtitle (line 326, 4-space indent), how-it-plays item 7 (line 339, 6-space indent), tutorial loop `<p>` (line 1880, column 0).
+
+**Canon enforced:** off-plane planeswalker drawn by the Conclave's plight; Vael named only as the premise tyrant, deathless via the Ember "of his own forging"; objective = free Guff (sympathetic, no foreshadow); ending = "driven off, not slain" / "break his hold here"; names-hidden preserved (guardians unnamed; reveal phrasing scoped to "each warden"); "plane" only; Conclave = ally. *(Item 7 uses "generals" for the L1 **enemy** trio — the established correct use; see Open Questions re: ally-side "generals.")*
+
+Menu subtitle (line 520):
+```html
+      <p class="subtitle">A solo Commander dungeon-crawl. You are an off-plane planeswalker, pulled to the plane of Ashveil by the Conclave's last cry — their founder, Commodore Guff, lies caged in the Warren of Embers, the downward maze of the tyrant Vael, who reigns by a deathless flame of his own forging. Build a library of your own cards, choose your difficulty, and descend to break Guff out. Three wardens hold the dark between you and his cage, and you learn each one's name only by beating it out of them.</p>
+```
+
+Header subtitle (line 326):
+```html
+    <p class="subtitle">One descent into the Warren of Embers to free the caged Commodore Guff — three wardens, no road back up. Each room is a fresh game against a foe you have not yet met — you declare attacks and it blocks; it strikes and you answer. Only your life and your loot carry deeper into the dark.</p>
+```
+
+How-it-plays item 7 (line 339):
+```html
+      <li><b>The descent:</b> you go down into the Warren of Embers to free <b>Commodore Guff</b>, the caged founder of the Conclave. Three generals bar the way to his cage — two wardens (a mono-red aggro warlord, then a mono-black attrition tyrant) and finally <b>Vael</b> himself, a red-black final boss and the only one fielding a planeswalker. You learn each warden's name only by beating it. Vael cannot be truly killed — the deathless Ember he forged keeps relighting him — but break his hold here and the founder walks free. Between rooms your <b>life and loot carry over</b>; the battlefield, counters, and the enemy reset to a fresh game, and your commander waits in the command zone. Tap <b>📖 Lore</b> or <b>❓ Tutorial</b> any time.</li>
+```
+
+Tutorial loop `<p>` (line 1880, column 0):
+```html
+<p>One <b>descent</b> is three encounters, each a fresh game against a different enemy general — a fire-wild aggro warlord, a patient attrition tyrant, and a red-black final boss. You descend to free <b>Commodore Guff</b>, founder of the Conclave, caged at the Warren's heart. <b>You learn each warden's name only by beating it.</b> Between rooms the battlefield, the enemy, and your counters reset, but your <b>life, loot, and gold carry over</b> — life is the through-line that makes the crawl a campaign. Clear all three to free Guff and win Level I — the final boss is driven off, not slain, for the Ember he forged will not let him die.</p>
+```
+
+---
+
+### P11.7 — Housekeeping
+**Do:**
+- **SW cache bump:** `sw.js` `const CACHE='gg-cache-v45'` → `'gg-cache-v46'` (line 5) and the version mention in the comment (line 2); update `README` (~line 62) v45→v46 if present. Required so returning PWA users get the new HTML.
+- **SAVE_V:** Using the preferred P11.1 approach (reuse `S._introShown`, no new persisted field), `SAVE_V` stays **40** and the two "Engine v40" eyebrows (lines 324, 518) stay. **Only if** a persisted `S.arrivalSeen` (or any new persisted S field) is added: bump `SAVE_V` 40→41, update both Engine eyebrows to v41, and add the field to `fresh()` + the `migrate()` boolean-coerce list (keep S JSON-serializable).
+- **No dead fields:** `DUNGEON[2].epilogue` is **reused** for beat 3 (P11.4); beats 1 & 2 are the new `.vaelEscape` / `.guffFreed` TEXT fields. No `pool`/`lands`/`swaps`/`hp`/`cmd`/`pw`/`reborn` edited anywhere.
+- **Mobile:** confirm the lengthened menu subtitle (line 520, ~2× prior length) does not overflow the menu box on a narrow viewport.
+- **Run the verification harness** (below).
+
+**Touchpoints:** `sw.js`, `README`, `SAVE_V` (1935), eyebrows (324/518), `fresh()`, `migrate()`, `DUNGEON[2]`.
+
+---
+
+### Acceptance criteria (Phase 11)
+1. New game: Arrival cutscene ("Nothing to Gain" · "Arrival · Ashveil", gold/✦) shows **once**; its Continue chains into the existing "Ember Gate · Level I" intro. It does not re-show after resume or on subsequent rooms; it re-shows on a fresh descent.
+2. Descent 1–3 (Grakk, Murglax, Vael) intros/quotes/deathQuotes/lore/decks/stats are **byte-identical** to pre-phase.
+3. Vael two-phase fight is mechanically unchanged (dies once, revives enraged, second kill).
+4. On the second Vael kill: the `sys` log reads the new "THE WARREN BREAKS — VAEL FLEES" line (NO "VAEL FALLS" anywhere); then the **3-beat chain** plays escape → Guff freed → L2 bridge.
+5. Beat 1 reuses "Embers... do not... choose... twice..." as the escape taunt; ember/🔥. Beat 2 = Guff freed (azor/✦). Beat 3 = L2 bridge (gold/✦) and is the ONLY beat with the **spoils banner** and the **↻ Descend again / Quit to Menu** buttons.
+6. `lootRoll()`, `goldReward()`/`addGold()`, `recordResult(true)` fire **exactly once** (verify gold delta and stats increment by one); no double-fire in any beat callback. Loot items still log via the loot channel; the styled spoils banner renders on beat 3.
+7. Lore page: new premise + Ember + Conclave/Guff cards render; warden cards still show `???` / "A foe you have not yet faced" (+ locked art) for unbeaten wardens and reveal correctly once beaten; lead-in reads "Their names are not given freely…"; L2 teaser frames the Conclave as a cause, not a conquest.
+8. Final L1 line (beat 3, line 3) contains **no "almost smiles"** and no enigmatic/withheld beat aimed at the deep water — warmth is unambiguous.
+9. Framing: menu subtitle, header subtitle, item 7, tutorial loop all updated; all prior mechanical clauses intact; ending described as "driven off, not slain".
+10. Full-text sweep: zero occurrences of "realm"; the faction is "the Conclave" (never "Drowned Conclave"); "Drowned Conclave" appears only as the L2 place; no Guff foreshadowing anywhere.
+11. `sw.js` is `gg-cache-v46`; restart-difficulty + resume-from-autosave paths still work.
+
+### Verification (Phase 11)
+- **Static / canon lint (scripted):** grep the file for `realm` (expect 0); `VAEL FALLS` (expect 0); `Drowned Conclave` (each hit is a place, never the faction); `almost smile` (expect 0); confirm `gg-cache-v46` in `sw.js`. Confirm no diff touched any `pool`/`lands`/`swaps`/`hp`/`cmd`/`pw`/`reborn`/`colors` line (diff review).
+- **Node/jsdom harness (extend the existing P8–P10 suite):** assert `ARRIVAL_LINES.length===4`, `DUNGEON[2].vaelEscape.length===3`, `.guffFreed.length===3`, `.epilogue.length===3`; assert Grakk/Murglax/Vael `intro`/`quote`/`deathQuote`/`lore` strings unchanged vs. a saved snapshot; simulate `win()` and assert `recordResult`/`addGold`/`lootRoll` each called once and `spoils` is present on the third `showCutscene` call only; assert `proceedAfterCommander()` shows the Arrival cutscene when `!S._introShown` and chains DUNGEON[0].intro via the button, and is a no-op when `S._introShown`.
+- **Manual smoke:** new descent → Arrival → gate; clear all three; verify the 3-beat finale, spoils banner + restart/quit on beat 3, and the re-lored log; open 📖 Lore before/after beating each warden (hidden→revealed); resume-from-autosave does not replay Arrival; narrow-viewport check of the menu subtitle.
+
+### Open questions (Phase 11)
+1. **"generals" collision (narrative + technical MINOR, deferred):** the game uses "enemy general" for room bosses, yet the brief/chosen copy calls the Conclave's allies "scattered generals" (beat 3 + Lore L2 teaser). Kept "generals" per brief; surrounding cues ("Not a place to conquer — a cause to raise," "the remnant still holds") disambiguate. Option to reserve "general" for enemies by renaming the ally-side to "**captains**" in those two lines — approve before applying.
+2. **Menu-subtitle name softening (narrative MINOR, not applied):** the menu names Vael while saying "learn each one's name only by beating it out of them." This is the mild, non-absolute form and the brief requires naming Vael in the menu, so left as-is. Optionally soften to "…and the Warren gives up a name only to the one who beats it out of its keeper." — confirm preference.
+3. **Lore premise names Vael above his hidden `???` card (technical MINOR, accepted):** sanctioned by the brief (Vael is the headline tyrant, not an earned reveal); do NOT unhide his card (that would leak his art + earned lore). Flagging only.
+4. **Arrival guard choice:** spec'd to reuse `S._introShown` (no save-version churn). Confirm we do not want a distinct persisted `S.arrivalSeen` (which would force the `SAVE_V`→41 + Engine-eyebrow bump in P11.7).
+5. **Loot-log wording:** changed to "Tyrant's **abandoned** hoard" to fit the escape (he fled, left it). Confirm acceptable vs. original "Tyrant's hoard."
 
 # PHASE 12 — UI & card-mechanic upgrades (collapsible panels · combat block-restrictions · clone) ⬜ PLANNED
 
