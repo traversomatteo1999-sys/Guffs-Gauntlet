@@ -365,7 +365,7 @@
       <div class="btnrow" id="satchelRow"><button class="mini gold" onclick="openSatchel()">🎒 Satchel <span class="tag" id="satchelCount">empty</span></button></div>
     </div>
     <div class="panel boss">
-      <h2>☠ <span id="bossName">—</span> <span class="cdots" id="bossColors"></span> <span class="tag live" id="bossTag">enemy general</span> <span class="frozenbadge" id="bossFrozen"></span></h2>
+      <h2>☠ <span id="bossName">—</span> <span class="cdots" id="bossColors"></span> <span class="tag live" id="bossTag">enemy general</span> <button class="mini gold" id="abilBtn" onclick="showEnemyAbilities()" title="This general's peculiarities & abilities" style="vertical-align:middle">⚜ Abilities</button> <span class="frozenbadge" id="bossFrozen"></span></h2>
       <div class="dial"><span class="num" id="bossLife">0</span><span class="of">/ <span id="bossMax">0</span> life</span></div>
       <div class="bar"><i id="bossBar" style="width:100%"></i></div>
       <div class="pips" id="manaPips"></div><div class="manaline" id="manaLine">Mana: <b>0</b></div>
@@ -944,7 +944,7 @@ function applyRun(run){if(!run)return;if(Array.isArray(run[0])){run.forEach(appl
   case "anthem":{const ap=run[1]||0,at=run[2]||0,akw=run[3]||[];const buff=c=>{if(!c)return;c._tp=(c._tp||0)+ap;c._tt=(c._tt||0)+at;c.kw=c.kw||[];c._grantKw=c._grantKw||[];akw.forEach(k=>{if(!c.kw.map(x=>(''+x).toLowerCase()).includes((''+k).toLowerCase())){c.kw.push(k);c._grantKw.push(k);}});};S.tokens.forEach(buff);if(S.cmd&&S.cmd.inPlay)buff(S.cmd);log("dm",`🔥 <b>OVERRUN!</b> Every enemy creature gets +${ap}/+${at}${akw.length?' and gains '+akw.join(', '):''} until end of turn.`);break;}
   case "bloodpact":{const amt=run[1]||1;const ex=S.rules.find(r=>r.bloodpact);if(ex)ex.bloodpact+=amt;else S.rules.push({id:S.nextId++,name:"The Pit's Tithe",text:`Each creature's death: you lose ${amt}, ${ENs()} gains ${amt}.`,side:"boss",bloodpact:amt});log("dm",`🩸 <b>The Pit's Tithe</b> binds — every death now pays ${ENs()} in blood.`);break;}
   case "bossHeal":bossHealLife(run[1]);log("dm",`${ENs()} gains <b>${run[1]}</b> life. (${S.boss.life})`);break;
-  case "cmdBuff":if(S.cmd){S.cmd.p+=run[1];log("dm",`${S.cmd.n} gets +${run[1]}/+0 (now ${effP(S.cmd)}/${effT(S.cmd)}).`);}break;
+  case "cmdBuff":if(S.cmd&&S.cmd.inPlay){S.cmd.p+=run[1];log("dm",`${S.cmd.n} gets +${run[1]}/+0 (now ${effP(S.cmd)}/${effT(S.cmd)}).`);}else if(S.cmd){log("dm",`The +${run[1]}/+0 fizzles — <b>${S.cmd.n}</b> isn't on the battlefield. A buff to a permanent needs that permanent in play, not in the command zone.`);}break;/* MTG: a spell that pumps a permanent only does so while it's a permanent ON THE BATTLEFIELD — never while the commander waits in the command zone */
   case "rule":if(!S.rules.some(r=>r.name===run[1]))S.rules.push({id:S.nextId++,name:run[1],text:run[2],die:run[3],side:"you"});break;
   case "bossrule":if(!S.rules.some(r=>r.name===run[1]))S.rules.push({id:S.nextId++,name:run[1],text:run[2],heal:run[3],side:"boss"});break;
 }}
@@ -1524,6 +1524,7 @@ function wouldDoSomething(fx){
   if(fx.target)return enemyInstantWouldDo(fx);
   const runs=Array.isArray(fx.run)?(Array.isArray(fx.run[0])?fx.run:[fx.run]):[];
   if(runs.length&&runs.every(r=>r&&r[0]==='anthem')){if(S.tokens.length===0&&!(S.cmd&&S.cmd.inPlay))return false;}
+  if(runs.length&&runs.every(r=>r&&r[0]==='cmdBuff')&&!(S.cmd&&S.cmd.inPlay))return false;/* a spell that ONLY pumps the commander does nothing while the commander is in the command zone — don't cast it (a card that ALSO spawns a body, e.g. Firebrand, still passes: its run isn't all-cmdBuff) */
   if(runs.length&&!(fx.selfLoss>0||fx.dieLoss)
      &&runs.every(r=>r&&(r[0]==='rule'||r[0]==='bossrule'))
      &&runs.every(r=>S.rules&&S.rules.some(x=>x.name===r[1])))return false;/* fizzle only when EVERY effect is a recurring engine ALREADY in play (a card mixing a dupe rule with a NEW rule / spawn / burn still does something) */
@@ -1545,7 +1546,7 @@ function castValue(fx,ctx){
   runs.forEach(r=>{if(!r)return;switch(r[0]){
     case 'spawn':v+=bodyValue(r[2],r[3],r[4]||[]);break;
     case 'bossHeal':{const dmg=(S.boss&&S.boss.max)?Math.max(0,S.boss.max-S.boss.life):(r[1]||0);v+=Math.min(r[1]||0,dmg)*0.5;break;}/* lifegain at full life is worth 0 */
-    case 'cmdBuff':v+=(r[1]||0)*((S.cmd&&S.cmd.inPlay)?1:0.6);break;/* perm +N power; discounted while in the command zone */
+    case 'cmdBuff':v+=(S.cmd&&S.cmd.inPlay)?(r[1]||0):0;break;/* perm +N power on a creature ON THE BATTLEFIELD — worth 0 while the commander is still in the command zone (it would fizzle) */
     case 'anthem':{const ap=r[1]||0,akw=r[3]||[];const perCreature=ap+creatureKwVal({kw:akw});v+=main2?0:perCreature*boardCount;break;}/* extra attack damage this turn; 0 post-combat */
     case 'ramp':v+=(r[1]||0)*1.5;break;
     case 'rule':{const per=(r[3]&&r[3]>0)?((r[3]+1)/2):1;v+=per*2;break;}/* recurring player upkeep loss, ~2-turn horizon */
@@ -1830,6 +1831,64 @@ const INFO_TEXT={
 function infoBtn(key){return `<span class="ibtn" role="button" tabindex="0" onclick="event.stopPropagation();showInfo('${key}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();showInfo('${key}')}" title="What's this?">i</span>`;}
 function showInfo(key){const o=INFO_TEXT[key];if(!o)return;$("infoBody").innerHTML=`<h2 class="loreh">${o.t}</h2>${o.h}`;$("infoOverlay").classList.add("show");}
 function closeInfo(){$("infoOverlay").classList.remove("show");}
+/* ⚜ Per-general "peculiarities & abilities" popup. Content is keyed by room and grounded in each deck's actual
+   commander/pool/HP (DUNGEON) and the shared enemy AI (vaelMain / enemyInstant / Resurgence / lethal reach). It
+   reuses the infoOverlay (purely informational — no commander-flow side effects, unlike the main overlay). */
+const ENEMY_ABIL={
+  0:{tag:"mono-red goblin aggro & burn",
+     lead:"Grakk holds the only road into the Warren the way a goblin holds anything — by setting it alight. Fast, gleeful, and utterly without patience.",
+     abil:[
+       ["Goes wide, fast","A flood of cheap goblins, most entering with <b>haste</b> — they swing the turn they arrive, so the board fills and attacks at once."],
+       ["Stokes its commander","<b>Gate Effigy</b> and <b>War-Cry</b> each give Ashmaw +2/+0, <b>Goblin War-Chant</b> +3/+0, and they stack — but <i>only while Ashmaw is actually on the battlefield.</i> A buff to a permanent needs that permanent in play; Grakk won't waste one on a commander still in its command zone."],
+       ["Reach to your face","Ember Bolt, Twin Bolt, Gatefire Blast, Conflagrate, Warren Firestorm — direct burn that ignores your blockers and hits your <b>life total</b>. Roughly half the deck doesn't care what creatures you field."],
+       ["Finisher — Warren Overrun","Every creature it controls gets <b>+2/+1, trample, and haste</b> until end of turn. A board that looked survivable can turn lethal in a single cast."],
+     ],
+     tip:"Trade early, hold removal for Ashmaw and the overrun turn, and watch your life — you can win the board and still lose to burn."},
+  1:{tag:"mono-black attrition & drain",
+     lead:"The Pit does not kill you quickly; it spends you, a wound at a time, and feeds what it takes back into itself. The longer you last, the stronger it grows on your losses.",
+     abil:[
+       ["Removal, endlessly","Destroys your greatest creature (Smother, Grave Reckoning), makes you sacrifice your smallest (Pit Edict), or shrinks the board (−2/−2 sweeps and −3/−3 on your best). <b>Hexproof, protection-from-colour, indestructible, and ward</b> still turn it away."],
+       ["Drains and heals","Siphon, Pit-Tithe, Glut, and the Maw make <b>you lose life and Murglax gain it</b> — it races your clock by repairing its own."],
+       ["The Pit's Tithe","While the enchantment stands, <b>every creature death — yours or its — costs you 1 life and heals Murglax 1.</b> Destroy it to stop the bleed."],
+       ["Grinds you out","Deathtouch and lifelink bodies make attacking into it costly, and heal-engines (Emberheart Idol, Tyrant's Grail) refill it each upkeep."],
+     ],
+     tip:"Don't durdle — every extra turn feeds him. Apply pressure he must answer, and break his heal-engines."},
+  2:{tag:"Rakdos (R/B) midrange · removal & reanimation · FINAL BOSS",
+     lead:"Grakk was the spark; Murglax was the ash. Vael is the fire that learned to feed on its own ashes — both halves of the Warren in one deck, and the only general who fields a planeswalker.",
+     abil:[
+       ["Both halves at once","Grakk's burn and Murglax's drain & removal together, plus the biggest bodies in the dungeon."],
+       ["Planeswalker — Nyx, Voice of Cinders","<b>+1</b> you lose 2 life · <b>−3</b> destroy your greatest creature · <b>−7 ultimate</b> you lose 8 life and Vael makes a 5/5 trample-haste Cinder Wraith. The only enemy walker in Level I — answer it or it snowballs."],
+       ["Siege of the Ember Throne","A boss-side battle (defense 6) that <b>heals Vael 2 each of its upkeeps</b> while it stands. Attack its defense down to 0 to break it — that deals <b>6 to Vael</b>."],
+       ["Dies twice","At 0 life Vael rises <b>ENRAGED</b> (reborn 10/15/20 life by difficulty) and calls a Pyre Revenant 4/3. You must put the Tyrant down a second time."],
+       ["Finishers","Embers Choose a New Shape (a 6/6 plus drain), Warren Overrun, and Maw of the Pit (you lose 8, it gains 8)."],
+     ],
+     tip:"Break the Siege early, save removal for Nyx and the avatars, and keep enough life and gas in hand for the second life bar."},
+};
+function enemyAbilitiesHTML(){
+  if(typeof S==='undefined'||!S||!S.boss)return `<h2 class="loreh">⚜ Enemy Abilities</h2><p>No general on the field yet — descend to face one.</p>`;
+  const e=ENEMY_ABIL[S.roomIndex]||{},room=DUNGEON[S.roomIndex]||{},acc=villainAccent(room),sig=room.sigil||'☠',cmd=S.cmd;
+  const cmdLine=cmd?`Commander <b>${cmd.n}</b> — ${cmd.baseP}/${cmd.baseT}${(cmd.kw&&cmd.kw.length)?' ('+cmd.kw.join(', ')+')':''}, ${cmd.baseCost} mana${cmd.deaths?` · has died ${cmd.deaths}× (recast now ${cmd.cost})`:''}.`:'';
+  const enraged=S.boss.isVael&&S.phase2done;
+  const abilList=(e.abil||[]).map(a=>`<li><b style="color:${acc}">${a[0]}</b> — ${a[1]}</li>`).join('');
+  return `<h2 class="loreh">${sig} ${S.boss.name}</h2>
+  <div class="manaline" style="color:${acc};margin:-4px 0 8px">${e.tag||''} · <b>${(S.boss.colors||[]).join('/')}</b> · ${Math.max(0,S.boss.life)}/${S.boss.max} life · ${S.diff} difficulty</div>
+  ${enraged?`<div class="manaline" style="color:var(--ember);border:1px solid var(--ember);border-radius:8px;padding:6px 10px;margin:0 0 10px">🔥 <b>Currently ENRAGED</b> — this is Vael's second life bar.</div>`:''}
+  <p style="color:var(--bone-dim);font-style:italic">${e.lead||room.lore||''}</p>
+  ${cmdLine?`<p class="manaline">${cmdLine}</p>`:''}
+  <div class="subh"><span>Signature abilities</span></div>
+  <ul style="line-height:1.55;padding-left:18px;margin:6px 0">${abilList}</ul>
+  ${e.tip?`<div class="subh"><span>How to fight it</span></div><p>${e.tip}</p>`:''}
+  <div class="subh" style="margin-top:12px"><span>How every general fights</span></div>
+  <ul style="line-height:1.55;padding-left:18px;margin:6px 0">
+    <li><b>Plays to win, not at random.</b> It develops the strongest body it can, holds removal for a real target on your battlefield, and won't waste a spell that would do nothing (a commander pump while its commander is in the command zone, a board wipe with no creatures to hit).</li>
+    <li><b>Goes for the throat.</b> The moment it holds enough unpreventable burn or drain to kill you, it stops developing and casts all of it.</li>
+    <li><b>Acts at instant speed.</b> During your turn it may answer with an instant — you approve every enemy play before it resolves.</li>
+    <li><b>Resurgence.</b> If it has no creatures after its first main phase, a 1/1 crawls out — it is never left with an empty board.</li>
+    <li><b>Commander tax.</b> Each time its commander dies it returns to the command zone costing more to recast (+2, then +4, then +8…).</li>
+    <li><b>Difficulty</b> scales its life, starting mana, and how readily it acts on small threats — never its strategy.</li>
+  </ul>`;
+}
+function showEnemyAbilities(){if(typeof S==='undefined'||!S||!S.boss)return;$("infoBody").innerHTML=enemyAbilitiesHTML();$("infoOverlay").classList.add("show");}
 function openLore(){const who=(prof()&&prof().name)||'Adventurer';let h=`<h2 class="loreh">📖 The Warren of Embers</h2>
   <p style="color:var(--bone-dim);font-style:italic">You are <b>${who}</b> — a planeswalker far too curious for your own good. The Warren of Embers is a wound in the world that will not scar over: a downward maze of goblin-fire and grave-cold where something keeps relighting the dark. You came to see why. Now three wardens stand between you and the bottom of it, and you learn each one's name only by beating it out of them.</p>
   <p class="manaline" style="margin:-2px 0 10px">Between the gates, a hooded merchant waits with a cart that should not fit there — turning the gold of the slain into draughts and charms. The wardens of the descent:</p>`;
