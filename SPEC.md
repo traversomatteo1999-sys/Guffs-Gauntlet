@@ -107,6 +107,12 @@
 | &nbsp;&nbsp;P16.3 Enemy actively uses its tokens (sacrifices Treasure for mana; temporary tokens expire) | ⬜ planned |
 | &nbsp;&nbsp;P16.4 Between-boss life reset: life above 40 resettles to 40 on descend (spent magic, not damage) | ⬜ planned |
 | &nbsp;&nbsp;P16.5 Info/instructions for the new token + life-reset rules | ⬜ planned |
+| **Phase 17 — Enemy engine overhaul: lands-only mana · opening hand & mulligan · max-hand discard · attack-tax targeting · draw-N** | ⬜ **PLANNED** — enemy starts with **0** mana, no scrounge floor, mana only from played lands (finalizes P14.10) · shuffle + draw a **7-card** opening hand, mulligan (reshuffle/redraw) while fewer than 3 lands · max hand size **7**, discard wisely at end of turn unless "no maximum hand size" · manual "enemy draws N" control · attack-tax **target selector** (player / planeswalkers / both) + **enemy-side** attack tax (Propaganda/Ghostly Prison/Oathkeeper the enemy controls). See Phase 17 below |
+| &nbsp;&nbsp;P17.1 Enemy mana strictly from played lands — remove opening pre-seed + scrounge floor (finalizes P14.10) | ⬜ planned |
+| &nbsp;&nbsp;P17.2 Shuffle + 7-card opening hand + mulligan while &lt;3 lands | ⬜ planned |
+| &nbsp;&nbsp;P17.3 Max hand size 7 — discard-to-7 wisely at end of turn (unless "no maximum hand size") | ⬜ planned |
+| &nbsp;&nbsp;P17.4 Manual "enemy draws N cards" control | ⬜ planned |
+| &nbsp;&nbsp;P17.5 Attack-tax target selector (player/walkers/both) + enemy-side attack tax | ⬜ planned |
 
 ---
 
@@ -1350,6 +1356,8 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 ## P14.10 — Enemy mana comes only from lands it plays (+ de-duplicate the mana code)
 
+> **⤴ SUPERSEDED / FINALIZED by P17.1 (Phase 17).** The user has now *decided* the balance tradeoff this task flagged: the enemy starts with **zero** mana, the anti-screw scrounge floor is **removed**, and mana grows **only** by playing land cards — paired with a 7-card opening hand + a mulligan-on-too-few-lands so the lands-only rule is playable. The grounded mana-path audit below stays as reference; build the rule per **P17.1**, the de-duplication parts here still apply.
+
 **Goal:** the enemy's mana derives **solely from land cards it has played** — remove the non-land mana sources and consolidate the fragmented/duplicate mana logic.
 
 **Grounded audit (every mana path):**
@@ -1524,6 +1532,99 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **ACs:** the relevant ⓘ popups describe token kinds, dual-board deploy, resource-token use/sacrifice, expiry, the enemy's Treasure-for-mana behavior, and the 40-life reset rule; the help/instructions mention both features; no new game state.
 **Verify:** jsdom/string-check — the `INFO`/help strings include the new token + life-reset copy; syntax + id-diff.
 
+
+# PHASE 17 — Enemy engine overhaul: lands-only mana · opening hand & mulligan · max-hand discard · attack-tax targeting · draw-N ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** Requested by the user to make the enemy play by real Magic rules for mana and hand management, and to support Propaganda/Ghostly-Prison/Oathkeeper-style attack taxes the enemy controls. **This phase finalizes the open balance question in P14.10** (the user has decided: lands-only mana, no free opening, no scrounge floor). Grounded in the current `index.html` (re-grep names; line numbers drift — line 456 is the base64 `ART` blob, real JS 457→end). Each ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded enemy deck/mana/hand audit (read once for all of P17.1–P17.4):**
+- **Deck build + shuffle:** `buildDeck(room)` (~824) assembles the library and **already shuffles** it (Fisher-Yates ~830). `enterRoom` (~814) sets `S.lib=buildDeck(room); S.hand=[]; S.gy=[]; S.exile=[];` then **`vaelDraw(4)`** (~821) — today the opening hand is **4**, not 7, and there is **no mulligan**.
+- **Mana pre-seed (to remove):** `enterRoom` (~820) `S.bossLands=Math.max(0,(room.landStart||0)+(DIFF[S.diff].manaBonus||0)); S.bossManaMax=S.bossLands; S.bossMana=S.bossLands;` → free pre-developed mana. Room `landStart` 1/2/3 (~745/751/757), `DIFF.manaBonus` −1/0/+1 (~588).
+- **Scrounge floor (to remove):** `playEnemyLand()` (~1540) plays a land from hand if present (`FX[c.key]&&FX[c.key].type==='land'`), else **scrounges** a free source when mana-light (`if((S.bossLands||0)<S.turn-1&&S.turn>1){…+1…}`, ~1542).
+- **Untap refill:** `vaelUntap()` (~1538) sets `bossManaMax=bossLands+bossManaMod; bossMana=bossManaMax`.
+- **Draw:** `vaelDraw(n)` (~831) shifts `n` off `S.lib` into `S.hand`, decking out via `bossDeckOut`→`bossDown` on empty. `vaelDrawStep` (~1554) = draw 1. Deck-tools `dtDraw()` (~905) + `dtN` input already give a manual "draw N".
+- **End of turn:** `vaelEnd()` (~1640) — currently no max-hand-size / discard step.
+- **Land detection (reuse everywhere):** a card is a land iff `FX[c.key] && FX[c.key].type==='land'`.
+
+## P17.1 — Enemy mana strictly from played lands (remove opening pre-seed + scrounge floor)
+
+**Goal:** the enemy begins every battle with **0 mana** and grows its pool **only** by playing land cards from hand — exactly like the player would. No free opening mana, no anti-screw scrounge. This **finalizes P14.10** (whose open balance question the user has now decided).
+
+**How:**
+1. **Zero opening:** in `enterRoom` (~820) set `S.bossLands=S.bossManaMax=S.bossMana=0` (drop the `room.landStart`/`DIFF.manaBonus` pre-seed). Retire `room.landStart` (rooms ~745/751/757) and `DIFF.manaBonus` (~588) as mana levers.
+2. **Remove the scrounge floor:** delete the `if((S.bossLands||0)<S.turn-1…)` branch in `playEnemyLand()` (~1542). The enemy plays a land **only** when it actually has one in hand; mana-screw is now a real outcome (mitigated by the 7-card hand + mulligan in P17.2, not by free mana).
+3. **Keep the legit engine:** `playEnemyLand` (land-from-hand), the `dtPlayCard` land branch (~858), and the `vaelUntap` refill (`bossManaMax=bossLands+bossManaMod; bossMana=bossManaMax`) remain the whole mana system.
+4. **Non-land mana (per P14.10):** ramp rocks (`run:["ramp",N]` ~972) and the `enemyMana` emblem (~1436) are non-land mana — neutralize/remove per the decided rule (default: remove their mana grant; reclassify mana rocks as lands only if the user wants them kept). `bossManaMod` (admin ritual/stax modifier) and `bossManaFrozen` (freeze) stay.
+5. **De-duplicate (carry from P14.10):** rename the display-only projection so it can't shadow the `S.bossMana` field; `usableMana()` stays the single affordability accessor.
+6. **Difficulty re-tune:** difficulty no longer scales starting mana — push the swing onto HP (P10), luck, and **land density in the deck** (a per-difficulty land count / mulligan strictness is the natural new lever; see P17.2).
+7. **migrate:** recompute `bossLands` for old saves to a lands-only basis (don't inflate from a stale `bossManaMax`).
+
+**ACs:** a fresh battle starts at `bossMana===0`; the pool rises by 1 only when the enemy plays a land it actually holds; no scrounge ever fabricates a source; ramp/emblem grant no free mana (per the chosen option); difficulty doesn't change starting mana; freeze/mod intact; old saves migrate without inflated mana.
+**Verify:** jsdom — `enterRoom` → `bossMana===0`; play a land → +1; an empty-of-lands hand never scrounges; ramp/emblem add no mana; `usableMana` single source; migrate; syntax + id-diff. **Supersedes the P14.10 balance flag.**
+
+## P17.2 — Shuffle, draw a 7-card opening hand, mulligan while fewer than 3 lands
+
+**Goal:** at the start of every battle the enemy **shuffles** its deck and draws a **7-card** opening hand; if that hand has **fewer than 3 lands**, it **reshuffles and redraws** a fresh 7 (a simple mulligan) until it has at least 3 lands. This keeps the now-strict lands-only rule (P17.1) playable.
+
+**Grounded building blocks:** `buildDeck` already shuffles; `enterRoom` (~821) currently `vaelDraw(4)`. `deckShuffle` (~841) is the Fisher-Yates the manual tool uses. Land test = `FX[c.key]&&FX[c.key].type==='land'`.
+
+**How:**
+1. **7-card hand:** in `enterRoom` (~821) replace `vaelDraw(4)` with a new **`dealOpeningHand()`** that draws 7.
+2. **Mulligan loop:** `dealOpeningHand()` — build/shuffle, draw 7, count lands (`S.hand.filter(c=>FX[c.key]&&FX[c.key].type==='land').length`); while `< 3`, **reshuffle the whole deck** (put the hand back, Fisher-Yates `S.lib`) and redraw 7. **Cap the attempts** (e.g. 10) so a pathological low-land deck can't infinite-loop — on giving up, keep the best hand seen and `log` it (no silent cap, per principle #5).
+3. **Land floor as the difficulty lever (optional):** allow the threshold/attempts or the deck's land count to vary by difficulty (replacing the retired `manaBonus`) — e.g. brutal decks run slightly more lands or mulligan to a stricter floor. Flag the exact numbers for the user; **default: a flat `≥3` lands, attempt cap 10, no per-difficulty change** beyond existing land counts.
+4. **Log** the opening (`🂠 {enemy} draws a 7-card hand`) and any mulligan (`{enemy} mulligans a {n}-land hand and redraws`) to the `dm` channel.
+5. This is **battle-start only** (the `enterRoom` path); mid-game draws (`vaelDrawStep`, emblems, deck-tools) are unchanged. A pure no-card-state change beyond using existing zones → no schema bump.
+
+**ACs:** every battle opens with a 7-card enemy hand; a hand with `<3` lands triggers a reshuffle+redraw; once `≥3` lands it stops; the attempt cap prevents an infinite loop and logs if hit; the opening + mulligans are logged; mid-game draws unaffected; deck-out rules (P5.2) still hold for an empty library mid-game.
+**Verify:** jsdom — stub a deck and assert a 7-card hand with `≥3` lands after `dealOpeningHand`; a forced low-land deck mulligans then succeeds (or hits the cap + logs); `enterRoom` uses it; mid-game `vaelDraw` unchanged; syntax + id-diff.
+
+## P17.3 — Max hand size 7: discard-to-7 wisely at end of turn (unless "no maximum hand size")
+
+**Goal:** like a real player, if the enemy ends its turn holding **more than 7** cards it **discards down to 7**, choosing **wisely** (not at random) — **unless** it controls a card/effect granting **no maximum hand size**.
+
+**Grounded building blocks:** `vaelEnd()` (~1640) is the enemy end step. `deckDiscard(indices)` (~845) already moves chosen hand cards to `S.gy` and logs. `castValue(fx,ctx)` (~1569 area, per P14.9) + `bestTargetThreat` are the existing value scales the AI already speaks in. Hand = `S.hand`.
+
+**How:**
+1. **Hook:** in `vaelEnd()` (~1640), after the existing cleanup, a new **`enemyDiscardToMax()`**.
+2. **"No maximum hand size" exemption:** define the flag — a keyword/marker on an enemy permanent or emblem (e.g. `kw 'no max hand size'`, or an `S.emblemsEnemy`/rule entry). If any such effect is active, **skip** the discard entirely (and optionally log "no maximum hand size"). Document the exact flag at build; default = check a `'no max hand'` keyword on any enemy permanent + a same-named rule/emblem.
+3. **Wise discard:** while `S.hand.length>7`, pick the **lowest-value, most-redundant** card to pitch — order: surplus lands beyond what it needs to hit its curve, then the lowest `castValue` spell (cheap redundant filler before bombs/answers); **never** discard its only/last land if it still needs lands. Reuse the cast-value scale so "wise" matches how the enemy already evaluates cards. Compute the indices and route through `deckDiscard()` so it logs and graveyards correctly.
+4. **Log** one summary line (`{enemy} discards to 7: …`); single render. No schema change (uses `S.hand`/`S.gy`).
+
+**ACs:** an enemy ending its turn with >7 cards discards exactly down to 7, pitching the lowest-value/redundant cards (surplus land, then cheapest filler) and keeping bombs/answers/needed lands; with a "no maximum hand size" effect active it discards nothing; the discard logs and routes to the graveyard; ≤7 cards → no-op; round-trips through save/undo.
+**Verify:** jsdom — a 9-card hand discards to 7 choosing the two lowest-value cards (and not its last needed land); a hand under the "no max" flag is untouched; discards land in `S.gy` and log; ≤7 no-op; syntax + id-diff.
+
+## P17.4 — Manual "enemy draws N cards" control
+
+**Goal:** an explicit control to make the enemy draw **N** cards on demand (for cards/abilities that say "the enemy draws N").
+
+**Grounded building blocks:** `vaelDraw(n)` (~831) already draws N (with deck-out). `dtDraw()` (~905) + the `dtN` input in the deck-tools modal ("🂠 Manipulate enemy deck", ~414) **already provide a manual draw-N** — this task mostly **surfaces it** and confirms it's robust.
+
+**How:**
+1. **Surface a quick draw-N:** add a compact "🃏 Draw N" control (number input + button → `vaelDraw(n)` + log + render) to the enemy zones/deck panel (near the `libCount`/`handCount` display, `renderZones` ~1675), so it's reachable without opening the full deck-tools modal. Reuse `dtDraw`'s logic (or call a shared `enemyDrawN(n)`).
+2. **Robustness:** guard `n>=1`; on empty library mid-draw, the existing `bossDeckOut`/deck-out (P5.2) applies — confirm a partial draw + deck-out is logged sanely (no crash).
+3. **Log** `🃏 {enemy} draws N (hand … · library …)` (matches `dtDraw`). No schema change.
+
+**ACs:** the player can make the enemy draw any N from a visible control; it draws min(N, library) and decks out correctly if the library empties; hand/library counts update; logs; no crash on an empty library.
+**Verify:** jsdom — `enemyDrawN(3)` moves 3 from `S.lib` to `S.hand` + logs; drawing past an empty library triggers deck-out without throwing; the control renders in the zones panel; syntax + id-diff. *(Note: the deck-tools `dtDraw` path may already satisfy this — verify before adding a duplicate; if so, this task just adds the convenience entry point.)*
+
+## P17.5 — Attack-tax target selector (player / planeswalkers / both) + enemy-side attack tax
+
+**Goal:** support Propaganda / Ghostly Prison / Norn's Annex / "Oathkeeper"-style taxes with two additions: (a) a **target selector** on an attack tax — does it tax attacks aimed at the **player**, at **planeswalkers**, or **both**; (b) an **enemy-side** attack tax (the enemy controls the Propaganda, so the **player** must pay mana/and-or life to attack the enemy face and/or its planeswalkers) — mirroring today's player-side tax (where the enemy pays to attack you).
+
+**Grounded building blocks (the existing one-directional tax):**
+- Player permanents carry `catk={amt,type:'mana'|'life'}` ("attack tax — enemy pays"), set in the drawer (`setCatk` ~1325/1332) and the cast form (`castAtkN`/`castAtkType` ~1773-1774). `attackTax()` (~1361) sums all un-phased player permanents' `catk`; `payAttackTax(cands)` (~1362) makes the **enemy** pay mana/life from `S.bossMana`/`S.boss.life` to keep its attackers, used in `vaelCombat` (~1634) — the enemy **holds back** attackers it can't pay for, logged (~1635-1636).
+- **Gap:** the tax is untyped by target (it taxes *all* enemy attacks regardless of whether they'd hit you or your walkers), and there is **no** enemy-controlled tax on the player's attacks.
+
+**How:**
+1. **Target field:** add `catk.tgt ∈ {player, walkers, both}` (default `both` for back-compat). Surface it in the drawer (`setCatk` rows ~1325/1332) and cast form (~1773-1775) as a small select next to amount/type. `migrate()` backfills missing `tgt='both'`.
+2. **Honor the target on the player-side tax:** in `attackTax()`/`payAttackTax` (~1361-1362), only count a tax against an enemy attacker whose **declared target** matches (`player`/your `S.my.walkers`/either). (Requires the combat flow to know an attacker's target — if attacker→target isn't modeled yet, scope this to: tax applies when the enemy attacks **you** by default, and a `walkers`-only tax applies when your walkers are the legal target. Flag the exact integration point at build.)
+3. **Enemy-side attack tax (the mirror):** add an enemy attack-tax source — either `catk` on enemy permanents (`S.tokens`/`S.cmd`/enemy artifacts-enchants per P13.3) or an enemy emblem/rule entry — summed by a new **`enemyAttackTax()`** with the same `{amt,type,tgt}` shape. When the **player declares attackers** (the player's attack step), surface the cost: "Pay {N mana and/or N life} per attacker to attack {the enemy / its planeswalkers}." Since the player has **no mana pool**, mana is a **reminder** the player applies; **life** can be auto-deducted (`adjLife('you',-N)`) with confirmation, or left as a reminder — pick one and log it. The tax gates by `tgt` (attacking the enemy face vs its walker).
+4. **UI:** an "enemy attack tax" editor (mirrors the player drawer's tax row) on the enemy board / a Tools control, with amount + type + target.
+5. **Log** every tax applied/owed (silent mutation = bug). New `tgt` field + enemy-tax source round-trip through save; `migrate` backfills.
+
+**ACs:** an attack tax can be set to apply to the player only, planeswalkers only, or both, on either side; the player-side tax (enemy pays) honors the target type; an enemy-side Propaganda makes the player pay (life auto/reminder, mana reminder) to attack the enemy and/or its walkers per the target; existing untyped taxes default to `both` and behave as today; everything round-trips through save + migrate backfill.
+**Verify:** jsdom — `catk.tgt` round-trips and `attackTax` filters by target; an enemy-side tax via `enemyAttackTax()` surfaces a player cost gated by `tgt` (life deducted/reminder); a legacy `catk` with no `tgt` acts as `both`; migrate backfill; syntax + id-diff.
+
 ---
 
 ## Open questions (non-blocking — assume the stated default unless overridden)
@@ -1536,3 +1637,6 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 - **Resource-token representation (P16.2):** dedicated arrays (`S.my.resources`/`S.enemyResources`) vs. tagging existing artifact tokens? *Default:* dedicated arrays (cleaner, recommended).
 - **Life-reset baseline (P16.4):** literal 40 vs. the player's starting/max life? *Default:* literal 40 per the user's instruction (flag if `youMax`/start-life ever diverges from 40).
 - **Enemy resource-token automation depth (P16.3):** how much beyond Treasure-for-mana to auto-model? *Default:* Treasure-for-mana is must-have; Food/Clue auto where clean, Blood + anything unclear as a manual reminder (nothing silently dropped).
+- **Lands-only mana balance (P14.10 / P17.1):** ~~removing the opening mana + scrounge floor is a significant difficulty swing — confirm before building?~~ **DECIDED by the user (Phase 17)** — zero opening mana, no scrounge floor, mana strictly from played lands; the 7-card hand + mulligan (P17.2) and difficulty levers move onto HP/luck/land-density instead of free mana.
+- **Mulligan land threshold (P17.2):** keep mulligan-while-`<3` lands, or also mulligan a land-flooded hand (e.g. `>5`)? *Default:* low-end only (`<3` lands) per the user; no flood mulligan, card-count penalty optional (see P17.2).
+- **Enemy discard AI (P17.3):** how "wise" should the discard-to-7 pick be? *Default:* reuse the existing cast-value/threat scale — discard the lowest-value, most-redundant card (excess land beyond what it needs, then lowest `castValue`); never discard its last/needed land.
