@@ -1961,7 +1961,10 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — `setEmblemTarget(id,'enemy')` on a `youLose` emblem → firing it reduces `S.boss.life` (not yours) and the row is uncoloured; `'you'` → reduces `S.youLife` + red box; a buff retargeted to your creatures raises their `effP/effT`; migrate maps `vsYou`→`target`; syntax + id-diff. **(Mirror of P23.3; pairs with it.)**
 
 
-# PHASE 24 — Player spell-card zone routing: instants/sorceries → graveyard; ✕-removal asks graveyard/exile/none ⬜ PLANNED
+# PHASE 24 — Player spell-card zone routing: instants/sorceries → graveyard; ✕-removal asks graveyard/exile/none ✅ DONE
+
+> **✅ BUILT & verified.** **P24.1:** a resolved player instant/sorcery is pushed to `S.myGy` as a `{name,color,ctype,_spell:true}` record (after its effect resolves); the gy row shows a "spell" badge with no battlefield-return button, and `myGyReturn` guards `_spell` (returns to hand, never re-enters as a creature). **P24.2:** `rmMy` on a real permanent opens a graveyard/exile/none popup → `removeMyTo` routes via the **non-death** `moveBoardCard` (no Pit's Tithe; stamps `_cat` so a return restores the right kind) or plain-splices for "none"; commanders still go to the command zone, tokens cease without a prompt. 15-check jsdom + full regression; id-diff clean (popup uses no ids).
+
 
 **Specced 2026-06-29, NOT built.** Make the player's spell cards end up in a real zone like the enemy's do: a resolved instant/sorcery goes to the graveyard, and removing a permanent from the board (incl. the manual ✕) asks where it goes. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
