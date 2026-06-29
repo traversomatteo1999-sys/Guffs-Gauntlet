@@ -1585,7 +1585,11 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom/string-check — the `INFO`/help strings include the new token + life-reset copy; syntax + id-diff.
 
 
-# PHASE 17 — Enemy engine overhaul: lands-only mana · opening hand & mulligan · max-hand discard · attack-tax targeting ⬜ PLANNED
+# PHASE 17 — Enemy engine overhaul: lands-only mana · opening hand & mulligan · max-hand discard · attack-tax targeting ⬜ P17.1-3 DONE · P17.4 BLOCKED
+
+> **✅ BUILT & verified — P17.1, P17.2, P17.3.** P17.1: lands-only enemy mana (0 opening, no scrounge, `enemyMana` template removed/inert, ramp rocks kept, `bossMana()`→`projBossMana()` de-dup); finalizes P14.10. P17.2: `dealOpeningHand()` 7-card hand + mulligan-to-3-lands (cap 10). P17.3: `enemyDiscardToMax()` wise discard-to-7 + "no max hand" exemption. 16-check jsdom + full regression; id-diff clean.
+> **⛔ P17.4 BLOCKED — conflict to resolve.** The codebase already has a **boolean** `catk.tgt` ("targeted (single creature/walker)" toggle in `setCatk` + the cast form `castAtkTgt`) — apparent parallel work — which collides with this task's specified **enum** `catk.tgt ∈ {player,walkers,both}`. Awaiting the user's call on how to reconcile before building.
+
 
 **Specced 2026-06-29, NOT built.** Requested by the user to make the enemy play by real Magic rules for mana and hand management, and to support Propaganda/Ghostly-Prison/Oathkeeper-style attack taxes the enemy controls. **This phase finalizes the open balance question in P14.10** (the user has decided: lands-only mana, no free opening, no scrounge floor). Grounded in the current `index.html` (re-grep names; line numbers drift — line 456 is the base64 `ART` blob, real JS 457→end). Each ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
