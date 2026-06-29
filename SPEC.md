@@ -153,6 +153,8 @@
 | &nbsp;&nbsp;P30.4 Universal guarantees — every permanent (both sides) can go to hand/exile/graveyard; prot/hexproof/shroud honoured wherever targetable | ⬜ planned |
 | &nbsp;&nbsp;P30.5 Bulk "return all permanents to library" (scope yours/enemy/both · top/bottom/shuffle · tokens cease) | ⬜ planned |
 | &nbsp;&nbsp;P30.6 Counters on ALL permanents (both sides): give +1/+1 (−1/−1 · named) · ⊖ remove · ↺ reset | ⬜ planned |
+| **Phase 31 — Expandable enemy cards in the deck-tools (full stats + effects)** | ⬜ **PLANNED** — when looking at the enemy's library (and hand/graveyard/exile) in 🂠 Manipulate enemy deck, each card row expands to show its full stats (P/T + keywords for creatures), cost, colours, oracle text, and mechanical effect — collapsed by default to cut noise. See Phase 31 below |
+| &nbsp;&nbsp;P31.1 Expandable card rows in enemy deck-tools — reveal stats/keywords/effect on click | ⬜ planned |
 
 ---
 
@@ -2204,6 +2206,30 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** every permanent kind on both boards exposes give +1/+1 (−1/−1, named), ⊖ remove, and ↺ reset; counters live on `plus/minus/other` and round-trip; reset restores base (P/T or loyalty) and clears all counters for every kind (no-op-safe for artifacts/enchants without base stats); named counters render as removable badges everywhere; creatures/tokens/commander behavior is unchanged; the bulk version (P14.4) is unaffected.
 **Verify:** jsdom — `setCtr('enchants',id,'plus',2)` sets `plus=2` and renders the counter; `setCtr('walkers',id,'minus',1)`; `remCtr` removes one; `resetCard('artifacts',id)` clears `plus/minus/other` (and `resetCard('walkers',id)` restores `baseLoy`); enemy artifact/enchant + `S.pw` get the same; migrate backfills fields; syntax + id-diff. (Cross-ref P14.4 bulk counters, P13.1.)
+
+
+# PHASE 31 — Expandable enemy cards in the deck-tools (full stats + effects) ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** When inspecting the enemy's library (and other hidden zones) in 🂠 Manipulate enemy deck, each card should expand to reveal its full stats and effect, collapsed by default so a long list isn't a wall of text. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded audit:**
+- **Card row renderer:** `fxItem(c,actions)` (~914) in `deckToolsHTML` renders `name · cost · typechip · colour dots`, the action buttons, and `fx.text` (oracle text) **always shown inline**. It does **not** show creature **P/T or keywords**, the flavour, or the mechanical effect — and there's no collapse.
+- **Where it's used:** the look views (`dtLook` top/bottom ~964), the P14.7 "browse library by type" view, and the hand/graveyard/exile reveal lists — all render cards via `fxItem`/`playRow`. State lives on the transient `_dt` object (mode/n/reveal…), rebuilt by `dtRender`.
+- **Where the stats live:** an FX creature card encodes P/T + keywords in its spawn run — `run:["spawn",name,p,t,kw,color]` (so `p=run[2]`, `t=run[3]`, `kw=run[4]`); some cards have **combined runs** (array of runs). Cost/type/colour/text/flav are top-level FX fields. Non-creature cards (burn/removal/rule/ramp) describe themselves via `text` + `run`/`target`.
+
+## P31.1 — Expandable card rows in the enemy deck-tools
+
+**Goal:** each enemy card row in the deck-tools is collapsed to a one-line summary by default and expands on click to show full stats (P/T + keywords for creatures), cost, colours, oracle text, flavour, and a plain-language effect summary.
+
+**How:**
+1. **Collapse by default:** change `fxItem` (~914) so the row shows the summary line (name · cost · typechip · colours) plus a **▸/▾ expand toggle**; the `fx.text` and the rest move into an expandable body hidden until expanded. Track expanded rows on a transient `_dt.expanded` Set (card `id`s), toggled by `dtToggleCard(id)` → `dtRender()`. (Not persisted — it's modal view state, like the rest of `_dt`.)
+2. **Stats in the expanded body:** derive and show, for a **creature** card, its **P/T and keywords** from the spawn run (`run[2]/run[3]/run[4]`; handle combined-run cards — list each spawned body); for any card, show cost, colours, type, the oracle `text`, and `flav` if present.
+3. **Effect summary:** render a short plain-language line from `run`/`target` (e.g. "spawns a 3/2 menace", "deals N", "−2/−2 your board", "ramp +N") reusing existing descriptors where available, so the *mechanical* effect is visible, not just flavour text.
+4. **Keep actions:** the existing tutor/move/spawn action buttons stay on the row (collapsed or expanded). An optional "expand all / collapse all" toggle for the current view.
+5. **Applies across the deck-tools views** that use `fxItem` (look top/bottom, P14.7 browse, hand/gy/exile reveals) since they share the renderer — note the win is broadest there.
+
+**ACs:** enemy card rows start collapsed (summary only) and expand on click to show P/T + keywords (creatures), cost, colours, oracle text, flavour, and an effect summary; combined-run cards list each body; collapse/expand persists across `dtRender` within the open modal; the action buttons still work; non-creature cards show their effect sensibly; no game-state change (view only).
+**Verify:** jsdom — `fxItem` for a creature card renders a collapsed summary, and after `dtToggleCard(id)` the body shows the right P/T + keywords (from the spawn run) + text; a combined-run card lists multiple bodies; a burn card shows its effect summary; toggling re-renders; action buttons present; syntax + id-diff (only the new expand toggle ids). (Refines P14.7 / P9.4.)
 
 ---
 
