@@ -132,6 +132,9 @@
 | &nbsp;&nbsp;P23.1 "Phase out" toggle on planeswalkers (player walkers; enemy walker parity) | ⬜ planned |
 | &nbsp;&nbsp;P23.2 Player emblems: full automation system mirroring the enemy's (templates · auto/static/trigger · effect engine · fire hooks) | ⬜ planned |
 | &nbsp;&nbsp;P23.3 Player emblem targeting (player/enemy) + colour coding (enemy = blue box · player = uncoloured) | ⬜ planned |
+| **Phase 24 — Player spell-card zone routing: instants/sorceries → graveyard; X-button permanent removal asks graveyard/exile/none** | ⬜ **PLANNED** — a resolved player instant/sorcery goes to the player graveyard (today it vanishes) · removing a player permanent via the ✕ button opens a popup: graveyard · exile · none. See Phase 24 below |
+| &nbsp;&nbsp;P24.1 Player instants/sorceries route to the graveyard on resolve | ⬜ planned |
+| &nbsp;&nbsp;P24.2 ✕-button removal popup for permanents (graveyard / exile / none) | ⬜ planned |
 
 ---
 
@@ -1896,6 +1899,45 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** a player emblem targeting the enemy shows a blue box; targeting the player shows uncoloured; the target can be toggled; the default target matches the effect kind; player rows have the same controls as enemy rows; round-trips + migrates; the enemy red-box behavior is unchanged.
 **Verify:** jsdom — a player emblem with `target='enemy'` renders `.brow.vsenemy` (blue), `target='player'` renders no colour class; toggling flips it; default target derives from kind; the row exposes the full control set; syntax + id-diff (only the new `.vsenemy` class + player-emblem control ids).
+
+
+# PHASE 24 — Player spell-card zone routing: instants/sorceries → graveyard; ✕-removal asks graveyard/exile/none ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** Make the player's spell cards end up in a real zone like the enemy's do: a resolved instant/sorcery goes to the graveyard, and removing a permanent from the board (incl. the manual ✕) asks where it goes. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded audit:**
+- **Player graveyard/exile exist:** `S.myGy` / `S.myExile`, rendered in the "Your zones" panel with return/exile chips (`renderMyZones` ~1418, `myGyReturn`/`myGyToExile` ~1421-1422, `moveZoneCard` for `pGy`/`pExile` ~1426).
+- **Permanents already route on *death*:** `killMy` (~1073) sends a dead player permanent to `S.myGy` (or `S.myExile` if `dies==='exile'`), with the token-ceases short-circuit. P9.1 `moveBoardCard(obj,'graveyard'|'exile')` (~1095-1096) is the **non-death** clean mover (no Pit's Tithe).
+- **Gap 1 — instants/sorceries vanish:** `resolvePlayerItem` (~1864) handles creature/artifact/enchantment/planeswalker by pushing a board object; the final `else` (~1869) for **instant/sorcery** applies the auto effect / logs "resolves" but **never pushes to `S.myGy`** — the spell card simply disappears. (Enemy spell cards do route to the enemy graveyard on resolve.)
+- **Gap 2 — ✕ just deletes:** `rmMy(cat,id)` (~1567) routes a commander to the command zone, else **splices the permanent with no zone choice** — it's gone, no graveyard/exile/none prompt. The `$("overlay")`/`$("modalBody")` modal (used by `openClonePicker`) is the popup infra to reuse.
+
+## P24.1 — Player instants/sorceries route to the graveyard on resolve
+
+**Goal:** when a player instant or sorcery resolves, its card goes to the player graveyard (`S.myGy`), so every spell card ends up in a zone — matching the enemy.
+
+**How:**
+1. In `resolvePlayerItem` (~1869), after the non-permanent spell resolves (the `else` branch covering instant/sorcery), push a card record to `S.myGy`: `{name:p.name, color:(p.color||[]).slice(), ctype:p.ctype, _spell:true}` (a minimal shape `renderMyZones`/`colorDots` can render). Log "→ your graveyard" on the `you` channel.
+2. **Scope:** only spells that don't become a permanent — i.e., `ctype==='instant'||ctype==='sorcery'` (and any non-permanent that hits the `else`). Permanents are unaffected (they live on the board; they route to a zone later via death/P24.2). Clones/copies (`pr.clone`) and token spells are permanents — unchanged.
+3. **Return semantics:** an instant/sorcery in the graveyard should sensibly return **to hand**, not the battlefield — `myGyReturn` (~1421) pushes to `S.my[_cat||'creatures']`. Guard it: a `_spell` graveyard card uses the return-to-hand path (`moveZoneCard('pGy',i,'hand')`) and is **excluded** from "return to battlefield" (or returning it to the board is blocked/hidden). Keep `_cat` unset on spell records so they never wrongly enter as creatures.
+4. **Flashback-style note:** no flashback mechanic is implied — the card just rests in the graveyard (manual tools can move it). Round-trips for free (`S.myGy` serializes).
+
+**ACs:** resolving a player instant or sorcery adds it to `S.myGy` (visible in Your zones, with colour dots), logged; a resolved permanent does NOT add a duplicate graveyard entry; a `_spell` graveyard card returns to hand (not as a creature) and isn't offered "return to battlefield"; round-trips through save/undo.
+**Verify:** jsdom — resolve an instant → `S.myGy.length` +1 with `_spell:true`; resolve a creature → no spell graveyard entry; `myGyReturn` refuses/omits a `_spell` card to the battlefield while hand-return works; serialize round-trip; syntax + id-diff.
+
+## P24.2 — ✕-button removal popup for permanents (graveyard / exile / none)
+
+**Goal:** removing a player permanent from the board — including the manual ✕ button — prompts for where it goes: **graveyard**, **exile**, or **none** (removed without entering a zone).
+
+**How:**
+1. **Popup on ✕:** change `rmMy(cat,id)` (~1567) so that for a real (non-token) permanent it opens a small modal (reuse `$("overlay")`/`$("modalBody")`) titled "Remove {name} —" with three buttons: **⚰ graveyard**, **⊘ exile**, **✕ none (remove)**, plus cancel. Each calls `removeMyTo(cat,id,where)` then closes the modal.
+2. **`removeMyTo(cat,id,where)`** — `graveyard`/`exile` reuse the **P9.1 non-death** `moveBoardCard(obj,'graveyard'|'exile')` (clean move, no Pit's Tithe — manual bookkeeping, not a combat death); `none` plain-splices the permanent off `S.my[cat]` (ceases / removed from game). Log each to the `you` channel.
+3. **Special cases:**
+   - **Commander:** keep the current behavior — a commander goes to the **command zone** (`sendCmdToZone`), not the gy/exile popup (or include "→ command zone" as a 4th option). Don't strand the commander in a graveyard.
+   - **Tokens:** graveyard/exile don't apply (a token ceases). Either skip the popup for tokens (straight cease, as today's token rules) or show only "remove (cease)". Default: tokens cease without the 3-way prompt.
+4. **Consistency:** this is a *non-death* removal path (matches the ✕'s "I'm correcting/cleaning the board" intent), so it must NOT fire death triggers (Pit's Tithe). If the user wants a *death* (with triggers), that's the existing slay/kill paths — note the distinction in the popup copy ("clean removal — no death triggers").
+
+**ACs:** clicking ✕ on a player creature/artifact/enchant/walker opens a graveyard/exile/none popup; graveyard → `S.myGy`, exile → `S.myExile`, none → gone, each via the non-death path (no Pit's Tithe); commander still goes to the command zone; tokens cease without the prompt; the popup is cancelable (no change); all paths log + re-render.
+**Verify:** jsdom — `removeMyTo` sends a permanent to `myGy`/`myExile`/nowhere per choice without firing `bloodTithe`; commander ✕ → command zone; a token ✕ ceases (no graveyard entry); cancel leaves state unchanged; syntax + id-diff (only the new popup ids).
 
 ---
 
