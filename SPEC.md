@@ -1741,6 +1741,53 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **ACs:** setting the enemy to 10 poison (or 21 cmd-dmg) makes the boss fall through `bossDown` (Vael still gets phase-2; a normal boss drops loot/gold/clear); your unblocked commander's combat damage to the enemy accrues to `S.enemyCounters.cmdDmg` and a 21 total ends the fight; the player's own loss conditions are unchanged; counters reset between battles so damage doesn't carry to the next boss.
 **Verify:** jsdom — `S.enemyCounters.poison=10; checkEnemyOut()` → `bossDown` path (assert phase-2 for Vael, clear for a normal boss); an unblocked player-commander swing adds `effP` to `enemyCounters.cmdDmg` and 21 triggers the fall; a blocked/again-non-commander swing doesn't accrue; `checkLose` (player) untouched; reset on `enterRoom`; syntax + id-diff.
 
+
+# PHASE 20 — Combat-count restrictions: blockable-by-N (creatures) · attackable-by-N (planeswalkers) · enemy max-blockers box ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** The user wants per-card combat-count limits, unified across player and enemy. **Clarified meaning (user, 2026-06-29):** for a **creature**, "attackable only by N" *means blockable only by N* (the existing `block:{min,max}`); for a **planeswalker**, it means the walker can be *attacked* by at most N creatures. Plus a global enemy "max blockers" box mirroring the existing "max attackers". Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded audit:**
+- **Creature block-count (already exists):** `block:{min,max}` per P12.2 — `minBlockers`/`maxBlockers` (~999/1013), enforced in `aiBlocks`/`combatAdd`/`approveCombat`. Editable on the **unified drawer**: player via `setBlockMy` (~1303, row ~1324), enemy via the P13.1 owner-agnostic `setObjBlock` (~1308, row ~1313). **⚠ Depends on the P18.1 `minBlockers` fix** (the `||` short-circuit bug) to behave correctly when menace + an explicit min coexist.
+- **Planeswalker attack-targeting (the basis for "attackable by N"):** only the **enemy-attack** direction assigns attackers to walkers today — `renderCombat` (~1167) shows a target `<select>` (you / each `S.my.walker`) per enemy attacker, set by `combatTarget` (~1177) into `S.combat.target[attId]`; `approveCombat`/`predictCombat` split damage by target. So **the enemy attacks YOUR walkers**; there is **no** path for you to attack the **enemy** walker `S.pw` in combat (the `wks` list is empty when `dir==='you'`).
+- **Max attackers box (the mirror target):** `<input id="maxAtk">` in the enemy box (~382) caps the enemy's declared attackers in `vaelAttackers` (~1155: `if(maxA>0&&a.length>maxA)a=a.slice(0,maxA)`). There is **no** equivalent cap on enemy blockers in `aiBlocks` (~1108).
+
+## P20.1 — Creatures: "blockable only by N" (min/max) on the unified player + enemy drawer
+
+**Goal:** confirm/surface, on every creature (player and enemy alike), the ability to set how many creatures may block it — min and max — so a creature can be made "blockable only by N."
+
+**How:**
+1. **Mostly exists** — `block:{min,max}` with `setBlockMy` (player) and `setObjBlock` (enemy, P13.1) already render min/max steppers on both drawers (~1313/1324) and resolve through the combat engine. This task is to **verify parity** (the enemy creature drawer offers the identical control), tidy the labels (e.g. "blockable by min N / max N · 0 = none · menace = min 2"), and ensure the `blockLabel` board badge (~1014) shows the restriction on both boards.
+2. **Hard dependency:** lands **after P18.1** so `minBlockers` uses `Math.max(explicitMin, menace?2:1)` — otherwise setting `max < menace`'s implied min (or `min=1` on a menace creature) misbehaves. Add a guard/log if a user sets `max < min`.
+3. No schema change (`block` already serializes); pure UI-parity + validation.
+
+**ACs:** both player and enemy creature drawers expose min/max "blockable by" steppers that drive `aiBlocks`/`combatAdd`/`approveCombat` identically; the board badge shows the limit on both sides; `max<min` is rejected/clamped with a log; behavior is correct alongside menace (post-P18.1).
+**Verify:** jsdom — `setObjBlock('token',id,'max',1)` makes an enemy creature blockable by ≤1 and `setBlockMy` does the same for a player creature; combat honors both; `max<min` guarded; menace interaction correct; syntax + id-diff.
+
+## P20.2 — Planeswalkers: "attackable only by N" — cap how many creatures may attack a walker
+
+**Goal:** a planeswalker can be flagged so that **at most N creatures may attack it** in a single combat. Unified across the player's walkers (`S.my.walkers`, attacked by the enemy today) and the enemy walker (`S.pw`, for if/when you can attack it).
+
+**How:**
+1. **New field** `attackableBy` (max attackers, default unset = no limit) on walker objects; editable in the walker drawer (player walker drawer + the enemy walker, via the P13.1 owner-agnostic editor where the walker is reachable). `migrate()` needs no backfill (absent = unlimited). Serializes for free.
+2. **Enforce on assignment (enemy → your walkers):** in `combatTarget` (~1177), when assigning an attacker to a walker target, refuse (log + keep prior target) if that walker already has `attackableBy` attackers pointed at it — count `Object.values(S.combat.target)` equal to that walker id. Mirror the check at `approveCombat` as the hard guard (reject if any walker exceeds its cap), and flag it in `predictCombat` so the player sees it before approving.
+3. **Enemy walker (`S.pw`):** since there's no player→enemy-walker attack-targeting today, the cap is **defined and stored** on `S.pw` but only takes effect if/when that targeting is added — note this explicitly (don't build a new attack-targeting mode here; that's a separate feature). The field still round-trips and shows in the drawer for parity.
+4. **Label/badge:** show "attackable by ≤N" on the walker.
+
+**ACs:** a player walker set to "attackable by 1" can have at most 1 enemy attacker assigned to it (the 2nd assignment is refused with a log; approve rejects an over-cap state; prediction warns); an unset walker is unlimited (today's behavior); the field exists symmetrically on the enemy walker (stored, drawer-visible) pending player→enemy-walker targeting; round-trips through save/undo.
+**Verify:** jsdom — set `attackableBy=1` on a player walker; assigning a 2nd enemy attacker to it via `combatTarget` is refused; `approveCombat` rejects a hand-built over-cap `S.combat.target`; unset = unlimited; field persists on `S.pw`; syntax + id-diff.
+
+## P20.3 — Enemy "max blockers" box mirroring "max attackers"
+
+**Goal:** add a global cap on how many of the enemy's creatures may be declared as blockers, exactly paralleling the existing "Max attackers" box.
+
+**How:**
+1. **UI:** add `<input id="maxBlk" min="0" value="0">` beside the "Max attackers" box (~382), labelled e.g. "Max blockers (Silent Arbiter → 1)" with the same `onchange="render()"`.
+2. **Enforce in `aiBlocks` (~1108):** read `const maxB=parseInt($("maxBlk").value,10)||0;` and stop assigning new blockers once the total assigned blockers reach `maxB` (when `maxB>0`) — count across all attackers in the `assign` map as the loop proceeds, so the enemy never commits more than `maxB` blockers total. Respect it alongside the existing per-attacker `minBlockers`/`maxBlockers` (if honoring a menace attacker's min would exceed the global cap, that attacker simply goes unblocked — log it; don't form an illegal partial).
+3. **0 = unlimited** (matches `maxAtk` semantics). No schema change (it's a transient UI input like `maxAtk`, read at block time).
+
+**ACs:** with "Max blockers" = 1, the enemy assigns at most 1 blocker total across the whole combat; = 0 means unlimited (today's behavior); it composes with menace (a menace attacker that can't reach its min within the cap is left unblocked, logged); the "Max attackers" box is unchanged.
+**Verify:** jsdom — set `maxBlk=1`, give the enemy several blockers + several player attackers → `aiBlocks` assigns ≤1 blocker total; `maxBlk=0` unlimited; menace-vs-cap leaves the attacker unblocked with a log; `maxAtk` regression intact; syntax + id-diff.
+
 ---
 
 ## Open questions (non-blocking — assume the stated default unless overridden)
