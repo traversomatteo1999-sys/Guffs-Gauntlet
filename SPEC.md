@@ -113,6 +113,9 @@
 | &nbsp;&nbsp;P17.3 Max hand size 7 — discard-to-7 wisely at end of turn (unless "no maximum hand size") | ⬜ planned |
 | &nbsp;&nbsp;P17.4 Manual "enemy draws N cards" control | ⬜ planned |
 | &nbsp;&nbsp;P17.5 Attack-tax target selector (player/walkers/both) + enemy-side attack tax | ⬜ planned |
+| **Phase 18 — Combat correctness: menace enforcement + keyword automation audit** | ⬜ **PLANNED** — verify/harden the P12.2 combat engine: a menace creature is blockable **only** by 2+ and counts as blocked **only** when ≥2 blockers are assigned (fewer = invalid, treated as unblocked/refused) · deathtouch · lifelink · trample · first/double strike · vigilance · indestructible · protection all auto-resolve correctly on resolution, in **both** combat directions. See Phase 18 below |
+| &nbsp;&nbsp;P18.1 Menace: blockable only by 2+, counts as blocked only when ≥2 assigned (both directions) | ⬜ planned |
+| &nbsp;&nbsp;P18.2 Combat keyword automation audit (deathtouch · lifelink · trample · strikes · vigilance · indestructible · protection) | ⬜ planned |
 
 ---
 
@@ -1624,6 +1627,49 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** an attack tax can be set to apply to the player only, planeswalkers only, or both, on either side; the player-side tax (enemy pays) honors the target type; an enemy-side Propaganda makes the player pay (life auto/reminder, mana reminder) to attack the enemy and/or its walkers per the target; existing untyped taxes default to `both` and behave as today; everything round-trips through save + migrate backfill.
 **Verify:** jsdom — `catk.tgt` round-trips and `attackTax` filters by target; an enemy-side tax via `enemyAttackTax()` surfaces a player cost gated by `tgt` (life deducted/reminder); a legacy `catk` with no `tgt` acts as `both`; migrate backfill; syntax + id-diff.
+
+
+# PHASE 18 — Combat correctness: menace enforcement + keyword automation audit ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** The user wants combat to honor menace strictly and to confirm the combat keywords actually auto-resolve. **Much of this already exists as the P12.2 infrastructure** (grounded below) — so this phase is primarily a **verify-and-harden** pass: prove each rule works end-to-end in BOTH directions (your attack → enemy blocks; enemy attack → you block) and fix any gap found. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded combat audit (read once for P18.1–P18.2):**
+- **Resolution core:** `resolveAttack(attackers,assign)` (~1002) computes face/lifelink/dead lists and already models — outgoing `effP×(double strike?2:1)`; deathtouch (`lethal=1`); trample (`left>0` spills to face); first/double-strike (`attFirst` skips dead blockers' strike-back); blocker strike-back (`blkPow`/`blkDT`); lifelink both sides (`attLifelink`/`defLifelink`); protection (`hasProtFrom` zeroes); indestructible (no death from damage/deathtouch). Returns `{face,deadAtt,deadBlk,attLifelink,defLifelink,perAtt}`.
+- **Block-count rules (P12.2):** `minBlockers(c)` (~999) = `c.block.min || (menace?2:1)`; `maxBlockers(c)` (~1000) = `c.block.max || Infinity`. `approveCombat` (~1168) **refuses** an attacker blocked by `1..min-1` (so a menace creature blocked by 1 is rejected, not resolved); `combatAdd` (~1152) enforces the max cap; `predictCombat` (~1162) flags the illegal partial.
+- **Both directions:** your attack → `swing()`→`aiBlocks(attackers)` (~1081, respects `minBlockers`/`maxBlockers`) → `openCombat('you',…)`; enemy attack → `vaelAttackers`/`openCombat('vael',…)` → you assign via `renderCombat`/`combatAdd`. Resolution (`approveCombat` ~1165) applies face/lifelink/deaths/tap for both `dir==='you'` and `dir==='vael'`, incl. walker-target split + commander damage.
+- **Vigilance:** `approveCombat` taps attackers unless `kw(a,'vigilance')` (~1178/1194). **Legality:** `legalBlock(att,b)` gates flying/reach (used in `renderCombat`/`aiBlocks`/`combatAdd`).
+
+## P18.1 — Menace: blockable only by 2+, counts as blocked only when ≥2 assigned (both directions)
+
+**Goal:** a creature with **menace** (or any `block.min≥2`) can be blocked **only** by two or more creatures, and is treated as **blocked only when at least its min are assigned** — assigning a single blocker is **invalid** (the attacker is not "blocked by one"; it's either blocked by 2+ or unblocked).
+
+**How (verify the existing P12.2 path; fix any gap):**
+1. **Min enforced on assign + approve:** confirm `approveCombat` (~1168) rejects a `1..min-1` block for **both** `dir==='you'` (you'd be illegally blocking the enemy's menace attacker) and `dir==='vael'` (the AI/you blocking — `aiBlocks` ~1084 already won't propose `<min`, and the manual `combatAdd` path must be refused at approve). Confirm `predictCombat` (~1162) warns before approve.
+2. **"Counts as blocked only if ≥2":** verify `resolveAttack` treats a menace attacker with `<min` blockers correctly — since approve refuses `<min`, the only resolvable states are 0 blockers (unblocked → full face/trample) or ≥min (blocked). Add an explicit guard/test so a menace attacker can never deal "blocked" math against a single blocker.
+3. **Max cap honored:** `combatAdd` (~1152) blocks assigning beyond `maxBlockers`; confirm for both directions.
+4. **AI side:** `aiBlocks` (~1084) must never assign exactly 1 to a menace attacker (it uses the `need===1` vs else-group branch) — verify the group branch assigns `need` blockers or none.
+5. **Decision to confirm:** when the player tries to under-block (assign 1 to a menace attacker), current behavior = **refuse at approve with a log**. Keep that (clear + reversible) rather than silently dropping the blocker — flag if the user prefers auto-treating it as unblocked instead.
+
+**ACs:** a menace attacker shows "blocked by 2+"; assigning 1 blocker is rejected at approve (logged) in both directions; assigning 0 → resolves as unblocked (full damage/trample); assigning ≥2 → resolves as blocked; the AI never proposes a single blocker for a menace attacker; the max-blocker cap holds; `block.min` from a non-menace source behaves identically.
+**Verify:** jsdom — menace attacker + 1 blocker → `approveCombat` refuses (state unchanged, log emitted); + 0 → unblocked damage; + 2 → blocked resolution; `aiBlocks` assigns 2-or-0 to a menace player attacker; both `dir` paths covered; syntax + id-diff.
+
+## P18.2 — Combat keyword automation audit (deathtouch · lifelink · trample · strikes · vigilance · indestructible · protection)
+
+**Goal:** confirm every combat keyword **auto-resolves** correctly on combat resolution (no manual bookkeeping needed) and fix any incorrect interaction — in **both** directions.
+
+**How (audit `resolveAttack` ~1002 + the two `approveCombat` apply-branches ~1173/1183, add coverage, fix bugs):**
+1. **Deathtouch:** any nonzero combat damage is lethal (`lethal=1`); a deathtouch blocker kills the attacker (`blkDT`); deathtouch + trample assigns only **1** to each blocked creature before trampling the rest (verify the `left` math spills correctly after a 1-point lethal assignment — this is the classic bug site).
+2. **Lifelink:** attacker lifelink gains its **full damage dealt** (incl. to blockers + trample), routed to the right side (you on `dir==='you'`, enemy via `bossHealLife` on `dir==='vael'`); blocker lifelink likewise (`defLifelink`). Confirm the gain side flips correctly per direction (~1175-1176 vs ~1191-1192).
+3. **Trample:** lethal assigned to blockers (deathtouch-aware), remainder to face; prevented/indestructible blockers still have lethal **assigned** over them before spill (MTG rule).
+4. **First / double strike:** double strike doubles outgoing; an attacker with first/double strike that kills a non-first-strike blocker takes no strike-back from it (`attFirst&&dies&&!bFirst`); double-strike blocker strike-back doubles. Verify the ordering doesn't double-count.
+5. **Vigilance:** non-vigilant attackers tap, vigilant stay untapped — both directions (~1178/1194).
+6. **Indestructible:** never added to `deadAtt`/`deadBlk` from combat damage or deathtouch (verify both attacker and blocker sides).
+7. **Protection (`hasProtFrom`):** a protected blocker takes 0 (not killed, not assigned damage); a protected attacker takes 0 from that blocker. Confirm both `forEach` guards (~1010/1016).
+8. **Walker-target + commander damage (enemy attack):** `perAtt` splits to `you`/walkers per `S.combat.target`; unblocked commander adds to `cmdDmg/21` (~1189-1190) — confirm lifelink/trample still compute right when targeting a walker.
+9. Fix anything the tests expose; **log** each resolved effect (lifelink gains, deaths) as today (no silent mutation).
+
+**ACs:** in both directions, deathtouch kills with 1 damage (and assigns 1-then-tramples), lifelink gains the correct side full damage, trample spills correctly past lethal/indestructible/protection, first/double strike ordering is correct, vigilant attackers don't tap, indestructible never dies to combat, protection zeroes the right damage; the resolver popup + logs reflect each; no keyword requires manual application.
+**Verify:** jsdom — targeted unit tests per keyword in `resolveAttack` (deathtouch+trample assignment, lifelink side/amount per direction, double-strike strike-back, indestructible survives lethal+DT, protection zeroes, vigilance tap) + an end-to-end `approveCombat` for each direction; regressions on the existing P6/P12.2 combat drivers; syntax + id-diff.
 
 ---
 
