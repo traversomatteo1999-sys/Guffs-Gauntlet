@@ -138,6 +138,8 @@
 | **Phase 25 — Refresh tab/info descriptions + open the "Your attack" box by default** | ⬜ **PLANNED** — update the tab notes + ⓘ info-panel copy to match the expanded feature set (kept in sync as phases land) · make the "Your attack" box start open like the first box of its tab. See Phase 25 below |
 | &nbsp;&nbsp;P25.1 "Your attack" box starts open by default | ⬜ planned |
 | &nbsp;&nbsp;P25.2 Refresh tab notes + ⓘ INFO_TEXT panels (+ instructions) to match current features | ⬜ planned |
+| **Phase 26 — Slay asks graveyard or exile (enemy creature death destination)** | ⬜ **PLANNED** — clicking ✦ Slay on an enemy creature opens a popup: graveyard or exile (still a death → Pit's Tithe fires; tokens cease regardless). Enemy-side, death-flavoured analog of P24.2. See Phase 26 below |
+| &nbsp;&nbsp;P26.1 Slay → graveyard/exile popup (death routing; tokens cease; commander → command zone) | ⬜ planned |
 
 ---
 
@@ -1975,6 +1977,30 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** every tab note and ⓘ popup reflects the current, built feature set with no stale/missing descriptions; new ⓘ entries exist where a new system warrants one; the help/instructions agree with the popups; copy stays in the established voice; no behavior change (text/UI only).
 **Verify:** string/jsdom checks — each `INFO_TEXT` entry and tab note is present and mentions its system; new keys resolve via `showInfo`; no `infoBtn('key')` points at a missing entry; syntax + id-diff. **Run/refresh after P16–P24 land (living doc).**
+
+
+# PHASE 26 — Slay asks graveyard or exile (enemy creature death destination) ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** Clicking ✦ Slay on an enemy creature should ask where the slain creature goes — graveyard or exile — instead of silently ceasing. This is the enemy-side, **death-flavoured** counterpart to P24.2 (the player's non-death ✕ popup). Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded audit:**
+- **Slay path:** `slay(id)` (~1622) finds the enemy creature in `S.tokens`, logs "Slew …", and calls `removeRef(c)`. The commander uses `slayCmdBtn` (~1584) → `removeRef(S.cmd)`. Slay is wired from the enemy creature card (`enemyCard`, ~1269) and the commander card (`cmdFieldCard`, ~1807).
+- **What `removeRef` does today (~1072):** commander → command zone + rising tax + `bloodTithe()`; an `S.tokens` creature → **splice (ceases) + `bloodTithe()`**; a player creature → `killMy`. So a slain enemy creature **never routes to `S.gy`/`S.exile`** — it just disappears (the Pit's Tithe death trigger still fires).
+- **Zone infra to reuse:** the P9.1 non-death mover `moveBoardCard(obj,'graveyard'|'exile')` (~1095-1096) already pushes an enemy board body to `S.gy`/`S.exile` as a card record (`erec()`), and **ceases tokens** — but it does NOT fire the Pit's Tithe (it's a clean move). Enemy graveyard/exile render with reanimate/return chips (`gyToExile`/`exToGy` ~1804-1805), so a slain creature in `S.gy` can be reanimated. The `$("overlay")`/`$("modalBody")` modal is the popup infra.
+
+## P26.1 — Slay → graveyard/exile popup (death routing)
+
+**Goal:** ✦ Slay opens a popup asking **⚰ graveyard** or **⊘ exile**; the slain enemy creature routes there as a **death** (Pit's Tithe still fires). Tokens cease regardless; the commander still goes to the command zone.
+
+**How:**
+1. **Popup on Slay:** change `slay(id)` (~1622) so that for a real (non-token) enemy creature it opens a modal (reuse `$("overlay")`/`$("modalBody")`) titled "Slay {name} —" with **⚰ graveyard** / **⊘ exile** buttons (+ cancel). Each calls `slayTo(id,where)` then closes.
+2. **`slayTo(id,where)` — death + route:** fire the death trigger once (`bloodTithe()`, matching today's `removeRef` for enemy creatures), then route the body to the chosen zone. Reuse the P9.1 push logic (graveyard → `S.gy`, exile → `S.exile`, as a card record carrying name/key so it can be reanimated) — i.e. do `bloodTithe()` then the zone-push half of `moveBoardCard` (NOT the whole mover, since that skips the Tithe). Log "✦ {name} is slain → {enemy}'s graveyard/exile."
+3. **Tokens cease (no popup, or single confirm):** a `token:true`/keyless body can't go to a zone — it ceases (splice + Pit's Tithe), exactly as today. Either skip the popup for tokens (straight slay→cease) or show a single "token — ceases" confirm. **Default: skip the popup for tokens** (preserve current behavior); only real enemy cards get the graveyard/exile choice. (Note: enemy creatures spawned from cards are `token:true`, so in practice many enemy "creatures" will cease — flag this so the popup only appears for non-token enemy permanents, e.g. a creature card moved onto the board or a controlled real card.)
+4. **Commander unchanged:** `slayCmdBtn`/`removeRef(S.cmd)` still routes the commander to the command zone with rising tax — no graveyard/exile popup (MTG commander replacement). Optionally note "→ command zone" in its tooltip.
+5. **Consistency with P24.2:** P24.2 (player ✕) is a *non-death* clean removal with a graveyard/exile/**none** choice; P26 (enemy Slay) is a *death* with a graveyard/**exile** choice (no "none" — a slay kills it into a zone; tokens cease as the natural "none"). Keep the two popups visually similar but labelled for their semantics.
+
+**ACs:** clicking Slay on a non-token enemy creature opens a graveyard/exile popup; choosing routes it to `S.gy`/`S.exile` as a reanimatable record AND fires the Pit's Tithe; a token slay ceases (no zone entry) as today, still firing the Tithe; the commander slay still goes to the command zone; cancel leaves state unchanged; all paths log + re-render.
+**Verify:** jsdom — `slayTo(id,'graveyard')` pushes the creature to `S.gy` and calls `bloodTithe` once; `slayTo(id,'exile')` → `S.exile`; a `token:true` slay ceases with no `S.gy` entry but still Tithes; commander slay → command zone (unchanged); cancel no-ops; syntax + id-diff (only the new slay-popup ids).
 
 ---
 
