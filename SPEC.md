@@ -142,6 +142,9 @@
 | &nbsp;&nbsp;P26.1 Slay → graveyard/exile popup (death routing; tokens cease; commander → command zone) | ⬜ planned |
 | **Phase 27 — Collapsible Cards & Tokens sections in the Library** | ⬜ **PLANNED** — make the Library's "Cards" and "Tokens" lists expand/collapse (with a count badge when collapsed) to cut noise, reusing the P12.1 collapse idiom. See Phase 27 below |
 | &nbsp;&nbsp;P27.1 Expand/collapse the Library "Cards" and "Tokens" lists (state persisted) | ⬜ planned |
+| **Phase 28 — Base-life model + heal items (Grand Elixir +25/25g · Tonic of Vigor +10 base/30g) · item automation · gold rebalance** | ⬜ **PLANNED** — a permanent base-life stat (`youMax`) that Tonic of Vigor raises +10 (and the P16.4 reset + P15.4 descent-heal both track it) · Grand Elixir heals +25 (25g) · automate items where possible · rebalance store gold prices. Refines P15.2; pairs with P16.4. See Phase 28 below |
+| &nbsp;&nbsp;P28.1 Base-life model: `adjLife` stops inflating `youMax`; only max-boons raise base; reset + descent-heal track it | ⬜ planned |
+| &nbsp;&nbsp;P28.2 Grand Elixir (+25 life · 25g) · Tonic of Vigor (+10 base · 30g) · automate items · gold rebalance | ⬜ planned |
 
 ---
 
@@ -1538,14 +1541,16 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **Grounded building blocks:** `advance()` (~1494) is the **sole** room-transition path — `freshGameForDungeon()` → `enterRoom(next)` → the "your life (N) … carry over" log. Game start/restart use `enterRoom(0,true)` (not `advance`), so they're unaffected. `S.youLife` / `S.youMax`. **P15.4** (difficulty-scaled descent heal) also hooks `advance()` right after `enterRoom(next)` — these two MUST be ordered.
 
-**How:**
-1. In `advance()` (~1494), after `enterRoom(next)` and **before** the P15.4 descent-heal block: `if(S.youLife>40)S.youLife=40;` — trim only the excess; never raise life, never touch ≤40, never change `S.youMax`.
-2. **Ordering with P15.4:** cap to 40 **first**, then run the missing-HP heal against the post-cap value — so a player who ends a boss at 55 starts the next boss assessment from 40 (excess magic gone), and only *then* is "missing HP" (relative to `youMax`) considered for the descent heal. Document this in both P15.4 and here.
-3. **Log** the reset distinctly from healing/damage, e.g. `✨ Temporary vigor fades — your life settles to 40 between battles.` (only when a trim actually happened). Keep the existing "life carries over" log for the ≤40 case.
-4. **Baseline constant:** define `LIFE_RESET_BASELINE=40` (single source) rather than a magic number, so it's tunable. (Open question: should the baseline equal the player's *starting* life rather than a literal 40? **Default: literal 40** per the user's instruction; flag if `youMax`/start-life ever diverges from 40.)
+> **⤴ REVISED by the user (2026-06-29) — baseline is the player's BASE life, not a literal 40.** The reset target tracks the player's permanent base HP (`youMax` under the Phase 28 life-model), which starts at 40 and is **raised permanently by max-life boons (e.g. Tonic of Vigor +10)**. So after a Tonic the between-boss reset trims excess life down to 50, not 40 — the cap "always reflects the updated player base." See **Phase 28** for the base-life model + the items. The literal-40 design below is superseded; read it as "reset to `youMax`."
 
-**ACs:** descending with life >40 sets it to exactly 40 (logged as fading magic, not as damage/heal); life ≤40 is unchanged and not logged as a reset; `youMax` is never altered; the reset runs only on `advance()` (not on game start/restart); when P15.4 is also present, the 40-cap applies before the missing-HP heal.
-**Verify:** jsdom — `advance()` with `youLife=55` → 40 + reset log; `youLife=40`/`30` → unchanged, no reset log; `youMax` untouched; `enterRoom(0,true)`/restart never reset; with P15.4 stubbed, cap precedes heal (heal computed off 40); syntax + id-diff.
+**How:**
+1. In `advance()` (~1494), after `enterRoom(next)` and **before** the P15.4 descent-heal block: `if(S.youLife>S.youMax)S.youLife=S.youMax;` — trim excess **temporary** life down to the permanent base (`youMax`); never raise life, never touch life ≤ base, never lower `youMax` itself.
+2. **Ordering with P15.4:** cap to base **first**, then run the missing-HP heal against the post-cap value — so a player who overhealed to 55 (base 40) starts the next boss at 40, and only *then* is "missing HP" (relative to `youMax`) considered for the descent heal. Document this in both P15.4 and here.
+3. **Log** the reset distinctly from healing/damage, e.g. `✨ Temporary vigor fades — your life settles to {base} between battles.` (only when a trim actually happened). Keep the existing "life carries over" log for the at-or-below-base case.
+4. **Baseline = `youMax` (dynamic), not a constant.** The reset reads the live permanent base each descent, so any Tonic-of-Vigor increase is reflected automatically (Phase 28 fixes `adjLife` so ordinary healing doesn't permanently inflate `youMax` — only explicit max-life boons do, keeping "base" meaningful).
+
+**ACs:** descending with life > base trims it to exactly the base (`youMax`), logged as fading magic; life ≤ base is unchanged and not logged as a reset; `youMax` is never lowered; after a Tonic of Vigor (+10 base) the reset trims to the new base (e.g. 50); the reset runs only on `advance()` (not game start/restart); with P15.4 present, the base-cap applies before the missing-HP heal.
+**Verify:** jsdom — base 40, `youLife=55` → 40 + reset log; base 50 (post-Tonic), `youLife=60` → 50; life ≤ base unchanged, no log; `youMax` not lowered; `enterRoom(0,true)`/restart never reset; with P15.4 stubbed, cap precedes heal; syntax + id-diff. **(Pairs with Phase 28.)**
 
 ## P16.5 — Info & instructions for the new token + life-reset rules
 
@@ -2027,6 +2032,45 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **ACs:** clicking the Cards or Tokens header collapses/expands its list with a chevron; collapsed sections still show their count; the state persists across reopening the Library and across saves; an active search reveals matching sections rather than hiding hits; the quick-make token form's behavior is preserved; no change to card/token data.
 **Verify:** jsdom — `toggleLibSection('tokens')` flips `S.ui.lib.tokens` and hides/shows `#libTokens`; the chevron + count reflect state; reopening the Library preserves it; a search with token matches keeps the Tokens section visible; header action buttons still work (toggle guard); syntax + id-diff (only the new chevron/handler ids).
 
+
+# PHASE 28 — Base-life model + heal items + item automation + gold rebalance ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** Establish a coherent **permanent base-life** stat so heal items, the between-boss reset (P16.4), and the descent heal (P15.4) all agree, then add the two heal items the user specified and rebalance prices. **Refines P15.2; pairs with P16.4/P15.4.** Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded audit (the current life model + the bug it creates):**
+- `S.youLife` / `S.youMax` start at 40 ([HTML ~375]; `migrate` defaults ~2295). There is **no separate base stat** — `youMax` is the base/cap.
+- **`adjLife('you',n)` (~1585) raises `youMax` on overheal:** `S.youLife+=n; if(S.youLife>S.youMax)S.youMax=S.youLife;`. So *any* lifegain that overshoots permanently inflates the base — which would make a "temporary heal" permanent and the P16.4 between-boss shrink meaningless (nothing ever sits above base).
+- **Explicit max-boons:** `spark` (Spark of Vigor) in `grantBoon` (~1629) does `S.youMax+=5;S.youLife+=5` (permanent base bump); the P15.2-era `tonic` used `S.youMax+=5;adjLife('you',...)`.
+- **Consumers of the base:** P16.4 reset (trim life above base) and **P15.4 descent heal** (`heal=floor((S.youMax-S.youLife)*frac)` ~1635) both read `S.youMax` — so once the base is correct and live, both track it automatically.
+- **Items:** `BOONS`/`useBoon` (~1610) auto-apply most consumables (heal5/heal10/elixir/tonic/antidote/bomb/pyre); `STORE` prices (~814-821) — `elixir` 20g, `tonic` 28g, etc.; rarity→price bands defined in P15.2.
+
+## P28.1 — Base-life model: `youMax` is the permanent base; ordinary healing stops inflating it
+
+**Goal:** `youMax` becomes a true **permanent base** that only explicit max-life boons change; ordinary healing/lifegain may push `youLife` *above* it temporarily (so the P16.4 shrink has something to trim), and the P15.4 descent heal computes "missing HP" against the **updated** base.
+
+**How:**
+1. **Fix `adjLife` (~1585):** remove the `if(S.youLife>S.youMax)S.youMax=S.youLife;` line so ordinary lifegain no longer permanently raises the base. Life may now exceed `youMax` temporarily (lifelink, life-gain emblems, Grand Elixir overheal); the life bar already clamps display at 100% (`youLife/youMax*100`, ~1305) — keep that, optionally show "55/40" text so overheal is visible.
+2. **Only max-boons raise the base:** Spark (+5), Tonic of Vigor (+10) explicitly do `S.youMax+=N` (P28.2). `setLife`/admin tools may still set both. No other path mutates `youMax`.
+3. **P16.4 reset tracks the base:** the between-boss trim is `if(youLife>youMax)youLife=youMax` (already revised in P16.4) — reads the live, possibly-raised base.
+4. **P15.4 descent heal tracks the updated base (user's explicit ask):** the missing-HP fraction must be computed against the **current** `youMax` — `heal=floor((S.youMax - S.youLife)*frac)` after any base change — so raising the base with Tonic immediately widens "missing HP" and the heal scales to the new base. Confirm the ordering in `advance()`: **(a)** P16.4 trims to base, **(b)** P15.4 heals `floor((youMax−youLife)*frac)` off the post-trim, current-base value. Document in P15.4 + P16.4.
+5. **migrate:** existing saves keep `youMax` (default `max(40,youLife)` ~2295). No new field needed — `youMax` *is* the base. (Optional: an explicit `youBase` alias if clearer, but reusing `youMax` avoids a schema change.)
+
+**ACs:** healing no longer permanently raises `youMax`; life can exceed `youMax` temporarily and is shown honestly; the P16.4 reset trims to the live base; the P15.4 descent heal uses the updated base for its missing-HP fraction (post-Tonic, a deeper heal); admin/setLife still work; old saves unaffected.
+**Verify:** jsdom — `adjLife('you',30)` at 40/40 → `youLife=70, youMax=40` (base unchanged); P16.4 trims 70→40; after `youMax=50` (Tonic), descent heal computes off 50 (`floor((50−youLife)*frac)`); ordering in `advance()` (trim then heal); migrate default; syntax + id-diff.
+
+## P28.2 — Grand Elixir (+25/25g) · Tonic of Vigor (+10 base/30g) · item automation · gold rebalance
+
+**Goal:** add/define the two heal items with the user's exact values, make every item auto-apply where it can, and rebalance store prices.
+
+**How:**
+1. **Grand Elixir** — a consumable that heals **+25 life**, cost **25g**. Define `BOONS.grandelixir={n:"Grand Elixir",r:"rare",kind:"consumable",t:"Restore 25 life."}`; `useBoon` case → `adjLife('you',25)` (overheal allowed per P28.1; the excess trims at the next descent). `STORE` entry at 25g. (Relationship to the existing `elixir` heal-15: keep `elixir` as the mid heal, or retire it — pick one; default keep, so the ladder is heal5 · heal10 · elixir 15 · Grand Elixir 25.)
+2. **Tonic of Vigor** — cost **30g**, **+10 to base life (permanent)**. `BOONS.tonic={n:"Tonic of Vigor",r:"legendary",kind:"consumable",t:"Permanently raise your maximum life by 10 (and heal 10)."}`; `useBoon` case → `S.youMax+=10; S.youLife+=10;` (base permanently up; current life follows). `STORE` 30g. Because the base rose, the P16.4 reset cap and the P15.4 missing-HP heal both immediately reflect 50 (P28.1).
+3. **Automate items where possible:** audit `BOONS`/`useBoon` — anything currently a passive/reminder that *could* auto-apply should (e.g. ward/aegis damage-soak already auto-apply in combat; scholar's draw is an inherent manual draw → stays a reminder). Each item that can't be modeled keeps its reminder, but consumables and stat changes must fire automatically on use. List per-item: auto vs reminder.
+4. **Gold rebalance (refines P15.2 bands):** set prices to the rarity bands — common 5-8g · uncommon 12-20g · rare 18-34g · legendary 36g+, with the two new anchors fixed by the user (**Grand Elixir 25g rare**, **Tonic of Vigor 30g** — note this sits below the legendary 36g+ floor, a deliberate user-set price; flag the band exception). Adjust other `STORE` outliers to fit; verify a player can afford ~1-2 commons/uncommons per room and save toward a rare/Tonic across a couple rooms (`goldReward` curve ~838).
+
+**ACs:** Grand Elixir heals 25 (consumable, 25g) and its overheal trims at the next descent; Tonic of Vigor permanently raises `youMax` by 10 (heals 10), 30g, and the reset/descent-heal track the new base; every consumable/stat item auto-applies on use, reminders only where unmodelable; store prices follow the bands (with the two user-set anchors) and round-trip through buy/pending; items consumed on use (P21).
+**Verify:** jsdom — `useBoon` Grand Elixir → `youLife+25` (base unchanged), trims next descent; Tonic → `youMax+10,youLife+10`, reset trims to 50 and descent-heal computes off 50; each `BOONS` id resolves without throwing; prices within bands (Grand Elixir 25 / Tonic 30 anchored); syntax + id-diff.
+
 ---
 
 ## Open questions (non-blocking — assume the stated default unless overridden)
@@ -2037,7 +2081,7 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 - **Enemy "play this card" mana (P6.5):** spend vs free override? *Default:* offer both.
 - **Stack popup (P1.10):** docked-dismissible panel vs full modal overlay? *Default (unless you say):* a docked, auto-surfacing popup that doesn't block the board, openable on demand.
 - **Resource-token representation (P16.2):** dedicated arrays (`S.my.resources`/`S.enemyResources`) vs. tagging existing artifact tokens? *Default:* dedicated arrays (cleaner, recommended).
-- **Life-reset baseline (P16.4):** literal 40 vs. the player's starting/max life? *Default:* literal 40 per the user's instruction (flag if `youMax`/start-life ever diverges from 40).
+- **Life-reset baseline (P16.4):** ~~literal 40 vs. the player's starting/max life?~~ **DECIDED by the user (Phase 28)** — the baseline is the player's **dynamic base** (`youMax`), which starts at 40 and rises permanently with max-life boons (Tonic of Vigor +10). The between-boss reset always trims to the current base.
 - **Enemy resource-token automation depth (P16.3):** how much beyond Treasure-for-mana to auto-model? *Default:* Treasure-for-mana is must-have; Food/Clue auto where clean, Blood + anything unclear as a manual reminder (nothing silently dropped).
 - **Lands-only mana balance (P14.10 / P17.1):** ~~removing the opening mana + scrounge floor is a significant difficulty swing — confirm before building?~~ **DECIDED by the user (Phase 17)** — zero opening mana, no scrounge floor, mana strictly from played lands; the 7-card hand + mulligan (P17.2) and difficulty levers move onto HP/luck/land-density instead of free mana.
 - **Mulligan land threshold (P17.2):** keep mulligan-while-`<3` lands, or also mulligan a land-flooded hand (e.g. `>5`)? *Default:* low-end only (`<3` lands) per the user; no flood mulligan, card-count penalty optional (see P17.2).
