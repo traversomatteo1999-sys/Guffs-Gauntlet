@@ -81,9 +81,10 @@
 | &nbsp;&nbsp;P12.1 Collapsible boxes inside tabs | ⬜ planned |
 | &nbsp;&nbsp;P12.2 Block-restriction infrastructure + mechanic audit | ⬜ planned |
 | &nbsp;&nbsp;P12.3 Enter-as-a-copy (clone) with on-board picker | ⬜ planned |
-| **Phase 13 — Full enemy-card editing + deeper persistent-effect automation** | ⬜ **PLANNED** — modify the enemy's spells/cards (keywords·P/T·counters·markers·stack-edit) at full parity with your own toolbox · fuller enemy artifact/enchantment automation. See Phase 13 below |
+| **Phase 13 — Symmetric enemy board: full enemy-card editing + first-class artifacts/enchantments + deeper automation** | ⬜ **PLANNED** — the enemy board behaves like the player's: modify the enemy's spells/cards (keywords·P/T·counters·markers·stack-edit) · enemy artifacts/enchantments are real permanents (bounce/destroy/move/copy/control like any card) · fuller persistent-effect automation. See Phase 13 below |
 | &nbsp;&nbsp;P13.1 Edit enemy permanents & stack spells (owner-agnostic editor) | ⬜ planned |
 | &nbsp;&nbsp;P13.2 Fuller enemy artifact/enchantment automation (static auras · more triggers · manual-reminder fallback) | ⬜ planned |
+| &nbsp;&nbsp;P13.3 Enemy artifacts/enchantments as first-class board permanents (symmetric enemy board) | ⬜ planned |
 
 ---
 
@@ -1113,7 +1114,7 @@ Round-trip the field wherever the other per-permanent props go: `cmdObjFromCfg` 
 **Verify:** jsdom — clone flag round-trips; resolving a clone card opens the picker (overlay shown + permanents listed); `cloneInto` yields a non-token copy with copied P/T+kw and reset counters; legendary gating (button disabled → enabled with `noLeg`, result `legendary:false`); empty-board path; syntax + id-diff.
 
 
-# PHASE 13 — Full enemy-card editing + deeper persistent-effect automation ⬜ PLANNED
+# PHASE 13 — Symmetric enemy board: enemy-card editing + first-class artifacts/enchantments + deeper automation ⬜ PLANNED
 
 **Specced 2026-06-29, NOT built.** Two additive features the user asked for after P12. Grounded in the current `index.html` (re-grep names; line numbers drift). Each ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
@@ -1122,6 +1123,7 @@ Round-trip the field wherever the other per-permanent props go: `cmdObjFromCfg` 
 | **Phase 13 — Full enemy-card editing + deeper persistent-effect automation** | ⬜ **PLANNED** — modify the enemy's spells/cards (keywords·P/T·counters·markers·stack-edit) at full parity with your own toolbox · fuller enemy artifact/enchantment automation |
 | &nbsp;&nbsp;P13.1 Edit enemy permanents & stack spells (owner-agnostic editor) | ⬜ planned |
 | &nbsp;&nbsp;P13.2 Fuller enemy artifact/enchantment automation | ⬜ planned |
+| &nbsp;&nbsp;P13.3 Enemy artifacts/enchantments as first-class board permanents | ⬜ planned |
 ```
 
 ## P13.1 — Modify the enemy's spells & cards (parity with your own toolbox)
@@ -1157,6 +1159,27 @@ Round-trip the field wherever the other per-permanent props go: `cmdObjFromCfg` 
 
 **ACs:** an artifact "each upkeep you lose 2" auto-fires on the right step; a `static` "+1/+1 to all enemy creatures" shows on every render and combat/AI use the buffed stats; an aura attached to one enemy creature buffs only it and detaches on its death; non-modelable effects show the ⚠ manual badge; all new fields round-trip through save + `migrate` backfill.
 **Verify:** jsdom — each new auto template fires on its trigger; static buff reflected in `effP/effT`; aura attach/detach; manual-reminder fallback present; migrate backfill; syntax gate + id-diff.
+
+## P13.3 — Enemy artifacts & enchantments as first-class board permanents (symmetric enemy board)
+
+**Goal:** the enemy's artifacts and enchantments behave like **normal MTG cards / any other spell** — real permanents on a board that mirrors the player's, NOT special entries in the persistent-effects tracker. An enemy enchantment or artifact can be **cast onto the stack, resolve onto the enemy battlefield, and then be returned to hand (bounced), destroyed, exiled, moved to any zone, copied, controlled, or edited** exactly like an enemy creature or any player permanent. The whole enemy board becomes **symmetric with the player's**.
+
+**Why / current gap:** today enemy artifacts/enchantments live ONLY in `S.emblemsEnemy` (the persistent-effects/emblem panel, each tagged `kind`) — display+automation entries, NOT real permanents — so the universal move/destroy/zone toolbox (P9.1 `moveBoardCard`/`moveCard`) and per-card editing (P13.1) can't touch them. Enemy creatures (`S.tokens`), the enemy walker (`S.pw`), and the commander (`S.cmd`) are already real board objects; artifacts/enchantments are the asymmetry to close. **This task partially supersedes the P13.2 representation:** P13.2's automation rides on these real permanents instead of standalone tracker rows.
+
+**Grounded building blocks:**
+- Player parity to mirror: `S.my.artifacts`, `S.my.enchants` (real permanents, full toolbox), rendered in the Player tab.
+- The universal owner-aware zone engine `moveBoardCard(obj,to)`/`moveBoardById(scope,id,to)`/`moveZoneCard` (P9.1) already routes enemy creatures to the modelled `S.hand/lib/gy/exile`.
+- Enemy real-object precedent: `S.tokens` flows cast (`applyRun` `case "spawn"`) → board → death/move; replicate for non-creature permanents. `dtPlayCard` (P6.5) already puts an enemy card on the stack.
+
+**How:**
+1. **New enemy permanent arrays** `S.enemyArtifacts` / `S.enemyEnchants` (parallel to `S.tokens`), holding real permanent objects (player-permanent shape: name/type/kw/color/`other`/markers; keyless like `S.tokens` → guard `FX[c.key]&&`). Add to `fresh()`, save/`stripJSON`, and `migrate()`.
+2. **Render** them on the **Enemy board** in their own panels mirroring the player's artifact/enchant panels, each row hosting the full action set: ↩ return-to-hand · ⤓ move-to-zone · ✖ destroy→gy/exile · ⧉ copy (P9.3) · ⇄ take-control (P9.2) · ✎ edit (P13.1).
+3. **Lifecycle:** an enemy artifact/enchant cast routes through the stack like any spell (player can respond/counter) then resolves onto its array. Destroy/bounce/move reuse the **P9.1 engine** with the SAME rules as enemy creatures (enemy → modelled zones; tokens cease off-battlefield; death fires Pit's Tithe, bounce/tuck do not).
+4. **Reframe the tracker:** `S.emblemsEnemy` keeps **true emblems** (not permanents, can't be destroyed); **artifacts/enchantments become real permanents** (this task). A real enemy artifact/enchant may still carry **automation** (P13.2: auto-on-upkeep / static buff / attach-to-creature) as a property on the permanent, active only while it is on the battlefield. `migrate()` converts existing `S.emblemsEnemy` artifact/enchant entries into real permanents (carrying `auto`/`note`/`vsYou`), leaving genuine emblems behind.
+5. **No special-casing:** every toolbox action that works on an enemy creature (or the player's own artifact/enchant) now works on enemy artifacts/enchants identically.
+
+**ACs:** an enemy enchantment can be bounced to the enemy's hand, destroyed to its graveyard, exiled, tucked into the library, copied, taken control of, and edited — identical to an enemy creature; casting an enemy artifact puts it on the stack (player can respond) before it resolves; a destroyed enemy artifact routes to the enemy graveyard and can be reanimated (P9.1/P9.4); existing saves migrate emblem artifact/enchant entries to real permanents without losing automation; true emblems still live in the tracker; player board behavior unchanged.
+**Verify:** jsdom — enemy artifact/enchant create→stack→resolve→board; each toolbox action (bounce/destroy/exile/move/copy/control/edit) on an enemy enchant matches the enemy-creature path; migrate converts old emblem artifact/enchant entries (auto preserved) and leaves emblems; round-trips through save/undo; syntax gate + id-diff.
 
 ---
 
