@@ -404,7 +404,7 @@
 
   <div class="panel" style="margin-top:12px">
     <h2>✶ <span id="enemyName2">Enemy</span>'s artifacts, enchantments &amp; emblems <span class="tag">persistent effects · ⚡ auto on its upkeep</span></h2>
-    <div class="btnrow" style="margin-top:2px"><select id="embKind" style="max-width:128px"><option value="enchantment">Enchantment</option><option value="artifact">Artifact</option><option value="emblem">Emblem</option></select><select id="embTemplate" style="max-width:188px"></select><button class="tiny ok" onclick="addEnemyEmblem()">+ add</button></div>
+    <div class="btnrow" style="margin-top:2px"><select id="embKind" style="max-width:128px"><option value="enchantment">Enchantment</option><option value="artifact">Artifact</option><option value="emblem">Emblem</option></select><select id="embTemplate" style="max-width:188px"></select><button class="tiny ok" onclick="addEnemyEmblem()">+ add</button><button class="tiny azor" onclick="addEnemyEmblem(true)" title="cast an artifact/enchantment onto the stack so you can respond / counter before it resolves">⊕ to stack</button></div>
     <div id="enemyEmbList" style="margin-top:6px"></div>
   </div>
 
@@ -810,12 +810,12 @@ let _dt={};
 const LOOT_D20=[[1,3,"heal5"],[4,5,"map"],[6,8,"ember"],[9,11,"scholar"],[12,14,"heal10"],[15,16,"ward"],[17,17,"spark"],[18,18,"pyre"],[19,19,"breaker"],[20,20,"jackpot"]];/* P10: loot retuned — heal5 is the bankable floor (was map), cool tier 17-20 (spark/Pyre Charge/Spellbreaker Sigil/jackpot). Brutal luck nudges the roll up (see lootRoll). */
 
 let S;
-function fresh(){histReset();S={diff:"standard",youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],stackProposal:null,phasesFired:[],nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,bossManaFrozen:0,bossLands:0,bossLandPlayed:false,emblemsEnemy:[],battles:[],plane:null,ui:{tabs:{},panels:{}},my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",_spoils:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
+function fresh(){histReset();S={diff:"standard",youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],stackProposal:null,phasesFired:[],nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,bossManaFrozen:0,bossLands:0,bossLandPlayed:false,emblemsEnemy:[],enemyArtifacts:[],enemyEnchants:[],battles:[],plane:null,ui:{tabs:{},panels:{}},my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",_spoils:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
 function enterRoom(i,first){S.roomIndex=i;const room=DUNGEON[i];const baseHp=(room.hp&&room.hp[S.diff])||room.life;let life=Math.max(1,Math.round(baseHp*(S.balanceScale||1)));/* P10: explicit per-difficulty HP (room.hp); balanceScale still scales it for in-run effects. */if(S.weakenNext){life=Math.max(1,life-4);S.weakenNext=false;}
   S.boss={name:room.villain,life,max:life,isVael:!!room.isVael,colors:(room.colors||["R"]).slice()};
   S.enemy={name:room.villain,colors:(room.colors||["R"]).slice(),lore:room.lore||"",isFinal:!!room.isVael};
   S.cmd={id:'cmd',n:room.cmd.n,p:room.cmd.p,t:room.cmd.t,baseP:room.cmd.p,baseT:room.cmd.t,kw:[...room.cmd.kw],color:(room.cmd.colors||room.colors||["R"]).slice(),baseCost:room.cmd.cost,cost:room.cmd.cost,tax:0,deaths:0,inPlay:false,sick:false,tapped:false,plus:0,minus:0,other:[],_cmd:true};
-  S.tokens=[];S.rules=[];S.turn=0;S.phase2done=false;S.balanceScale=1;S.emblemsEnemy=[];S.battles=[];S.plane=null;S.bossManaFrozen=0;S.stackProposal=null;
+  S.tokens=[];S.rules=[];S.turn=0;S.phase2done=false;S.balanceScale=1;S.emblemsEnemy=[];S.enemyArtifacts=[];S.enemyEnchants=[];S.battles=[];S.plane=null;S.bossManaFrozen=0;S.stackProposal=null;/* P13.3: clear the enemy artifact/enchant board each room too (no cross-dungeon leak) */
   S.pw=room.pw?{name:room.pw.name,loy:room.pw.loy,baseLoy:room.pw.loy,colors:(room.pw.colors||room.colors||[]).slice(),ultThreshold:room.pw.ultThreshold||7,plus:room.pw.plus,minus:room.pw.minus,ult:room.pw.ult}:null;
   S.bossManaMod=0;S.bossLands=Math.max(0,(room.landStart||0)+(DIFF[S.diff].manaBonus||0));S.bossLandPlayed=false;S.bossManaMax=S.bossLands;S.bossMana=S.bossLands;/* P5.2: mana now comes from sources (lands/rocks/dorks); start with landStart±difficulty already developed, then play a land per turn */
   S.activeTurn=null;S.phase=0;S.plays=[];S.combat=null;S.paused=false;S.lib=buildDeck(room);S.hand=[];S.gy=[];S.exile=[];vaelDraw(4);
@@ -904,6 +904,7 @@ function dtReveal(){_dt.reveal={label:`${ENs()}'s hand`,cards:S.hand.slice(),zon
 /* P9.4: enemy hand/library completeness — tutor / reanimate / forced draw (the deck-tools model used to disclaim these). */
 function dtDraw(){const n=dtN();if(!S.lib.length){log("dm",`${ENs()}'s library is empty — it can't draw.`);return;}const before=S.hand.length;vaelDraw(n);log("dm",`🃏 ${ENs()} draws ${S.hand.length-before} (hand ${S.hand.length} · library ${S.lib.length}).`);_dt.reveal=null;render();dtRender();}
 function dtMoveObj(zone,c,to){const arr={hand:S.hand,lib:S.lib,gy:S.gy,exile:S.exile}[zone];if(!arr)return;const i=arr.indexOf(c);if(i<0)return;const nm=(FX[c.key]&&FX[c.key].n)||c.name||'card';
+  if(to==='battlefield'&&c._pscope){arr.splice(i,1);const dest=c._pscope==='eart'?(S.enemyArtifacts||(S.enemyArtifacts=[])):(S.enemyEnchants||(S.enemyEnchants=[]));const p2=Object.assign({},c);delete p2._moved;delete p2._stp;delete p2._stt;dest.push(p2);log("dm",`🜂 <b>${nm}</b> returns to ${ENs()}'s battlefield as a real permanent.`);if(_dt.reveal&&_dt.reveal.cards){const ri=_dt.reveal.cards.indexOf(c);if(ri>=0)_dt.reveal.cards.splice(ri,1);}render();dtRender();return;}/* P13.3: reanimate/recast an enemy artifact/enchant permanent back onto its board array */
   if(to==='battlefield'){const fx=FX[c.key];const spawns=fx&&Array.isArray(fx.run)?(typeof fx.run[0]==='string'?(fx.run[0]==='spawn'?[fx.run]:[]):fx.run.filter(r=>Array.isArray(r)&&r[0]==='spawn')):[];if(spawns.length){arr.splice(i,1);spawns.forEach(applyRun);/* body ONLY — never the card's cmdBuff/bossHeal/etc. side effects (that's ▸ play) */log("dm",`🜂 <b>${nm}</b> is put onto ${ENs()}'s battlefield (body only — on-cast effects don't fire).`);}else{log("you",`<b>${nm}</b> can't go straight to the board (the model only spawns creature cards) — use ▸ play instead.`);return;}}
   else{arr.splice(i,1);if(to==='hand')S.hand.push(c);else if(to==='libtop')S.lib.unshift(c);else if(to==='libbottom')S.lib.push(c);else if(to==='graveyard')S.gy.push(c);else if(to==='exile')S.exile.push(c);
     log("you",`<b>${nm}</b> → ${ENs()}'s ${to==='hand'?'hand':to==='libtop'?'library (top)':to==='libbottom'?'library (bottom)':to==='graveyard'?'graveyard':'exile'}.`);}
@@ -1037,17 +1038,19 @@ function killMy(c){/* route a destroyed player permanent: commander→command zo
    app — you hold it); the enemy's hidden zones are modelled, and a board body (which has no FX key) is
    moved carrying its name so the zone chips can still label it. A token that leaves the battlefield ceases. */
 function _movedCard(obj){return {key:obj.key||null,name:obj.name||'card',_moved:true,color:(obj.color||[]).slice()};}
-function _detachBoard(obj){let i=S.tokens.indexOf(obj);if(i>=0){S.tokens.splice(i,1);return 'enemy';}let cat=null;["creatures","artifacts","enchants","walkers"].forEach(k=>{if(S.my[k].indexOf(obj)>=0)cat=k;});if(cat){obj._cat=cat;S.my[cat].splice(S.my[cat].indexOf(obj),1);return 'player';}return null;}
+function _detachBoard(obj){let i=S.tokens.indexOf(obj);if(i>=0){S.tokens.splice(i,1);return 'enemy';}let ea=(S.enemyArtifacts||[]).indexOf(obj);if(ea>=0){S.enemyArtifacts.splice(ea,1);return 'enemy';}let ee=(S.enemyEnchants||[]).indexOf(obj);if(ee>=0){S.enemyEnchants.splice(ee,1);return 'enemy';}let cat=null;["creatures","artifacts","enchants","walkers"].forEach(k=>{if(S.my[k].indexOf(obj)>=0)cat=k;});if(cat){obj._cat=cat;S.my[cat].splice(S.my[cat].indexOf(obj),1);return 'player';}return null;}
 function moveBoardCard(obj,to){if(!obj)return;
   if(obj.isCmd){sendCmdToZone(obj,false);return;}/* a commander to any zone → command zone (clean) */
   const nm=obj.name||'card';const side=_detachBoard(obj);if(!side)return;const enemy=(side==='enemy');const who=enemy?ENs()+"'s":'your';
   if(obj.token){log("you",`<b>${nm}</b> (token) ceases to exist.`);render();return;}/* a token leaving the battlefield ceases */
-  if(to==='hand'){if(enemy)S.hand.push(_movedCard(obj));log("you",`↩ <b>${nm}</b> returns to ${who} hand.`);}
-  else if(to==='graveyard'){if(enemy)S.gy.push(_movedCard(obj));else S.myGy.push(obj);log("you",`<b>${nm}</b> is put into ${who} graveyard.`);}
-  else if(to==='exile'){if(enemy)S.exile.push(_movedCard(obj));else S.myExile.push(obj);log("you",`⊘ <b>${nm}</b> is exiled.`);}
-  else if(to==='libtop'||to==='libbottom'||to==='libshuffle'){if(enemy){const card=_movedCard(obj);if(to==='libtop')S.lib.unshift(card);else S.lib.push(card);if(to==='libshuffle'){for(let a=S.lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[S.lib[a],S.lib[b]]=[S.lib[b],S.lib[a]];}}}log("you",`<b>${nm}</b> ${to==='libtop'?'goes to the top of':to==='libbottom'?'goes to the bottom of':'is shuffled into'} ${who} library.`);}
+  /* P13.3: a keyless enemy artifact/enchant permanent preserves its FULL self in the modelled zone (tagged _pscope) so it can be reanimated/recast back onto its board array; FX-keyed enemy cards keep the lightweight stub. */
+  const erec=()=>obj._pscope?Object.assign({_moved:true},obj):_movedCard(obj);
+  if(to==='hand'){if(enemy)S.hand.push(erec());log("you",`↩ <b>${nm}</b> returns to ${who} hand.`);}
+  else if(to==='graveyard'){if(enemy)S.gy.push(erec());else S.myGy.push(obj);log("you",`<b>${nm}</b> is put into ${who} graveyard.`);}
+  else if(to==='exile'){if(enemy)S.exile.push(erec());else S.myExile.push(obj);log("you",`⊘ <b>${nm}</b> is exiled.`);}
+  else if(to==='libtop'||to==='libbottom'||to==='libshuffle'){if(enemy){const card=erec();if(to==='libtop')S.lib.unshift(card);else S.lib.push(card);if(to==='libshuffle'){for(let a=S.lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[S.lib[a],S.lib[b]]=[S.lib[b],S.lib[a]];}}}log("you",`<b>${nm}</b> ${to==='libtop'?'goes to the top of':to==='libbottom'?'goes to the bottom of':'is shuffled into'} ${who} library.`);}
   render();}
-function moveBoardById(scope,id,to){let obj=scope==='token'?S.tokens.find(x=>x.id===id):(S.my[scope]||[]).find(x=>x.id===id);if(obj)moveBoardCard(obj,to);}
+function moveBoardById(scope,id,to){const obj=getObj(scope,id);if(obj)moveBoardCard(obj,to);}
 function moveRow(scope,id,enemy){const idl=id===null?'null':id;const lib=enemy?`<button class="tiny" onclick="moveBoardById('${scope}',${idl},'libtop')">lib top</button><button class="tiny" onclick="moveBoardById('${scope}',${idl},'libbottom')">lib bottom</button><button class="tiny" onclick="moveBoardById('${scope}',${idl},'libshuffle')">🔀 lib</button>`:`<button class="tiny" onclick="moveBoardById('${scope}',${idl},'libtop')">→ library</button>`;return `<div class="drow"><span class="dlab">move to</span><button class="tiny" onclick="moveBoardById('${scope}',${idl},'hand')" title="bounce — not a death">↩ hand</button>${lib}<button class="tiny" onclick="moveBoardById('${scope}',${idl},'exile')">⊘ exile</button><button class="tiny" onclick="moveBoardById('${scope}',${idl},'graveyard')">⚰ grave</button></div>`;}
 /* ===== P9.2: change control — move a creature across boards (Threaten / Mind Control / Donate), stats intact.
    takeControl = an enemy creature (S.tokens) joins your board; giveControl = your creature passes to the enemy.
@@ -1056,7 +1059,7 @@ function moveRow(scope,id,enemy){const idl=id===null?'null':id;const lib=enemy?`
 function takeControl(id){const i=S.tokens.findIndex(c=>c.id===id);if(i<0)return;const c=S.tokens.splice(i,1)[0];c.prot=c.prot||[];c.dies=c.dies||'graveyard';c.strength=c.strength||'mid';c.abilP=c.abilP||0;c.abilA=c.abilA||0;c.mana=c.mana||0;c.legendary=!!c.legendary;c.isCmd=false;c._controlled=true;delete c._tp;delete c._tt;delete c._grantKw;/* drop any enemy until-EOT anthem buff — vaelEnd only sweeps the enemy board */S.my.creatures.push(c);log("you",`⇄ You take control of <b>${c.name}</b> — it joins your board (control may revert).`);render();}
 function giveControl(scope,id){const arr=S.my[scope]||S.my.creatures;const i=arr.findIndex(c=>c.id===id);if(i<0)return;const c=arr.splice(i,1)[0];c.isCmd=false;c._controlled=true;S.tokens.push(c);log("you",`⇄ <b>${c.name}</b> passes to ${ENs()}'s control.`);render();}
 /* ===== P9.3: per-permanent extras — copy/clone · status markers · direct damage ===== */
-function _boardArr(scope){return scope==='token'?S.tokens:(S.my[scope]||S.my.creatures);}
+function _boardArr(scope){if(scope==='token')return S.tokens;if(scope==='eart')return (S.enemyArtifacts||(S.enemyArtifacts=[]));if(scope==='eench')return (S.enemyEnchants||(S.enemyEnchants=[]));return (S.my[scope]||S.my.creatures);}
 function copyPermanent(scope,id){const arr=_boardArr(scope);const o=arr.find(x=>x.id===id);if(!o)return;const c=JSON.parse(JSON.stringify(o));c.id=S.nextId++;c.token=true;c.sick=true;c.tapped=false;c._atk=false;c.isCmd=false;c._controlled=false;delete c._cat;arr.push(c);log("you",`⧉ A token copy of <b>${o.name}</b> enters ${scope==='token'?ENs()+"'s":'your'} board.`);render();}
 const STATUS_MARKERS=['goad','monarch','the initiative',"can't block",'day','night'];
 function toggleMarker(scope,id,name){const o=_boardArr(scope).find(x=>x.id===id);if(!o)return;o.other=o.other||[];const i=o.other.indexOf(name);if(i>=0)o.other.splice(i,1);else o.other.push(name);log("you",`<b>${o.name}</b> ${i>=0?'loses':'gains'} <i>${name}</i>.`);render();}
@@ -1291,7 +1294,7 @@ function renderMy(){
 }
 /* ===== PHASE 2: card properties, commander, zones, deck colors ===== */
 function getMy(cat,id){return S.my[cat].find(x=>x.id===id);}
-function getObj(scope,id){if(scope==='cmd')return S.cmd;if(scope==='token')return S.tokens.find(c=>c.id===id);return (S.my[scope]||[]).find(x=>x.id===id);}
+function getObj(scope,id){if(scope==='cmd')return S.cmd;if(scope==='token')return S.tokens.find(c=>c.id===id);if(scope==='eart')return (S.enemyArtifacts||[]).find(c=>c.id===id);if(scope==='eench')return (S.enemyEnchants||[]).find(c=>c.id===id);return (S.my[scope]||[]).find(x=>x.id===id);}
 function flagMy(scope,id,f){const o=getObj(scope,id);if(o){o[f]=!o[f];render();}}
 const flagObj=flagMy;
 function toggleKwMy(cat,id,k){const o=getMy(cat,id);if(!o)return;o.kw=o.kw||[];const i=o.kw.indexOf(k);if(i>=0)o.kw.splice(i,1);else o.kw.push(k);render();}
@@ -1444,15 +1447,19 @@ const ENEMY_EMBLEMS=[
 ];
 function embEsc(s){return (''+(s==null?'':s)).replace(/"/g,'&quot;');}
 function fillEmblemTemplates(){const sel=$('embTemplate');if(sel&&!sel.options.length)sel.innerHTML=ENEMY_EMBLEMS.map((t,i)=>`<option value="${i}">${t.n}${t.auto?' ⚡':''}</option>`).join('');}
-function addEnemyEmblem(){const sel=$('embTemplate');const i=sel?parseInt(sel.value,10):ENEMY_EMBLEMS.length-1;const t=ENEMY_EMBLEMS[i]||ENEMY_EMBLEMS[ENEMY_EMBLEMS.length-1];
+function addEnemyEmblem(toStack){const sel=$('embTemplate');const i=sel?parseInt(sel.value,10):ENEMY_EMBLEMS.length-1;const t=ENEMY_EMBLEMS[i]||ENEMY_EMBLEMS[ENEMY_EMBLEMS.length-1];
   const kindSel=$('embKind');const kind=(kindSel&&kindSel.value)||'emblem';
   const vsYou=!!(t.auto&&(t.auto.k==='youLose'||t.auto.k==='debuffYou'));/* effects that drain/damage/debuff YOU get the red box (toggle below for custom ones) */
-  S.emblemsEnemy.push({id:S.nextId++,name:t.n,note:t.note,auto:t.auto?Object.assign({},t.auto):null,autoOn:!!t.auto,kind,vsYou,static:!!t.static,trigger:t.trigger||'upkeep',attachId:null});
+  const base={id:S.nextId++,name:t.n,note:t.note,auto:t.auto?Object.assign({},t.auto):null,autoOn:!!t.auto,kind,vsYou,static:!!t.static,trigger:t.trigger||'upkeep',attachId:null};
   const article=kind==='artifact'?'an artifact':kind==='enchantment'?'an enchantment':'an emblem';
-  log("dm",`✦ ${ENs()} gains ${article}: <b>${t.n}</b>${t.auto?' (⚡ auto on upkeep)':' (reminder)'}.`);render();}
-function setEnemyEmblem(id,f,v){const em=(S.emblemsEnemy||[]).find(e=>e.id===id);if(em){em[f]=v;render();}}
-function toggleEmblemAuto(id){const em=(S.emblemsEnemy||[]).find(e=>e.id===id);if(em&&em.auto){em.autoOn=!em.autoOn;log("dm",`✦ <b>${em.name}</b>: automation ${em.autoOn?'on':'off'}.`);render();}}
-function rmEnemyEmblem(id){const i=(S.emblemsEnemy||[]).findIndex(e=>e.id===id);if(i>=0){const em=S.emblemsEnemy[i],nm=em.name,kind=em.kind||'emblem';S.emblemsEnemy.splice(i,1);log("dm",`✦ ${ENs()} loses the ${kind} <b>${nm}</b>.`);render();}}
+  /* P13.3: artifacts/enchantments are REAL permanents (S.enemyArtifacts/S.enemyEnchants) — full toolbox parity; true emblems stay tracker-only. */
+  if(kind==='artifact'||kind==='enchantment'){const perm=Object.assign(base,{color:[],token:false,dies:'graveyard',legendary:false,_pscope:kind==='artifact'?'eart':'eench'});
+    if(toStack){S.plays.push({id:S.nextId++,side:'dm',status:'pending',_enemyPerm:true,_permKind:kind,_permData:perm,name:t.n,n:t.n,ctype:kind,type:kind,text:t.note||'',cantCounter:false});log("dm",`✦ ${ENs()} casts ${article}: <b>${t.n}</b> — it's on the stack (you may respond/counter).`);showPlays();render();return;}
+    (kind==='artifact'?S.enemyArtifacts:S.enemyEnchants).push(perm);log("dm",`✦ ${ENs()} gains ${article}: <b>${t.n}</b>${t.auto?(t.static?' (⟳ static)':' (⚡ auto)'):''} — a real permanent.`);render();return;}
+  S.emblemsEnemy.push(base);log("dm",`✦ ${ENs()} gains ${article}: <b>${t.n}</b>${t.auto?' (⚡ auto on upkeep)':' (reminder)'}.`);render();}
+function setEnemyEmblem(id,f,v){const em=findEnemyFx(id);if(em){em[f]=v;render();}}
+function toggleEmblemAuto(id){const em=findEnemyFx(id);if(em&&em.auto){em.autoOn=!em.autoOn;log("dm",`✦ <b>${em.name}</b>: automation ${em.autoOn?'on':'off'}.`);render();}}
+function rmEnemyEmblem(id){const em=findEnemyFx(id);if(!em)return;const arr=_enemyFxArr(em);if(!arr)return;const nm=em.name,kind=em.kind||'emblem';arr.splice(arr.indexOf(em),1);log("dm",`✦ ${ENs()} loses the ${kind} <b>${nm}</b>.`);render();}
 function emblemEffect(em){if(!em||!em.auto)return;const a=em.auto,n=a.n||0;
   if(a.k==='enemyGain'){bossHealLife(n);log("dm",`✦ ${em.name}: ${ENs()} gains ${n} life. (${S.boss.life})`);}
   else if(a.k==='youLose'){S.youLife-=n;log("dm",`✦ ${em.name}: you lose ${n} life. (${S.youLife})`);}
@@ -1461,36 +1468,48 @@ function emblemEffect(em){if(!em||!em.auto)return;const a=em.auto,n=a.n||0;
   else if(a.k==='buffEnemyCreatures'){let c=0;S.tokens.forEach(t=>{t.plus=(t.plus||0)+n;c++;});if(S.cmd&&S.cmd.inPlay){S.cmd.plus=(S.cmd.plus||0)+n;c++;}log("dm",`✦ ${em.name}: +${n}/+${n} on ${c} enemy creature${c===1?'':'s'}.`);}
   else if(a.k==='spawnToken'){const tn=a.tn||'Servant',tp=a.tp||1,tt=a.tt||1,cnt=Math.max(1,n||1);for(let q=0;q<cnt;q++)S.tokens.push({id:S.nextId++,name:tn,p:tp,t:tt,baseP:tp,baseT:tt,kw:[],color:(S.boss&&S.boss.colors||['R']).slice(),plus:0,minus:0,other:[],tapped:false,sick:true,phased:false,token:true,dies:'graveyard'});log("dm",`✦ ${em.name}: ${ENs()} creates ${cnt} <b>${tn}</b> ${tp}/${tt} token${cnt===1?'':'s'}.`);}
   else if(a.k==='enemyScry'){log("dm",`✦ ${em.name}: ${ENs()} scries ${n} (looks at the top ${n} of its library).`);}}
+/* P13.3: enemy artifacts/enchants are real permanents (S.enemyArtifacts/S.enemyEnchants); true emblems stay in S.emblemsEnemy. Any of them may carry automation, so the auto engine iterates all three. */
+function enemyAutoSources(){return [...(S.emblemsEnemy||[]),...(S.enemyArtifacts||[]),...(S.enemyEnchants||[])];}
+function findEnemyFx(id){return enemyAutoSources().find(e=>e.id===id)||null;}
+function _enemyFxArr(em){if((S.emblemsEnemy||[]).indexOf(em)>=0)return S.emblemsEnemy;if((S.enemyArtifacts||[]).indexOf(em)>=0)return S.enemyArtifacts;if((S.enemyEnchants||[]).indexOf(em)>=0)return S.enemyEnchants;return null;}
 /* P13.2: fire auto emblems for a given trigger window (default the enemy's upkeep). Static emblems are NOT fired here — they apply continuously via applyStaticEmblems each render. */
-function fireEnemyEmblems(window){window=window||'upkeep';const list=(S.emblemsEnemy||[]).filter(em=>em.auto&&em.autoOn!==false&&!em.static&&(em.trigger||'upkeep')===window);if(!list.length)return;list.forEach(emblemEffect);checkLose();}
+function fireEnemyEmblems(window){window=window||'upkeep';const list=enemyAutoSources().filter(em=>em.auto&&em.autoOn!==false&&!em.static&&(em.trigger||'upkeep')===window);if(!list.length)return;list.forEach(emblemEffect);checkLose();}
 /* P13.2: continuous (static) enemy emblems — recomputed from scratch each render onto _stp/_stt (a separate channel from the until-EOT _tp/_tt). An emblem with an attachId buffs only that enemy creature and falls off (logged once) when it leaves. */
 function applyStaticEmblems(){if(typeof S==='undefined'||!S)return;const foes=[...(S.tokens||[]),(S.cmd&&S.cmd.inPlay?S.cmd:null)].filter(Boolean);const mine=(S.my&&S.my.creatures)||[];
   [...foes,...mine].forEach(c=>{c._stp=0;c._stt=0;});
-  (S.emblemsEnemy||[]).forEach(em=>{if(!em.static||!em.auto||em.autoOn===false)return;const n=em.auto.n||0,k=em.auto.k;
-    if(k==='debuffYou'){mine.forEach(c=>{c._stp-=n;});return;}/* a "your creatures −X" static always hits the player board, board-wide — it is never an enemy-creature aura (so attachId is ignored here, and the attach control isn't offered for it) */
+  enemyAutoSources().forEach(em=>{if(!em.static||!em.auto||em.autoOn===false)return;const n=em.auto.n||0,k=em.auto.k;
+    if(k==='debuffYou'){mine.forEach(c=>{c._stp-=n;});return;}/* a "your creatures −X" static always hits the player board, board-wide — never an enemy-creature aura */
     if(em.attachId!=null){const tgt=foes.find(c=>c.id===em.attachId);if(!tgt){const _ll=_lastLog;log("dm",`✦ <b>${em.name}</b> falls off — the creature it was attached to has left the battlefield; it goes inert.`);_lastLog=_ll;/* don't clobber the killing action's undo label; go INERT (not board-wide) when the host dies */em.autoOn=false;return;}if(k==='anthemEnemy'||k==='buffEnemyCreatures'){tgt._stp+=n;tgt._stt+=n;}return;}
     if(k==='anthemEnemy'||k==='buffEnemyCreatures'){foes.forEach(c=>{c._stp+=n;c._stt+=n;});}});}
-function fireOneEmblem(id){if(S.over)return;const em=(S.emblemsEnemy||[]).find(e=>e.id===id);if(em&&em.auto){emblemEffect(em);checkLose();render();}}
+function fireOneEmblem(id){if(S.over)return;const em=findEnemyFx(id);if(em&&em.auto){emblemEffect(em);checkLose();render();}}
 /* enemy persistent-effect kinds, in board order; each row renders under its group, red-boxed when it hits you */
 const ENEMY_FX_KINDS=[{k:'artifact',label:'⚙ Artifacts'},{k:'enchantment',label:'🪶 Enchantments'},{k:'emblem',label:'✶ Emblems'}];
-function toggleEmblemVsYou(id){const em=(S.emblemsEnemy||[]).find(e=>e.id===id);if(em){em.vsYou=!em.vsYou;log("dm",`✦ <b>${em.name}</b>${em.vsYou?' now flagged as affecting you (red).':' no longer flagged against you.'}`);render();}}
+function toggleEmblemVsYou(id){const em=findEnemyFx(id);if(em){em.vsYou=!em.vsYou;log("dm",`✦ <b>${em.name}</b>${em.vsYou?' now flagged as affecting you (red).':' no longer flagged against you.'}`);render();}}
 /* P13.2: which step a non-static auto emblem fires on. */
 function emblemTriggerSel(em){const opts=[['upkeep','its upkeep'],['endStep','its end step'],['yourUpkeep','your upkeep']];return `<select title="when this auto-fires" onchange="setEnemyEmblem(${em.id},'trigger',this.value)">${opts.map(([v,l])=>`<option value="${v}" ${(em.trigger||'upkeep')===v?'selected':''}>⏱ ${l}</option>`).join('')}</select>`;}
 /* P13.2: attach a static emblem (aura) to one enemy creature — else it affects all enemy creatures. */
 function emblemAttachSel(em){const foes=[...(S.tokens||[]),(S.cmd&&S.cmd.inPlay?S.cmd:null)].filter(Boolean);return `<select title="attach to one enemy creature (else affects all)" onchange="setEmblemAttach(${em.id},this.value)"><option value="">▦ all enemy creatures</option>${foes.map(c=>`<option value="${c.id}" ${''+em.attachId===''+c.id?'selected':''}>↳ ${embEsc(c.name||c.n)}</option>`).join('')}</select>`;}
-function setEmblemAttach(id,v){const em=(S.emblemsEnemy||[]).find(e=>e.id===id);if(!em)return;em.attachId=(v===''?null:parseInt(v,10));log("dm",`✦ <b>${em.name}</b> ${em.attachId==null?'now affects all enemy creatures':'attached to a creature'}.`);render();}
-function renderEnemyEmblems(){fillEmblemTemplates();const box=$('enemyEmbList');if(!box)return;const list=S.emblemsEnemy||[];
-  if(!list.length){box.innerHTML='<span class="empty">None yet. Pick a type + template above — ⚡ ones fire automatically on the enemy’s upkeep; the rest are reminders you apply yourself. Effects that hit YOU show a red box.</span>';return;}
+function setEmblemAttach(id,v){const em=findEnemyFx(id);if(!em)return;em.attachId=(v===''?null:parseInt(v,10));log("dm",`✦ <b>${em.name}</b> ${em.attachId==null?'now affects all enemy creatures':'attached to a creature'}.`);render();}
+/* P13.3: enemy artifacts/enchantments render from their real-permanent arrays (full toolbox: bounce/destroy/exile/copy/take/edit), mirroring the player's board; true emblems stay tracker-only (automation controls + remove). */
+function takeControlPerm(scope,id){const arr=_boardArr(scope);const i=arr.findIndex(c=>c.id===id);if(i<0)return;const c=arr.splice(i,1)[0];const dest=scope==='eart'?'artifacts':'enchants';c._controlled=true;c.color=c.color||[];c.dies=c.dies||'graveyard';c.kind='passive';/* player artifacts/enchants use kind=passive|active */S.my[dest].push(c);log("you",`⇄ You take control of <b>${c.name}</b> — it joins your ${dest==='artifacts'?'artifacts':'enchantments'}.`);render();}
+function enemyPermDrawer(scope,p){const idl=p.id;return `<div class="drawer"><div class="drow"><span class="dlab">flags</span><button class="tiny ${p.legendary?'on':''}" onclick="flagObj('${scope}',${idl},'legendary')">legendary</button><button class="tiny ${p.token?'on':''}" onclick="flagObj('${scope}',${idl},'token')">token</button></div><div class="drow"><span class="dlab">color</span><div class="setbtns">${colorToggles(scope,idl,'color')}</div></div><div class="drow"><span class="dlab">dies to</span><select onchange="setObjF('${scope}',${idl},'dies',this.value)"><option value="graveyard" ${p.dies!=='exile'?'selected':''}>graveyard</option><option value="exile" ${p.dies==='exile'?'selected':''}>exile</option></select></div>${moveRow(scope,idl,true)}</div>`;}
+function renderEnemyEmblems(){fillEmblemTemplates();const box=$('enemyEmbList');if(!box)return;
+  const groups=[{label:'⚙ Artifacts',items:S.enemyArtifacts||[],perm:true,scope:'eart'},{label:'🪶 Enchantments',items:S.enemyEnchants||[],perm:true,scope:'eench'},{label:'✶ Emblems',items:S.emblemsEnemy||[],perm:false,scope:null}];
+  const total=groups.reduce((n,g)=>n+g.items.length,0);
+  if(!total){box.innerHTML='<span class="empty">None yet. Pick a type + template above. <b>Artifacts/enchantments</b> enter as real permanents (bounce/destroy/exile/copy/take-control/edit, like any card); <b>emblems</b> are tracker-only. ⚡ autos fire on their trigger, ⟳ static ones apply continuously, the rest are reminders. Effects that hit YOU show a red box.</span>';return;}
   box.innerHTML='';
-  ENEMY_FX_KINDS.forEach(group=>{const items=list.filter(em=>{const k=em.kind||'emblem';return group.k==='emblem'?(k!=='artifact'&&k!=='enchantment'):k===group.k;});if(!items.length)return;
+  groups.forEach(group=>{const items=group.items;if(!items.length)return;
     const sub=document.createElement('div');sub.className='enemyfx-sub';sub.innerHTML=`${group.label} <span class="tag">${items.length}</span>`;box.appendChild(sub);
     items.forEach(em=>{const el=document.createElement('div');el.className='brow'+(em.vsYou?' vsyou':'');
       let ctrl;
       if(em.auto&&em.static)ctrl=`<span class="badge" title="continuous — applies every render while on the battlefield">⟳ static</span><button class="tiny ${em.autoOn?'gold on':''}" title="toggle this static effect" onclick="toggleEmblemAuto(${em.id})">${em.autoOn?'on':'off'}</button>${(em.auto.k==='anthemEnemy'||em.auto.k==='buffEnemyCreatures')?emblemAttachSel(em):''}`;
       else if(em.auto)ctrl=`<button class="tiny ${em.autoOn?'gold on':''}" title="automation fires on the chosen step — click to toggle" onclick="toggleEmblemAuto(${em.id})">⚡ ${em.autoOn?'auto':'off'}</button>${emblemTriggerSel(em)}<button class="tiny" title="fire this now" onclick="fireOneEmblem(${em.id})">▸ fire</button>`;
       else ctrl='<span class="badge" title="not auto-modeled — apply its effect yourself">⚠ apply manually</span>';
-      el.innerHTML=`<span class="kindchip">${em.kind||'emblem'}</span><input type="text" value="${embEsc(em.name)}" style="width:138px" onchange="setEnemyEmblem(${em.id},'name',this.value)"><input type="text" placeholder="effect" value="${embEsc(em.note)}" style="width:178px" onchange="setEnemyEmblem(${em.id},'note',this.value)">${ctrl}<button class="tiny ${em.vsYou?'ember on':''}" title="mark this as affecting YOU — shows a red box" onclick="toggleEmblemVsYou(${em.id})">⚠ vs you</button><button class="tiny ember" onclick="rmEnemyEmblem(${em.id})">✕</button>`;
-      box.appendChild(el);});});}
+      const tools=group.perm?`<button class="tiny" title="bounce to ${ENs()}'s hand" onclick="moveBoardById('${group.scope}',${em.id},'hand')">↩</button><button class="tiny ember" title="destroy → ${ENs()}'s ${em.dies==='exile'?'exile':'graveyard'}" onclick="moveBoardById('${group.scope}',${em.id},'${em.dies==='exile'?'exile':'graveyard'}')">✖</button><button class="tiny" title="exile" onclick="moveBoardById('${group.scope}',${em.id},'exile')">⊘</button><button class="tiny" title="copy (token)" onclick="copyPermanent('${group.scope}',${em.id})">⧉</button><button class="tiny" title="take control — it joins your board" onclick="takeControlPerm('${group.scope}',${em.id})">⇄</button><button class="tiny ${em._drawer?'on':''}" title="edit" onclick="toggleDrawer('${group.scope}',${em.id})">✎</button>`:'';
+      el.innerHTML=`<span class="kindchip">${em.kind||'emblem'}</span><input type="text" value="${embEsc(em.name)}" style="width:118px" onchange="setEnemyEmblem(${em.id},'name',this.value)"><input type="text" placeholder="effect" value="${embEsc(em.note)}" style="width:150px" onchange="setEnemyEmblem(${em.id},'note',this.value)">${ctrl}${tools}<button class="tiny ${em.vsYou?'ember on':''}" title="mark this as affecting YOU — shows a red box" onclick="toggleEmblemVsYou(${em.id})">⚠ vs you</button><button class="tiny ember" title="remove entirely" onclick="rmEnemyEmblem(${em.id})">✕</button>`;
+      box.appendChild(el);
+      if(group.perm&&em._drawer){const dd=document.createElement('div');dd.innerHTML=enemyPermDrawer(group.scope,em);box.appendChild(dd.firstElementChild);}
+    });});}
 function setMy(cat,id,f,v){const o=S.my[cat].find(x=>x.id===id);if(o){o[f]=v;render();}}
 function adjMy(cat,id,f,n){const o=S.my[cat].find(x=>x.id===id);if(!o)return;o[f]=Math.max(0,(o[f]||0)+n);if(cat==='walkers'&&f==='loyalty'&&o.loyalty<=0){log("you",`<b>${o.name}</b> falls to 0 loyalty.`);killMy(o);}render();}
 function rmMy(cat,id){const o=S.my[cat].find(x=>x.id===id);if(!o)return;if(o.isCmd){sendCmdToZone(o,false);return;}const i=S.my[cat].indexOf(o);if(i>=0)S.my[cat].splice(i,1);render();}
@@ -1761,6 +1780,7 @@ function renderPlays(){const box=$("playCards");box.innerHTML="";if(!S.plays.len
 function resolvePlay(i){const p=S.plays[i];if(!p||p.status==="resolved")return;if(S.stackProposal&&S.stackProposal.forId===p.id)S.stackProposal=null;p.status="resolved";sfx('resolve');
   if(p._player){if(p._pcmd)resolveCmdToBoard(p);else resolvePlayerItem(p);checkLose();renderPlays();render();return;}
   if(p._enemyCmd){S.cmd.inPlay=true;S.cmd.sick=true;log("dm",`♛ <b>${S.cmd.n}</b> resolves onto ${ENs()}'s battlefield, summoning-sick.`);checkLose();renderPlays();render();return;}
+  if(p._enemyPerm){const arr=p._permKind==='artifact'?(S.enemyArtifacts||(S.enemyArtifacts=[])):(S.enemyEnchants||(S.enemyEnchants=[]));const perm=p._permData||{};if(perm.id==null||p._copy)perm.id=S.nextId++;/* P13.3-fix: a ⧉-copied enemy-perm spell must get a FRESH id so the copy doesn't collide with the original */arr.push(perm);log("dm",`✦ <b>${perm.name||p.n}</b> resolves onto ${ENs()}'s battlefield.`);checkLose();renderPlays();render();return;}/* P13.3: an enemy artifact/enchant cast resolves onto its real-permanent array */
   if(p.run)applyRun(p.run);if(p.target){const msg=applyTarget(p.target,(p.color||'').split('').filter(Boolean));if(msg)log("dm",`${p.n}: ${ENs()} ${msg}.`);else log("dm",`${p.n} — no valid target on your tracked board.`);}if(p.selfLoss){S.youLife-=p.selfLoss;log("dm",`${p.n} → you lose <b>${p.selfLoss}</b>. (${S.youLife})`);}else if(!p.target&&!p.run)log("dm",`${p.n} resolves.`);
   if(p._card&&!p._copy&&p.type!=='enchant'){S.gy.push(p._card);if(p.run&&JSON.stringify(p.run).indexOf('"spawn"')>=0)log("dm",`📜 The <b>${p.n}</b> spell card goes to ${ENs()}'s graveyard — the token it created stays on the battlefield.`);}/* P7.2: when a creature/token spell resolves, make the two facts explicit — the token enters (logged in applyRun), and the same-named spell CARD goes to the graveyard */
   checkLose();renderPlays();render();}
@@ -2174,6 +2194,10 @@ function descentInProgress(){return hasSave()||!!(_liveGame&&typeof S!=='undefin
 function migrate(s){if(!s||typeof s!=='object')return s;
   ['tokens','rules','plays','inv','lib','hand','gy','exile','deckColors','myGy','myExile','battles','emblemsEnemy'].forEach(k=>{if(!Array.isArray(s[k]))s[k]=[];});
   (s.emblemsEnemy||[]).forEach(e=>{if(e&&!e.kind)e.kind='emblem';if(e&&e.vsYou==null)e.vsYou=!!(e.auto&&e.auto.k==='youLose');if(e&&!e.trigger)e.trigger='upkeep';if(e&&e.static==null)e.static=false;if(e&&e.attachId===undefined)e.attachId=null;});/* enemy persistent-effects gained a kind (artifact/enchantment/emblem) + vsYou flag; P13.2 added trigger window + static + attachId */
+  if(!Array.isArray(s.enemyArtifacts))s.enemyArtifacts=[];if(!Array.isArray(s.enemyEnchants))s.enemyEnchants=[];
+  /* P13.3: enemy artifacts/enchantments are now first-class permanents — convert old emblemsEnemy artifact/enchant entries into real permanents (carrying their automation); genuine emblems stay in the tracker. Idempotent (no artifact/enchant kinds remain afterward). */
+  if(Array.isArray(s.emblemsEnemy)){const keep=[];s.emblemsEnemy.forEach(e=>{if(e&&(e.kind==='artifact'||e.kind==='enchantment')){const perm=Object.assign({color:[],token:false,dies:'graveyard',legendary:false},e,{_pscope:e.kind==='artifact'?'eart':'eench'});(e.kind==='artifact'?s.enemyArtifacts:s.enemyEnchants).push(perm);}else keep.push(e);});s.emblemsEnemy=keep;}
+  (s.enemyArtifacts||[]).forEach(p=>{if(p&&!p._pscope)p._pscope='eart';});(s.enemyEnchants||[]).forEach(p=>{if(p&&!p._pscope)p._pscope='eench';});
   if(!s.my||typeof s.my!=='object')s.my={};['creatures','artifacts','enchants','walkers','emblems'].forEach(k=>{if(!Array.isArray(s.my[k]))s.my[k]=[];});
   if(!s.counters||typeof s.counters!=='object')s.counters={};['poison','energy','experience','cmdDmg'].forEach(k=>{if(typeof s.counters[k]!=='number')s.counters[k]=0;});
   if(!s.ui||typeof s.ui!=='object')s.ui={tabs:{}};if(!s.ui.tabs)s.ui.tabs={};if(!s.ui.panels||typeof s.ui.panels!=='object')s.ui.panels={};/* P12.1: per-panel collapse state */
