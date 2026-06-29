@@ -135,6 +135,9 @@
 | **Phase 24 — Player spell-card zone routing: instants/sorceries → graveyard; X-button permanent removal asks graveyard/exile/none** | ⬜ **PLANNED** — a resolved player instant/sorcery goes to the player graveyard (today it vanishes) · removing a player permanent via the ✕ button opens a popup: graveyard · exile · none. See Phase 24 below |
 | &nbsp;&nbsp;P24.1 Player instants/sorceries route to the graveyard on resolve | ⬜ planned |
 | &nbsp;&nbsp;P24.2 ✕-button removal popup for permanents (graveyard / exile / none) | ⬜ planned |
+| **Phase 25 — Refresh tab/info descriptions + open the "Your attack" box by default** | ⬜ **PLANNED** — update the tab notes + ⓘ info-panel copy to match the expanded feature set (kept in sync as phases land) · make the "Your attack" box start open like the first box of its tab. See Phase 25 below |
+| &nbsp;&nbsp;P25.1 "Your attack" box starts open by default | ⬜ planned |
+| &nbsp;&nbsp;P25.2 Refresh tab notes + ⓘ INFO_TEXT panels (+ instructions) to match current features | ⬜ planned |
 
 ---
 
@@ -1938,6 +1941,40 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** clicking ✕ on a player creature/artifact/enchant/walker opens a graveyard/exile/none popup; graveyard → `S.myGy`, exile → `S.myExile`, none → gone, each via the non-death path (no Pit's Tithe); commander still goes to the command zone; tokens cease without the prompt; the popup is cancelable (no change); all paths log + re-render.
 **Verify:** jsdom — `removeMyTo` sends a permanent to `myGy`/`myExile`/nowhere per choice without firing `bloodTithe`; commander ✕ → command zone; a token ✕ ceases (no graveyard entry); cancel leaves state unchanged; syntax + id-diff (only the new popup ids).
+
+
+# PHASE 25 — Refresh tab/info descriptions + open the "Your attack" box by default ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** Documentation/UX polish: the tab notes and ⓘ info popups predate the recent feature work and under-describe what the game now does, and the "Your attack" box starts collapsed. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+## P25.1 — "Your attack" box starts open by default
+
+**Goal:** the "Your attack" panel opens by default (alongside the turn-flow box), instead of starting collapsed.
+
+**Grounded findings:** collapsible boxes default via `defaultPanelStates()` (~2684) — `out[panelKey]=(i===0)`, i.e. **only the first box** of each tab opens; the rest start closed. In the Action tab the DOM order is turn-flow (`p-turnflow`, i=0 → open), then **Your attack (`p-attack`, i=1 → closed)**, tools, battles. State persists on `S.ui.panels` (excluded from undo); `applyPanels` (~2685) seeds the defaults only when `S.ui.panels` is empty.
+
+**How:**
+1. **Default open:** change `defaultPanelStates()` so `p-attack` is open in addition to each tab's first box — e.g. `out[el.dataset.panel]=(i===0)||el.dataset.panel==='p-attack';`. Keep all other boxes' "first-open, rest-closed" behavior.
+2. **Existing saves:** `S.ui.panels` already-populated saves won't change (the default only seeds an empty map). Add a **one-time migrate nudge** so `p-attack` opens for current players too — only if the player hasn't explicitly set it: in `migrate`, `if(s.ui&&s.ui.panels&&s.ui.panels['p-attack']===undefined)s.ui.panels['p-attack']=true;` (don't override an explicit `false` the user chose). Flag this as optional if we'd rather not touch saved UI prefs.
+3. No schema change beyond the UI map already in `S.ui`.
+
+**ACs:** a fresh game shows both the turn-flow and Your-attack boxes open in the Action tab; other boxes keep their first-open/rest-closed defaults; a player who explicitly collapsed Your-attack keeps it collapsed; toggling still works and persists.
+**Verify:** jsdom — `defaultPanelStates()['p-attack']===true` and other non-first boxes `false`; the migrate nudge opens `p-attack` only when unset (leaves an explicit `false`); `togglePanel('p-attack')` round-trips; syntax + id-diff.
+
+## P25.2 — Refresh tab notes + ⓘ INFO_TEXT panels (and instructions) to match current features
+
+**Goal:** the tab subtitles and ⓘ info popups accurately and completely describe what the game now does — kept in sync as the recent feature phases land.
+
+**Grounded findings:** tab notes are the `.tabnote` spans (~362-365): Info "you · foe · log", Action "turn flow · attack · tools", Enemy "creatures · walker · zones", Your Board "board · zones · enchantments". The ⓘ popups are `INFO_TEXT` (~2084-2095): `info/action/enemy/player/stack/commander/threat/ward/freeze/battles`. The in-game help/instructions also carry feature copy (the menu instructions + the help section). Several recently-specced/added systems are **not** reflected: token variety + resource tokens (P16), enemy counters (P19), player emblems with targeting/colour (P23), attack-tax targeting (P17.5), combat-count restrictions (P20), spell-card graveyard routing + ✕ removal popup (P24), editable emblem values (P22).
+
+**How:**
+1. **Audit each tab note + `INFO_TEXT` entry against the live feature set** and rewrite for accuracy/completeness — e.g. Enemy Board note/popup should mention emblems/counters/artifacts-enchants and the deck tools; Your Board should mention emblems-with-automation, counters, zones routing; the Action/threat/ward popups should reflect the current combat options (block-count limits, attack taxes, max attackers/blockers).
+2. **Only describe what's actually built** at the time this task runs — so it should land **after** the feature phases it documents (P16–P24), or be re-run as those land. Treat it as a **living sync pass** (like P9.5's instruction overhaul), not a one-time write — note in the spec that any future feature phase includes "update P25.2 copy."
+3. **Keep the voice** (terse, lore-flavored) and the existing `infoBtn`/`showInfo` mechanism; add new `INFO_TEXT` keys only if a new ⓘ button is warranted (e.g. counters, emblems, tokens).
+4. Update the menu **instructions/help** copy in the same pass so all three surfaces (tab notes · ⓘ popups · help) agree.
+
+**ACs:** every tab note and ⓘ popup reflects the current, built feature set with no stale/missing descriptions; new ⓘ entries exist where a new system warrants one; the help/instructions agree with the popups; copy stays in the established voice; no behavior change (text/UI only).
+**Verify:** string/jsdom checks — each `INFO_TEXT` entry and tab note is present and mentions its system; new keys resolve via `showInfo`; no `infoBtn('key')` points at a missing entry; syntax + id-diff. **Run/refresh after P16–P24 land (living doc).**
 
 ---
 
