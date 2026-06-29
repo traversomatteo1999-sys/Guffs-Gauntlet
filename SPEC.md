@@ -8,7 +8,7 @@
 
 ## STATUS (update as you go)
 
-- **Branch:** `main` (== `origin/main`; latest built `025fe9d`). *(Active feature branch: `satchel-lock-commander-scryfall`, also at `025fe9d`.)* **Phase 14 specced 2026-06-29 (PLANNED, not built).**
+- **Branch:** `main` (== `origin/main`; latest built `025fe9d`). *(Active feature branch: `satchel-lock-commander-scryfall`, also at `025fe9d`.)* **Phases 14 & 15 specced 2026-06-29 (PLANNED, not built).**
 - **Canonical file:** `index.html` (the deployed PWA build; line 456 is a ~1.3 MB base64 `ART` blob — never open that line; real JS is 457→end). `guffs-gauntlet-level1.html` is a stale pre-embed copy — ignore it.
 - **Verification harness:** headless engine smoke test (Node + DOM shim) drives boot→turn-cycle→undo→save; syntax gate via `node -e` + `vm.Script` over the `<script>` body; **id-set diff** (`grep -oE 'id="[^"]+"'` before/after) after any DOM restructure — nothing may be removed. For visual phases, review live at `http://localhost:8000/` (`python -m http.server 8000` from the repo; incognito to dodge a cached service worker).
 
@@ -94,6 +94,13 @@
 | &nbsp;&nbsp;P14.6 Return all board / all creatures to hand (tokens deleted) | ⬜ planned |
 | &nbsp;&nbsp;P14.7 Browse enemy library, searchable by card type | ⬜ planned |
 | &nbsp;&nbsp;P14.8 Emblems addable by either side; artifacts/enchants are enemy-cast (adder = emblems only) | ⬜ planned |
+| &nbsp;&nbsp;P14.9 Enemy reliably proposes a stack response (bug) | ⬜ planned |
+| &nbsp;&nbsp;P14.10 Enemy mana = lands only; de-duplicate mana code | ⬜ planned |
+| **Phase 15 — Economy, rewards & difficulty balance** | ⬜ **PLANNED** — end-of-level gold wheel-spin · store/loot overhaul (fix Tonic of Vigor dup · +legendary rarity · item variety · gold tuning) · persist unused satchel items across runs · difficulty-scaled heal on descend. See Phase 15 below |
+| &nbsp;&nbsp;P15.1 End-of-level gold wheel-spin (%/double/rare-legendary item) | ⬜ planned |
+| &nbsp;&nbsp;P15.2 Store & loot overhaul (Tonic fix · legendary tier · variety · gold tuning) | ⬜ planned |
+| &nbsp;&nbsp;P15.3 Persist unused satchel items across runs (profile stash) | ⬜ planned |
+| &nbsp;&nbsp;P15.4 Difficulty-scaled healing on descend | ⬜ planned |
 
 ---
 
@@ -1320,6 +1327,109 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** the emblem adder offers **only** emblem; emblems still addable by both sides; the player can no longer create enemy artifact/enchant tracker rows; an enemy enchantment/artifact exists as exactly one real permanent (no duplicate `S.rules` + tracker); old saves migrate emblem artifact/enchant rows to real permanents with automation intact; true emblems stay in the tracker.
 **Verify:** jsdom — `#embKind` has only the emblem option; `addEnemyEmblem` always `kind='emblem'`; no duplicate representation for a resolved enchantment; `migrate` converts old rows; syntax + id-diff. (Forms the requirement layer for P13.2/P13.3; pairs with P14.3.)
+
+## P14.9 — The enemy reliably proposes a stack response (BUG)
+
+**Goal:** when the player casts a spell, the enemy actually offers its P4.2 stack-response proposal whenever it has a meaningful instant-speed play — today it almost never appears.
+
+**Root cause (grounded):** `enemyRespondToCast(item)` (~1769) builds candidates via `buildEnemyCandidates` (~1768) — which only accepts `fx.type==='instant'` cards (enemy decks are creature/sorcery-heavy, so the pool is often empty) — then scores each with **`bestTargetThreat`** (~1787), which returns **0 for every non-targeted instant** (burn/heal/spawn/rule). The gate `if(!cands.length||(cands[0].value||0)<enemyActThreshold()){S.stackProposal=null;return;}` (~1770) then suppresses anything below the act bar (3 std / 2 brutal / 4 easy), so a 0-value burn/heal response is never proposed. Main-phase casting uses `castValue` (~1569), which DOES value burn/heal/spawn — the response path is inconsistent with it.
+
+**How:**
+1. In `buildEnemyCandidates` (~1768), value each candidate with **`castValue(fx,{item})`** instead of `bestTargetThreat` — non-targeted instants then get their real value (a 2-damage bolt → 2), matching `vaelMain`.
+2. Relax the gate (~1770) to mirror `vaelMain` (~1605): **always offer a non-targeted response that does something; only HOLD a *targeted* response below the act bar** — e.g. `const best=cands[0]; if(!best){S.stackProposal=null;return;} if(best.target&&(best.value||0)<enemyActThreshold()){S.stackProposal=null;return;}`.
+3. Keep `enemyInstantWouldDo` (~1773) target-validity so the enemy never proposes a fizzle; ensure the `enemyInstant` window path (item=null) still works (no crash). Optionally a brief "⚡ {enemy} has no response" log so the player sees the system ran.
+
+**ACs:** casting while the enemy holds an affordable instant (targeted removal that answers a real threat, OR any non-targeted burn/heal) surfaces the proposal box; the enemy still HOLDS a weak targeted removal with no good victim; difficulty still scales via `enemyActThreshold`; no fizzles.
+**Verify:** jsdom — give the enemy a non-targeted burn instant, player casts → `S.stackProposal` is set + `renderStackProposal` shows it; a low-value targeted removal with no target stays held; `enemyInstant` window path (item=null) no crash; syntax + id-diff.
+
+## P14.10 — Enemy mana comes only from lands it plays (+ de-duplicate the mana code)
+
+**Goal:** the enemy's mana derives **solely from land cards it has played** — remove the non-land mana sources and consolidate the fragmented/duplicate mana logic.
+
+**Grounded audit (every mana path):**
+- **Legit (a land was played):** `playEnemyLand()` (~1523-1525, the per-turn land + anti-screw scrounge) and the `dtPlayCard` land branch (~852) each do `bossLands++ / bossMana++ / bossManaMax++`; the enemy-untap refill in `vaelUntap` (~1521) sets `bossManaMax=bossLands(+bossManaMod)` then `bossMana=bossManaMax`.
+- **NOT from a land (to remove/rework):** (1) the **pre-seed** at `enterRoom` (~814) `S.bossLands=max(0,(room.landStart||0)+(DIFF[S.diff].manaBonus||0))` → free pre-developed mana (room `landStart` 1/2/3 + difficulty `manaBonus` −1/0/+1); (2) **ramp rocks** `run:["ramp",N]` (~966, obol/altar) which add mana AND inconsistently bump `bossLands`; (3) the **`enemyMana` emblem** ("Ramp +1 mana") in `emblemEffect` (~1422), which adds mana but NOT `bossLands`.
+- **"Double code":** a **`bossMana()` FUNCTION** (~922 — a display-only next-turn projection `bossLands+bossManaMod+(willLand?1:0)`) coexists with the **`S.bossMana` state FIELD** — leftover from the function→field refactor; confusing and easy to misread. Ramp's `bossLands++` vs the emblem's non-`bossLands` add are inconsistent. `bossManaMod` is an admin modifier (keep); `bossManaFrozen` is the freeze (keep).
+
+**How:**
+1. **Lands are the only thing that grows `bossLands`.** Keep `playEnemyLand`/`dtPlayCard`-land + the `vaelUntap` refill (`bossManaMax=bossLands(+bossManaMod)`, `bossMana=bossManaMax`) as the whole engine.
+2. **Remove the pre-seed:** at `enterRoom` (~814) start `bossLands=bossManaMax=bossMana=0`; drop `room.landStart` (rooms ~739/745/751) and `DIFF.manaBonus` (~582) as mana levers. Move difficulty scaling off mana onto the already-explicit HP knobs (P10) / luck / land draw — **flag as a balance decision (confirm with the user).**
+3. **Ramp rocks (obol/altar):** under the rule they're non-land mana → either remove them from the decks or reclassify as real lands. **Flag for the user** (mana rocks are arguably legit MTG); default per the rule = remove/neutralize their mana.
+4. **Remove the `enemyMana` emblem template** (~1401/1422) — non-land mana.
+5. **De-duplicate:** delete or clearly rename the `bossMana()` projection function so it can't be confused with the `S.bossMana` field (e.g. `projectedBossMana()`, used only for the player-turn display at ~1198/1231-1232/1646); make any kept path consistent; `usableMana()` stays the single affordability accessor.
+6. **migrate:** for old saves, recompute `bossLands` to reflect lands-only (don't inflate from a stale `bossManaMax`).
+
+**ACs:** the enemy begins a room with 0 mana and grows its pool only by playing lands (+ the anti-screw floor); ramp rocks and the mana emblem no longer grant free mana (per the chosen option); difficulty no longer changes starting mana; exactly one source of truth for current mana (`S.bossMana`/`usableMana()`), no shadowing function; freeze still works; old saves migrate without inflated mana.
+**Verify:** jsdom — fresh room → `bossMana===0` until a land is played; playing a land raises usable mana by 1; ramp/emblem no longer add mana (per option); no `bossMana()` function shadowing the field; freeze/thaw intact; migrate; syntax + id-diff. **(Balance tradeoff: removing manaBonus/landStart scaling + ramp is significant — confirm the difficulty re-tune with the user before building.)**
+
+
+# PHASE 15 — Economy, rewards & difficulty balance ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** Requested QoL/economy/balance items, grounded in the current `index.html` (re-grep; `BOONS`/`STORE`/`DIFF` are single long lines). Spec text only; build later behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+## P15.1 — End-of-level gold wheel-spin
+
+**Goal:** on clearing the level (final boss), the player spins a wheel that lands on a gold reward — a **percentage** of a base amount (most slices), **double** gold (small chance), or a **rare/legendary item** (very small chance).
+
+**Grounded building blocks:** the level-clear path — `bossDown()` (~1493, per-room: `lootRoll()`+`goldReward()`+`addGold()`+`showEncounterClear()`), `win()` (~1822, final Vael victory). `goldReward(roomIdx)` (~802) = `12+roomIdx*10` ×`goldMult`. `addGold`/`getGold` (~2096-2097). `grantBoon(id)` (~1490) + `BOONS`. `lootRoll`/`LOOT_D20` (~804/1491 — the d20 range-tuple weighting pattern to mirror). `showEncounterClear` (~1990) / the victory popup host the UI.
+
+**How:**
+1. Define a weighted `WHEEL` table (mirror `LOOT_D20` range tuples) over a d100, e.g.: 1-25 → 50% gold · 26-55 → 100% · 56-78 → 150% · 79-90 → **2× gold** (small) · 91-97 → **random rare item** · 98-100 → **random legendary item** (very small). Percentages are of a `wheelBase` (reuse/scale `goldReward` for the level).
+2. `spinWheel()` — roll, pick the slice, apply: gold slices → `addGold(round(base*pct))`; double → `addGold(base*2)`; item → `grantBoon(pickByRarity('rare'|'legendary'))`; log in the loot channel; single render. (`Math.random` is fine in the game; only workflow scripts forbid it.)
+3. UI: a wheel overlay (reuse the modal/overlay infra) with a short spin animation landing on the slice, then "claim ▸" → the victory popup. Degrade gracefully (no animation → instant result).
+4. Hook at **end of level = `win()`** (the Vael clear). *(Open question: also give each room-clear `bossDown` a smaller wheel, or only the level end? **Default: level-end only**; per-room keeps the existing loot+gold.)*
+
+**ACs:** beating the final boss opens the wheel; it lands on a slice and applies exactly that reward (gold to the profile, or an item to the satchel); double + item slices are rare; result logged; the victory popup follows; the headless path applies a result without animation.
+**Verify:** jsdom — `spinWheel` over a stubbed roll hits each slice type and calls `addGold`/`grantBoon` correctly; ranges are contiguous and cover 1-100; the wheel fires on `win()`; syntax + id-diff.
+
+## P15.2 — Store & loot overhaul (fix Tonic of Vigor · legendary rarity · variety · gold tuning)
+
+**Goal:** fix the Tonic-of-Vigor/Spark duplication, add a **legendary** rarity tier, broaden item variety across categories and rarities (some categories lack rare/legendary items), and tune gold prices.
+
+**Grounded findings (current matrix):** `BOONS` (~783) = 16 items, rarities only **common/uncommon/rare** (no legendary). **Tonic of Vigor** (`tonic`, uncommon consumable, "+5 max life, heal 5", STORE 16g) is a near-duplicate of **Spark of Vigor** (`spark`, uncommon instant, "+5 max life, heal 5"). `STORE` (~785-801): Potions (5, all healing), Utility (6, **no rare**), Relics (4, all 20-44g, **no low-cost entry**). Rarity is read in only 3 places — `grantBoon` log (~1490), `renderStore` CSS class (~2196), `satchelHTML` (~2461, only `r==='rare'` gets a class). `goldReward` (~802) `12+roomIdx*10` ×goldMult (0.8/1/1.3); STORE costs 6-44g.
+
+**How:**
+1. **Fix Tonic of Vigor** — make it a distinct, stronger heal: `tonic:{n:"Tonic of Vigor",r:"legendary",kind:"consumable",t:"Restore 20 life and +5 maximum life."}`; `useBoon` case → `S.youMax+=5; adjLife('you',20);`; STORE cost ~28g (or wheel/loot-only). Keep `spark` as the uncommon "+5 max/heal 5" instant. (Ladder: spark +5/+5 · elixir heal 15 · tonic heal 20 +5 max.)
+2. **Legendary tier** — add `'legendary'` as a recognized rarity: `satchelHTML` class for `r==='rare'||r==='legendary'` (+ a `.item.legendary` / `.storeitem.legendary` CSS with a distinct accent); loot/wheel can grant legendaries; keep them scarce (wheel/jackpot or premium-store only).
+3. **More items / fill gaps** — add several new `BOONS` to broaden each category and rarity, grounded in existing `useBoon`/`grantBoon` mechanisms (flag which need a new `useBoon` case). Target a fuller matrix: every category has ≥1 rare, plus a few legendaries as chase items. (Research-suggested seeds: a damage Potion, a lower-cost stacking-ward Relic, a draw Utility reminder, a deploy-buff Relic, 1-2 legendaries — finalize names/effects at build.)
+4. **Gold tuning** — set a rarity→price band: common 5-8g · uncommon 12-20g · rare 18-34g · legendary 36g+ (or non-store). Adjust outliers (e.g. pyre 24→20). Keep the `goldReward` curve but verify a player can afford ~1-2 commons/uncommons per room and save for a rare across a couple rooms.
+
+**ACs:** Tonic of Vigor no longer duplicates Spark (different effect + rarity); a legendary item renders with its own styling in satchel + store; each store category has ≥1 rare and the matrix has no empty rare cells; new items resolve via `useBoon`/`grantBoon` without error; prices follow the rarity bands and round-trip through `buyStore`/`p.pending`.
+**Verify:** jsdom — every `BOONS` id resolves (use/grant) without throwing; legendary styling applied; STORE prices within bands; Tonic = heal 20 + 5 max; syntax + id-diff.
+
+## P15.3 — Persist unused satchel items across runs (profile stash)
+
+**Goal:** unused satchel items are no longer lost when a run ends — they persist on the profile and return next descent. *(The earlier "show the satchel button in the menu" idea is **dropped** — the in-game You-panel satchel stays exactly as-is.)*
+
+**Grounded findings:** today `win()` (~1822)/`lose()` (~1849) end a run and `clearSave()` (~2061) wipes the live save; `S.inv` unused items are simply lost. Only `descents>1` items survive via `carryInvForward` (~1860). Merchant purchases use the profile `p.pending` bucket applied at descent start by `applyPendingPurchases` (~1862). Profiles come from `blankProfile` (~2045); `migrate` (~2064) backfills.
+
+**How:**
+1. Add `stash:[]` to `blankProfile` (~2045) + `migrate` backfill (`if(!Array.isArray(p.stash))p.stash=[]`).
+2. `saveUnusedItems()` — at run end, move remaining `S.inv` (the `{id,descents}` shape) into `p.stash`; call it in `win()` and `lose()` **before** `clearSave()`.
+3. `applyStashItems()` — at descent start, pour `p.stash` back into `S.inv` (after `applyPendingPurchases`) and clear it; call from `restart`/`startNewDescent`.
+4. Reconcile with the satchel-lock model: stash items (looted, kept) auto-apply like `carryInvForward`; stack/merge identical consumables in the satchel UI if desired. No menu button.
+
+**ACs:** finishing a run with unused items keeps them — they reappear in the satchel on the next descent; a fresh profile has `stash:[]`; old saves migrate; consumables aren't double-counted vs `p.pending`/`carryInvForward`; the in-game satchel button placement is unchanged.
+**Verify:** jsdom — unused `S.inv` → `p.stash` on win/lose **before** `clearSave`; `applyStashItems` restores them next descent and empties the stash; migrate backfill; round-trips through save; syntax + id-diff.
+
+## P15.4 — Difficulty-scaled healing on descend
+
+**Goal:** when clearing a room and descending to the next boss, heal a fraction of the player's MISSING HP, gated by a per-difficulty HP% threshold.
+
+**The rule (authoritative):**
+- **Easy:** heal **1/2** of missing HP, only if current HP **< 70%** of max.
+- **Normal (std):** heal **1/3** of missing HP, only if current HP **< 50%** of max.
+- **Brutal:** heal **1/4** of missing HP, only if current HP **< 25%** of max.
+
+**Grounded building blocks:** `advance()` (~1494) is the sole room-transition path (`freshGameForDungeon()`→`enterRoom(next)`, then the "your life carries over" log). `DIFF` (~582) holds per-difficulty knobs. `adjLife('you',n)` (~1458) heals and caps at `S.youMax`. Game start/restart use `enterRoom(0,true)` (not `advance`), so they never heal — full life as intended; no double-heal with the P10 Vael-win `map→heal10` guard (that's loot on the final win, a different path).
+
+**How:**
+1. Add `descentHealFrac` + `descentHealThreshold` to each `DIFF` entry (easy `.5/.7`, std `.333/.5`, brutal `.25/.25`) — or a small `DESCENT_HEAL` table keyed by difficulty.
+2. In `advance()` (~1494) right after `enterRoom(next)`: `const k=DIFF[S.diff]; if(S.youMax>0 && S.youLife/S.youMax < k.descentHealThreshold){ const heal=Math.floor((S.youMax-S.youLife)*k.descentHealFrac); if(heal>0) adjLife('you',heal); }` — `adjLife` caps at max; log "🌿 You recover {heal} between descents."
+3. Use strict `<` on the threshold; `floor` never overheals.
+
+**ACs:** descending while below the difficulty threshold heals the right fraction of missing HP (never above max); at/above the threshold heals nothing; only fires on room transitions (not game start/restart); each difficulty uses its own frac+threshold; no conflict with the Vael-win heal.
+**Verify:** jsdom — per-difficulty: below threshold heals `floor(missing*frac)`, at/above heals 0, cap respected; `advance` triggers it, `fresh`/`restart` don't; syntax + id-diff.
 
 ---
 
