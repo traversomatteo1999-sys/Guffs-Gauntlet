@@ -2090,7 +2090,11 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — `toggleLibSection('tokens')` flips `S.ui.lib.tokens` and hides/shows `#libTokens`; the chevron + count reflect state; reopening the Library preserves it; a search with token matches keeps the Tokens section visible; header action buttons still work (toggle guard); syntax + id-diff (only the new chevron/handler ids).
 
 
-# PHASE 28 — Base-life model + heal items + item automation + gold rebalance ⬜ PLANNED
+# PHASE 28 — Base-life model + heal items + item automation + gold rebalance ⬜ P28.1 DONE · P28.2 pending
+
+> **✅ BUILT & verified — P28.1 (base-life model).** Removed the `youMax` inflation from all three ordinary-lifegain points (`adjLife`, the `youGain` emblem, the `gainLife` spell resolve), so ordinary healing/lifelink may push `youLife` ABOVE the base temporarily but never raises it; only explicit max-life items (Spark +5; Tonic in P28.2) raise the base. The bar shows `youLife`/`youMax` honestly (overheal visible, clamped at 100%). P15.4 descent-heal already reads the live `youMax`; the between-boss trim is P16.4 (next). Confirmed by the user: ordinary heal-above-base trims on descent; a max-booster sets the new base. 8-check jsdom + full regression (P23 FIX1 assertion updated to the new model).
+> **⏳ P28.2 pending** — heal items (Grand Elixir / Tonic of Vigor) + item automation + gold rebalance; needs a reconcile of the spec's values vs the existing item definitions.
+
 
 **Specced 2026-06-29, NOT built.** Establish a coherent **permanent base-life** stat so heal items, the between-boss reset (P16.4), and the descent heal (P15.4) all agree, then add the two heal items the user specified and rebalance prices. **Refines P15.2; pairs with P16.4/P15.4.** Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
