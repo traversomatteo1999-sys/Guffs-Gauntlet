@@ -131,6 +131,7 @@
 | &nbsp;&nbsp;P23.1 "Phase out" toggle on planeswalkers (player walkers; enemy walker parity) | ⬜ planned |
 | &nbsp;&nbsp;P23.2 Player emblems: full automation system mirroring the enemy's (templates · auto/static/trigger · effect engine · fire hooks) | ⬜ planned |
 | &nbsp;&nbsp;P23.3 Player emblem targeting (player/enemy) + colour coding (enemy = blue box · player = uncoloured) | ⬜ planned |
+| &nbsp;&nbsp;P23.4 Enemy emblem **functional** target toggle (redirect which side the effect hits; unify with the cosmetic vsYou flag) | ⬜ planned |
 | **Phase 24 — Player spell-card zone routing: instants/sorceries → graveyard; X-button permanent removal asks graveyard/exile/none** | ⬜ **PLANNED** — a resolved player instant/sorcery goes to the player graveyard (today it vanishes) · removing a player permanent via the ✕ button opens a popup: graveyard · exile · none. See Phase 24 below |
 | &nbsp;&nbsp;P24.1 Player instants/sorceries route to the graveyard on resolve | ⬜ planned |
 | &nbsp;&nbsp;P24.2 ✕-button removal popup for permanents (graveyard / exile / none) | ⬜ planned |
@@ -1932,6 +1933,22 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** a player emblem targeting the enemy shows a blue box; targeting the player shows uncoloured; the target can be toggled; the default target matches the effect kind; player rows have the same controls as enemy rows; round-trips + migrates; the enemy red-box behavior is unchanged.
 **Verify:** jsdom — a player emblem with `target='enemy'` renders `.brow.vsenemy` (blue), `target='player'` renders no colour class; toggling flips it; default target derives from kind; the row exposes the full control set; syntax + id-diff (only the new `.vsenemy` class + player-emblem control ids).
+
+## P23.4 — Enemy emblem **functional** target toggle (redirect which side the effect hits)
+
+**Goal:** an enemy emblem's target can be **changed**, and changing it actually **redirects which side the effect acts on** — the mirror of P23.3 for the player. Today the enemy's `vsYou` toggle is **cosmetic only** (just the red box, `toggleEmblemVsYou` ~1539); the effect kind is fixed. Make it functional and unify the color with the target.
+
+**Grounded building blocks:** `emblemEffect(em)` (~1515) applies `enemyGain`→`bossHealLife`, `youLose`→`S.youLife-=n`, `enemyDraw`→`vaelDraw`, `buffEnemyCreatures`/`anthemEnemy`→ enemy creatures; `applyStaticEmblems` (~1530) applies the static buffs to enemy creatures. `vsYou` flag + `toggleEmblemVsYou` set the red `.brow.vsyou` box. P23.3 introduces the same `target` model for player emblems.
+
+**How:**
+1. **Model an emblem as (effect, target-side):** add a `target ∈ {you, enemy}` field to enemy emblems (unify the existing `vsYou` into it — `vsYou` becomes `target==='you'`). The **kind** says what the effect does (gain life / lose life / buff creatures / draw); the **target** says **whose** life/creatures/draw it touches. So a drain can hit **you** or the **enemy itself**; a +N/+N buff can target **enemy** creatures or **your** creatures (a debuff-style use); a life-gain can heal the enemy or you; a draw can fill the enemy's hand or be a reminder for yours.
+2. **Effect engine honours target:** update `emblemEffect`/`applyStaticEmblems` so each kind reads `target` and applies to that side (e.g. `loseLife` → `target==='you'?S.youLife-=n : bossDown-aware S.boss.life-=n`; `buffCreatures` → the chosen side's creature array via the P30.6/`setCtr` plumbing). Keep the default target = the kind's natural side (so existing emblems behave unchanged unless retargeted).
+3. **Functional toggle + colour:** generalize `toggleEmblemVsYou` into a target toggle (`setEmblemTarget`/keep the name) that flips `target` AND the box colour — `target==='you'` → red `.brow.vsyou` (hits you), `target==='enemy'` → uncoloured (affects the enemy itself). This makes the red box mean what it shows.
+4. **Symmetry with P23.3:** player and enemy emblems now share the **same (kind, target) model** — player target player(uncoloured)/enemy(blue); enemy target enemy(uncoloured)/you(red). Factor the shared logic if practical.
+5. **migrate:** backfill `target` on existing `S.emblemsEnemy` from `vsYou` (`target = vsYou ? 'you' : 'enemy'`); round-trips for free.
+
+**ACs:** an enemy emblem's target can be toggled and the effect follows (a drain retargeted to the enemy now reduces `S.boss.life`; a +N/+N retargeted to your creatures buffs yours; etc.); the box colour matches the target (red = hits you, uncoloured = affects the enemy); defaults preserve current behavior; old saves migrate `vsYou`→`target`; player-emblem targeting (P23.3) and enemy-emblem targeting share one model.
+**Verify:** jsdom — `setEmblemTarget(id,'enemy')` on a `youLose` emblem → firing it reduces `S.boss.life` (not yours) and the row is uncoloured; `'you'` → reduces `S.youLife` + red box; a buff retargeted to your creatures raises their `effP/effT`; migrate maps `vsYou`→`target`; syntax + id-diff. **(Mirror of P23.3; pairs with it.)**
 
 
 # PHASE 24 — Player spell-card zone routing: instants/sorceries → graveyard; ✕-removal asks graveyard/exile/none ⬜ PLANNED
