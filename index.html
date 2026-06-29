@@ -855,7 +855,7 @@ function deckScryApply(decisions){const n=decisions.length;const top=S.lib.slice
 function deckDiscard(indices){const sorted=indices.slice().filter(i=>S.hand[i]).sort((a,b)=>b-a);const moved=[];sorted.forEach(i=>{moved.push(S.hand[i]);S.hand.splice(i,1);});moved.forEach(c=>S.gy.push(c));if(moved.length)log("you",`${ENs()} discards ${libNames(moved).join(", ")}.`);return moved;}
 function deckDiscardRandom(n){n=Math.max(0,n|0);const pool=S.hand.map((_,i)=>i),idx=[];for(let k=0;k<n&&pool.length;k++)idx.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);return deckDiscard(idx);}
 
-function openDeckTools(){if(S.over)return;_dt={mode:'main',n:3,reveal:null,scry:null,payMana:true};$("modalBody").innerHTML=deckToolsHTML();$("overlay").classList.add("show");}
+function openDeckTools(){if(S.over)return;_dt={mode:'main',n:3,reveal:null,scry:null,payMana:true,typeFilter:'all'};$("modalBody").innerHTML=deckToolsHTML();$("overlay").classList.add("show");}
 /* ===== P6.5: INSPECT + PLAY an enemy card =====
    Inspect = show a card's cost + colours + full text. Play = put it on the stack via mkPlay (it then resolves
    through the normal enemy-spell path: applyRun / applyTarget / selfLoss), with a spend-vs-free mana choice.
@@ -888,6 +888,16 @@ function deckToolsHTML(){
   if(_dt.mode==='scry'){const s=_dt.scry;return `<h2>🔮 Scry ${s.cards.length}</h2>${disc}<p style="color:var(--bone-dim)">Top of library first. Send any card to the bottom; the rest stay on top in this order.</p>
     ${s.cards.map((c,i)=>fxItem(c,`<button class="tiny ${s.dec[i]==='top'?'ok':''}" onclick="dtScryDec(${i},'top')">keep top</button><button class="tiny ${s.dec[i]==='bottom'?'ember':''}" onclick="dtScryDec(${i},'bottom')">→ bottom</button>`)).join('')}
     <div class="btnrow" style="margin-top:10px"><button class="ok" onclick="dtScryApply()">Apply</button><button class="tiny" onclick="_dt.mode='main';dtRender()">Cancel</button></div>`;}
+  if(_dt.mode==='browse'){const types=['all','land','creature','sorcery','instant','artifact','enchant'];const tf=_dt.typeFilter||'all';
+    const counts={};S.lib.forEach(c=>{const t=(FX[c.key]&&FX[c.key].type)||'spell';counts[t]=(counts[t]||0)+1;});
+    const filterBtns=types.map(t=>`<button class="tiny ${tf===t?'on azor':''}" onclick="_dt.typeFilter='${t}';dtRender()">${t==='all'?`all (${S.lib.length})`:`${t} (${counts[t]||0})`}</button>`).join('');
+    const rows=S.lib.map((c,realIdx)=>({c,realIdx})).filter(({c})=>tf==='all'||((FX[c.key]&&FX[c.key].type)||'spell')===tf);
+    const moveActs=(c,i)=>{const t=(FX[c.key]&&FX[c.key].type)||'spell';const canBoard=(t==='creature');return `<button class="tiny ok" onclick="dtBrowseMove(${i},'hand')">✋ hand</button>${canBoard?`<button class="tiny ember" onclick="dtBrowseMove(${i},'battlefield')">▸ board</button>`:''}<button class="tiny" onclick="dtBrowseMove(${i},'graveyard')">⚰ gy</button><button class="tiny" onclick="dtBrowseMove(${i},'exile')">✖ exile</button><button class="tiny" onclick="dtBrowseMove(${i},'libbottom')">⤓ bottom</button>`;};
+    return `<h2>📖 Browse ${ENs()}'s library</h2>${disc}
+    <p class="manaline">Viewing the whole library reveals hidden info — it <b>shuffles</b> when you leave. Filter by card type:</p>
+    <div class="btnrow" style="flex-wrap:wrap;gap:5px">${filterBtns}</div>
+    <div style="margin-top:8px;max-height:46vh;overflow:auto">${rows.length?rows.map(({c,realIdx})=>fxItem(c,moveActs(c,realIdx))).join(''):'<p class="manaline">No cards of that type in the library.</p>'}</div>
+    <div class="btnrow" style="margin-top:10px"><button class="tiny" onclick="dtBrowseExit()">🔀 Shuffle &amp; back</button></div>`;}
   if(_dt.mode==='discard'){return `<h2>🗑 Make ${ENs()} discard</h2>${disc}
     ${S.hand.length?S.hand.map((c,i)=>fxItem(c,`<button class="tiny ember" onclick="dtDiscardOne(${i})">discard</button>`)).join(''):'<p class="manaline">Their hand is empty.</p>'}
     <div class="btnrow" style="margin-top:10px"><span class="lab">random</span><input type="number" id="dtDN" value="1" min="1" style="width:48px"><button class="tiny ember" onclick="dtDiscardRandom()">discard N at random</button><button class="tiny" onclick="_dt.mode='main';dtRender()">‹ back</button></div>`;}
@@ -905,10 +915,14 @@ function deckToolsHTML(){
       <button class="tiny azor" onclick="dtReveal()">🤚 Reveal hand</button>
       <button class="tiny ember" onclick="_dt.mode='discard';dtRender()">🗑 Force discard</button>
       <button class="tiny ok" onclick="_dt.mode='play';dtRender()">🎴 Inspect &amp; play a card</button>
+      <button class="tiny azor" onclick="_dt.mode='browse';dtRender()">📖 Browse library</button>
     </div>
     ${_dt.reveal?`<div class="menucard" style="margin-top:10px"><div class="subh"><span>${_dt.reveal.label}</span></div>${_dt.reveal.cards.length?_dt.reveal.cards.map((c,i)=>{const nm=(FX[c.key]&&FX[c.key].n)||c.name||'card';const cost=(FX[c.key]&&FX[c.key].cost)||0;const z=_dt.reveal.zone;const acts=z==='lib'?`<button class="tiny ok" onclick="dtRevealMove(${i},'hand')">✋ hand</button><button class="tiny ember" onclick="dtRevealMove(${i},'battlefield')">▸ board</button><button class="tiny" onclick="dtRevealMove(${i},'libbottom')">⤓ bottom</button><button class="tiny" onclick="dtRevealMove(${i},'graveyard')">⚰ gy</button><button class="tiny" onclick="dtRevealMove(${i},'exile')">✖ exile</button>`:z==='hand'?`<button class="tiny ember" onclick="dtRevealMove(${i},'battlefield')">▸ board</button><button class="tiny" onclick="dtRevealMove(${i},'libtop')">⤴ lib</button><button class="tiny" onclick="dtRevealMove(${i},'graveyard')">⚰ gy</button><button class="tiny" onclick="dtRevealMove(${i},'exile')">✖ exile</button>`:'';return `<div class="libitem"><div class="li-h"><span class="li-n">${embEsc(nm)}</span><span class="cost">${cost}</span></div>${acts?`<div class="li-a">${acts}</div>`:''}</div>`;}).join(''):'<span class="manaline">(none)</span>'}</div>`:''}
     <div class="btnrow" style="margin-top:12px"><button class="tiny" onclick="closeOverlay()">Done</button></div>`;}
 function dtN(){const f=$("dtN");const v=f?parseInt(f.value,10):NaN;return Math.max(1,isNaN(v)?(_dt.n||3):v);}
+/* P14.7: browse the whole library by type — move a card by its REAL S.lib index (the filter changes display order). */
+function dtBrowseMove(i,to){const c=S.lib[i];if(!c)return;dtMoveObj('lib',c,to);}
+function dtBrowseExit(){deckShuffle();log("you",`🔀 You shuffle ${ENs()}'s library after browsing it.`);_dt.mode='main';_dt.typeFilter='all';dtRender();}
 function dtLook(where){const n=dtN();_dt.n=n;const cards=where==='top'?S.lib.slice(0,n):S.lib.slice(Math.max(0,S.lib.length-n));_dt.reveal={label:where==='top'?`Top ${cards.length} of library`:`Bottom ${cards.length} of library`,cards,zone:'lib'};log("you",`You look at the ${where} ${cards.length} of ${ENs()}'s library: ${cards.length?libNames(cards).join(", "):'(empty)'}.`);dtRender();}
 function dtReveal(){_dt.reveal={label:`${ENs()}'s hand`,cards:S.hand.slice(),zone:'hand'};log("you",`You reveal ${ENs()}'s hand: ${S.hand.length?libNames(S.hand).join(", "):'(empty)'}.`);dtRender();}
 /* P9.4: enemy hand/library completeness — tutor / reanimate / forced draw (the deck-tools model used to disclaim these). */
