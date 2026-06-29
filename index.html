@@ -485,6 +485,7 @@
       <span class="chip">cmd-dmg <b id="cCmd" style="cursor:default">0</b>/21 <button class="tiny" onclick="cnt('cmdDmg',-1)">−</button><button class="tiny" onclick="cnt('cmdDmg',1)">+</button></span>
       <span class="chip">energy <b id="cEnergy" style="cursor:default">0</b> <button class="tiny" onclick="cnt('energy',-1)">−</button><button class="tiny" onclick="cnt('energy',1)">+</button></span>
       <span class="chip">exp <b id="cExp" style="cursor:default">0</b> <button class="tiny" onclick="cnt('experience',-1)">−</button><button class="tiny" onclick="cnt('experience',1)">+</button></span>
+      <span class="chip enemy" title="the enemy's counters (poison 10 / commander damage 21 are lethal to it too)">⚔ enemy: poison <b id="eqPoison" style="cursor:default">0</b>/10 <button class="tiny" onclick="cnt('poison',-1,'enemy')">−</button><button class="tiny" onclick="cnt('poison',1,'enemy')">+</button> · cmd-dmg <b id="eqCmd" style="cursor:default">0</b>/21 <button class="tiny" onclick="cnt('cmdDmg',-1,'enemy')">−</button><button class="tiny" onclick="cnt('cmdDmg',1,'enemy')">+</button> · energy <b id="eqEnergy" style="cursor:default">0</b> <button class="tiny" onclick="cnt('energy',-1,'enemy')">−</button><button class="tiny" onclick="cnt('energy',1,'enemy')">+</button> · exp <b id="eqExp" style="cursor:default">0</b> <button class="tiny" onclick="cnt('experience',-1,'enemy')">−</button><button class="tiny" onclick="cnt('experience',1,'enemy')">+</button></span>
     </div>
     <textarea id="notes" placeholder="Scratchpad — anything you want to remember between turns…" style="width:100%;min-height:54px;margin-top:8px;font-family:Spectral;background:var(--ink);color:var(--bone);border:1px solid var(--line);border-radius:8px;padding:8px" oninput="S.notes=this.value"></textarea>
   </div>
@@ -863,7 +864,7 @@ function enterRoom(i,first){S.roomIndex=i;const room=DUNGEON[i];const baseHp=(ro
   S.boss={name:room.villain,life,max:life,isVael:!!room.isVael,colors:(room.colors||["R"]).slice()};
   S.enemy={name:room.villain,colors:(room.colors||["R"]).slice(),lore:room.lore||"",isFinal:!!room.isVael};
   S.cmd={id:'cmd',n:room.cmd.n,p:room.cmd.p,t:room.cmd.t,baseP:room.cmd.p,baseT:room.cmd.t,kw:[...room.cmd.kw],color:(room.cmd.colors||room.colors||["R"]).slice(),baseCost:room.cmd.cost,cost:room.cmd.cost,tax:0,deaths:0,inPlay:false,sick:false,tapped:false,plus:0,minus:0,other:[],_cmd:true};
-  S.tokens=[];S.rules=[];S.turn=0;S.phase2done=false;S.balanceScale=1;S.emblemsEnemy=[];S.enemyArtifacts=[];S.enemyEnchants=[];S.battles=[];S.plane=null;S.bossManaFrozen=0;S.stackProposal=null;/* P13.3: clear the enemy artifact/enchant board each room too (no cross-dungeon leak) */
+  S.tokens=[];S.rules=[];S.turn=0;S.phase2done=false;S.balanceScale=1;S.emblemsEnemy=[];S.enemyArtifacts=[];S.enemyEnchants=[];S.battles=[];S.plane=null;S.bossManaFrozen=0;S.stackProposal=null;S.enemyCounters={poison:0,energy:0,experience:0,cmdDmg:0};/* P13.3: clear the enemy artifact/enchant board each room too (no cross-dungeon leak) · P19.1: each boss starts with clean counters (poison/cmd-damage are per-game) */
   S.pw=room.pw?{name:room.pw.name,loy:room.pw.loy,baseLoy:room.pw.loy,colors:(room.pw.colors||room.colors||[]).slice(),ultThreshold:room.pw.ultThreshold||7,plus:room.pw.plus,minus:room.pw.minus,ult:room.pw.ult}:null;
   S.bossManaMod=0;S.bossLands=Math.max(0,(room.landStart||0)+(DIFF[S.diff].manaBonus||0));S.bossLandPlayed=false;S.bossManaMax=S.bossLands;S.bossMana=S.bossLands;/* P5.2: mana now comes from sources (lands/rocks/dorks); start with landStart±difficulty already developed, then play a land per turn */
   S.activeTurn=null;S.phase=0;S.plays=[];S.combat=null;S.paused=false;S.lib=buildDeck(room);S.hand=[];S.gy=[];S.exile=[];vaelDraw(4);
@@ -1275,7 +1276,10 @@ function approveCombat(){
     if(r.deadAtt.length)log("cbt",`Your losses: ${r.deadAtt.map(cnm).join(", ")}.`);
     if(r.deadBlk.length)log("cbt",`${ENs()} loses: ${r.deadBlk.map(cnm).join(", ")}.`);
     S.combat=null;$("resolver").classList.remove("show");
-    if(S.boss.life<=0)bossDown();render();
+    /* P19.2: your unblocked commander's combat damage accrues as commander damage to the enemy (mirror of the enemy→you accrual). Uses its perAtt face share, so it respects double strike / "deals no combat dmg". */
+    const pcmd=attackers.find(a=>a.isCmd&&(assign[a.id]||[]).length===0);
+    if(pcmd){const cmdFace=((r.perAtt.find(x=>x.att===pcmd)||{}).toFace)||0;if(cmdFace>0){if(!S.enemyCounters)S.enemyCounters={poison:0,energy:0,experience:0,cmdDmg:0};S.enemyCounters.cmdDmg+=cmdFace;log("you",`Commander damage to ${S.boss.name}: +${cmdFace} → ${S.enemyCounters.cmdDmg}/21.`);renderCounters();}}
+    if(S.boss.life<=0)bossDown();else checkEnemyOut();render();
   }else{
     const tmap=S.combat.target||{};
     /* P20.2: hard guard — refuse to resolve while any of your walkers is attacked by more creatures than its attackableBy cap. */
@@ -1862,7 +1866,7 @@ function cmdFieldCard(){const c=S.cmd,buff=c.plus||0,deb=c.minus||0;return `<but
 function freshGameForDungeon(){/* Fresh board each dungeon; life is the carried RPG stat (only loot moves it). The board empties, per-game counters reset (commander damage must — Vael's commander is rebuilt), and your designated commander returns to the command zone with tax reset (a new game). Life, max life, and loot persist. */
   let cmd=S.pcmd||S.my.creatures.find(c=>c.isCmd)||S.my.walkers.find(w=>w.isCmd);
   if(cmd){cmd.kind=cmd.kind||(S.my.walkers.indexOf(cmd)>=0?'walkers':'creatures');cmd.plus=0;cmd.minus=0;cmd.other=[];cmd.tapped=false;cmd.sick=false;cmd.phased=false;cmd._atk=false;if(cmd.baseLoy!=null)cmd.loyalty=cmd.baseLoy;cmd.cmdTax=0;cmd.cmdDeaths=0;S.pcmd=cmd;}
-  S.my={creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]};S.myGy=[];S.myExile=[];S.counters={poison:0,energy:0,experience:0,cmdDmg:0};}
+  S.my={creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]};S.myGy=[];S.myExile=[];S.counters={poison:0,energy:0,experience:0,cmdDmg:0};S.enemyCounters={poison:0,energy:0,experience:0,cmdDmg:0};/* P19.1: symmetric enemy counters */}
 function mkPlay(fx){const p={n:fx.n,type:fx.type,text:fx.text,flav:fx.flav,cost:fx.cost,color:fx.color,selfLoss:fx.selfLoss,die:fx.die,dieLoss:fx.dieLoss,run:fx.run,target:fx.target,status:"pending"};if(fx.die){p.roll=enemyRoll(fx.die);if(fx.dieLoss)p.selfLoss=p.roll;}return p;}/* P6.4: enemyRoll applies difficulty luck to the damage the enemy rolls against you */
 function playerItemDesc(p){if(p.ctype==='creature')return `Creature ${p.p}/${p.t}${(p.kw&&p.kw.length)?' — '+p.kw.join(', '):''}. Resolves to your board.`;if(p.ctype==='planeswalker')return `Planeswalker, loyalty ${p.loy}. Resolves to your board.`;if(p.ctype==='artifact'||p.ctype==='enchantment')return `${p.ctype}. Resolves to your board.`;if(p.auto)return p.auto.k==='dmgBoss'?`Deals ${p.auto.n} to the enemy on resolve.`:p.auto.k==='gainLife'?`You gain ${p.auto.n} life on resolve.`:`You lose ${p.auto.n} life on resolve.`;return 'Resolves — apply its effect with the controls as needed.';}
 /* P13.1: edit a spell while it is ON THE STACK (either side) before it resolves — keywords / P-T / can't-be-countered / note. Owner-agnostic (mutates S.plays[i] directly). _edit is transient UI (stripped from undo). */
@@ -2073,6 +2077,8 @@ function approveStackProposal(){const pr=S.stackProposal;if(!pr)return;const win
 function counterPlay(i){const p=S.plays[i];if(!p)return;if(p.cantCounter){log("sys",`<b>${p.n||p.name}</b> can't be countered.`);return;}/* P13.1: honor can't-be-countered (incl. one added via the stack editor) */if(S.stackProposal&&S.stackProposal.forId===p.id)S.stackProposal=null;p.status="countered";if(p._pcmd){const c=p._pcmdObj;if(c)S.pcmd=c;log("you",`<b>${p.n||p.name}</b> is countered → back to your command zone.`);S.plays.splice(i,1);renderPlays();render();return;}if(p._enemyCmd){log("you",`Countered <b>${p.n||p.name}</b> → it returns to ${ENs()}'s command zone.`);renderPlays();render();return;}if(p._card)S.gy.push(p._card);log("you",`Countered <b>${p.n}</b> → ${ENs()}'s graveyard.`);renderPlays();render();}
 function undoPlay(i){const p=S.plays[i];p.status="pending";if(p._card){const gi=S.gy.indexOf(p._card);if(gi>=0)S.gy.splice(gi,1);}renderPlays();render();}
 
+/* P19.2: the enemy can lose to its own counters (10 poison / 21 commander damage), mirroring checkLose — routed through bossDown so Vael's phase-2 + loot/clear fire exactly like a life-based death. No Phoenix-style save on the enemy side. */
+function checkEnemyOut(){if(S.over)return;const ec=S.enemyCounters||{},poison=ec.poison||0,cmdd=ec.cmdDmg||0;if(poison>=10||cmdd>=21){if(poison>=10)log("dm",`☠ 10 poison — ${S.boss.name} falls.`);if(cmdd>=21)log("dm",`☠ 21 commander damage — ${S.boss.name} falls.`);bossDown();}}
 function checkLose(){if(S.over)return;const poison=(S.counters&&S.counters.poison)||0,cmdd=(S.counters&&S.counters.cmdDmg)||0;if(S.youLife<=0||poison>=10||cmdd>=21){if(S.youLife<=0&&S.inv.some(it=>it.id==="phoenix")&&!S.phoenixUsed){S.phoenixUsed=true;S.inv=S.inv.filter(it=>it.id!=="phoenix");S.youLife=1;log("loot",`🔥 <b>Phoenix Charm</b> catches you at <b>1</b>!`);render();return;}if(poison>=10)log("sys","☠ 10 poison counters - you fall.");if(cmdd>=21)log("sys","☠ 21 commander damage - you fall.");lose();}}
 function win(){if(S.over)return;S.over=true;saveUnusedItems();clearSave();sfx('victory');/* P15.3: stash unused items before the save is wiped */
   recordResult(true);S.boss.life=0;
@@ -2112,8 +2118,10 @@ function winCutscene(lr,wheelDesc){const v=DUNGEON[2];
 function lose(){if(S.over)return;S.over=true;saveUnusedItems();clearSave();sfx('defeat');/* P15.3: stash unused items before the save is wiped */recordResult(false);log("sys",`☠ <b>You have fallen.</b>`);render();const room=DUNGEON[S.roomIndex]||DUNGEON[0];showCutscene(["The enemy holds the field. The Warren keeps what it takes — but the gate opens again for those mad enough to return."],"The Warren Consumes You",`${room.name} · defeat`,null,{sigil:room.sigil||'☠',speaker:room.villain,quote:room.quote||'',accent:villainAccent(room),buttons:[{label:"↻ Try again",on:restart,cls:"big ember"},{label:"Quit to Menu",on:quitToMenu,cls:"big"}]});}
 function noAbilT(scope,id){const c=getCre(scope,id);if(c){c.noAbil=!c.noAbil;render();}}
 function sickMy(id){const c=S.my.creatures.find(x=>x.id===id);if(c){c.sick=!c.sick;render();}}
-function renderCounters(){if(!S.counters)return;const m={cPoison:'poison',cCmd:'cmdDmg',cEnergy:'energy',cExp:'experience'};for(const k in m){const el=$(k);if(el)el.textContent=S.counters[m[k]];}}
-function cnt(k,n){S.counters[k]=Math.max(0,(S.counters[k]||0)+n);renderCounters();checkLose();}
+function renderCounters(){if(!S.counters)return;const m={cPoison:'poison',cCmd:'cmdDmg',cEnergy:'energy',cExp:'experience'};for(const k in m){const el=$(k);if(el)el.textContent=S.counters[m[k]];}
+  const ec=S.enemyCounters||{},em={eqPoison:'poison',eqCmd:'cmdDmg',eqEnergy:'energy',eqExp:'experience'};for(const k in em){const el=$(k);if(el)el.textContent=ec[em[k]]||0;}/* P19.1 */}
+/* P19.1: cnt(k,n,side) — side 'enemy' writes S.enemyCounters (logged to dm + checks the enemy out); default writes the player's (unchanged). */
+function cnt(k,n,side){if(side==='enemy'){if(!S.enemyCounters)S.enemyCounters={poison:0,energy:0,experience:0,cmdDmg:0};S.enemyCounters[k]=Math.max(0,(S.enemyCounters[k]||0)+n);log("dm",`${ENs()} ${k}: ${S.enemyCounters[k]}.`);renderCounters();checkEnemyOut();return;}S.counters[k]=Math.max(0,(S.counters[k]||0)+n);renderCounters();checkLose();}
 function rollDie(n){n=Math.max(2,n|0);const r=Math.floor(Math.random()*n)+1;sfx('die');const o=$("diceOut");if(o)o.innerHTML=`🎲 d${n} -> <b style="color:var(--gold)">${r}</b>`;log("sys",`🎲 d${n} -> <b>${r}</b>.`);}
 function coinFlip(){const h=Math.random()<.5;sfx('coin');const o=$("diceOut");if(o)o.innerHTML=`🪙 <b style="color:var(--gold)">${h?'Heads':'Tails'}</b>`;log("sys",`🪙 ${h?'Heads':'Tails'}.`);}
 function setDiff(df){S.diff=df;$("diffNote").textContent=DIFF[df].note;[...$("diffSeg").children].forEach(b=>b.classList.toggle("on",b.dataset.d===df));}
@@ -2336,6 +2344,7 @@ function migrate(s){if(!s||typeof s!=='object')return s;
   (s.enemyArtifacts||[]).forEach(p=>{if(p&&!p._pscope)p._pscope='eart';});(s.enemyEnchants||[]).forEach(p=>{if(p&&!p._pscope)p._pscope='eench';});
   if(!s.my||typeof s.my!=='object')s.my={};['creatures','artifacts','enchants','walkers','emblems'].forEach(k=>{if(!Array.isArray(s.my[k]))s.my[k]=[];});
   if(!s.counters||typeof s.counters!=='object')s.counters={};['poison','energy','experience','cmdDmg'].forEach(k=>{if(typeof s.counters[k]!=='number')s.counters[k]=0;});
+  if(!s.enemyCounters||typeof s.enemyCounters!=='object')s.enemyCounters={};['poison','energy','experience','cmdDmg'].forEach(k=>{if(typeof s.enemyCounters[k]!=='number')s.enemyCounters[k]=0;});/* P19.1: backfill enemy counters on old saves */
   if(!s.ui||typeof s.ui!=='object')s.ui={tabs:{}};if(!s.ui.tabs)s.ui.tabs={};if(!s.ui.panels||typeof s.ui.panels!=='object')s.ui.panels={};/* P12.1: per-panel collapse state */
   if(s.ui.panels&&s.ui.panels['p-attack']===undefined&&Object.keys(s.ui.panels).length)s.ui.panels['p-attack']=true;/* P25.1: open Your-attack for existing players too — only when they haven't explicitly set it (don't override a chosen false) */
   ['over','paused','phase2done','phoenixUsed','weakenNext'].forEach(k=>{s[k]=!!s[k];});

@@ -1729,7 +1729,10 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — targeted unit tests per keyword in `resolveAttack` (deathtouch+trample assignment, lifelink side/amount per direction, double-strike strike-back, indestructible survives lethal+DT, protection zeroes, vigilance tap) + an end-to-end `approveCombat` for each direction; regressions on the existing P6/P12.2 combat drivers; syntax + id-diff.
 
 
-# PHASE 19 — Symmetric enemy counters: poison · commander damage · energy · experience ⬜ PLANNED
+# PHASE 19 — Symmetric enemy counters: poison · commander damage · energy · experience ✅ DONE
+
+> **✅ BUILT & verified.** **P19.1:** `S.enemyCounters={poison,energy,experience,cmdDmg}` reset per-battle in `enterRoom` + per-game in `freshGameForDungeon`, backfilled in `migrate`; Tools-panel enemy row (`eqPoison/eqCmd/eqEnergy/eqExp`); generalized `cnt(k,n,side)` (enemy side logs to `dm` + checks the enemy out); `renderCounters` maps both sides. Player counters byte-for-byte unaffected. **P19.2:** `checkEnemyOut()` (mirror of `checkLose`) routes a 10-poison / 21-cmd-damage enemy through `bossDown` (Vael phase-2 + loot/clear identical to a life death; no Phoenix save); your unblocked commander's combat damage auto-accrues to `S.enemyCounters.cmdDmg` in the `dir==='you'` branch (via `perAtt.toFace`, so double-strike/"deals no combat dmg" are honored), then `checkEnemyOut`. **Prereq for P23.2 satisfied.** 17-check jsdom + full regression; id-diff adds only the 4 enemy chip ids.
+
 
 **Specced 2026-06-29, NOT built.** The player can accrue poison / commander-damage / energy / experience counters, but the **enemy can't** — so poison-out and commander-damage kills only work in one direction. Make the counters symmetric: the enemy tracks the same set, with the same lethal thresholds, adjusters, rendering, and (for commander damage) auto-accrual from combat. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
