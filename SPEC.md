@@ -170,6 +170,10 @@
 | &nbsp;&nbsp;P35.3 Faithful real-MTG-style card design + coherent balanced decks per enemy (curve · removal · threats · finishers) | ⬜ planned |
 | &nbsp;&nbsp;P35.4 Graveyard strategies (reanimation · recursion · aristocrats) — Murglax identity; black/Rakdos enemies | ⬜ planned |
 | &nbsp;&nbsp;P35.5 Enemy spells use the full real-spell option set (parity with player mechanics) | ⬜ planned |
+| **Phase 36 — Undo resets at each descent (can't undo past a descent)** | ⬜ **PLANNED** — once you descend to the next boss, the undo history clears to that point; you can't undo back into the previous battle. `advance()` calls `histReset()` (today only game-start/continue reset). See Phase 36 below |
+| &nbsp;&nbsp;P36.1 `advance()` resets the undo history at the descent | ⬜ planned |
+| **Phase 37 — Enemy mana-box UI reflects the lands-only model** | ⬜ **PLANNED** — update the enemy box mana readout to match the built lands-only mana (P17.1): show usable mana + **mana sources (lands/ramp) count**, an honest next-turn projection, frozen, and no text implying free/pre-seeded mana. See Phase 37 below |
+| &nbsp;&nbsp;P37.1 Enemy box shows usable mana · sources count · projection · frozen (lands-only) | ⬜ planned |
 
 ---
 
@@ -2470,6 +2474,42 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** enemy cards use the full keyword/counter/protection/targeting/trigger option set; enemy removal honours protection/hexproof/shroud/ward; ETB/triggers resolve through the shared engine; no player option is unavailable to an equivalent enemy card.
 **Verify:** jsdom — a designed enemy creature with hexproof/protection is honoured in targeting; an enemy ETB trigger fires on resolve; enemy removal respects ward/protection both ways; parity matrix (player option ↔ enemy card) asserted; syntax + id-diff. (Leans on P13.x / P30.)
+
+
+# PHASE 36 — Undo resets at each descent (can't undo past a descent) ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** Once you descend to face a new enemy, the undo button should reset to that point — you can't undo back into the previous battle. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded findings:**
+- **Undo stack:** `_hist` (snapshots `{s,label}`, cap 80); `settleHistory()` (~1352) pushes the prior committed state on each settled action and **re-inits `_committed` when it's null** (~1353); `undo()` (~1359) pops; `histReset()` (~1358) clears `_hist`/`_committed`/`_actLabel`.
+- **Where it resets today:** `fresh()` (game start, ~865) and continue-last-game (~2491) call `histReset()`. **`advance()` (~1786) — the mid-run descent to the next boss — does NOT.** So the undo stack carries across a descent, letting you undo back into the prior (now-wiped) battle, which is incoherent (the board/enemy were reset by `freshGameForDungeon`).
+- `restart`/`startNewDescent` go through `fresh()`, so they already reset — only the in-run `advance()` is the gap.
+
+**How:**
+1. **Reset on descent:** in `advance()` (~1786), after `enterRoom(next)` and the post-descent life adjustments (P16.4 cap / P15.4 heal) and just before/at the final `render()`, call **`histReset()`**. The next `settleHistory()` (post-render microtask) re-anchors `_committed` at the new battle's start, so the earliest undoable point is the new battle — undo can't cross the descent.
+2. **Cap-friendly:** this also keeps `_hist` from accumulating a whole prior battle (it's discarded at the boundary).
+3. **No state/schema change** — `_hist` is module state, already excluded from save/undo; nothing persisted.
+
+**ACs:** after descending (`advance()`), `_hist` is empty and undo reports "Nothing to undo" until you act in the new battle; actions within the new battle undo normally but can never reach the previous battle; game-start/restart/continue behavior unchanged.
+**Verify:** jsdom — build some `_hist` in battle 1, call `advance()`, assert `_hist.length===0` and `_committed` re-anchors at the new room on next settle; an action in battle 2 is undoable but undo never restores battle-1 state; `fresh`/restart still reset; syntax + id-diff (one `histReset()` call).
+
+
+# PHASE 37 — Enemy mana-box UI reflects the lands-only model ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** The enemy now opens at 0 mana and builds it only from played lands/ramp (P17.1, built). The enemy-box mana readout should make that model legible — current usable mana, how many **mana sources** it has, an honest next-turn projection, and frozen — with no copy implying free/pre-seeded mana. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded findings:**
+- **Current readout (~1371-1372):** `manaPips` shows `usableMana()` (enemy turn) / `projBossMana()` (your turn); `manaLine` = "Mana remaining: `usableMana()` / `bossManaMax`" (enemy turn) or "Mana next turn: `projBossMana()`" (your turn) + a ❄ frozen note. Already uses the P17.1/freeze accessors — but it **doesn't surface the number of mana SOURCES** (`S.bossLands`), and "/ `bossManaMax`" reads as a pool cap rather than "sources."
+- **The model:** mana = lands/ramp played; `S.bossLands` = source count; `usableMana()` = pool − frozen; `projBossMana()` = next-turn projection (+1 only if a land is in hand — no scrounge). The play-a-land log already says "N mana source(s)."
+
+**How:**
+1. **Show sources:** add the **source count** to the enemy box — e.g. "Mana: `usableMana()` · `S.bossLands` source(s)" (and the next-turn projection on your turn), so it's clear mana comes from played lands/ramp now, not a pre-seed. Keep the ❄ frozen note and the usable-vs-pool distinction under freeze.
+2. **Honest projection:** keep `projBossMana()` for "next turn" (already no-scrounge); label it so it reads as "if it plays a land it holds."
+3. **De-stale copy:** remove/----adjust any label that implies free or pre-developed mana (e.g. a bare "/ max" that suggested a fixed pool); the box should read as a growing source count. Tighten `manaPips` if needed (pips = usable, with a subtle marker for frozen).
+4. **No logic change** — display only, reading the existing `S.bossLands`/`usableMana()`/`projBossMana()`/`S.bossManaFrozen`. (Pairs with P17.1; if P35.2 ramp lands later, "sources" already counts rocks/dorks since they bump `bossLands`.)
+
+**ACs:** the enemy box shows current usable mana, the mana-source count, an honest next-turn projection, and frozen; nothing implies free/pre-seeded mana; under freeze it shows usable vs pool correctly; no mana logic changes; the readout matches the log's "N mana sources."
+**Verify:** jsdom/string-check — `manaLine` includes `S.bossLands` source count and `usableMana()`; your-turn shows `projBossMana()`; frozen note present when `bossManaFrozen>0`; no "free/pre-seed"-implying text; syntax + id-diff. (Pairs with P17.1; forward-compatible with P35.2.)
 
 ---
 
