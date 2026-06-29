@@ -128,6 +128,10 @@
 | &nbsp;&nbsp;P21.1 Consumables reliably consumed on use (stable uid instead of array index) | ⬜ planned |
 | **Phase 22 — Editable enemy emblem value (tune the magnitude: +2/+2 vs +1/+1, drain/gain/draw N)** | ⬜ **PLANNED** — each enemy emblem/artifact/enchant carries `auto:{k,n}` but `n` isn't editable in the row. Add a value field so the magnitude can be tuned (anthem/buff +N/+N, drain/gain/draw N), with an optional split power/toughness for buff effects. See Phase 22 below |
 | &nbsp;&nbsp;P22.1 Per-emblem value editor for `auto.n` (all auto sources; optional p/t split) | ⬜ planned |
+| **Phase 23 — Phase-out for planeswalkers + player emblems as a full system (mirror the enemy's, with target→colour)** | ⬜ **PLANNED** — add the "phase out" toggle to planeswalkers (the engine already honors `w.phased`; only the UI is missing) · give player emblems the same automation the enemy's have (templates · auto/static/trigger · effects), targetable at player or enemy, with a **blue** box when targeting the enemy and **uncoloured** when targeting the player (mirror of the enemy's red-box convention). See Phase 23 below |
+| &nbsp;&nbsp;P23.1 "Phase out" toggle on planeswalkers (player walkers; enemy walker parity) | ⬜ planned |
+| &nbsp;&nbsp;P23.2 Player emblems: full automation system mirroring the enemy's (templates · auto/static/trigger · effect engine · fire hooks) | ⬜ planned |
+| &nbsp;&nbsp;P23.3 Player emblem targeting (player/enemy) + colour coding (enemy = blue box · player = uncoloured) | ⬜ planned |
 
 ---
 
@@ -1840,6 +1844,58 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** an auto emblem/artifact/enchant row shows a value editor bound to `auto.n`; raising a buff/anthem to 2 yields +2/+2 (counter on fire, or `_stp/_stt` if static); raising a drain to 4 drains 4 on its next trigger; draw/gain likewise; the row label reads truthfully after tuning (no stale "+1/+1"); reminders show no value field; value persists through save/undo; player emblems (`S.my.emblems`) are out of scope (note-only today).
 **Verify:** jsdom — `setEmblemValue(id,2)` sets `auto.n===2`; firing a `buffEnemyCreatures` emblem then adds +2/+2; a static anthem reflects +2/+2 in `effP/effT` via `applyStaticEmblems`; a `youLose` at n=4 drains 4 on trigger; value round-trips through serialize; reminder rows render no input; syntax + id-diff.
+
+
+# PHASE 23 — Phase-out for planeswalkers + player emblems as a full system (mirror the enemy's) ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** Two requests: (a) let planeswalkers phase out like creatures; (b) give the player's emblems the same automation the enemy's have, targetable at player or enemy, with a colour convention mirroring the enemy's red box. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+## P23.1 — "Phase out" toggle on planeswalkers
+
+**Goal:** a planeswalker can be phased out (and back) like a creature; while phased it's absent from combat/targeting.
+
+**Grounded findings:** `phased` is a creature flag toggled in the drawer flags row (`flagMy('${cat}',${id},'phased')`, ~1394). **The engine already honors `w.phased` for walkers** — `aiTargets` (~1440) and `renderCombat` (~1196) both `S.my.walkers.filter(w=>!w.phased)`. The gap is purely UI: `walkerDrawer(w)` has no phase-out toggle, and a phased walker isn't visually marked (the `.crea.phased` dim style ~146 is for creature tiles; walkers render as `.brow` rows ~1348).
+
+**How:**
+1. **Walker drawer toggle:** add a "phase out" flag button to `walkerDrawer(w)` (reuse `flagMy('walkers',id,'phased')`), matching the creature/artifact flags row.
+2. **Visual mark:** show a "phased" badge on the walker row and/or dim it (a `.brow.phased`/`tapped`-style class) so the state is visible, like creatures.
+3. **Confirm engine coverage:** `aiTargets`/`renderCombat` already skip phased walkers; verify no other walker path (loyalty-damage assignment, pwAct for the enemy walker) mis-treats a phased walker. The player walker is the focus.
+4. **Enemy walker parity:** `S.pw` (the enemy planeswalker) — expose the same toggle where its editor is reachable (P13.1 owner-agnostic editing); if `S.pw` has no drawer yet, note it as a parity follow-up rather than building a new editor here. `phased` defaults false; `migrate`/`fresh` need nothing new (absent = not phased).
+
+**ACs:** a player walker can be toggled phased/unphased from its drawer; while phased it can't be attacked (enemy `aiTargets`/combat skip it) and is visually marked; unphasing restores it; round-trips through save/undo; the enemy walker gets the same toggle where editable (or a noted follow-up).
+**Verify:** jsdom — `flagMy('walkers',id,'phased')` sets `w.phased`; `aiTargets`/`renderCombat` exclude it; the row shows the phased mark; round-trip; syntax + id-diff.
+
+## P23.2 — Player emblems: full automation system mirroring the enemy's
+
+**Goal:** the player's emblems gain the same machinery the enemy's have (today `S.my.emblems` are plain `{id,name,note}` text rows with no automation) — template picker, optional auto/static effects, trigger windows, and a real effect engine — so a player emblem can actually *do* something each turn, not just remind.
+
+**Grounded building blocks (mirror these):** enemy side = `ENEMY_EMBLEMS` templates (~1487), `addEnemyEmblem` (~1508), `emblemEffect` (~1515, kinds: `enemyGain`/`youLose`/`enemyDraw`/`anthemEnemy`/`buffEnemyCreatures`/`spawnToken`), `fireEnemyEmblems(window)` (~1528) called from `vaelUpkeep`/`vaelEnd`/`youUpkeep`, `applyStaticEmblems` (~1531) for continuous buffs (`_stp/_stt`), `findEnemyFx`/`setEnemyEmblem`/`toggleEmblemAuto`/`emblemTriggerSel`. Player static buffs already share the `_stp/_stt` fields on `S.my.creatures` (`effP/effT` read them, ~976).
+
+**How:**
+1. **`PLAYER_EMBLEMS` templates** — the mirror set, each `{n,note,auto:{k,n},static?,trigger?}`: `youGain` (you gain N), `enemyLose` (enemy loses N), `youDraw` (you draw N — reminder, you draw physically), `anthemYou`/`buffYourCreatures` (+N/+N to YOUR creatures, static or counter), `debuffEnemyCreatures` (−N/−N to enemy creatures), plus an anthem-you static. Templates carry a default target (see P23.3).
+2. **`addPlayerEmblem()`** mirrors `addEnemyEmblem` — deep-copy the template's `auto`, push to `S.my.emblems` with `{auto,autoOn,static,trigger,attachId,target}` (replacing the bare `{name,note}`). Add a template `<select>` + "+ add" beside the player Emblems sub-head (~435), like the enemy one (~411). Keep blank `addEm()` as a manual/reminder option.
+3. **`playerEmblemEffect(em)`** mirrors `emblemEffect` for the player's benefit/offense: `youGain`→`adjLife('you',n)`; `enemyLose`→`S.boss.life-=n` (+ `checkEnemyOut()` per P19 if present); `youDraw`→reminder log; `anthemYou`/`buffYourCreatures`→ counter `+n/+n` on `S.my.creatures` (and the on-board commander); `debuffEnemyCreatures`→ `minus` on enemy creatures. Log to the `you` channel.
+4. **`firePlayerEmblems(window)`** mirrors `fireEnemyEmblems` — iterate `S.my.emblems` auto, non-static, matching trigger; call from **`youUpkeep`** (~1773, window `upkeep`) and **`youEnd`** (window `endStep`); optionally an `enemyUpkeep` window. `checkLose`/`checkEnemyOut` after.
+5. **Static:** extend `applyStaticEmblems` (~1531) to also walk `S.my.emblems` static entries and apply `_stp/_stt` to `S.my.creatures` (player anthem), mirroring the enemy block — recomputed each render.
+6. **migrate:** backfill the new fields on existing `S.my.emblems` (`auto:null,autoOn:false,static:false,trigger:'upkeep',attachId:null,target:'player'`) so old saves don't break; round-trips for free (all in `S.my`).
+
+**ACs:** a player emblem from a template fires its effect on the chosen trigger (you gain / enemy loses / you draw / your creatures get +N/+N); a static player anthem shows continuously in your creatures' `effP/effT`; manual/reminder emblems still supported; everything round-trips + migrates; the enemy emblem system is unchanged.
+**Verify:** jsdom — `addPlayerEmblem` builds the structured object; `firePlayerEmblems('upkeep')` applies `youGain`/`enemyLose`/buff; a static `anthemYou` reflects in `effP`; fires from `youUpkeep`/`youEnd`; migrate backfills old emblems; enemy emblems untouched; syntax + id-diff.
+
+## P23.3 — Player emblem targeting (player/enemy) + colour coding
+
+**Goal:** each player emblem is flagged as targeting the **player** or the **enemy**; the row is coloured **blue** when it targets the enemy and **uncoloured** when it targets the player — mirroring the enemy convention (an enemy emblem that hits *you* is red; one that affects the enemy itself is uncoloured).
+
+**Grounded building blocks:** enemy uses `vsYou` (red) — set on add (`vsYou=t.auto.k==='youLose'||'debuffYou'`, ~1509), toggled by `toggleEmblemVsYou` (~1539), rendered as `.brow.vsyou` (red CSS ~77). The player needs the symmetric `.brow.vsenemy` (blue).
+
+**How:**
+1. **Target field** `target ∈ {player,enemy}` on player emblems (or a `vsEnemy` boolean). Default derived from the effect kind on add — `enemyLose`/`debuffEnemyCreatures` → `enemy`; `youGain`/`youDraw`/`anthemYou` → `player` — and manually toggleable (`togglePlayerEmblemTarget`, mirror of `toggleEmblemVsYou`).
+2. **Colour CSS:** add `.brow.vsenemy{border-color:var(--azor);background:linear-gradient(180deg,rgba(77,168,218,.12),var(--ink-3))}` (blue, mirroring the red `.vsyou` at ~77 using the existing `--azor` blue token). Apply `vsenemy` to the row when `target==='enemy'`; no class when `target==='player'`.
+3. **Row UI parity:** upgrade the player emblem render (~1349) to the full control set used by `renderEnemyEmblems` — name/effect edit, value editor (P22-style), auto/static toggle, trigger select, attach select (for anthems), a **target toggle** (player/enemy), fire, remove — so player and enemy emblem rows are at parity. (Factor the shared row renderer if practical, or mirror it.)
+4. **Label** the target on the row ("targets enemy"/"targets you") and log target changes to the `you` channel.
+
+**ACs:** a player emblem targeting the enemy shows a blue box; targeting the player shows uncoloured; the target can be toggled; the default target matches the effect kind; player rows have the same controls as enemy rows; round-trips + migrates; the enemy red-box behavior is unchanged.
+**Verify:** jsdom — a player emblem with `target='enemy'` renders `.brow.vsenemy` (blue), `target='player'` renders no colour class; toggling flips it; default target derives from kind; the row exposes the full control set; syntax + id-diff (only the new `.vsenemy` class + player-emblem control ids).
 
 ---
 
