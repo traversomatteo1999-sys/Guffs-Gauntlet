@@ -379,7 +379,7 @@
   <div class="grid duo">
     <div class="panel you">
       <h2>⟡ You <span class="tag">carries between rooms</span></h2>
-      <div class="dial"><span class="num" id="youLife">40</span><span class="of">/ <span id="youMax">40</span> life</span></div>
+      <div class="dial"><span class="num" id="youLife">40</span><span class="of">/ <span id="youMax">40</span> life</span><span class="ibtn" role="button" tabindex="0" onclick="event.stopPropagation();showInfo('lifereset')" title="What's this?">i</span></div>
       <div class="bar"><i id="youBar" style="width:100%"></i></div>
       <div class="btnrow"><div class="setbtns"><button class="mini" onclick="adjLife('you',-5)">−5</button><button class="mini" onclick="adjLife('you',-1)">−1</button><button class="mini" onclick="adjLife('you',1)">+1</button><button class="mini" onclick="adjLife('you',5)">+5</button><button class="mini azor" onclick="setLife()">Set…</button></div></div>
       <div class="btnrow" id="satchelRow"><button class="mini gold" onclick="openSatchel()">🎒 Satchel <span class="tag" id="satchelCount">empty</span></button></div>
@@ -418,6 +418,7 @@
     <div class="btnrow" style="margin-top:2px"><span class="lab">＋ emblem</span><select id="embTemplate" style="max-width:208px"></select><button class="tiny ok" onclick="addEnemyEmblem()">+ add</button><span class="manaline">artifacts/enchantments are cards the enemy casts (deck tools) — they enter the board below as real permanents</span></div>
     <div id="enemyEmbList" style="margin-top:6px"></div>
     <div class="btnrow" style="margin-top:4px"><span class="lab" title="Propaganda — the player pays per attacker to attack the enemy (reminder)">⚔ attack tax (player pays)</span><input type="number" id="enAtkAmt" min="0" value="0" style="width:42px"><select id="enAtkType"><option value="mana">mana</option><option value="life">life</option></select><select id="enAtkTgt"><option value="both">both</option><option value="player">face</option><option value="walkers">walkers</option></select><button class="tiny ok" onclick="setEnemyAtkRule(+($('enAtkAmt').value),$('enAtkType').value,$('enAtkTgt').value)">set tax</button><span class="manaline">generic enemy attack tax; per-permanent taxes set in each permanent's ✎ drawer</span></div>
+    <div class="btnrow" style="margin-top:4px"><span class="lab">＋ resource</span><select id="resKindE"><option value="treasure">💰 Treasure</option><option value="blood">🩸 Blood</option><option value="clue">🔍 Clue</option><option value="food">🍖 Food</option><option value="custom">🔶 custom</option></select><input type="number" id="resQtyE" min="1" value="1" style="width:44px"><button class="tiny ok" onclick="makeResFromUI('enemy')">make</button><span id="enemyResList" class="reschips"></span><span class="manaline">the enemy cracks its own Treasure for mana when short (P16.3)</span></div>
   </div>
 
   <div class="panel" style="margin-top:12px">
@@ -433,7 +434,8 @@
   <div class="panel" style="margin-top:12px">
     <h2>🛡 Your board <span class="tag">the enemy reads &amp; fights this</span></h2>
     <div class="btnrow" style="margin-top:4px"><button class="big azor inline" onclick="openCardSearch()">✦ Cast a spell</button><button class="mini gold" onclick="chooseCommander()" title="Choose or change your commander">♛ + commander</button><span class="manaline">→ search your library or all of Magic; onto the Stack</span></div>
-    <div class="btnrow" style="margin-top:4px"><span class="lab">Deploy token</span><select id="boardTokSel" style="max-width:180px"></select><input type="number" id="boardTokQty" min="1" value="1" style="width:48px"><button class="ok" style="padding:8px 14px;font-weight:700" onclick="deploySavedToken()">Deploy ×N</button><button class="tiny" onclick="openLibrary()">＋ make / manage</button></div>
+    <div class="btnrow" style="margin-top:4px"><span class="lab">Deploy token</span><select id="boardTokSel" style="max-width:180px"></select><input type="number" id="boardTokQty" min="1" value="1" style="width:48px"><select id="boardTokTarget" title="which board to deploy onto"><option value="mine">→ your board</option><option value="enemy">→ enemy board</option></select><button class="ok" style="padding:8px 14px;font-weight:700" onclick="deploySavedToken()">Deploy ×N</button><button class="tiny" onclick="openLibrary()">＋ make / manage</button></div>
+    <div class="btnrow" style="margin-top:4px"><span class="lab">＋ resource</span><span class="ibtn" role="button" tabindex="0" onclick="event.stopPropagation();showInfo('tokens')" title="What's this?">i</span><select id="resKind"><option value="treasure">💰 Treasure</option><option value="blood">🩸 Blood</option><option value="clue">🔍 Clue</option><option value="food">🍖 Food</option><option value="custom">🔶 custom</option></select><input type="number" id="resQty" min="1" value="1" style="width:44px"><button class="tiny ok" onclick="makeResFromUI('mine')">make</button><span id="myResList" class="reschips"></span></div>
     <div class="cmdbox" id="pcmdBox" style="display:none"></div>
     <div class="subh"><span>Creatures</span><button class="tiny ok" onclick="addC()">+ creature</button></div>
     <div class="creatures" id="myCrea"></div>
@@ -591,6 +593,7 @@
           <label>Colors<input type="text" id="tokColor" placeholder="R" style="text-transform:uppercase"></label>
           <label style="grid-column:1/-1">Keywords (comma-sep)<input type="text" id="tokKw" placeholder="haste"></label>
           <label>Quantity<input type="number" id="tokQty" value="1" min="1"></label>
+          <label>Deploy to<select id="tokTarget"><option value="mine">your board</option><option value="enemy">enemy board</option></select></label>
         </div>
         <div class="btnrow" style="margin-top:8px"><button class="tiny ok" onclick="quickDeployToken()">Deploy ×N now</button><button class="tiny gold" onclick="saveTokenToLibrary()">★ Save token</button></div>
       </div>
@@ -867,7 +870,7 @@ function enterRoom(i,first){S.roomIndex=i;const room=DUNGEON[i];const baseHp=(ro
   S.boss={name:room.villain,life,max:life,isVael:!!room.isVael,colors:(room.colors||["R"]).slice()};
   S.enemy={name:room.villain,colors:(room.colors||["R"]).slice(),lore:room.lore||"",isFinal:!!room.isVael};
   S.cmd={id:'cmd',n:room.cmd.n,p:room.cmd.p,t:room.cmd.t,baseP:room.cmd.p,baseT:room.cmd.t,kw:[...room.cmd.kw],color:(room.cmd.colors||room.colors||["R"]).slice(),baseCost:room.cmd.cost,cost:room.cmd.cost,tax:0,deaths:0,inPlay:false,sick:false,tapped:false,plus:0,minus:0,other:[],_cmd:true};
-  S.tokens=[];S.rules=[];S.turn=0;S.phase2done=false;S.balanceScale=1;S.emblemsEnemy=[];S.enemyArtifacts=[];S.enemyEnchants=[];S.battles=[];S.plane=null;S.bossManaFrozen=0;S.stackProposal=null;S.enemyCounters={poison:0,energy:0,experience:0,cmdDmg:0};/* P13.3: clear the enemy artifact/enchant board each room too (no cross-dungeon leak) · P19.1: each boss starts with clean counters (poison/cmd-damage are per-game) */
+  S.tokens=[];S.rules=[];S.turn=0;S.phase2done=false;S.balanceScale=1;S.emblemsEnemy=[];S.enemyArtifacts=[];S.enemyEnchants=[];S.battles=[];S.plane=null;S.bossManaFrozen=0;S.stackProposal=null;S.enemyCounters={poison:0,energy:0,experience:0,cmdDmg:0};S.enemyResources=[];/* P13.3: clear the enemy artifact/enchant board each room too (no cross-dungeon leak) · P19.1: clean counters per boss · P16.2: clear enemy resource tokens per room */
   S.pw=room.pw?{name:room.pw.name,loy:room.pw.loy,baseLoy:room.pw.loy,colors:(room.pw.colors||room.colors||[]).slice(),ultThreshold:room.pw.ultThreshold||7,plus:room.pw.plus,minus:room.pw.minus,ult:room.pw.ult}:null;
   S.bossManaMod=0;S.bossLands=0;S.bossLandPlayed=false;S.bossManaMax=0;S.bossMana=0;/* P17.1: lands-only mana — the enemy opens every battle at 0 and grows its pool ONLY by playing land cards from hand (no pre-seed; room.landStart/DIFF.manaBonus retired as mana levers; ramp rocks stay; the 7-card hand + mulligan in P17.2 keeps it playable) */
   S.activeTurn=null;S.phase=0;S.plays=[];S.combat=null;S.paused=false;S.lib=buildDeck(room);S.hand=[];S.gy=[];S.exile=[];dealOpeningHand();/* P17.2: 7-card opening hand + mulligan-to-3-lands (was vaelDraw(4)) */
@@ -1177,7 +1180,9 @@ function markerRow(scope,id){const o=_boardArr(scope).find(x=>x.id===id)||{};con
 function clearExpiringTokens(){
   const goneMine=S.my.creatures.filter(c=>c.token&&c.expires);goneMine.forEach(c=>{const i=S.my.creatures.indexOf(c);if(i>=0)S.my.creatures.splice(i,1);});
   const goneEnemy=(S.tokens||[]).filter(c=>c.expires);goneEnemy.forEach(c=>{const i=S.tokens.indexOf(c);if(i>=0)S.tokens.splice(i,1);});
-  const all=[...goneMine,...goneEnemy];
+  const goneMR=(S.my.resources||[]).filter(r=>r.expires);goneMR.forEach(r=>{const i=S.my.resources.indexOf(r);if(i>=0)S.my.resources.splice(i,1);});/* P16.2: resource tokens honor the same expires sweep */
+  const goneER=(S.enemyResources||[]).filter(r=>r.expires);goneER.forEach(r=>{const i=S.enemyResources.indexOf(r);if(i>=0)S.enemyResources.splice(i,1);});
+  const all=[...goneMine,...goneEnemy,...goneMR,...goneER];
   if(all.length)log("sys",`⌛ Until-end-of-turn token${all.length===1?'':'s'} cease to exist: ${all.map(c=>c.name).join(', ')}.`);
 }
 
@@ -1379,6 +1384,7 @@ function render(){
   if(S.cmd.inPlay){const el=document.createElement("div");el.className="crea cmdcard"+(S.cmd.sick?" sick":"")+(S.cmd.tapped?" tapped":"");el.innerHTML=cmdFieldCard();cf.appendChild(el);}
   S.tokens.forEach(c=>{const el=document.createElement("div");el.className="crea"+(c.sick?" sick":"")+(c.tapped?" tapped":"");el.innerHTML=enemyCard(c);cf.appendChild(el);});
   renderMy();renderAtkPick();renderCounters();renderStackFab();renderEnemyEmblems();renderStackProposal();renderBattles();
+  {const mr=$("myResList");if(mr)mr.innerHTML=renderResChips('mine');const er=$("enemyResList");if(er)er.innerHTML=renderResChips('enemy');}/* P16.2: resource-token chips on each board */
   const rp=$("rulesPanel"),rf=$("rulesField");if(S.rules.length){rp.style.display="";rf.innerHTML="";S.rules.forEach(r=>{const el=document.createElement("div");el.className="ruleperm"+(r.side==="boss"?" bossr":"");el.innerHTML=`<div class="rn">${r.name}</div><div class="rt">${r.text}</div><div class="acts">${r.die?`<button class="mini gold" onclick="rollRule(${r.id})">Roll d${r.die}</button>`:''}<button class="mini ember" onclick="destroyRule(${r.id})">Destroy</button></div>`;rf.appendChild(el);});}else rp.style.display="none";
   const sc=$("satchelCount");if(sc)sc.textContent=S.inv.length?`${S.inv.length} item${S.inv.length===1?'':'s'}`:'empty';
   $("turnTag").textContent="Turn "+S.turn+" · "+DUNGEON[S.roomIndex].name;renderFlow();renderZones();renderMyZones();renderDeckColors();renderBoardTokens();const gn=$("goldNote");if(gn)gn.textContent="💰 "+getGold();
@@ -1784,6 +1790,8 @@ function lootRoll(){const luck=Math.max(0,(DIFF[S.diff]&&DIFF[S.diff].luck)||0);
 
 function bossDown(){if(S.over)return;if(S.boss.isVael&&!S.phase2done){S.phase2done=true;const _vr=DUNGEON[S.roomIndex];S.boss.life=Math.max(1,(_vr.reborn&&_vr.reborn[S.diff])||Math.round(S.boss.max*0.25));applyRun(["spawn","Pyre Revenant",4,3,["trample","haste"],"RB"]);/* P10: Vael revives once at an explicit per-difficulty HP (room.reborn = 10/15/20 easy/std/brutal); the 0.25*max fallback matches those values. */log("dm",`🔥🔥 <b>UNDYING EMBERS!</b> Vael rises ENRAGED at ${S.boss.life} life and calls a Pyre Revenant.`);render();return;}if(S.boss.isVael){win();return;}S.paused=true;sfx('victory');const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);log("sys",`🏳 <b>${S.boss.name} falls!</b>`);log("loot",`💰 You collect <b>${gold} gold</b> (account balance ${getGold()}). Spend it at the 🛒 Merchant between descents.`);S._spoils=`🎲 Loot roll ${lr.label} → ${lr.names.join(" + ")}!  ·  💰 +${gold} gold (account ${getGold()})`;render();showEncounterClear();}
 function advance(){const next=S.roomIndex+1;closeCutscene();S._spoils="";freshGameForDungeon();enterRoom(next);S.paused=false;
+  /* P16.4: between-boss life reset — trim excess TEMPORARY life down to the permanent base (youMax). Spent magic fading, distinct from damage; never raises life, never touches life ≤ base, never lowers youMax. Runs BEFORE the P15.4 descent-heal so "missing HP" is measured from the post-cap value. After a Tonic of Vigor (+10 base) the cap tracks the new base automatically (Phase 28). */
+  if(S.youLife>S.youMax){const was=S.youLife;S.youLife=S.youMax;log("sys",`✨ Temporary vigor fades — your life settles to <b>${S.youMax}</b> between battles (was ${was}).`);}
   /* P15.4: difficulty-scaled recovery between bosses — only when below the threshold; adjLife/floor never overheal. (P16.4 will reset >40 life FIRST, then this heals against the post-cap value.) */
   {const dh=DESCENT_HEAL[S.diff]||DESCENT_HEAL.standard;if(S.youMax>0&&(S.youLife/S.youMax)<dh.thr){const heal=Math.floor((S.youMax-S.youLife)*dh.frac);if(heal>0){S.youLife=Math.min(S.youMax,S.youLife+heal);log("you",`🌿 You recover <b>${heal}</b> between descents (${S.youLife}/${S.youMax}).`);}}}
   log("sys",`A fresh board awaits in <b>${DUNGEON[next].name}</b> — empty battlefield, but your life (${S.youLife}) and loot carry over.`);render();const nr=DUNGEON[next];showCutscene(nr.intro,nr.villain,`${nr.name} · descending`,nr.isVael?"Face the Tyrant ▸":"Descend ▸",villainCutOpts(nr));}
@@ -1895,6 +1903,8 @@ function vaelMain(which){
      body when nothing better; tie-break favours the cheaper card (mana left for a second play), then a true tie. */
   let cast=0,guard=24;const phase=(which===2)?'main2':'main1';
   while(guard-->0){
+    /* P16.3: if a desirable card is just out of mana range but the enemy holds Treasure, crack enough to afford the best reachable play before the affordability filter below would drop it. */
+    {const treas=(S.enemyResources||[]).filter(r=>r.kind==='treasure').length;if(treas>0){const want=S.hand.map((c,i)=>({i,fx:FX[c.key]})).filter(o=>o.fx&&o.fx.type!=='land'&&wouldDoSomething(o.fx)&&o.fx.cost>usableMana()&&o.fx.cost<=usableMana()+treas).map(o=>({fx:o.fx,val:castValue(o.fx,{phase})})).filter(o=>o.fx.target?(o.val>=enemyActThreshold()):(o.val>0)).sort((a,b)=>b.val-a.val)[0];if(want)enemySacForMana(want.fx.cost);}}
     const opts=S.hand.map((c,i)=>({i,fx:FX[c.key]}))
       .filter(o=>o.fx&&o.fx.type!=='land'&&o.fx.cost<=usableMana()&&wouldDoSomething(o.fx))
       .map(o=>({i:o.i,fx:o.fx,val:castValue(o.fx,{phase})}))
@@ -1988,7 +1998,7 @@ function cmdFieldCard(){const c=S.cmd,buff=c.plus||0,deb=c.minus||0;return `<but
 function freshGameForDungeon(){/* Fresh board each dungeon; life is the carried RPG stat (only loot moves it). The board empties, per-game counters reset (commander damage must — Vael's commander is rebuilt), and your designated commander returns to the command zone with tax reset (a new game). Life, max life, and loot persist. */
   let cmd=S.pcmd||S.my.creatures.find(c=>c.isCmd)||S.my.walkers.find(w=>w.isCmd);
   if(cmd){cmd.kind=cmd.kind||(S.my.walkers.indexOf(cmd)>=0?'walkers':'creatures');cmd.plus=0;cmd.minus=0;cmd.other=[];cmd.tapped=false;cmd.sick=false;cmd.phased=false;cmd._atk=false;if(cmd.baseLoy!=null)cmd.loyalty=cmd.baseLoy;cmd.cmdTax=0;cmd.cmdDeaths=0;S.pcmd=cmd;}
-  S.my={creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]};S.myGy=[];S.myExile=[];S.counters={poison:0,energy:0,experience:0,cmdDmg:0};S.enemyCounters={poison:0,energy:0,experience:0,cmdDmg:0};/* P19.1: symmetric enemy counters */}
+  S.my={creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[],resources:[]};S.myGy=[];S.myExile=[];S.counters={poison:0,energy:0,experience:0,cmdDmg:0};S.enemyCounters={poison:0,energy:0,experience:0,cmdDmg:0};/* P19.1: symmetric enemy counters · P16.2: S.my.resources */}
 function mkPlay(fx){const p={n:fx.n,type:fx.type,text:fx.text,flav:fx.flav,cost:fx.cost,color:fx.color,selfLoss:fx.selfLoss,die:fx.die,dieLoss:fx.dieLoss,run:fx.run,target:fx.target,status:"pending"};if(fx.die){p.roll=enemyRoll(fx.die);if(fx.dieLoss)p.selfLoss=p.roll;}return p;}/* P6.4: enemyRoll applies difficulty luck to the damage the enemy rolls against you */
 function playerItemDesc(p){if(p.ctype==='creature')return `Creature ${p.p}/${p.t}${(p.kw&&p.kw.length)?' — '+p.kw.join(', '):''}. Resolves to your board.`;if(p.ctype==='planeswalker')return `Planeswalker, loyalty ${p.loy}. Resolves to your board.`;if(p.ctype==='artifact'||p.ctype==='enchantment')return `${p.ctype}. Resolves to your board.`;if(p.auto)return p.auto.k==='dmgBoss'?`Deals ${p.auto.n} to the enemy on resolve.`:p.auto.k==='gainLife'?`You gain ${p.auto.n} life on resolve.`:`You lose ${p.auto.n} life on resolve.`;return 'Resolves — apply its effect with the controls as needed.';}
 /* P13.1: edit a spell while it is ON THE STACK (either side) before it resolves — keywords / P-T / can't-be-countered / note. Owner-agnostic (mutates S.plays[i] directly). _edit is transient UI (stripped from undo). */
@@ -2272,6 +2282,8 @@ const INFO_TEXT={
   action:{t:"🜂 Action tab",h:`<p>Where you play a turn: the <b>turn-flow</b> panel (walk the phases with <b>Continue ▸</b>), your <b>attack</b> declaration, and the <b>tools</b> — dice, coin, direct damage, and notes.</p>`},
   enemy:{t:"⚔ Enemy Board",h:`<p>Everything the enemy controls — its creatures, its planeswalker, and its zones (hand, graveyard, exile). Inspect and play enemy cards from here.</p>`},
   player:{t:"🛡 Your Board",h:`<p>Your battlefield (creatures, artifacts, planeswalkers, emblems), your zones (graveyard / exile), and enchantments in play.</p>`},
+  tokens:{t:"🪙 Tokens",h:`<p><b>Creature tokens</b> come from one shared library and can be deployed to <b>either board</b> — pick the target beside the deploy button (P16.1).</p><p><b>Resource tokens</b> — 💰 <b>Treasure</b> (sacrifice for a mana), 🩸 <b>Blood</b> (sac + discard → draw), 🔍 <b>Clue</b> (sac, pay → draw), 🍖 <b>Food</b> (sac, pay → gain 3 life) — sit on either board as chips. Click <b>⚑</b> to sacrifice (a death), <b>⌛</b> to make it cease at end of turn. On your side Food auto-heals and the rest are reminders; the <b>enemy actually spends its own Treasure for mana</b> when it's short, and consumes Food/Clues.</p>`},
+  lifereset:{t:"✨ Between-boss life reset",h:`<p>Descending past a boss, any life <b>above your base</b> settles back down to the base — temporary magic fading. This is <b>not</b> damage: damage you must still heal with items. Life at or below your base is never touched.</p><p>Your base starts at <b>40</b> and only rises from <b>max-life items</b> (e.g. Tonic of Vigor +10) — ordinary healing can carry you above it for a fight but fades on the next descent.</p>`},
   stack:{t:"🜟 The Stack",h:`<p>Spells and abilities wait here before they happen. The stack resolves <b>top-down</b> — last in, first out — so the most recent thing resolves first.</p><p>While something is on the stack either side may respond by adding more on top. Resolve them one at a time: counter, redirect, or let them happen.</p>`},
   commander:{t:"♛ Commander",h:`<p>Your commander begins in the <b>command zone</b>. <b>Cast</b> it onto the stack (the enemy may respond) or <b>Deploy</b> it straight to the battlefield — you pay its cost yourself.</p><p>When it dies (or you send it back) it returns to the command zone and its <b>recast tax</b> rises by +2 each time, so repeated deaths make it cost more.</p>`},
   threat:{t:"⚔ Threat (AI hint)",h:`<p>Tells the enemy AI how dangerous this permanent is. The AI works to remove or block your <b>top</b> threats ahead of <b>mid</b> and <b>low</b> ones — set it honestly so the opponent plays sensibly.</p>`},
@@ -2465,7 +2477,8 @@ function migrate(s){if(!s||typeof s!=='object')return s;
   /* P13.3: enemy artifacts/enchantments are now first-class permanents — convert old emblemsEnemy artifact/enchant entries into real permanents (carrying their automation); genuine emblems stay in the tracker. Idempotent (no artifact/enchant kinds remain afterward). */
   if(Array.isArray(s.emblemsEnemy)){const keep=[];s.emblemsEnemy.forEach(e=>{if(e&&(e.kind==='artifact'||e.kind==='enchantment')){const perm=Object.assign({color:[],token:false,dies:'graveyard',legendary:false},e,{_pscope:e.kind==='artifact'?'eart':'eench'});(e.kind==='artifact'?s.enemyArtifacts:s.enemyEnchants).push(perm);}else keep.push(e);});s.emblemsEnemy=keep;}
   (s.enemyArtifacts||[]).forEach(p=>{if(p&&!p._pscope)p._pscope='eart';});(s.enemyEnchants||[]).forEach(p=>{if(p&&!p._pscope)p._pscope='eench';});
-  if(!s.my||typeof s.my!=='object')s.my={};['creatures','artifacts','enchants','walkers','emblems'].forEach(k=>{if(!Array.isArray(s.my[k]))s.my[k]=[];});
+  if(!s.my||typeof s.my!=='object')s.my={};['creatures','artifacts','enchants','walkers','emblems','resources'].forEach(k=>{if(!Array.isArray(s.my[k]))s.my[k]=[];});/* P16.2: resources */
+  if(!Array.isArray(s.enemyResources))s.enemyResources=[];/* P16.2: enemy resource tokens */
   (s.my.emblems||[]).forEach(em=>{if(em&&typeof em==='object'){if(!('auto' in em))em.auto=null;if(em.autoOn==null)em.autoOn=false;if(em.static==null)em.static=false;if(!em.trigger)em.trigger='upkeep';if(!('attachId' in em))em.attachId=null;if(!em.target)em.target='player';if(!em.kind)em.kind='emblem';}});/* P23.2/3: backfill player-emblem automation fields on old saves */
   /* P17.4: normalize catk.tgt to the {player,walkers,both} enum (was a boolean) on every permanent, both sides. */
   [].concat(s.my.creatures||[],s.my.artifacts||[],s.my.enchants||[],s.my.walkers||[],s.tokens||[],s.enemyArtifacts||[],s.enemyEnchants||[],s.cmd?[s.cmd]:[]).forEach(o=>{if(o&&o.catk&&o.catk.tgt!=='player'&&o.catk.tgt!=='walkers')o.catk.tgt='both';});
@@ -2680,12 +2693,45 @@ function libDelete(i){const p=prof();if(!p)return;p.library.splice(i,1);saveDB()
 
 /* ----- tokens ----- */
 function readTokenForm(){const name=(($("tokName").value||'').trim())||'Token';return {tid:'T'+Date.now()+Math.floor(Math.random()*1000),name,p:parseInt($("tokP").value,10)||1,t:parseInt($("tokT").value,10)||1,kw:($("tokKw").value||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean),color:($("tokColor").value||'').toUpperCase().split('').filter(c=>'WUBRGC'.indexOf(c)>=0)};}
-function deployTokenCfg(cfg,n){n=Math.max(1,n|0);for(let i=0;i<n;i++)S.my.creatures.push({id:S.nextId++,name:cfg.name,p:cfg.p,t:cfg.t,baseP:cfg.p,baseT:cfg.t,kw:(cfg.kw||[]).slice(),color:(cfg.color||[]).slice(),plus:0,minus:0,other:[],tapped:false,sick:true,token:true,expires:false,legendary:false,phased:false,prot:[],catk:null,cward:null,dies:'graveyard',abilP:0,abilA:0,mana:0,strength:'mid',isCmd:false});log("loot",`Deployed <b>${n}× ${cfg.name}</b> (${cfg.p}/${cfg.t}) to your board.`);render();}
+/* ===== P16.2: resource/artifact tokens (Treasure · Blood · Clue · Food + custom) for BOTH boards. Dedicated arrays S.my.resources / S.enemyResources; each is a token permanent that can sit, be sacrificed for its value, and expire at end of turn like any token. ===== */
+const RESOURCE_TOKENS={
+  treasure:{name:'Treasure',glyph:'💰',sac:'Sacrifice: add one mana of any colour.'},
+  blood:{name:'Blood',glyph:'🩸',sac:'Sacrifice + discard a card: draw a card.'},
+  clue:{name:'Clue',glyph:'🔍',sac:'Sacrifice, pay 2: draw a card.'},
+  food:{name:'Food',glyph:'🍖',sac:'Sacrifice, pay 2: gain 3 life.'},
+  custom:{name:'Token',glyph:'🔶',sac:'A custom artifact token — apply its effect yourself.'},
+};
+function resArr(scope){return scope==='enemy'?(S.enemyResources=S.enemyResources||[]):(S.my.resources=S.my.resources||[]);}
+function makeResourceToken(kind,scope,n){const r=RESOURCE_TOKENS[kind]||RESOURCE_TOKENS.custom;scope=(scope==='enemy')?'enemy':'mine';n=Math.max(1,n|0);const arr=resArr(scope);for(let i=0;i<n;i++)arr.push({id:S.nextId++,kind,name:r.name,glyph:r.glyph,note:r.sac,expires:false,token:true});log(scope==='enemy'?"dm":"loot",`Made ${n}× ${r.glyph} <b>${r.name}</b> on ${scope==='enemy'?ENs()+"'s":'your'} board.`);render();}
+function makeResFromUI(scope){makeResourceToken(($("resKind"+(scope==='enemy'?'E':''))||{}).value||'treasure',scope,parseInt(($("resQty"+(scope==='enemy'?'E':''))||{}).value,10)||1);}
+function flagResExpire(scope,id){const arr=resArr(scope);const r=arr.find(x=>x.id===id);if(r){r.expires=!r.expires;render();}}
+/* Sacrifice ceases the token and applies the kind's value where automatable; otherwise logs the reminder. Resource tokens are ARTIFACTS, not creatures, so this does NOT pay the Pit's Tithe (a creature-death trigger) — consistent with the enemy's auto-crack (enemySacForMana). */
+function sacResource(scope,id){scope=(scope==='enemy')?'enemy':'mine';const arr=resArr(scope);const i=arr.findIndex(r=>r.id===id);if(i<0)return;const r=arr[i];arr.splice(i,1);
+  if(scope==='mine'){
+    if(r.kind==='food'){S.youLife+=3;log("you",`🍖 Sacrificed Food — you gain 3 life. (${S.youLife})`);}/* review: inline (no adjLife double-log/render); base-life model means no youMax change */
+    else if(r.kind==='treasure')log("you",`💰 Sacrificed Treasure — +1 mana available for your next cast (you cast freely; apply it yourself).`);
+    else if(r.kind==='clue')log("you",`🔍 Sacrificed Clue — draw a card (your physical draw).`);
+    else if(r.kind==='blood')log("you",`🩸 Sacrificed Blood — discard a card, then draw (your physical action).`);
+    else log("you",`Sacrificed ${r.glyph} ${r.name}.`);
+  }else{
+    if(r.kind==='treasure'){S.bossMana=(S.bossMana||0)+1;S.bossManaMax=(S.bossManaMax||0)+1;log("dm",`💰 ${ENs()} cracks a Treasure — +1 mana (${S.bossMana}).`);}
+    else if(r.kind==='food'){bossHealLife(3);log("dm",`🍖 ${ENs()} consumes Food — gains 3 life.`);}
+    else if(r.kind==='clue'){vaelDraw(1);log("dm",`🔍 ${ENs()} cracks a Clue — draws a card.`);}
+    else log("dm",`${ENs()} sacrifices ${r.glyph} ${r.name}.`);
+  }
+  render();}
+function renderResChips(scope){const arr=resArr(scope);if(!arr.length)return'';const ch=scope==='enemy'?'enemy':'mine';return arr.map(r=>`<span class="zchip"${r.expires?' title="ceases at end of turn"':''}>${r.glyph} ${r.name}${r.expires?' ⌛':''}<b class="zg" title="${embEsc(r.note)} — sacrifice" onclick="sacResource('${ch}',${r.id})">⚑</b><b class="zg" title="toggle expire (end of turn)" onclick="flagResExpire('${ch}',${r.id})">⌛</b></span>`).join('');}
+/* P16.3: the enemy cracks its own Treasure tokens for mana (each +1) up to closing a gap — never below 0 or beyond tokens held. */
+function enemySacForMana(need){if(!(need>0))return 0;const arr=S.enemyResources||[];const treas=arr.filter(r=>r.kind==='treasure').length;
+  if(((S.bossMana||0)+treas-(S.bossManaFrozen||0))<need)return 0;/* review: cracking raises bossMana, so post-crack usable = max(0, bossMana+treas−frozen). Don't burn Treasures unless that actually reaches `need` (a freeze can otherwise eat them for nothing). */
+  let cracked=0;while(usableMana()<need){const i=arr.findIndex(r=>r.kind==='treasure');if(i<0)break;arr.splice(i,1);S.bossMana=(S.bossMana||0)+1;S.bossManaMax=(S.bossManaMax||0)+1;cracked++;}if(cracked)log("dm",`💰 ${ENs()} cracks ${cracked} Treasure${cracked===1?'':'s'} for mana (now ${S.bossMana}).`);return cracked;}
+/* P16.1: deploy a saved creature token to EITHER board from the one shared library. scope 'mine' (default) → S.my.creatures, unchanged; 'enemy' → S.tokens as a keyless enemy body (colour defaults to the boss identity via colorsOf). */
+function deployTokenCfg(cfg,n,scope){n=Math.max(1,n|0);scope=(scope==='enemy')?'enemy':'mine';for(let i=0;i<n;i++){const base={id:S.nextId++,name:cfg.name,p:cfg.p,t:cfg.t,baseP:cfg.p,baseT:cfg.t,kw:(cfg.kw||[]).slice(),color:(cfg.color||[]).slice(),plus:0,minus:0,other:[],tapped:false,sick:true,token:true,expires:false,legendary:false,phased:false,prot:[],catk:null,cward:null,dies:'graveyard',abilP:0,abilA:0,mana:0,strength:'mid'};if(scope==='enemy')S.tokens.push(base);else{base.isCmd=false;S.my.creatures.push(base);}}log(scope==='enemy'?"dm":"loot",`Deployed <b>${n}× ${cfg.name}</b> (${cfg.p}/${cfg.t}) to ${scope==='enemy'?ENs()+"'s":'your'} board.`);render();}
 function renderBoardTokens(){const sel=$("boardTokSel");if(!sel)return;const cur=sel.value;const p=prof();const toks=p?p.tokens:[];sel.innerHTML=toks.length?toks.map((t,i)=>`<option value="${i}" ${''+i===cur?'selected':''}>${t.name} ${t.p}/${t.t}</option>`).join(""):'<option value="">(no saved tokens — make one in Library)</option>';}
-function deploySavedToken(){const p=prof();if(!p||!p.tokens.length){alert('No saved tokens yet — open the Library (🃏) to quick-make one.');return;}const sel=$("boardTokSel");const i=parseInt(sel.value,10);if(isNaN(i)||!p.tokens[i]){alert('Pick a saved token first.');return;}const n=parseInt($("boardTokQty").value,10)||1;deployTokenCfg(p.tokens[i],n);}
-function quickDeployToken(){deployTokenCfg(readTokenForm(),parseInt($("tokQty").value,10)||1);closeLibrary();}
+function deploySavedToken(){const p=prof();if(!p||!p.tokens.length){alert('No saved tokens yet — open the Library (🃏) to quick-make one.');return;}const sel=$("boardTokSel");const i=parseInt(sel.value,10);if(isNaN(i)||!p.tokens[i]){alert('Pick a saved token first.');return;}const n=parseInt($("boardTokQty").value,10)||1;deployTokenCfg(p.tokens[i],n,($("boardTokTarget")||{}).value);}
+function quickDeployToken(){deployTokenCfg(readTokenForm(),parseInt($("tokQty").value,10)||1,($("tokTarget")||{}).value);closeLibrary();}
 function saveTokenToLibrary(){const p=prof();if(!p){alert('Open the Menu and create a profile first.');return;}p.tokens.push(readTokenForm());saveDB();log("loot",`★ Saved token <b>${p.tokens[p.tokens.length-1].name}</b>.`);renderLibrary();}
-function libDeployToken(i){const p=prof();if(!p)return;const cfg=p.tokens[i];if(!cfg)return;const n=parseInt($("tokqty_"+i).value,10)||1;deployTokenCfg(cfg,n);closeLibrary();}
+function libDeployToken(i){const p=prof();if(!p)return;const cfg=p.tokens[i];if(!cfg)return;const n=parseInt($("tokqty_"+i).value,10)||1;deployTokenCfg(cfg,n,($("tokTarget")||{}).value);closeLibrary();}
 function libCopyToken(i){const p=prof();if(!p)return;const c=JSON.parse(JSON.stringify(p.tokens[i]));c.tid='T'+Date.now()+Math.floor(Math.random()*1000);c.name=c.name+" (copy)";p.tokens.push(c);saveDB();renderLibrary();}
 function libDeleteToken(i){const p=prof();if(!p)return;p.tokens.splice(i,1);saveDB();renderLibrary();}
 function castLibOptions(q){const p=prof();const lib=p?p.library:[];q=(q||'').trim().toLowerCase();const rows=lib.map((c,i)=>({c,i})).filter(o=>!q||(o.c.name||'').toLowerCase().includes(q)||(o.c.ctype||'').toLowerCase().includes(q)||(o.c.color||[]).join('').toLowerCase().includes(q));return `<option value="">— pick a saved card… —</option>`+rows.map(({c,i})=>`<option value="${i}">${c.name} · ${c.ctype}${c.ctype==='creature'?` ${c.p}/${c.t}`:''}</option>`).join("");}
