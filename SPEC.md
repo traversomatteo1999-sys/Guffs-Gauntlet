@@ -8,7 +8,7 @@
 
 ## STATUS (update as you go)
 
-- **Branch:** `main` (== `origin/main`; latest `0063a2e`). *(Active feature branch: `satchel-lock-commander-scryfall`, also at `0063a2e`.)*
+- **Branch:** `main` (== `origin/main`; latest built `025fe9d`). *(Active feature branch: `satchel-lock-commander-scryfall`, also at `025fe9d`.)* **Phase 14 specced 2026-06-29 (PLANNED, not built).**
 - **Canonical file:** `index.html` (the deployed PWA build; line 456 is a ~1.3 MB base64 `ART` blob — never open that line; real JS is 457→end). `guffs-gauntlet-level1.html` is a stale pre-embed copy — ignore it.
 - **Verification harness:** headless engine smoke test (Node + DOM shim) drives boot→turn-cycle→undo→save; syntax gate via `node -e` + `vm.Script` over the `<script>` body; **id-set diff** (`grep -oE 'id="[^"]+"'` before/after) after any DOM restructure — nothing may be removed. For visual phases, review live at `http://localhost:8000/` (`python -m http.server 8000` from the repo; incognito to dodge a cached service worker).
 
@@ -85,6 +85,15 @@
 | &nbsp;&nbsp;P13.1 Edit enemy permanents & stack spells (owner-agnostic editor) | ⬜ planned |
 | &nbsp;&nbsp;P13.2 Fuller enemy artifact/enchantment automation (static auras · more triggers · manual-reminder fallback) | ⬜ planned |
 | &nbsp;&nbsp;P13.3 Enemy artifacts/enchantments as first-class board permanents (symmetric enemy board) | ⬜ planned |
+| **Phase 14 — Fixes & QoL: combat-damage prevention · bulk tools · enemy-card normalization** | ⬜ **PLANNED** — commander-name-in-attackers bug · prevent combat dmg to/by any creature (Fog Bank) · enchantments as normal permanents + enemy-ability bug audit · bulk counters · lock item duration to 1 descent · return-all-to-hand · enemy-library type browser · emblem-adder = emblems only (artifacts/enchants are enemy-cast). See Phase 14 below |
+| &nbsp;&nbsp;P14.1 Enemy commander name in attackers popup (bug) | ⬜ planned |
+| &nbsp;&nbsp;P14.2 Prevent combat damage dealt by/to any creature (Fog Bank) | ⬜ planned |
+| &nbsp;&nbsp;P14.3 Enchantments as normal permanents + enemy special-ability audit (Resurgence) | ⬜ planned |
+| &nbsp;&nbsp;P14.4 Bulk counters (give counters/types to many cards at once) | ⬜ planned |
+| &nbsp;&nbsp;P14.5 Item duration fixed at 1 descent (no player-set reminders/duration) | ⬜ planned |
+| &nbsp;&nbsp;P14.6 Return all board / all creatures to hand (tokens deleted) | ⬜ planned |
+| &nbsp;&nbsp;P14.7 Browse enemy library, searchable by card type | ⬜ planned |
+| &nbsp;&nbsp;P14.8 Emblems addable by either side; artifacts/enchants are enemy-cast (adder = emblems only) | ⬜ planned |
 
 ---
 
@@ -1181,11 +1190,142 @@ Round-trip the field wherever the other per-permanent props go: `cmdObjFromCfg` 
 **ACs:** an enemy enchantment can be bounced to the enemy's hand, destroyed to its graveyard, exiled, tucked into the library, copied, taken control of, and edited — identical to an enemy creature; casting an enemy artifact puts it on the stack (player can respond) before it resolves; a destroyed enemy artifact routes to the enemy graveyard and can be reanimated (P9.1/P9.4); existing saves migrate emblem artifact/enchant entries to real permanents without losing automation; true emblems still live in the tracker; player board behavior unchanged.
 **Verify:** jsdom — enemy artifact/enchant create→stack→resolve→board; each toolbox action (bounce/destroy/exile/move/copy/control/edit) on an enemy enchant matches the enemy-creature path; migrate converts old emblem artifact/enchant entries (auto preserved) and leaves emblems; round-trips through save/undo; syntax gate + id-diff.
 
+
+# PHASE 14 — Fixes & QoL: combat-damage prevention, bulk tools, enemy-card normalization ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** Eight requested fixes/QoL items, grounded in the current `index.html` (re-grep names; line numbers drift — line 456 is the base64 `ART` blob, real JS 457→end). Each ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review). **P14.3 and P14.8 reinforce/refine the already-planned P13.3** (enemy artifacts/enchantments as first-class permanents) — read them together; P13.3 is the architecture, P14.3/P14.8 are the requirements layered on it.
+
+## P14.1 — Enemy commander shows as "undefined" in the attackers popup (BUG)
+
+**Goal:** when the enemy commander attacks, the attackers popup + combat logs show its real name, not "undefined".
+
+**Root cause (grounded):** the enemy commander `S.cmd` stores its name in **`.n`** (built ~811: `S.cmd={id:'cmd',n:room.cmd.n,…}`), while enemy creatures `S.tokens` and player creatures use **`.name`**. `vaelAttackers()` (~1096) pushes `S.cmd` into the attacker list, but `renderCombat()` (~1131) and the combat logs read `${a.name}` → `undefined` for the commander.
+
+**How:** add a name accessor (e.g. `cnm(c)=c.name||c.n||'creature'`, or reuse an existing helper if one fits) and use it everywhere combat renders/logs an attacker/blocker/dead creature — pure display/log change, no schema/state touch:
+- `renderCombat()` attacker label (~1131) — **PRIMARY**.
+- `predictCombat()` dead list (~1146).
+- `approveCombat()` per-attacker log + losses (~1152, ~1160-1161, ~1177-1178).
+- `vaelCombat()` "holds back …" (~1619).
+Player creatures keep `.name`; the fallback is a no-op for them.
+
+**ACs:** enemy commander attacks → popup + logs show its name; held-back-by-tax log names it; it dies in combat → loss log names it; tokens/player creatures unchanged.
+**Verify:** jsdom — push `S.cmd` into a combat and assert the rendered/logged name === `S.cmd.n`; a token attacker still uses `.name`; syntax + id-diff.
+
+## P14.2 — Prevent combat damage dealt BY and/or dealt TO any creature (Fog Bank)
+
+**Goal:** any creature (enemy **or** player) can be flagged to prevent all combat damage it would **deal** and/or all combat damage dealt **to** it — Fog Bank = both. Player-controlled bookkeeping on either board.
+
+**Grounded building blocks:** combat math is `resolveAttack()` (~992-1011); `predictCombat()` (~1142) mirrors it for the preview. The per-permanent status-marker system already exists — `STATUS_MARKERS` (~1051), `toggleMarker` (~1052), `markerRow` (~1057) renders a toggle per marker for **both** boards (P9.3); markers live in `obj.other` (round-trips for free). `effP/effT` (~925-926); `hasProtFrom` already early-returns for protection.
+
+**How:**
+1. Add two markers to `STATUS_MARKERS` (~1051): e.g. `'deals no combat dmg'` and `'prevents combat dmg to it'`. They auto-render as toggles in `markerRow` for every creature on both boards (no UI code).
+2. Helper `hasMarker(c,m)=(c.other||[]).includes(m)`.
+3. Gate inside `resolveAttack()`:
+   - attacker outgoing (~996): if `hasMarker(att,'deals no combat dmg')` → `out=0` (no face/trample/blocker damage; lifelink keys off `out` so it also zeroes).
+   - blocker death (~1000): a blocker that `hasMarker(b,'prevents combat dmg to it')` isn't killed (takes 0; deathtouch deals 0 → survives). Trample still **assigns** lethal over it per MTG before trampling.
+   - blocker strike-back (~1006): if `hasMarker(b,'deals no combat dmg')` → its `bp=0` (no `defLifelink`).
+   - attacker death (~1007): if `hasMarker(att,'prevents combat dmg to it')` it can't die to combat damage (ignores blocker deathtouch, since damage is 0).
+4. Mirror the same gates in `predictCombat()` so the preview matches the resolution.
+
+**Interactions to honor:** deathtouch (0 damage → no kill), trample (prevented damage still "assigned" so it doesn't trample through a damage-prevented blocker), lifelink (no damage → no gain), first/double strike (ordering unchanged, damage 0). Indestructible stays independent.
+
+**ACs:** a both-flagged creature deals and takes no combat damage (Fog Bank) — survives a deathtoucher, blocks without dying and without killing; a "deals no dmg" attacker hits face for 0; flags work on player **and** enemy creatures and the prediction matches resolution; markers round-trip through save/undo.
+**Verify:** jsdom — each gate in `resolveAttack` + `predictCombat`; deathtouch/trample/lifelink interactions; both boards; round-trip; syntax + id-diff (only 2 new marker toggles).
+
+## P14.3 — Enchantments are normal permanents; enemy special abilities bug-free (no special cards outside the deck)
+
+**Goal:** (a) enchantment cards like **Warren War-Banner** are treated as **normal enchantments** (real permanents dealable like any card), not bespoke `S.rules` entries; (b) confirm/enforce that enemies have **no special cards outside their deck** — only their deck cards, **items** (e.g. a Vael "ember stone" concept), and special **abilities**; (c) audit the enemy special abilities (**Resurgence** et al.) so they work without bugs.
+
+**Grounded findings:**
+- `warbanner` (~649) is `type:'enchant'` whose `run:['rule','Warren War-Banner','Your upkeep: lose 2 life.',0]` resolves (applyRun `case 'rule'`, ~971) into an `S.rules` entry (the "Enchantments in play" `#rulesPanel`, ~445) — **not** a destroyable/bounceable enemy permanent — and it's excluded from the graveyard at resolve (~1696). Several enemy `enchant`/`artifact` cards behave this way (`run:['rule'|'bossrule'|'ramp',…]`).
+- **Resurgence** is the hardcoded empty-board 1/1 spawn in `vaelMain` (~1612: `if(which===1&&S.tokens.length===0&&!S.cmd.inPlay&&!summonedCmd&&!S.plays.some(p=>p._enemyCmd&&…)) applyRun(["spawn",rn,1,1,…])`) — an **ability**, not a card or a literal `resurgent` keyword. "Warren Overrun" (`overrun` ~656, the until-EOT anthem cleaned up at ~1624-1625), Pit's Tithe (`bloodpactAmount` ~1013), and `cmdBuff` are other ability-shaped effects.
+
+**How:**
+1. **Enchantment normalization** — route enemy (and player) enchantment/artifact *cards* through the **P13.3** real-permanent path (`S.enemyEnchants`/`S.enemyArtifacts`) instead of the `run:['rule']`→`S.rules` shortcut. The card becomes a destroyable/bounceable/copyable permanent; its persistent effect rides on the permanent (P13.2 automation) and falls off when it leaves. Keep `S.rules` **only** for genuine non-card rules (battle/plane house-rules); collapse the duplicate enchantment representation (see P14.8). This item is the *requirement*; P13.3 is the architecture that delivers it.
+2. **Enemy special-ability audit** — review hardcoded enemy abilities for bugs: Resurgence (~1612 — fire **once per turn**, never through a pending commander cast, never double-spawn, correct color fallback), the Warren Overrun anthem cleanup (~1624-1625), Pit's Tithe (~1013), `cmdBuff`. Fix anything found; add jsdom coverage.
+3. **No special cards outside the deck** — confirm no code path hands the enemy a card not built by `buildDeck` (~818); enemy extras are limited to items + abilities. (A "Vael ember stone" item, if desired, is a **data-driven boss item/ability**, not a card — modeling it is out of scope here; record the pattern.)
+
+**ACs:** an enemy enchantment card can be destroyed/bounced like any permanent (via P13.3); Resurgence fires exactly once on an empty board and never double-spawns or fires through a pending commander; no enemy card originates outside the deck; existing saves keep the War-Banner effect after migration.
+**Verify:** jsdom — Resurgence single-fire guard; an enchantment resolves to a real permanent (P13.3), not a stray `S.rules` row; ability-audit regression; syntax + id-diff. (Cross-ref P13.2/P13.3, P14.8.)
+
+## P14.4 — Give counters (and counter types) to cards in bulk
+
+**Goal:** apply a counter — +1/+1, −1/−1, or a named/custom type — to **many** permanents at once (all your creatures / all enemy creatures / all creatures / all permanents), instead of one card at a time.
+
+**Grounded building blocks:** counters live on the object — `c.plus` (+1/+1), `c.minus` (−1/−1), `c.other[]` (named/custom, shared with markers). Per-card helpers: `myctr` (~1442), `myctrCustom` (~1443), `cctr` (~1447), `cctrCustom` (~1448), `remCtr` (~1449), `cmdCtr` (~1455); generic accessor `getObj` (~1274). `effP/effT` (~925-926) read plus/minus. The Tools panel (HTML ~448-465) and **Boardwipe** (~1471-1481 — already a bulk board op with skip-token/skip-legendary) are the precedent + home.
+
+**How:**
+1. `bulkCtr(target, kind, n)` — loop the chosen arrays (`S.my.creatures` / `S.tokens` / +`S.cmd` when `inPlay`) and apply: `kind==='plus'|'minus'` → `o[kind]=(o[kind]||0)+n`; named → push the type to `o.other` n times. `target ∈ {yours, enemy, all-creatures, all-permanents}`.
+2. UI: a "Bulk counters" row in the Tools panel (near Boardwipe ~457) — target select + type select (+1/+1, −1/−1, or custom text) + qty + apply.
+3. One summary log line (e.g. `✦ +1/+1 on 5 creatures.`); single `render()` at end. No schema change (counters already on objects → round-trips free).
+
+**ACs:** bulk +1/+1 raises `effP/effT` on every targeted creature; a custom counter is added to each; yours/enemy/all targeting works; one log line; round-trips through undo/save; `remCtr` still removes one at a time.
+**Verify:** jsdom — `bulkCtr` mutates plus/minus/other across the target set; `effP/effT` reflect it; summary log; round-trip; syntax + id-diff.
+
+## P14.5 — Item duration is fixed at 1 descent; the player can't set item reminders/duration (BUG)
+
+**Goal:** every passive/reminder satchel item lasts **exactly one descent**; remove the player's ability to change that (the ⏳ duration stepper). Reminders/duration on items are not player-set.
+
+**Grounded findings:** `satchelHTML()` (~2461-2465) renders, for passive/reminder items, a `durRow` with `invDuration(i,-1)` / `invDuration(i,1)` steppers (~2463); `invDuration()` (~2467) mutates `it.descents`. Items are created `descents:1` (`grantBoon` ~1490; `applyPendingPurchases` ~1862). `carryInvForward()` (~1860) carries `descents>1` to the next descent — the path that lets a player-bumped item persist. The satchel intro copy (~2462) tells the player to "set the ⏳ duration to keep a passive across more descents." (`BOONS[id].t` oracle text is fixed, not player-editable — leave it.)
+
+**How:**
+1. Remove the `durRow` steppers in `satchelHTML()` (~2463); replace with read-only text "⏳ lasts 1 descent".
+2. Delete `invDuration()` (~2467) and its call sites.
+3. Force `descents=1`: hard-set in `grantBoon` (~1490) and `applyPendingPurchases` (~1862); clamp in `migrate()` (any `it.descents>1` → 1) so old saves normalize.
+4. Update the satchel intro copy (~2462) to drop the "set the duration" line.
+5. `carryInvForward()` (~1860) becomes a no-op (nothing >1) — keep with a clarifying comment, or inline-retire; don't break `restart()`/`startNewDescent()`.
+
+**ACs:** every item shows "lasts 1 descent" read-only; no +/- stepper; items never carry to the next descent; old saves with `descents>1` normalize to 1; consumables/instants unaffected; `BOONS` oracle text unchanged.
+**Verify:** jsdom — `satchelHTML` emits no `invDuration` call; `grantBoon`/`applyPendingPurchases` yield `descents===1`; `migrate` clamps >1; `carryInvForward` returns `[]`; syntax + id-diff. **Resolves the P7.4 open question.**
+
+## P14.6 — Return the whole board / all creatures to hand (tokens deleted)
+
+**Goal:** one action to return all creatures (or all permanents) to hand; tokens can't go to hand → they **cease to exist**.
+
+**Grounded building blocks:** the P9.1 zone engine — `moveBoardCard(obj,to)` (~1031) / `moveBoardById` (~1040): commander → `sendCmdToZone` (command zone, ~1032); token → ceases (~1034); enemy card → `S.hand.push(_movedCard)` (~1035); player card → "returns to your hand" log then leaves the app (no `S.hand` object). `Boardwipe` (~1471) is the bulk precedent (`slice()`-loop + summary log). Player arrays `S.my.{creatures,artifacts,enchants,walkers}`; enemy `S.tokens` (+ `S.cmd`).
+
+**How:**
+1. `returnAllToHand(scope, what)` — `what ∈ {creatures, permanents}`, `scope ∈ {yours, enemy, both}`. Loop `slice()` copies of the relevant arrays and call `moveBoardCard(obj,'hand')` on each (tokens cease automatically; commander → command zone via the `isCmd` branch, **or** skip — pick one and log it).
+2. UI: a "Return to hand" row in Tools (near Boardwipe ~457) — `what` + `scope` + ↩ button.
+3. **NON-death** (no `killMy`/`removeRef`) → no Pit's Tithe / death triggers. One summary log: `↩ Returned N to hand (M tokens ceased).` Single `render()`.
+
+**ACs:** return-all-creatures bounces every non-token creature (yours logs+leaves; enemy → `S.hand`), tokens cease, no life change / no death triggers; return-all-permanents also handles artifacts/enchants/walkers; commander handled deliberately (command zone or skipped) and logged; collapses to one undo step.
+**Verify:** jsdom — the loop bounces all; tokens removed without graveyard; `S.myGy/myExile` untouched; life unchanged; enemy cards land in `S.hand`; one undo step; syntax + id-diff.
+
+## P14.7 — Browse the enemy's whole library, searchable by card TYPE
+
+**Goal:** view the enemy's **entire** library and filter it by card **type** (land / creature / enchant / artifact / sorcery / instant) — not by name — with the existing tutor/move actions on each card.
+
+**Grounded building blocks:** the deck-tools modal — `openDeckTools`/`deckToolsHTML` (~842/858), state `_dt={mode,n,reveal,scry,payMana}`; today it only "Looks at top/bottom N" (`dtLook` ~896). `fxItem(c,actions)` (~860) renders a card row with a `.typechip` from `FX[key].type`; `dtMoveObj`/`dtRevealMove` (~900/906) move a card to hand/board/gy/exile/lib. FX types are `'creature'|'sorcery'|'instant'|'artifact'|'enchant'|'land'` — **note `'enchant'`, not `'enchantment'`.**
+
+**How:**
+1. New `_dt.mode='browse'` branch in `deckToolsHTML` (+ `_dt.typeFilter`): list **all** of `S.lib` with type-filter buttons showing counts; render each via `fxItem` with the existing move actions. Pass the **real** index `S.lib.indexOf(c)` (not the filtered index) to the move handlers.
+2. Entry: a "📖 Browse library" button in the main deck-tools row (~881-891).
+3. Hidden-info: an explicit "🔀 Shuffle & back" (peeking the whole library shuffles on exit); log the browse. View-only — no new game-state arrays.
+4. Board action: enabled for creatures (spawn path) and — once P13.3 lands — artifacts/enchants; hidden/disabled for sorcery/instant/land.
+
+**ACs:** open browse → see the full library, grouped/filterable by type; switching the filter narrows the list; each row can tutor the card to hand/gy/exile/lib (and board for creatures); the correct card moves (right index); exiting shuffles + logs.
+**Verify:** jsdom — browse lists all `S.lib`; the type filter subsets correctly; move uses `S.lib.indexOf`; shuffle-on-exit; syntax + id-diff. (Refines P9.4; orthogonal to P13.3.)
+
+## P14.8 — Emblems addable by either side; enemy artifacts/enchantments are enemy-cast cards (not player-added)
+
+**Goal:** mirror MTG — **emblems** may be added by either side (keep the player-add affordance for emblems). Enemy **artifacts and enchantments** are **cards the enemy plays** through the normal lifecycle; the player does **not** add them via the tracker. Remove the duplicate artifact/enchant representation.
+
+**Grounded findings (the "broken code that duplicates artifacts gameplay"):** the emblem adder lets the player create enemy artifacts/enchantments as tracker rows — the `#embKind` selector (HTML ~401) offers Enchantment / Artifact / Emblem; `addEnemyEmblem()` (~1409) stores `kind` into `S.emblemsEnemy`; `ENEMY_FX_KINDS` (~1427) groups by artifact/enchantment/emblem. Meanwhile an enemy enchantment **card** resolves via `run:['rule']` → `S.rules` (a separate panel), and an enemy artifact **card** resolves via `run:['ramp']` → just `S.bossMana` with no permanent. So an enchantment can exist in **two** places at once (player tracker row + `S.rules`), and artifacts have no real permanent — exactly the P13.3 asymmetry.
+
+**How:**
+1. **Restrict the adder to emblems (immediate, pre-P13.3):** drop the enchantment/artifact `<option>`s from `#embKind` (~401); hardcode `kind='emblem'` in `addEnemyEmblem` (~1409-1414); reduce `ENEMY_FX_KINDS` (~1427) to the emblem group; simplify `renderEnemyEmblems`/`rmEnemyEmblem` accordingly. Emblems stay addable by either side.
+2. **One representation for artifacts/enchants (P13.3):** enemy artifact/enchant **cards** become real permanents (`S.enemyArtifacts`/`S.enemyEnchants`) via cast→stack→resolve, dealable like any card (bounce/destroy/move/copy/control/edit); the `run:['rule']`/`['ramp']` shortcut stops creating duplicate `S.rules`/tracker state for cards. `migrate()` converts old `S.emblemsEnemy` artifact/enchant rows into real permanents (carrying `auto`/`note`/`vsYou`), leaving true emblems in the tracker.
+3. `S.rules` narrows to genuine non-card rules; the **enemy** plays its own artifacts/enchants (AI / `dtPlayCard`), not the player.
+
+**ACs:** the emblem adder offers **only** emblem; emblems still addable by both sides; the player can no longer create enemy artifact/enchant tracker rows; an enemy enchantment/artifact exists as exactly one real permanent (no duplicate `S.rules` + tracker); old saves migrate emblem artifact/enchant rows to real permanents with automation intact; true emblems stay in the tracker.
+**Verify:** jsdom — `#embKind` has only the emblem option; `addEnemyEmblem` always `kind='emblem'`; no duplicate representation for a resolved enchantment; `migrate` converts old rows; syntax + id-diff. (Forms the requirement layer for P13.2/P13.3; pairs with P14.3.)
+
 ---
 
 ## Open questions (non-blocking — assume the stated default unless overridden)
 
-- **Passive item duration (P7.4):** are any satchel items meant to last >1 descent? *Default:* all single-descent (counter shows 1).
+- **Passive item duration (P7.4):** ~~are any satchel items meant to last >1 descent?~~ **RESOLVED by P14.5** — all passive items last exactly 1 descent; the player-set duration stepper is removed.
 - **Plane die contents (P7.7):** which planar/chaos outcomes? *Default:* generic chaos roll the player interprets.
 - **Sound palette (P7.8):** vibe? *Default:* soft, low, synthesized UI/combat cues.
 - **Enemy "play this card" mana (P6.5):** spend vs free override? *Default:* offer both.
