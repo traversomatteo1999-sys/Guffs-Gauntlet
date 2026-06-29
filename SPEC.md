@@ -159,6 +159,9 @@
 | &nbsp;&nbsp;P32.1 Resolver actions: negate attacker · prevent its combat damage (this combat only) | ⬜ planned |
 | **Phase 33 — Auto-register enemy spawned creatures as tokens (`token:true`)** | ⬜ **PLANNED** — enemy bodies made by `spawn` (cards/Resurgence/reanimation) aren't flagged `token:true`, so the (already-working) token rules don't recognise them — bouncing one sends it to hand instead of ceasing. Set the flag at creation + migrate backfill; the existing token mechanics then apply for free. See Phase 33 below |
 | &nbsp;&nbsp;P33.1 `spawn` case sets `token:true`; migrate backfills existing enemy tokens | ⬜ planned |
+| **Phase 34 — Smarter enemy combat AI: strategic attacking, targeting & blocking** | ⬜ **PLANNED** — extend the P6.x combat AI: attack with lethal/race awareness + defensive hold-back when behind + smarter face/walker targeting; block survival-first against lethal, gang-block to kill, don't chump tramplers, exploit deathtouch/first-strike, preserve key blockers. Difficulty-scaled. See Phase 34 below |
+| &nbsp;&nbsp;P34.1 Smarter attacking & targeting (lethal/race push · defensive hold-back · face vs walker) | ⬜ planned |
+| &nbsp;&nbsp;P34.2 Smarter blocking (survival-first vs lethal · gang-block to kill · trample/deathtouch/first-strike-aware · preserve bombs) | ⬜ planned |
 
 ---
 
@@ -2294,6 +2297,46 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** an enemy creature spawned by any path is `token:true`; bouncing it (↩ hand) or moving it to library/exile/graveyard makes it **cease** (no zone entry), like player tokens; death/slay still ceases; a donated real (non-token) creature on the enemy board is unaffected (still goes to a zone); old saves backfill spawned bodies to `token:true` without flagging donated creatures; no change to token mechanics themselves.
 **Verify:** jsdom — `applyRun(["spawn","X",2,2,[],"R"])` yields an `S.tokens` entry with `token===true`; `moveBoardById('token',id,'hand')` ceases it (no `S.hand` push); a `_controlled` non-token on `S.tokens` still moves to hand; migrate backfills spawned bodies only; slay/expiry still cease; syntax + id-diff (one-field change + migrate). (Fixes the P7.1/P9.1 enemy-token gap.)
+
+
+# PHASE 34 — Smarter enemy combat AI: strategic attacking, targeting & blocking ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** Make the enemy reason about combat like a thinking opponent — when to attack vs hold back, what to attack, and how to block — extending the existing P6.x AI rather than replacing it. **Depends on Phase 18** (correct menace/keyword resolution): the AI's EV math must read a correct `resolveAttack`, so build P34 *after* P18. Difficulty-scaled via the existing knobs. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded audit (what the AI does today):**
+- **`vaelAttackers` (~1213):** eligible attackers → drops any with a `profitableBlock` (player has a blocker that kills it and survives/trades-up) **unless** it must-attack, is evasive (flyer vs no flyer/reach), or the enemy is going **wide** (more ground attackers than blockers); sorts by power; caps by `maxAtk`. **No lethal/race push, no defensive hold-back, no value on trample/deathtouch.**
+- **`aiTargets` (~1501):** every attacker targets **you**; assigns some to a player **walker** only if walkers exist. Simplistic walker logic.
+- **`aiBlocks` (~1185):** sorts player attackers by `threatScore`, processes biggest first; for each, picks a blocker that **kills + survives**, else a killer (trade) if `combatThreat≥4`, else a **chump** if the threat is big (`≥max(5,bossLife*0.4)`), else a commander-killer; menace → a group of the smallest blockers if `ts≥4`; respects `maxBlk`/lure. **No survival-first-vs-lethal, no gang-block-to-kill-a-too-big attacker, chumps a trampler pointlessly, no first-strike/deathtouch nuance, can trade a bomb for a small attacker.**
+- **Metrics available:** `threatScore` (~1042, enriched), `combatThreat` (effP+strength, gate metric), `strengthVal`, `effP/effT`, `kw`, `enemyLethalReach` (burn-lethal detector — reuse the "what's lethal" idea), difficulty knobs `enemyLuck()`/`enemyActThreshold()`.
+
+## P34.1 — Smarter attacking & targeting
+
+**Goal:** the enemy attacks with awareness of lethal, racing, and its own survival, and aims attackers sensibly at the player vs their planeswalkers.
+
+**How (extend `vaelAttackers` ~1213 + `aiTargets` ~1501):**
+1. **Lethal push:** if declaring an attack (accounting for the player's likely blocks) deals **≥ player's life**, attack all-in regardless of profitable-block holdbacks — a lethal alpha strike beats "good trades." Estimate post-block damage with a lightweight version of the resolver (evasive/trample connect; ground damage minus best blocks).
+2. **Race awareness:** when both are low, weight *pushing damage* higher than preserving creatures — attack with EV-neutral creatures the enemy would otherwise hold, if it's ahead in the race. Conversely, **defensive hold-back:** when the enemy is **behind** (low life and the player has a board that threatens lethal back next turn), keep enough blockers home rather than tapping out attacking — don't attack into a lethal crack-back.
+3. **Value evasion/trample/deathtouch:** an evasive or trampling attacker that connects for real damage attacks even if "blockable"; a **deathtouch** attacker is happy to be blocked (it trades up) so it shouldn't be held by `profitableBlock`. Fold these into the attack filter.
+4. **Smarter targeting (`aiTargets`):** send attackers at a player **planeswalker** when it's a real threat (high loyalty / about to ultimate) or when killing it is more valuable than chip damage to the player; otherwise the face (or split to push the player toward lethal). Keep it bounded/simple.
+5. **Difficulty-scaled:** easy plays straighter (closer to today), brutal uses the full lethal/race/holdback reasoning — gate the new behaviors on `enemyLuck()`/difficulty so the smarts scale.
+
+**ACs:** the enemy goes all-in when it has lethal (even into blocks); it holds blockers back when attacking would let the player crack back for lethal; deathtouch/evasive/trample attackers attack appropriately; attackers aim at a threatening walker when that's better than face; difficulty scales the sophistication; existing EV/go-wide behavior is preserved at the low end.
+**Verify:** jsdom — a board with lethal alpha → all attack; a behind-on-life enemy facing a lethal crack-back → holds blockers; a deathtoucher isn't held by `profitableBlock`; `aiTargets` sends an attacker at a high-loyalty walker; easy vs brutal differ; P6.3 regressions still pass; syntax + id-diff.
+
+## P34.2 — Smarter blocking
+
+**Goal:** the enemy blocks to survive and to trade up — never dies holding usable blockers, gangs up to kill an over-large threat, and stops wasting blockers on tramplers or its bombs on chaff.
+
+**How (extend `aiBlocks` ~1185):**
+1. **Survival-first vs lethal:** if the incoming attack (unblocked) is **≥ enemy life**, block to bring damage **below lethal** even with unfavorable/chump blocks — prioritize not dying over preserving creatures. Compute the incoming total and assign blocks greedily to the biggest unblocked attackers until safe.
+2. **Gang-block to kill:** when no single blocker kills a high-threat attacker, **double/triple-block** to kill it (sum of blockers' power ≥ its toughness, or a deathtoucher in the group), when the trade is worth it (its `threatScore` ≥ the blockers spent). Respect `maxBlk`/menace caps already in place.
+3. **Trample-aware:** **don't chump a trampler** — it tramples the excess over the chump anyway; prefer to take the hit, or gang it enough to kill it. Account for trample when valuing a block.
+4. **Deathtouch / first-strike nuance:** a **deathtouch** blocker trades up — send it at the biggest attacker; a **first-strike** blocker that kills before taking damage is a free block (prefer it); avoid blocks where the enemy's blocker dies to first strike without killing.
+5. **Preserve key blockers:** when **not** under lethal pressure, don't trade a high-value creature (bomb/commander) for a small attacker — chump with the cheapest or take the damage instead. Keep the existing commander-as-last-resort behavior.
+6. **Difficulty-scaled:** easy blocks roughly as today; brutal uses survival-first + gang + trample logic fully (`enemyLuck()`/difficulty gate).
+
+**ACs:** facing lethal, the enemy blocks down below lethal (chumping if needed) rather than dying; it gang-blocks to kill an attacker no single blocker can; it won't chump a trampler pointlessly; deathtouch/first-strike blockers are used well; it preserves bombs when safe; menace/`maxBlk`/lure rules from P12.2/P20.3 still hold; difficulty scales it.
+**Verify:** jsdom — lethal incoming → blocks reduce damage below `S.boss.life`; a 6/6 attacker with two 3/x blockers → gang-blocked dead; a trampler isn't chumped; a deathtouch blocker is assigned to the biggest attacker; a bomb isn't traded for a 1/1 when not under pressure; P6.x/P12.2/P20.3 regressions pass; easy vs brutal differ; syntax + id-diff.
 
 ---
 
