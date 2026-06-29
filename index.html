@@ -868,8 +868,8 @@ function enterRoom(i,first){S.roomIndex=i;const room=DUNGEON[i];const baseHp=(ro
   S.cmd={id:'cmd',n:room.cmd.n,p:room.cmd.p,t:room.cmd.t,baseP:room.cmd.p,baseT:room.cmd.t,kw:[...room.cmd.kw],color:(room.cmd.colors||room.colors||["R"]).slice(),baseCost:room.cmd.cost,cost:room.cmd.cost,tax:0,deaths:0,inPlay:false,sick:false,tapped:false,plus:0,minus:0,other:[],_cmd:true};
   S.tokens=[];S.rules=[];S.turn=0;S.phase2done=false;S.balanceScale=1;S.emblemsEnemy=[];S.enemyArtifacts=[];S.enemyEnchants=[];S.battles=[];S.plane=null;S.bossManaFrozen=0;S.stackProposal=null;S.enemyCounters={poison:0,energy:0,experience:0,cmdDmg:0};/* P13.3: clear the enemy artifact/enchant board each room too (no cross-dungeon leak) · P19.1: each boss starts with clean counters (poison/cmd-damage are per-game) */
   S.pw=room.pw?{name:room.pw.name,loy:room.pw.loy,baseLoy:room.pw.loy,colors:(room.pw.colors||room.colors||[]).slice(),ultThreshold:room.pw.ultThreshold||7,plus:room.pw.plus,minus:room.pw.minus,ult:room.pw.ult}:null;
-  S.bossManaMod=0;S.bossLands=Math.max(0,(room.landStart||0)+(DIFF[S.diff].manaBonus||0));S.bossLandPlayed=false;S.bossManaMax=S.bossLands;S.bossMana=S.bossLands;/* P5.2: mana now comes from sources (lands/rocks/dorks); start with landStart±difficulty already developed, then play a land per turn */
-  S.activeTurn=null;S.phase=0;S.plays=[];S.combat=null;S.paused=false;S.lib=buildDeck(room);S.hand=[];S.gy=[];S.exile=[];vaelDraw(4);
+  S.bossManaMod=0;S.bossLands=0;S.bossLandPlayed=false;S.bossManaMax=0;S.bossMana=0;/* P17.1: lands-only mana — the enemy opens every battle at 0 and grows its pool ONLY by playing land cards from hand (no pre-seed; room.landStart/DIFF.manaBonus retired as mana levers; ramp rocks stay; the 7-card hand + mulligan in P17.2 keeps it playable) */
+  S.activeTurn=null;S.phase=0;S.plays=[];S.combat=null;S.paused=false;S.lib=buildDeck(room);S.hand=[];S.gy=[];S.exile=[];dealOpeningHand();/* P17.2: 7-card opening hand + mulligan-to-3-lands (was vaelDraw(4)) */
   if(room.isVael)fieldVaelBattle();/* P7.7: Vael fields a boss-side Siege the player must break */
   if(!first)log("sys",`— You descend into <b>${room.name}</b>. ${S.boss.name} [${S.boss.colors.join("/")}]: ${life} life. Commander ${S.cmd.n} (${S.cmd.cost} mana). Deck: ${S.lib.length} cards. —`);}
 function buildDeck(room){const lib=[];const add=(k,n)=>{for(let j=0;j<n;j++)lib.push({id:S.nextId++,key:k});};
@@ -880,6 +880,19 @@ function buildDeck(room){const lib=[];const add=(k,n)=>{for(let j=0;j<n;j++)lib.
   Object.keys(pool).forEach(k=>add(k,pool[k]));Object.keys(lands).forEach(k=>add(k,lands[k]));
   for(let a=lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[lib[a],lib[b]]=[lib[b],lib[a]];}return lib;}
 function vaelDraw(n){for(let i=0;i<n;i++){if(!S.lib.length){bossDeckOut();return;}S.hand.push(S.lib.shift());}}
+/* P17.2: battle-start opening hand — shuffle, draw 7, and mulligan (whole hand back, reshuffle, redraw 7) while the hand has fewer than 3 lands, capped at 10 attempts so a low-land deck can't infinite-loop (keeps the best hand seen on giving up). Battle-start only; mid-game draws are unchanged. */
+function dealOpeningHand(){const isLand=c=>FX[c.key]&&FX[c.key].type==='land';const CAP=10;let best=null,bestLands=-1;
+  for(let att=0;att<CAP;att++){
+    if(S.hand.length){S.lib=S.lib.concat(S.hand);S.hand=[];}
+    for(let a=S.lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[S.lib[a],S.lib[b]]=[S.lib[b],S.lib[a]];}
+    S.hand=S.lib.splice(0,Math.min(7,S.lib.length));
+    const lands=S.hand.filter(isLand).length;
+    if(lands>bestLands){bestLands=lands;best=S.hand.slice();}
+    if(lands>=3){log("dm",att>0?`${ENs()} keeps a ${lands}-land hand after ${att} mulligan${att===1?'':'s'}.`:`🂠 ${ENs()} draws a 7-card opening hand (${lands} land${lands===1?'':'s'}).`);return;}
+    log("dm",`${ENs()} mulligans a ${lands}-land opening hand and redraws.`);
+  }
+  if(best){const all=S.lib.concat(S.hand),used=new Set(best);S.hand=best.slice();S.lib=all.filter(c=>!used.has(c));}
+  log("dm",`${ENs()} mulligans to the cap (${CAP}) — keeps its best ${Math.max(0,bestLands)}-land opening hand.`);}
 /* P5.2: real deck-out — if the enemy must draw from an empty library it loses (routes through bossDown so Vael's 2nd phase still triggers; milling the enemy out is now a win path). */
 function bossDeckOut(){if(S.over)return;log("dm",`📚 <b>${ENs()} reaches for a card and finds none — its library is empty. It decks out!</b>`);bossDown();}
 
@@ -991,7 +1004,7 @@ function enemyLuck(){return (DIFF[S.diff]&&DIFF[S.diff].luck)||0;}
 function enemyRoll(n){n=Math.max(1,n|0);return Math.min(n,Math.max(1,d(n)+enemyLuck()));}
 function log(who,html){_lastLog=(''+html).replace(/<[^>]*>/g,'').trim().slice(0,80);const e=document.createElement("div");e.className="entry "+who;e.innerHTML=`<span class="t">${who==='sys'||who==='loot'?'·':'T'+S.turn}</span><span class="x">${html}</span>`;$("log").prepend(e);}
 /* P5.2: the "mana NEXT turn" projection (only used on your turn). The enemy plays one land per turn, so next turn it'll have its current sources + the ritual/stax mod + the land it will play (a land in hand, or one scrounged by the anti-screw floor). Getting this right keeps the commander-readiness hint honest. */
-function bossMana(){const willLand=Array.isArray(S.hand)&&(S.hand.some(c=>FX[c.key]&&FX[c.key].type==='land')||((S.bossLands||0)<(S.turn||0)));return Math.max(0,(S.bossLands||0)+(S.bossManaMod||0)+(willLand?1:0));}
+function projBossMana(){const willLand=Array.isArray(S.hand)&&S.hand.some(c=>FX[c.key]&&FX[c.key].type==='land');return Math.max(0,(S.bossLands||0)+(S.bossManaMod||0)+(willLand?1:0));}/* P17.1: display-only projection of the enemy's mana NEXT turn — +1 ONLY if it actually holds a land to play (the old scrounge assumption is gone). Renamed from bossMana() so it can't be confused with the S.bossMana field; usableMana() stays the single affordability accessor. */
 /* P5.1: the single "usable mana now" accessor — the enemy's pool minus what the player has FROZEN (tapped down). Every enemy affordability check routes through this so a freeze actually limits casting; spends still draw from S.bossMana (the frozen part stays in the pool, just unusable, until it clears at vaelEnd). */
 function usableMana(){return Math.max(0,(S.bossMana||0)-(S.bossManaFrozen||0));}
 function effP(c){return Math.max(0,c.p+(c.plus||0)-(c.minus||0)+(c._tp||0)+(c._stp||0));} /* _tp/_tt = temporary until-end-of-turn buffs (e.g. Warren Overrun anthem); _stp/_stt = continuous static-emblem buffs (P13.2, recomputed each render by applyStaticEmblems) */
@@ -1319,7 +1332,7 @@ function enemyCard(c){const buff=c.plus||0,deb=c.minus||0;return `<button class=
   ${kwSelect('token',c.id)}
   <button class="drawtoggle tiny" onclick="toggleDrawer('token',${c.id})">${c._drawer?'▾ properties':'▸ properties'}</button><button class="tiny" onclick="resetCard('token',${c.id})" title="reset to original — base P/T, clear counters">↺ reset</button>
   ${c._drawer?enemyDrawer('token',c.id,c):''}`;}
-function renderCmd(){const box=$("cmdBox"),c=S.cmd,mana=S.activeTurn==='vael'?usableMana():bossMana();
+function renderCmd(){const box=$("cmdBox"),c=S.cmd,mana=S.activeTurn==='vael'?usableMana():projBossMana();
   if(!c.inPlay){box.className="cmdbox dormant";box.innerHTML=`<div class="cn">${c.n} <span class="tag prep">in hand</span>${infoBtn('commander')}</div><div class="cpt">${effP(c)}/${effT(c)}</div><div class="cstat">Needs <b style="color:var(--gold)">${c.cost}</b> mana${c.tax?` (base ${c.baseCost} + tax ${c.tax})`:''}. ${ENs()} ${S.activeTurn==='vael'?'has':'will have'} ${mana}.${c.deaths?` · deaths ${c.deaths}`:''}</div>`;}
   else{box.className="cmdbox";box.innerHTML=`<div class="cn">${c.n} ♛ <span class="tag">on ${ENs()}'s battlefield ↑</span></div><div class="cstat">Recast if it dies: <b style="color:var(--ember)">${c.baseCost}+${c.tax}=${c.baseCost+c.tax}</b> · deaths ${c.deaths||0}. Controls are on its card under the enemy's creatures.</div>`;}}
 let _hist=[],_committed=null,_settleScheduled=false,_actLabel='',_lastLog='';
@@ -1353,8 +1366,8 @@ function render(){
   {const bfb=$("bossFrozen");if(bfb)bfb.innerHTML=(S.bossManaFrozen||0)>0?`❄ ${S.bossManaFrozen} frozen`:'';}
   const bt=$("bossTag");if(bt)bt.textContent=S.boss.isVael?"FINAL BOSS · fights via commander":"enemy general · fights via commander";
   ["enemyName1","enemyName2","turnEnemyName"].forEach(id=>{const e=$(id);if(e)e.textContent=ENs();});
-  const manaShow=S.activeTurn==='vael'?usableMana():bossMana();const pips=$("manaPips");pips.innerHTML="";for(let i=0;i<Math.max(manaShow,3);i++){const el=document.createElement("span");el.className="pip"+(i<manaShow?"":" off");pips.appendChild(el);}
-  $("manaLine").innerHTML=(S.activeTurn==='vael'?`Mana remaining: <b>${usableMana()}</b> / ${S.bossManaMax}`:`Mana next turn: <b>${bossMana()}</b>`)+((S.bossManaFrozen||0)>0?` · <span class="frz">❄ ${S.bossManaFrozen} frozen</span>`:'');
+  const manaShow=S.activeTurn==='vael'?usableMana():projBossMana();const pips=$("manaPips");pips.innerHTML="";for(let i=0;i<Math.max(manaShow,3);i++){const el=document.createElement("span");el.className="pip"+(i<manaShow?"":" off");pips.appendChild(el);}
+  $("manaLine").innerHTML=(S.activeTurn==='vael'?`Mana remaining: <b>${usableMana()}</b> / ${S.bossManaMax}`:`Mana next turn: <b>${projBossMana()}</b>`)+((S.bossManaFrozen||0)>0?` · <span class="frz">❄ ${S.bossManaFrozen} frozen</span>`:'');
   {const bmm=$("bossManaModVal");if(bmm)bmm.textContent=(S.bossManaMod>=0?'+':'')+(S.bossManaMod||0);const bp=$("bossPoolVal");if(bp)bp.textContent=`${S.bossMana||0} / ${S.bossManaMax||0}${(S.bossManaFrozen||0)>0?` ❄${S.bossManaFrozen}`:''}`;const bfv=$("bossFrozenVal");if(bfv)bfv.textContent=S.bossManaFrozen||0;}
   renderCmd();
   if(S.pw){const pw=S.pw;$("pwPanel").style.display="";$("pwName").textContent=pw.name;$("pwTag").textContent="["+(pw.colors||[]).join("/")+"] · loyalty "+pw.loy;$("pwLoy").textContent=pw.loy;$("pwBar").style.width=Math.min(100,pw.loy/(pw.ultThreshold||8)*100)+"%";
@@ -1575,7 +1588,6 @@ const ENEMY_EMBLEMS=[
   {n:'Lifegain (its upkeep)',note:'At the beginning of its upkeep, the enemy gains 2 life.',auto:{k:'enemyGain',n:2}},
   {n:'Drains you (its upkeep)',note:'At the beginning of its upkeep, you lose 1 life.',auto:{k:'youLose',n:1}},
   {n:'Card draw (its upkeep)',note:'At the beginning of its upkeep, the enemy draws a card.',auto:{k:'enemyDraw',n:1}},
-  {n:'Ramp +1 mana (its upkeep)',note:'At the beginning of its upkeep, the enemy gets +1 mana this turn.',auto:{k:'enemyMana',n:1}},
   {n:'Growth +1/+1 (its upkeep)',note:'At the beginning of its upkeep, put a +1/+1 counter on each enemy creature.',auto:{k:'buffEnemyCreatures',n:1}},
   {n:'Token each upkeep',note:'At the beginning of its upkeep, create a 1/1 enemy token.',auto:{k:'spawnToken',n:1,tn:'Servant',tp:1,tt:1}},
   {n:'Scry 1 (its upkeep)',note:'At the beginning of its upkeep, the enemy scries 1.',auto:{k:'enemyScry',n:1}},
@@ -1603,7 +1615,7 @@ function emblemEffect(em){if(!em||!em.auto)return;const a=em.auto,n=a.n||0;
   if(a.k==='enemyGain'){bossHealLife(n);log("dm",`✦ ${em.name}: ${ENs()} gains ${n} life. (${S.boss.life})`);}
   else if(a.k==='youLose'){S.youLife-=n;log("dm",`✦ ${em.name}: you lose ${n} life. (${S.youLife})`);}
   else if(a.k==='enemyDraw'){vaelDraw(n);log("dm",`✦ ${em.name}: ${ENs()} draws ${n}. (hand ${S.hand.length})`);}
-  else if(a.k==='enemyMana'){S.bossMana=(S.bossMana||0)+n;S.bossManaMax=(S.bossManaMax||0)+n;log("dm",`✦ ${em.name}: ${ENs()} gets +${n} mana this turn. (${S.bossMana})`);}
+  else if(a.k==='enemyMana'){log("dm",`✦ ${em.name}: (retired) — mana is lands-only now; this grants no mana.`);}/* P17.1: the enemyMana template is removed; this handler stays only so an old save's emblem is an inert reminder rather than free mana. */
   else if(a.k==='buffEnemyCreatures'){let c=0;S.tokens.forEach(t=>{t.plus=(t.plus||0)+n;c++;});if(S.cmd&&S.cmd.inPlay){S.cmd.plus=(S.cmd.plus||0)+n;c++;}log("dm",`✦ ${em.name}: +${n}/+${n} on ${c} enemy creature${c===1?'':'s'}.`);}
   else if(a.k==='spawnToken'){const tn=a.tn||'Servant',tp=a.tp||1,tt=a.tt||1,cnt=Math.max(1,n||1);for(let q=0;q<cnt;q++)S.tokens.push({id:S.nextId++,name:tn,p:tp,t:tt,baseP:tp,baseT:tt,kw:[],color:(S.boss&&S.boss.colors||['R']).slice(),plus:0,minus:0,other:[],tapped:false,sick:true,phased:false,token:true,dies:'graveyard'});log("dm",`✦ ${em.name}: ${ENs()} creates ${cnt} <b>${tn}</b> ${tp}/${tt} token${cnt===1?'':'s'}.`);}
   else if(a.k==='enemyScry'){log("dm",`✦ ${em.name}: ${ENs()} scries ${n} (looks at the top ${n} of its library).`);}}
@@ -1776,7 +1788,7 @@ function vaelUntap(){S.tokens.forEach(c=>{c.tapped=false;c.sick=false;});if(S.cm
 /* P5.2: the enemy plays one land per turn from hand (a mana source — never shown as a permanent). Anti-screw floor: if badly mana-light with no land in hand, it scrounges one so games don't stall. */
 function playEnemyLand(){if(S.over||S.bossLandPlayed)return;const li=S.hand.findIndex(c=>FX[c.key]&&FX[c.key].type==='land');
   if(li>=0){S.hand.splice(li,1);S.bossLands=(S.bossLands||0)+1;S.bossMana++;S.bossManaMax++;S.bossLandPlayed=true;log("dm",`${ENs()} plays a land — ${S.bossLands} mana source${S.bossLands===1?'':'s'} (usable ${usableMana()}).`);return;}
-  if((S.bossLands||0)<S.turn-1&&S.turn>1){S.bossLands=(S.bossLands||0)+1;S.bossMana++;S.bossManaMax++;S.bossLandPlayed=true;log("dm",`${ENs()} scrounges a mana source (mana-light) — now ${S.bossLands}.`);}}
+  /* P17.1: no scrounge floor — the enemy plays a land ONLY when it holds one. Mana-screw is a real outcome now (mitigated by the 7-card hand + mulligan, not by free mana). */}
 function vaelUpkeep(){S.rules.filter(r=>r.side==="boss"&&r.heal).forEach(r=>{bossHealLife(r.heal);log("dm",`${r.name}: ${ENs()} gains ${r.heal}. (${S.boss.life})`);});
   fireEnemyEmblems('upkeep');if(S.over)return;/* a drain emblem can end the game on the enemy's upkeep — stop the rest of the upkeep */
   firePlayerEmblems('enemyUpkeep');if(S.over||S.paused)return;/* P23.2: a player emblem keyed to the enemy's upkeep fires here · review: also stop if it FELLED the boss (a mini-boss clear sets S.paused, not S.over) */
@@ -1879,7 +1891,26 @@ function vaelEnd(){resolveLeftoverPlays();fireEnemyEmblems('endStep');if(S.over)
   /* P5.2: clear until-end-of-turn anthem buffs (Warren Overrun) — reset temp P/T and strip the granted keywords */
   [...S.tokens,S.cmd].forEach(c=>{if(c&&(c._tp||c._tt||((c._grantKw||[]).length))){c._tp=0;c._tt=0;(c._grantKw||[]).forEach(k=>{const i=(c.kw||[]).indexOf(k);if(i>=0)c.kw.splice(i,1);});c._grantKw=[];}});
   clearExpiringTokens();/* P7.1: until-end-of-turn tokens cease at the enemy's end step */
+  enemyDiscardToMax();/* P17.3: discard down to 7 (wisely) unless it has "no maximum hand size" */
   log("dm",`${ENs()} ends its turn.`);}
+/* P17.3: "no maximum hand size" — any enemy permanent with the keyword/marker, or a same-named emblem/rule, exempts the enemy from the 7-card limit. */
+function enemyNoMaxHand(){const perms=[...(S.tokens||[]),(S.cmd&&S.cmd.inPlay?S.cmd:null),...(S.enemyArtifacts||[]),...(S.enemyEnchants||[])].filter(Boolean);
+  if(perms.some(c=>kw(c,'no max hand')||(c.other||[]).indexOf('no max hand')>=0))return true;
+  if((S.emblemsEnemy||[]).some(em=>/no max(imum)? hand/i.test((em.name||'')+' '+(em.note||''))))return true;
+  if((S.rules||[]).some(r=>/no max(imum)? hand/i.test((r.name||'')+' '+(r.text||''))))return true;
+  return false;}
+/* P17.3: at end of turn, discard to 7 — pitching surplus lands first (only beyond a healthy curve), then the lowest cast-value spells, protecting needed lands; routes through deckDiscard (logs + graveyards). */
+function enemyDiscardToMax(){if(!Array.isArray(S.hand)||S.hand.length<=7)return;
+  if(enemyNoMaxHand()){log("dm",`${ENs()} has no maximum hand size — it keeps all ${S.hand.length} cards.`);return;}
+  const isLand=c=>FX[c.key]&&FX[c.key].type==='land';const need=S.hand.length-7,developed=(S.bossLands||0);
+  const ranked=S.hand.map((c,i)=>({i,land:isLand(c),val:isLand(c)?-1:castValue(FX[c.key]||{},{phase:'main'})}));
+  const lands=ranked.filter(o=>o.land),spells=ranked.filter(o=>!o.land).sort((a,b)=>a.val-b.val);
+  const surplusLands=Math.max(0,(developed+lands.length)-6);/* keep enough sources to reach a healthy curve (~6); only the surplus is freely pitchable */
+  const pitch=[];
+  for(let k=0;k<lands.length&&pitch.length<need&&pitch.length<surplusLands;k++)pitch.push(lands[k].i);
+  for(let k=0;k<spells.length&&pitch.length<need;k++)pitch.push(spells[k].i);
+  for(let k=0;k<lands.length&&pitch.length<need;k++){if(pitch.indexOf(lands[k].i)<0)pitch.push(lands[k].i);}/* last resort: a near-all-lands hand still trims to 7 */
+  if(pitch.length)deckDiscard(pitch);}
 
 /* --- Your phases --- */
 function youUntap(){S.my.creatures.forEach(c=>{c.tapped=false;c.sick=false;c._atk=false;});log("you",`Your untap — creatures untap, summoning sickness clears.`);}
@@ -1898,7 +1929,7 @@ function enemyInstant(win){if(S.over||S.activeTurn!=='you'||S.stackProposal||S.c
 function flowLabel(){if(S.over)return"— the descent has ended —";if(S.paused)return"Descend to continue ↓";if(S.activeTurn===null)return`▶ Begin ${ENs()}'s Turn 1`;const ph=PHASES[S.phase];if(ph==='end')return S.activeTurn==='vael'?`End ${ENs()}'s turn → Your turn ▸`:`End your turn → ${ENs()}'s turn ▸`;return `Continue ▸ ${PHASE_LABEL[PHASES[S.phase+1]]}`;}
 function renderFlow(){const chips=$("phaseChips");if(chips){chips.innerHTML="";PHASES.forEach((ph,i)=>{const el=document.createElement("span");el.className="phasechip"+(S.activeTurn&&i===S.phase?" on":"")+(S.activeTurn&&i<S.phase?" past":"");el.textContent=PHASE_LABEL[ph];chips.appendChild(el);});}
   const lbl=$("turnLabel");if(lbl){lbl.className="turnlabel "+(S.activeTurn||'pre');lbl.textContent=S.activeTurn===null?"Pre-game — set up your board, then begin":(S.activeTurn==='vael'?`${ENs()}'s turn · ${PHASE_LABEL[PHASES[S.phase]]}`:`Your turn · ${PHASE_LABEL[PHASES[S.phase]]}`);}
-  const fm=$("flowMana");if(fm)fm.innerHTML=S.activeTurn==='vael'?`${ENs()}'s mana: <b>${usableMana()}</b> / ${S.bossManaMax}${(S.bossManaFrozen||0)>0?` ❄${S.bossManaFrozen}`:''} · hand ${S.hand.length} · library ${S.lib.length}`:`${ENs()}'s mana next turn: <b>${bossMana()}</b> · hand ${S.hand.length} · library ${S.lib.length}`;
+  const fm=$("flowMana");if(fm)fm.innerHTML=S.activeTurn==='vael'?`${ENs()}'s mana: <b>${usableMana()}</b> / ${S.bossManaMax}${(S.bossManaFrozen||0)>0?` ❄${S.bossManaFrozen}`:''} · hand ${S.hand.length} · library ${S.lib.length}`:`${ENs()}'s mana next turn: <b>${projBossMana()}</b> · hand ${S.hand.length} · library ${S.lib.length}`;
   const btn=$("dmBtn");if(btn){btn.disabled=S.over||!!S.combat||S.paused;btn.textContent=flowLabel();}
   const bb=$("backBtn");if(bb)bb.disabled=S.over||!!S.combat||S.paused||S.activeTurn===null||S.phase<=0;
   const sb=$("swingBtn");if(sb)sb.classList.toggle('offphase',!(S.activeTurn==='you'&&PHASES[S.phase]==='combat'));}
