@@ -2009,7 +2009,10 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — `slayTo(id,'graveyard')` pushes the creature to `S.gy` and calls `bloodTithe` once; `slayTo(id,'exile')` → `S.exile`; a `token:true` slay ceases with no `S.gy` entry but still Tithes; commander slay → command zone (unchanged); cancel no-ops; syntax + id-diff (only the new slay-popup ids).
 
 
-# PHASE 27 — Collapsible Cards & Tokens sections in the Library ⬜ PLANNED
+# PHASE 27 — Collapsible Cards & Tokens sections in the Library ✅ DONE
+
+> **✅ BUILT & verified (P27.1):** clickable Cards/Tokens `.subh` headers with a `pchev` chevron (▾/▸) + count tags (new `libTokenCount`); `toggleLibSection('cards'|'tokens',ev)` (button-click guarded) flips `S.ui.lib` (default both open; persisted via autosave, excluded from undo); `applyLibSections` hides the list + sets the chevron; an active `#libSearch` query auto-reveals collapsed sections so hits aren't hidden. 11-check jsdom; id-diff adds only the 3 new ids.
+
 
 **Specced 2026-06-29, NOT built.** The Library lists every card and every token flat, which gets noisy. Make the "Cards" and "Tokens" sections expand/collapse so the player can hide whichever they're not using. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
