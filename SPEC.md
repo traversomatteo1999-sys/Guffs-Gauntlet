@@ -91,7 +91,7 @@
 | &nbsp;&nbsp;P14.3 Enchantments as normal permanents + enemy special-ability audit (Resurgence) | ⬜ planned |
 | &nbsp;&nbsp;P14.4 Bulk counters (give counters/types to many cards at once) | ✅ **DONE & verified** (`bulkCtr` over yours/enemy/all-creatures/all-permanents; +1/+1, −1/−1, or custom ×N into `other`; Tools-panel row; one summary log. 6-check jsdom) |
 | &nbsp;&nbsp;P14.5 Item duration fixed at 1 descent (no player-set reminders/duration) | ✅ **DONE & verified** (durRow stepper → read-only "⏳ lasts 1 descent"; `invDuration` retired; `grantBoon`/`applyPendingPurchases` force `descents=1`; `migrate` clamps; `carryInvForward`→`[]`. 8-check jsdom. Resolves P7.4 open Q) |
-| &nbsp;&nbsp;P14.6 Return all board / all creatures to hand (tokens deleted) | ⬜ planned |
+| &nbsp;&nbsp;P14.6 Return all board / all creatures to hand (tokens deleted) | ✅ **DONE & verified** (`returnAllToHand(scope,what)` reuses `moveBoardCard` with a new `quiet` flag → one summary log + one undo step; tokens cease, commanders stay, enemy cards→`S.hand`, NON-death no Pit's Tithe; Tools-panel row. 8-check jsdom + move regression) |
 | &nbsp;&nbsp;P14.7 Browse enemy library, searchable by card type | ⬜ planned |
 | &nbsp;&nbsp;P14.8 Emblems addable by either side; artifacts/enchants are enemy-cast (adder = emblems only) | ⬜ planned |
 | &nbsp;&nbsp;P14.9 Enemy reliably proposes a stack response (bug) | ⬜ planned |

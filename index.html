@@ -467,6 +467,10 @@
       <input type="text" id="bcCustom" placeholder="type" style="width:66px">
       <input type="number" id="bcN" min="1" value="1" style="width:42px"><span class="lab">×</span>
       <button class="mini ok" onclick="bulkCtr()">✦ Apply</button></div>
+    <div class="btnrow"><span class="lab">Return to hand</span>
+      <select id="rthWhat"><option value="creatures">all creatures</option><option value="permanents">all permanents</option></select>
+      <select id="rthScope"><option value="yours">yours</option><option value="enemy">enemy</option><option value="both">both boards</option></select>
+      <button class="mini" onclick="returnAllToHand($('rthScope').value,$('rthWhat').value)">↩ Return</button></div>
     <div class="btnrow"><span class="lab">Counters</span>
       <span class="chip">poison <b id="cPoison" style="cursor:default">0</b>/10 <button class="tiny" onclick="cnt('poison',-1)">−</button><button class="tiny" onclick="cnt('poison',1)">+</button></span>
       <span class="chip">cmd-dmg <b id="cCmd" style="cursor:default">0</b>/21 <button class="tiny" onclick="cnt('cmdDmg',-1)">−</button><button class="tiny" onclick="cnt('cmdDmg',1)">+</button></span>
@@ -1047,16 +1051,25 @@ function killMy(c){/* route a destroyed player permanent: commander→command zo
    moved carrying its name so the zone chips can still label it. A token that leaves the battlefield ceases. */
 function _movedCard(obj){return {key:obj.key||null,name:obj.name||'card',_moved:true,color:(obj.color||[]).slice()};}
 function _detachBoard(obj){let i=S.tokens.indexOf(obj);if(i>=0){S.tokens.splice(i,1);return 'enemy';}let ea=(S.enemyArtifacts||[]).indexOf(obj);if(ea>=0){S.enemyArtifacts.splice(ea,1);return 'enemy';}let ee=(S.enemyEnchants||[]).indexOf(obj);if(ee>=0){S.enemyEnchants.splice(ee,1);return 'enemy';}let cat=null;["creatures","artifacts","enchants","walkers"].forEach(k=>{if(S.my[k].indexOf(obj)>=0)cat=k;});if(cat){obj._cat=cat;S.my[cat].splice(S.my[cat].indexOf(obj),1);return 'player';}return null;}
-function moveBoardCard(obj,to){if(!obj)return;
+function moveBoardCard(obj,to,quiet){if(!obj)return;/* P14.6: quiet suppresses per-card log + render for bulk ops (caller renders + logs a summary once) */
   if(obj.isCmd){sendCmdToZone(obj,false);return;}/* a commander to any zone → command zone (clean) */
-  const nm=obj.name||'card';const side=_detachBoard(obj);if(!side)return;const enemy=(side==='enemy');const who=enemy?ENs()+"'s":'your';
-  if(obj.token){log("you",`<b>${nm}</b> (token) ceases to exist.`);render();return;}/* a token leaving the battlefield ceases */
+  const nm=obj.name||'card';const side=_detachBoard(obj);if(!side)return;const enemy=(side==='enemy');const who=enemy?ENs()+"'s":'your';const lg=(html)=>{if(!quiet)log("you",html);};
+  if(obj.token){lg(`<b>${nm}</b> (token) ceases to exist.`);if(!quiet)render();return;}/* a token leaving the battlefield ceases */
   /* P13.3: a keyless enemy artifact/enchant permanent preserves its FULL self in the modelled zone (tagged _pscope) so it can be reanimated/recast back onto its board array; FX-keyed enemy cards keep the lightweight stub. */
   const erec=()=>obj._pscope?Object.assign({_moved:true},obj):_movedCard(obj);
-  if(to==='hand'){if(enemy)S.hand.push(erec());log("you",`↩ <b>${nm}</b> returns to ${who} hand.`);}
-  else if(to==='graveyard'){if(enemy)S.gy.push(erec());else S.myGy.push(obj);log("you",`<b>${nm}</b> is put into ${who} graveyard.`);}
-  else if(to==='exile'){if(enemy)S.exile.push(erec());else S.myExile.push(obj);log("you",`⊘ <b>${nm}</b> is exiled.`);}
-  else if(to==='libtop'||to==='libbottom'||to==='libshuffle'){if(enemy){const card=erec();if(to==='libtop')S.lib.unshift(card);else S.lib.push(card);if(to==='libshuffle'){for(let a=S.lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[S.lib[a],S.lib[b]]=[S.lib[b],S.lib[a]];}}}log("you",`<b>${nm}</b> ${to==='libtop'?'goes to the top of':to==='libbottom'?'goes to the bottom of':'is shuffled into'} ${who} library.`);}
+  if(to==='hand'){if(enemy)S.hand.push(erec());lg(`↩ <b>${nm}</b> returns to ${who} hand.`);}
+  else if(to==='graveyard'){if(enemy)S.gy.push(erec());else S.myGy.push(obj);lg(`<b>${nm}</b> is put into ${who} graveyard.`);}
+  else if(to==='exile'){if(enemy)S.exile.push(erec());else S.myExile.push(obj);lg(`⊘ <b>${nm}</b> is exiled.`);}
+  else if(to==='libtop'||to==='libbottom'||to==='libshuffle'){if(enemy){const card=erec();if(to==='libtop')S.lib.unshift(card);else S.lib.push(card);if(to==='libshuffle'){for(let a=S.lib.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1));[S.lib[a],S.lib[b]]=[S.lib[b],S.lib[a]];}}}lg(`<b>${nm}</b> ${to==='libtop'?'goes to the top of':to==='libbottom'?'goes to the bottom of':'is shuffled into'} ${who} library.`);}
+  if(!quiet)render();}
+/* P14.6: bounce a whole board (creatures or all permanents) to hand — tokens cease, commanders skipped (stay on board), enemy cards land in S.hand. NON-death (no Pit's Tithe). One summary log, one undo step. */
+function returnAllToHand(scope,what){scope=scope||'yours';what=what||'creatures';
+  const groups=[];const addMine=()=>{groups.push(S.my.creatures);if(what==='permanents')groups.push(S.my.artifacts,S.my.enchants,S.my.walkers);};
+  const addFoe=()=>{groups.push(S.tokens);if(what==='permanents'){groups.push(S.enemyArtifacts||[],S.enemyEnchants||[]);}};
+  if(scope==='yours'||scope==='both')addMine();if(scope==='enemy'||scope==='both')addFoe();
+  let returned=0,ceased=0,skipped=0;
+  groups.forEach(arr=>{(arr||[]).slice().forEach(o=>{if(o.isCmd){skipped++;return;}/* leave commanders on the board */const wasToken=!!o.token;moveBoardCard(o,'hand',true);if(wasToken)ceased++;else returned++;});});
+  log("you",`↩ Returned <b>${returned}</b> to hand${ceased?` (${ceased} token${ceased===1?'':'s'} ceased)`:''}${skipped?` · ${skipped} commander${skipped===1?'':'s'} left in play`:''}.`);
   render();}
 function moveBoardById(scope,id,to){const obj=getObj(scope,id);if(obj)moveBoardCard(obj,to);}
 function moveRow(scope,id,enemy){const idl=id===null?'null':id;const lib=enemy?`<button class="tiny" onclick="moveBoardById('${scope}',${idl},'libtop')">lib top</button><button class="tiny" onclick="moveBoardById('${scope}',${idl},'libbottom')">lib bottom</button><button class="tiny" onclick="moveBoardById('${scope}',${idl},'libshuffle')">🔀 lib</button>`:`<button class="tiny" onclick="moveBoardById('${scope}',${idl},'libtop')">→ library</button>`;return `<div class="drow"><span class="dlab">move to</span><button class="tiny" onclick="moveBoardById('${scope}',${idl},'hand')" title="bounce — not a death">↩ hand</button>${lib}<button class="tiny" onclick="moveBoardById('${scope}',${idl},'exile')">⊘ exile</button><button class="tiny" onclick="moveBoardById('${scope}',${idl},'graveyard')">⚰ grave</button></div>`;}
