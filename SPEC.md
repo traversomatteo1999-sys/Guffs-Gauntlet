@@ -179,6 +179,7 @@
 | &nbsp;&nbsp;P38.2 Enemy commander-as-planeswalker (parity with the player's walker-commander) | ⬜ planned |
 | &nbsp;&nbsp;P38.3 Vael redesign: planeswalker commander whose ult spawns an overpowered Vael's Avatar | ⬜ planned |
 | &nbsp;&nbsp;P38.4 Sorcery-speed loyalty (main-phase, empty stack, 1/turn, player picks when) + enemy sequences stacks & reserves plays for main2 | ⬜ planned |
+| &nbsp;&nbsp;P38.5 Enemy loyalty strategy — manage +/−/ult toward the finisher, defend the walker, avoid 0 (abilities fully listed · red box · 0→gy/command-zone) | ⬜ planned |
 | **Phase 39 — Attack-target selection: swing at the enemy, its planeswalkers, or its sieges/battles (+ enemy blocks battle attacks)** | ⬜ **PLANNED** — when a boss siege/battle is in play, each of your attackers picks its target (enemy face · planeswalker · siege/battle) via a per-attacker select in the combat resolver (like the enemy-attack target panel); damage routes to the chosen target (face/loyalty/defense counters, breaking a siege at 0); the enemy can choose to block — or not — attacks aimed at its sieges/battles. See Phase 39 below |
 | &nbsp;&nbsp;P39.1 Per-attacker target select on your swing (enemy · walker · siege/battle) + damage routing | ⬜ planned |
 | &nbsp;&nbsp;P39.2 Enemy can block attacks aimed at its sieges/battles (aiBlocks defends them; chooses to or not) | ⬜ planned |
@@ -2524,6 +2525,8 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **Specced 2026-06-29, NOT built.** Enemy planeswalkers should work like everything else — **cast cards** that resolve to real walker permanents with **activated loyalty abilities at sorcery speed**, not a hardcoded auto-firing `S.pw`. The enemy commander may itself be a planeswalker, and **Vael** is redesigned so his **commander is the planeswalker** whose **ultimate spawns an overpowered Vael's Avatar**. **Depends on:** P35.1 (real enemy creatures — the spawned Avatar is a real permanent), P29 (command-zone/tax — a walker commander uses it), P30.2 (walker options), and mirrors the **player walker** model (the template). Grounded in the current `index.html` (re-grep names; line numbers drift). Large rework — build carefully (workflow-friendly); each task ships behind the standard per-task workflow.
 
+> **Refinement (user, 2026-06-29):** the enemy planeswalker is **exactly the player's planeswalker** mechanically — same loyalty, same +/−/ult abilities, same rules — even when it's the **commander** (the only visual difference: the **box is red**, the enemy convention). Two specifics: (1) it's rendered **fully, with all its loyalty abilities listed/visible** (not a hidden card — the player can read what it does); (2) it's a **legal swing target** (P39) and the enemy may **defend it** with blockers (P39.2). When its **loyalty hits 0** it leaves like any walker — to the **graveyard** if it's a normal PW card, or to the **command zone** (with recast tax, P29) if it's the commander — and is recurable/recastable accordingly. The enemy must **manage its loyalty strategically** — see P38.5.
+
 **Grounded audit:**
 - **Hardcoded enemy walker:** `S.pw` (~871) = `{name,loy,baseLoy,colors,ultThreshold,plus,minus,ult}`, set from `room.pw`; `pwAct()` (~1826) **auto-fires** one ability each enemy upkeep (from `vaelUpkeep`); manual `adjLoy`/`damagePW` (~1766/1777) edit/kill it; `walkerMinLoy3` (~) targets it. It is **not** a card and does **not** resolve through the stack.
 - **Player walkers (the template):** real cast cards → `resolvePlayerItem` planeswalker branch (~2041) → `S.my.walkers` permanent with `loyalty`/`baseLoy`; manual loyalty +/−; can be a **commander** (`kind:'walkers'`, `castCmd` casts a walker, ~1485).
@@ -2583,6 +2586,24 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** loyalty abilities (player + enemy) are activatable only at sorcery speed (main, empty stack, 1/turn/walker), and the player picks when; the enemy casts in sequential stacks the player can respond to; the enemy reserves higher-post-combat-value plays (removal/trick/ult/mana) for main2 and uses them there; held-back plays are logged; instant-speed windows still work.
 **Verify:** jsdom — a loyalty ability is rejected outside a main / with a non-empty stack / on a second activation that turn; the player can fire in main1 or main2; the enemy proposes ≥2 sequential stacks in a turn when it has plays; a post-combat-valuable removal is reserved for main2 and fired there; held-back log present; syntax + id-diff. (Builds on P4.1, P34, P38.1.)
+
+## P38.5 — Enemy loyalty strategy (manage toward the finisher, protect the walker, avoid 0) + full render
+
+**Goal:** the enemy plays its planeswalker like a real opponent would — spending and building loyalty deliberately toward its **ultimate/finisher**, while **defending the walker** so it doesn't hit 0; and the walker is **rendered fully** (all abilities listed, red box) so the player can read and target it.
+
+**How:**
+1. **Loyalty management AI:** each turn the enemy picks the loyalty ability (P38.1) by a real plan, not just "ult at threshold":
+   - **Build (+):** raise loyalty when the walker is **threatened** (the player can attack it down) or when banking toward the **ult** is worth more than acting now.
+   - **Defend/answer (−):** use the minus (removal/drain/body) when there's a real threat or to remove an attacker that would kill the walker.
+   - **Ult:** fire the finisher when loyalty reaches the threshold **and** it's safe/impactful (don't ult into a board that immediately kills the now-low walker unless it's lethal/decisive).
+   - **Avoid 0:** weigh each spend against the player's ability to attack the walker to 0 next turn — prefer a line that keeps it alive (build, or kill the attacker) over a greedy minus that leaves it killable, unless the payoff is worth trading the walker.
+2. **Defend it in combat:** the enemy assigns blockers to attackers aimed at the walker (P39.2 / the existing combat-AI) when the walker is worth protecting — tie the block decision to the loyalty plan (protect a walker about to ult; let a spent one go if blocking costs too much).
+3. **Full render (red box):** the enemy walker shows its **current loyalty** and **all its loyalty abilities** (+/−/ult with costs + text), like the player's walker card, in a **red** enemy box — the player can read exactly what it does and plan around it. (Abilities are public info, unlike the enemy's hidden hand.)
+4. **0-loyalty routing (confirm):** at 0 loyalty (from combat, removal, or its own minus) it leaves to the **graveyard** (normal PW card — recurable via P35.4) or the **command zone** (commander — recast tax per P29); never lingers at 0.
+5. **Difficulty-scaled:** easy spends loosely (closer to today's auto-fire feel); brutal plays the full protect-and-build-to-ult line (`enemyLuck()`/difficulty gate), per the P34 convention.
+
+**ACs:** the enemy builds loyalty when its walker is threatened, uses the minus to answer/defend, ults when safe and impactful, and generally avoids letting the walker reach 0 (unless trading it is clearly worth it); it defends the walker with blocks when worthwhile; the walker renders fully (loyalty + all abilities, red box); at 0 it routes to graveyard/command-zone; difficulty scales the sophistication.
+**Verify:** jsdom — given a threatened walker the AI builds loyalty (or kills the attacker) rather than greedily spending to a killable state; ults at threshold when safe; the render lists all abilities in a red box; 0 loyalty → graveyard (card) / command zone (commander); easy vs brutal differ; syntax + id-diff. (Builds on P38.1/P38.2, P39.2, P34.)
 
 
 # PHASE 39 — Attack-target selection: swing at the enemy, its planeswalkers, or its sieges/battles ⬜ PLANNED
