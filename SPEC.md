@@ -1660,7 +1660,10 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — `catk.tgt` round-trips and `attackTax` filters by target; an enemy-side tax via `enemyAttackTax()` surfaces a player cost gated by `tgt` (life deducted/reminder); a legacy `catk` with no `tgt` acts as `both`; migrate backfill; syntax + id-diff.
 
 
-# PHASE 18 — Combat correctness: menace enforcement + keyword automation audit ⬜ PLANNED
+# PHASE 18 — Combat correctness: menace enforcement + keyword automation audit ✅ DONE
+
+> **✅ BUILT & verified.** **P18.0** diagnostic pinned the cause: `minBlockers`'s `||` let an explicit `block.min` (1, or 0 falling through) LOWER menace below 2. **P18.1:** `minBlockers = Math.max(explicitMin, menace?2:1)` (raises but never lowers menace, symmetric player/enemy) + a `resolveAttack` guard treating an under-min/menace partial as UNBLOCKED. **P18.2:** keyword audit → rewrote `resolveAttack` as a proper **two-step first-strike model** (simultaneous within each step), fixing 3 confirmed adversarial-review defects: (1) blocker-side first/double strike (a first-strike blocker now deals before a non-FS attacker and can kill it before taking damage / survive), (2) commander-damage counter now = the commander's ACTUAL face dealt (respects double strike, trample-over even when blocked, ward soak, "deals no combat dmg"), (3) lifelink counts only damage actually dealt (0 over a protected/prevented blocker). 29-check jsdom (every keyword, both directions) + full regression; id-diff clean. **Prereq for Phase 20 (now satisfied).**
+
 
 **Specced 2026-06-29, NOT built.** The user wants combat to honor menace strictly and to confirm the combat keywords actually auto-resolve. The P12.2 infrastructure exists (grounded below) but **user testing confirmed a real bug**: an enemy menace creature is blockable by one (the rule works for the player's creatures only). So this phase is a **fix + symmetry-audit** pass: repair the confirmed menace bug, then prove every combat keyword resolves identically for **player and enemy** in BOTH directions (your attack → enemy blocks; enemy attack → you block). Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 

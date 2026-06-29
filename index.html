@@ -1061,26 +1061,34 @@ function ENs(){return EN().split(/[ ,]/)[0];}
 function hasProtFrom(c,other){const oc=colorsOf(other);return (c.prot||[]).some(p=>oc.indexOf(p)>=0);}
 function legalBlock(att,b){if(b.phased)return false;if(kw(b,"can't block"))return false;if(b.tapped)return false;if(hasProtFrom(att,b))return false;if(kw(att,'flying')&&!(kw(b,'flying')||kw(b,'reach')))return false;return true;}
 /* P12.2: block-count restrictions (the menace family). block:{min,max} on a creature; menace folds in as min 2. min=how many blockers are REQUIRED (illegal to block with fewer, unless 0); max=most that may block. */
-function minBlockers(c){return (c&&c.block&&c.block.min)||(kw(c,'menace')?2:1);}
+function minBlockers(c){const explicit=(c&&c.block&&c.block.min)||0;return Math.max(explicit,kw(c,'menace')?2:1);}/* P18.1: Math.max so an explicit block.min can RAISE the requirement but never LOWER menace below 2 (the `||` short-circuit let block.min=1 defeat menace — confirmed enemy-menace bug). Symmetric for player + enemy. */
 function maxBlockers(c){return (c&&c.block&&c.block.max)||Infinity;}
 function blockLabel(c){const mn=minBlockers(c),mx=maxBlockers(c),p=[];if(mn>1)p.push('blocked by '+mn+'+');if(mx!==Infinity)p.push('max '+mx+' blocker'+(mx===1?'':'s'));return p.length?' <span class="manaline">['+p.join(' · ')+']</span>':'';}
 function resolveAttack(attackers,assign){ // assign: {attId:[blockerObjs]}
   let face=0,attLifelink=0,defLifelink=0;const deadAtt=[],deadBlk=[],perAtt=[];
   attackers.forEach(att=>{
-    const bl=(assign[att.id]||[]).filter(Boolean);
-    const out=hasMarker(att,'deals no combat dmg')?0:effP(att)*(kw(att,'double strike')?2:1);/* P14.2: a "deals no combat dmg" attacker deals 0 to face/blockers (lifelink keys off out so it also zeroes) */
-    if(!bl.length){face+=out;perAtt.push({att,toFace:out});if(kw(att,'lifelink'))attLifelink+=out;return;}
-    // attacker assigns to blockers (smallest toughness first); protected blockers take no damage
-    let left=out;const killed=[];
-    bl.slice().sort((a,b)=>effT(a)-effT(b)).forEach(b=>{if(hasProtFrom(b,att))return;const lethal=kw(att,'deathtouch')?1:effT(b);const prevTo=hasMarker(b,'prevents combat dmg to it');/* P14.2: lethal is still ASSIGNED over a damage-prevented (or indestructible) blocker so trample spills correctly, but it isn't killed */if(left>=lethal&&!kw(b,'indestructible')&&!prevTo){left-=lethal;killed.push(b);}else{left-=Math.min(left,lethal);}});
-    const tramp=(kw(att,'trample')&&left>0)?left:0;if(tramp){face+=tramp;}perAtt.push({att,toFace:tramp});
-    if(kw(att,'lifelink'))attLifelink+=out; // total damage dealt
-    // blockers strike back (those not killed by attacker's first/double strike); an attacker protected from a blocker takes no damage from it
-    const attFirst=kw(att,'first strike')||kw(att,'double strike');
-    let blkPow=0,blkDT=false;
-    bl.forEach(b=>{if(hasProtFrom(att,b))return;const dies=killed.includes(b);const bFirst=kw(b,'first strike')||kw(b,'double strike');if(attFirst&&dies&&!bFirst)return;const bp=hasMarker(b,'deals no combat dmg')?0:effP(b)*(kw(b,'double strike')?2:1);blkPow+=bp;if(bp>0&&kw(b,'deathtouch'))blkDT=true;/* P14.2: a "deals no combat dmg" blocker contributes 0 strike-back, no lifelink, and its deathtouch can't kill (0 damage) */if(kw(b,'lifelink'))defLifelink+=bp;});
-    if((blkPow>=effT(att)||blkDT)&&!kw(att,'indestructible')&&!hasMarker(att,'prevents combat dmg to it'))deadAtt.push(att);/* P14.2: an attacker with combat damage prevented can't die to it (incl. deathtouch) */
-    killed.forEach(b=>deadBlk.push(b));
+    let bl=(assign[att.id]||[]).filter(Boolean);
+    if(bl.length>0&&bl.length<minBlockers(att))bl=[];/* P18.1: an illegal partial (under-min / menace) block does NOT count — the attacker is unblocked (full face/trample). approveCombat already refuses this state; this keeps the live prediction honest and guarantees a menace attacker never gets "blocked by one" math. */
+    const attDS=kw(att,'double strike'),attFSonly=kw(att,'first strike')&&!attDS;
+    const attPow=hasMarker(att,'deals no combat dmg')?0:effP(att);/* P14.2: "deals no combat dmg" → 0 */
+    const attTramp=kw(att,'trample'),attDeath=kw(att,'deathtouch'),attIndest=kw(att,'indestructible'),attPrev=hasMarker(att,'prevents combat dmg to it'),attLL=kw(att,'lifelink');
+    if(!bl.length){const out=attPow*(attDS?2:1);face+=out;perAtt.push({att,toFace:out});if(attLL)attLifelink+=out;return;}
+    /* P18.2: proper two-step (first-strike) combat with simultaneous damage within each step. Fixes blocker-side first/double strike (a first-strike blocker deals before a non-first-strike attacker, so it can kill the attacker before taking damage) and lifelink counting only damage ACTUALLY dealt (not over a protected/damage-prevented blocker). */
+    const B=bl.map(b=>({b,pow:hasMarker(b,'deals no combat dmg')?0:effP(b),ds:kw(b,'double strike'),fs:(kw(b,'first strike')||kw(b,'double strike')),indest:kw(b,'indestructible'),prevTo:hasMarker(b,'prevents combat dmg to it'),protB:hasProtFrom(b,att),attProt:hasProtFrom(att,b),ll:kw(b,'lifelink'),dead:false}));
+    let attDmg=0,attDtHit=false,toFace=0;
+    const attackerStrike=()=>{if(attPow<=0)return;let left=attPow;B.filter(x=>!x.dead).sort((a,b)=>effT(a.b)-effT(b.b)).forEach(x=>{if(x.protB)return;/* protected from the attacker → takes no damage, none assigned */const lethal=attDeath?1:effT(x.b);const asn=Math.min(left,lethal);left-=asn;/* lethal is ASSIGNED (left reduced) even over a prevented/indestructible blocker so trample spills; but damage is only DEALT (death + lifelink) when not prevented */if(!x.prevTo){if(attLL)attLifelink+=asn;if(asn>=lethal&&!x.indest)x.dead=true;}});if(attTramp&&left>0){toFace+=left;if(attLL)attLifelink+=left;}};
+    const blockerStrike=(x)=>{if(x.attProt||attPrev||x.pow<=0)return;/* attacker protected/damage-prevented, or a "deals no combat dmg" blocker → 0 */attDmg+=x.pow;if(kw(x.b,'deathtouch'))attDtHit=true;if(x.ll)defLifelink+=x.pow;};
+    const attDeadYet=()=>(attDmg>=effT(att)||attDtHit)&&!attIndest&&!attPrev;
+    /* first-strike step (simultaneous): first/double-strike attacker + first/double-strike blockers */
+    const fsBlockers=B.filter(x=>x.fs);
+    if(attFSonly||attDS)attackerStrike();
+    fsBlockers.forEach(blockerStrike);
+    const deadAfterFS=attDeadYet();
+    /* regular step (simultaneous): the attacker strikes again only if it survived first strike */
+    if(!deadAfterFS){const regBlockers=B.filter(x=>!x.dead&&(!x.fs||x.ds));if(!attFSonly)attackerStrike();regBlockers.forEach(blockerStrike);}
+    if(attDeadYet())deadAtt.push(att);
+    B.forEach(x=>{if(x.dead)deadBlk.push(x.b);});
+    face+=toFace;perAtt.push({att,toFace});/* trample spill to the defending face */
   });
   return{face,deadAtt,deadBlk,attLifelink,defLifelink,perAtt};
 }
@@ -1264,8 +1272,9 @@ function approveCombat(){
     const ward=(S.inv.some(it=>it.id==="ward")?2:0)+(S.inv.some(it=>it.id==="aegis")?4:0)+(S.inv.some(it=>it.id==="buckler")?1:0);/* P15.2: Iron Buckler stacks +1 */const face=Math.max(0,toYou-ward);if(ward&&toYou>0)log("you",`Your charms soak ${Math.min(ward,toYou)}.`);
     if(face>0){S.youLife-=face;sfx('hit');log("dm",`<b>${face}</b> to your life. (${S.youLife})`);}
     Object.keys(wHits).forEach(wid=>{const w=S.my.walkers.find(x=>''+x.id===wid);if(w&&wHits[wid]>0){w.loyalty-=wHits[wid];log("dm",`${ENs()} hits <b>${w.name}</b> for ${wHits[wid]} (loyalty ${Math.max(0,w.loyalty)}).`);if(w.loyalty<=0){log("dm",`<b>${w.name}</b> is destroyed.`);killMy(w);}}});
-    const cmdToYou=S.cmd.inPlay&&attackers.includes(S.cmd)&&!((assign[S.cmd.id]||[]).length)&&(tmap[S.cmd.id]||'you')==='you';
-    if(cmdToYou){S.counters.cmdDmg+=effP(S.cmd);log("dm",`Commander damage: ${S.counters.cmdDmg}/21.`);}
+    /* P18.2: commander damage = the commander's ACTUAL combat damage to your life (its perAtt face, scaled by the same ward soak that reduced toYou→face). Respects double strike (out already doubled), trample-over even when blocked, ward soak, and "deals no combat dmg" (0). */
+    const cmdAtt=S.cmd.inPlay&&attackers.includes(S.cmd)&&(tmap[S.cmd.id]||'you')==='you';
+    if(cmdAtt){const cmdToFace=((r.perAtt.find(x=>x.att===S.cmd)||{}).toFace)||0;const cmdHit=(toYou>0)?Math.round(cmdToFace*(face/toYou)):0;if(cmdHit>0){S.counters.cmdDmg+=cmdHit;log("dm",`Commander damage to you: +${cmdHit} → ${S.counters.cmdDmg}/21.`);}}
     if(r.attLifelink){bossHealLife(r.attLifelink);log("dm",`${ENs()} lifelink: +${r.attLifelink}.`);}
     if(r.defLifelink){S.youLife+=r.defLifelink;log("you",`Your lifelink: +${r.defLifelink}.`);}
     r.deadBlk.forEach(removeRef);r.deadAtt.forEach(removeRef);
