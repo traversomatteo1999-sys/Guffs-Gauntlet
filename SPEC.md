@@ -157,6 +157,8 @@
 | &nbsp;&nbsp;P31.1 Expandable card rows in enemy deck-tools — reveal stats/keywords/effect on click | ⬜ planned |
 | **Phase 32 — Per-combat: negate an attacker / prevent its combat damage (one-shot)** | ⬜ **PLANNED** — in the combat resolver, per attacker: 🚫 **negate** (remove it from this combat) or 🛡 **prevent its combat damage** (one-shot Fog on that attacker) — for the enemy's attackers (and yours). The transient counterpart to P14.2's persistent Fog-Bank markers. See Phase 32 below |
 | &nbsp;&nbsp;P32.1 Resolver actions: negate attacker · prevent its combat damage (this combat only) | ⬜ planned |
+| **Phase 33 — Auto-register enemy spawned creatures as tokens (`token:true`)** | ⬜ **PLANNED** — enemy bodies made by `spawn` (cards/Resurgence/reanimation) aren't flagged `token:true`, so the (already-working) token rules don't recognise them — bouncing one sends it to hand instead of ceasing. Set the flag at creation + migrate backfill; the existing token mechanics then apply for free. See Phase 33 below |
+| &nbsp;&nbsp;P33.1 `spawn` case sets `token:true`; migrate backfills existing enemy tokens | ⬜ planned |
 
 ---
 
@@ -2260,6 +2262,26 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** in the combat resolver, a player can negate any attacker (removed from this combat — deals/takes no combat damage) or prevent a specific attacker's combat damage (stays, can still die to blockers, deals 0 — no face/trample/lifelink); the prediction reflects both; both are logged; they apply this combat only and don't persist; works on enemy attackers (and yours); resolving/cancelling clears them.
 **Verify:** jsdom — `combatNegate(id)` drops the attacker from `S.combat.attackers` (resolveAttack ignores it); `combatPreventDmg(id)` → `resolveAttack` gives it `out=0` (no face/trample/lifelink) while a lethal blocker still kills it; `predictCombat` reflects both; `cancelCombat`/resolve clears `prevented`; enemy + player directions; syntax + id-diff. (Complements P14.2; reuses its damage-prevention gate.)
+
+
+# PHASE 33 — Auto-register enemy spawned creatures as tokens (`token:true`) ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** The token mechanics already work (P7.1: a token ceases when it leaves the battlefield — no graveyard); the gap is that **enemy spawned bodies aren't flagged `token:true`**, so those mechanics don't recognise them. Set the flag automatically at creation (and backfill old saves); nothing else needs changing. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded findings:**
+- **The bug:** `applyRun` `case "spawn"` (~1036) builds the enemy body `{id,name,p,t,baseP,baseT,kw,color,sick,tapped,plus,minus,other,expires:false}` and pushes to `S.tokens` — **no `token:true`**. All enemy creature spawns flow through here (creature cards, **Resurgence** ~1778, reanimation, Vael's phase-2 revival).
+- **Why it matters:** `moveBoardCard(obj,to)` ceases a body via `if(obj.token){…ceases…}`; without the flag, bouncing an enemy creature pushes it to `S.hand`/library/exile (the "↩ hand" button on `enemyCard`) instead of ceasing — the reported bug. (Death via `removeRef`/`slay` splices `S.tokens` directly, so it *looked* fine — only the zone-move path is wrong.)
+- **Already-correct creators (for reference):** the emblem `spawnToken` sets `token:true`; `copyPermanent` sets `token:true`. So `spawn` is the outlier.
+- **Not everything in `S.tokens` is a token:** `giveControl` pushes a *player* creature onto `S.tokens` preserving its own `token` flag (a real creature you donate is NOT a token). So token-ness must stay the **explicit `token` flag**, not "is in `S.tokens`" — don't blanket-cease the array.
+
+**How:**
+1. **Flag at creation:** add `token:true` to the object built in the `spawn` case (~1036). Every spawn path (cards, Resurgence, reanimation, phase-2) inherits it. (Confirm `applyRun` is the single choke point; if any other code pushes a spawned body to `S.tokens`, flag it there too.)
+2. **Migrate backfill:** for existing saves, set `token:true` on `S.tokens` entries that are spawned bodies — i.e. lack an FX `key` AND aren't `_controlled` (a donated real creature). Conservative rule so a donated non-token isn't wrongly flagged; log nothing (silent normalize). Document the heuristic.
+3. **No mechanic changes:** the P7.1 cease-on-leave / no-graveyard / expiry logic and the P9.1 `moveBoardCard` token branch already do the right thing once the flag is present — verify, don't rewrite.
+4. **Sanity sweep:** confirm the other enemy-token affordances (slay→cease, expiry sweep, return-to-hand/library/exile→cease, copy) all key off `obj.token` and now behave for spawned enemy bodies.
+
+**ACs:** an enemy creature spawned by any path is `token:true`; bouncing it (↩ hand) or moving it to library/exile/graveyard makes it **cease** (no zone entry), like player tokens; death/slay still ceases; a donated real (non-token) creature on the enemy board is unaffected (still goes to a zone); old saves backfill spawned bodies to `token:true` without flagging donated creatures; no change to token mechanics themselves.
+**Verify:** jsdom — `applyRun(["spawn","X",2,2,[],"R"])` yields an `S.tokens` entry with `token===true`; `moveBoardById('token',id,'hand')` ceases it (no `S.hand` push); a `_controlled` non-token on `S.tokens` still moves to hand; migrate backfills spawned bodies only; slay/expiry still cease; syntax + id-diff (one-field change + migrate). (Fixes the P7.1/P9.1 enemy-token gap.)
 
 ---
 
