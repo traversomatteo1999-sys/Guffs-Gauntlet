@@ -928,8 +928,8 @@ function log(who,html){_lastLog=(''+html).replace(/<[^>]*>/g,'').trim().slice(0,
 function bossMana(){const willLand=Array.isArray(S.hand)&&(S.hand.some(c=>FX[c.key]&&FX[c.key].type==='land')||((S.bossLands||0)<(S.turn||0)));return Math.max(0,(S.bossLands||0)+(S.bossManaMod||0)+(willLand?1:0));}
 /* P5.1: the single "usable mana now" accessor — the enemy's pool minus what the player has FROZEN (tapped down). Every enemy affordability check routes through this so a freeze actually limits casting; spends still draw from S.bossMana (the frozen part stays in the pool, just unusable, until it clears at vaelEnd). */
 function usableMana(){return Math.max(0,(S.bossMana||0)-(S.bossManaFrozen||0));}
-function effP(c){return Math.max(0,c.p+(c.plus||0)-(c.minus||0)+(c._tp||0));} /* _tp/_tt = temporary until-end-of-turn buffs (e.g. Warren Overrun anthem) */
-function effT(c){return c.t+(c.plus||0)-(c.minus||0)+(c._tt||0);}
+function effP(c){return Math.max(0,c.p+(c.plus||0)-(c.minus||0)+(c._tp||0)+(c._stp||0));} /* _tp/_tt = temporary until-end-of-turn buffs (e.g. Warren Overrun anthem); _stp/_stt = continuous static-emblem buffs (P13.2, recomputed each render by applyStaticEmblems) */
+function effT(c){return c.t+(c.plus||0)-(c.minus||0)+(c._tt||0)+(c._stt||0);}
 function kw(c,k){return (c.kw||[]).some(x=>(''+x).toLowerCase()===k);}
 /* ===== P6.1: generalized threat assessment — score ANY object/stack-spell on one hierarchy
    (planeswalkers > creatures > artifacts/enchantments > instants/sorceries), layered over the
@@ -1228,7 +1228,7 @@ let _hist=[],_committed=null,_settleScheduled=false,_actLabel='',_lastLog='';
    line (or an explicit actionLabel) names the undone step. Checklist for new
    mutating actions: just call render() at the end (every action already does) —
    no per-action checkpoint bookkeeping needed. */
-function stripJSON(s){return JSON.stringify(s,(k,v)=>(k==='_drawer'||k==='_atk'||k==='_edit'||k==='combat'||k==='ui'||k==='stackProposal')?undefined:v);}
+function stripJSON(s){return JSON.stringify(s,(k,v)=>(k==='_drawer'||k==='_atk'||k==='_edit'||k==='_stp'||k==='_stt'||k==='combat'||k==='ui'||k==='stackProposal')?undefined:v);}
 function settleHistory(){if(typeof S==='undefined'||!S)return;const fullNow=JSON.stringify(S),stripNow=stripJSON(S);
   if(_committed===null){_committed={full:fullNow,strip:stripNow};return;}
   if(stripNow!==_committed.strip){_hist.push({s:_committed.full,label:_actLabel||_lastLog||'an action'});if(_hist.length>80)_hist.shift();_committed={full:fullNow,strip:stripNow};scheduleAutosave();}
@@ -1240,6 +1240,7 @@ function undo(){if(!_hist.length){log("sys","Nothing to undo.");return;}const en
 function closeTransientUI(){const rz=$("resolver");if(rz)rz.classList.remove("show");const pl=$("plays");if(pl&&!(S.plays||[]).some(p=>p&&p.status==='pending'))pl.classList.remove("show");}
 function render(){
   scheduleSettle();
+  applyStaticEmblems();/* P13.2: recompute continuous static-emblem buffs before anything reads effP/effT */
   renderTrack();
   $("youLife").textContent=S.youLife;$("youMax").textContent=S.youMax;$("youBar").style.width=Math.max(0,Math.min(100,S.youLife/S.youMax*100))+"%";
   $("bossName").textContent=S.boss.name+(S.phase2done?" · ENRAGED":"");$("bossLife").textContent=Math.max(0,S.boss.life);$("bossMax").textContent=S.boss.max;$("bossBar").style.width=Math.max(0,Math.min(100,S.boss.life/S.boss.max*100))+"%";
@@ -1429,16 +1430,24 @@ const ENEMY_EMBLEMS=[
   {n:'Card draw (its upkeep)',note:'At the beginning of its upkeep, the enemy draws a card.',auto:{k:'enemyDraw',n:1}},
   {n:'Ramp +1 mana (its upkeep)',note:'At the beginning of its upkeep, the enemy gets +1 mana this turn.',auto:{k:'enemyMana',n:1}},
   {n:'Growth +1/+1 (its upkeep)',note:'At the beginning of its upkeep, put a +1/+1 counter on each enemy creature.',auto:{k:'buffEnemyCreatures',n:1}},
-  {n:'Anthem (+1/+1)',note:'Enemy creatures get +1/+1. Reminder — track via each creature’s P/T.',auto:null},
-  {n:'Menace anthem',note:'Enemy creatures have menace (must be blocked by two). Reminder.',auto:null},
+  {n:'Token each upkeep',note:'At the beginning of its upkeep, create a 1/1 enemy token.',auto:{k:'spawnToken',n:1,tn:'Servant',tp:1,tt:1}},
+  {n:'Scry 1 (its upkeep)',note:'At the beginning of its upkeep, the enemy scries 1.',auto:{k:'enemyScry',n:1}},
+  {n:'Damages you (its upkeep)',note:'At the beginning of its upkeep, it deals 2 damage to you.',auto:{k:'youLose',n:2}},
+  {n:'Drains you (its END step)',note:'At the beginning of its end step, you lose 1 life.',auto:{k:'youLose',n:1},trigger:'endStep'},
+  {n:'Tax on your upkeep',note:'At the beginning of YOUR upkeep, you lose 1 life.',auto:{k:'youLose',n:1},trigger:'yourUpkeep'},
+  {n:'⟳ Anthem +1/+1 (static)',note:'Enemy creatures get +1/+1 while this is on the battlefield (continuous).',auto:{k:'anthemEnemy',n:1},static:true},
+  {n:'⟳ Your creatures −1/−0 (static)',note:'Creatures you control get −1/−0 while this is on the battlefield (continuous).',auto:{k:'debuffYou',n:1},static:true},
+  {n:'You mill (reminder)',note:'Forces you to mill — apply manually (your library is yours).',auto:null},
+  {n:'You discard (reminder)',note:'Forces you to discard — apply manually.',auto:null},
+  {n:'Menace anthem (reminder)',note:'Enemy creatures have menace (must be blocked by two). Apply via each creature’s drawer.',auto:null},
   {n:'Custom',note:'',auto:null},
 ];
 function embEsc(s){return (''+(s==null?'':s)).replace(/"/g,'&quot;');}
 function fillEmblemTemplates(){const sel=$('embTemplate');if(sel&&!sel.options.length)sel.innerHTML=ENEMY_EMBLEMS.map((t,i)=>`<option value="${i}">${t.n}${t.auto?' ⚡':''}</option>`).join('');}
 function addEnemyEmblem(){const sel=$('embTemplate');const i=sel?parseInt(sel.value,10):ENEMY_EMBLEMS.length-1;const t=ENEMY_EMBLEMS[i]||ENEMY_EMBLEMS[ENEMY_EMBLEMS.length-1];
   const kindSel=$('embKind');const kind=(kindSel&&kindSel.value)||'emblem';
-  const vsYou=!!(t.auto&&t.auto.k==='youLose');/* effects that drain/damage YOU get the red box (toggle below for custom ones) */
-  S.emblemsEnemy.push({id:S.nextId++,name:t.n,note:t.note,auto:t.auto?{k:t.auto.k,n:t.auto.n}:null,autoOn:!!t.auto,kind,vsYou});
+  const vsYou=!!(t.auto&&(t.auto.k==='youLose'||t.auto.k==='debuffYou'));/* effects that drain/damage/debuff YOU get the red box (toggle below for custom ones) */
+  S.emblemsEnemy.push({id:S.nextId++,name:t.n,note:t.note,auto:t.auto?Object.assign({},t.auto):null,autoOn:!!t.auto,kind,vsYou,static:!!t.static,trigger:t.trigger||'upkeep',attachId:null});
   const article=kind==='artifact'?'an artifact':kind==='enchantment'?'an enchantment':'an emblem';
   log("dm",`✦ ${ENs()} gains ${article}: <b>${t.n}</b>${t.auto?' (⚡ auto on upkeep)':' (reminder)'}.`);render();}
 function setEnemyEmblem(id,f,v){const em=(S.emblemsEnemy||[]).find(e=>e.id===id);if(em){em[f]=v;render();}}
@@ -1449,19 +1458,37 @@ function emblemEffect(em){if(!em||!em.auto)return;const a=em.auto,n=a.n||0;
   else if(a.k==='youLose'){S.youLife-=n;log("dm",`✦ ${em.name}: you lose ${n} life. (${S.youLife})`);}
   else if(a.k==='enemyDraw'){vaelDraw(n);log("dm",`✦ ${em.name}: ${ENs()} draws ${n}. (hand ${S.hand.length})`);}
   else if(a.k==='enemyMana'){S.bossMana=(S.bossMana||0)+n;S.bossManaMax=(S.bossManaMax||0)+n;log("dm",`✦ ${em.name}: ${ENs()} gets +${n} mana this turn. (${S.bossMana})`);}
-  else if(a.k==='buffEnemyCreatures'){let c=0;S.tokens.forEach(t=>{t.plus=(t.plus||0)+n;c++;});if(S.cmd&&S.cmd.inPlay){S.cmd.plus=(S.cmd.plus||0)+n;c++;}log("dm",`✦ ${em.name}: +${n}/+${n} on ${c} enemy creature${c===1?'':'s'}.`);}}
-function fireEnemyEmblems(){const list=(S.emblemsEnemy||[]).filter(em=>em.auto&&em.autoOn!==false);if(!list.length)return;list.forEach(emblemEffect);checkLose();}
+  else if(a.k==='buffEnemyCreatures'){let c=0;S.tokens.forEach(t=>{t.plus=(t.plus||0)+n;c++;});if(S.cmd&&S.cmd.inPlay){S.cmd.plus=(S.cmd.plus||0)+n;c++;}log("dm",`✦ ${em.name}: +${n}/+${n} on ${c} enemy creature${c===1?'':'s'}.`);}
+  else if(a.k==='spawnToken'){const tn=a.tn||'Servant',tp=a.tp||1,tt=a.tt||1,cnt=Math.max(1,n||1);for(let q=0;q<cnt;q++)S.tokens.push({id:S.nextId++,name:tn,p:tp,t:tt,baseP:tp,baseT:tt,kw:[],color:(S.boss&&S.boss.colors||['R']).slice(),plus:0,minus:0,other:[],tapped:false,sick:true,phased:false,token:true,dies:'graveyard'});log("dm",`✦ ${em.name}: ${ENs()} creates ${cnt} <b>${tn}</b> ${tp}/${tt} token${cnt===1?'':'s'}.`);}
+  else if(a.k==='enemyScry'){log("dm",`✦ ${em.name}: ${ENs()} scries ${n} (looks at the top ${n} of its library).`);}}
+/* P13.2: fire auto emblems for a given trigger window (default the enemy's upkeep). Static emblems are NOT fired here — they apply continuously via applyStaticEmblems each render. */
+function fireEnemyEmblems(window){window=window||'upkeep';const list=(S.emblemsEnemy||[]).filter(em=>em.auto&&em.autoOn!==false&&!em.static&&(em.trigger||'upkeep')===window);if(!list.length)return;list.forEach(emblemEffect);checkLose();}
+/* P13.2: continuous (static) enemy emblems — recomputed from scratch each render onto _stp/_stt (a separate channel from the until-EOT _tp/_tt). An emblem with an attachId buffs only that enemy creature and falls off (logged once) when it leaves. */
+function applyStaticEmblems(){if(typeof S==='undefined'||!S)return;const foes=[...(S.tokens||[]),(S.cmd&&S.cmd.inPlay?S.cmd:null)].filter(Boolean);const mine=(S.my&&S.my.creatures)||[];
+  [...foes,...mine].forEach(c=>{c._stp=0;c._stt=0;});
+  (S.emblemsEnemy||[]).forEach(em=>{if(!em.static||!em.auto||em.autoOn===false)return;const n=em.auto.n||0,k=em.auto.k;
+    if(k==='debuffYou'){mine.forEach(c=>{c._stp-=n;});return;}/* a "your creatures −X" static always hits the player board, board-wide — it is never an enemy-creature aura (so attachId is ignored here, and the attach control isn't offered for it) */
+    if(em.attachId!=null){const tgt=foes.find(c=>c.id===em.attachId);if(!tgt){const _ll=_lastLog;log("dm",`✦ <b>${em.name}</b> falls off — the creature it was attached to has left the battlefield; it goes inert.`);_lastLog=_ll;/* don't clobber the killing action's undo label; go INERT (not board-wide) when the host dies */em.autoOn=false;return;}if(k==='anthemEnemy'||k==='buffEnemyCreatures'){tgt._stp+=n;tgt._stt+=n;}return;}
+    if(k==='anthemEnemy'||k==='buffEnemyCreatures'){foes.forEach(c=>{c._stp+=n;c._stt+=n;});}});}
 function fireOneEmblem(id){if(S.over)return;const em=(S.emblemsEnemy||[]).find(e=>e.id===id);if(em&&em.auto){emblemEffect(em);checkLose();render();}}
 /* enemy persistent-effect kinds, in board order; each row renders under its group, red-boxed when it hits you */
 const ENEMY_FX_KINDS=[{k:'artifact',label:'⚙ Artifacts'},{k:'enchantment',label:'🪶 Enchantments'},{k:'emblem',label:'✶ Emblems'}];
 function toggleEmblemVsYou(id){const em=(S.emblemsEnemy||[]).find(e=>e.id===id);if(em){em.vsYou=!em.vsYou;log("dm",`✦ <b>${em.name}</b>${em.vsYou?' now flagged as affecting you (red).':' no longer flagged against you.'}`);render();}}
+/* P13.2: which step a non-static auto emblem fires on. */
+function emblemTriggerSel(em){const opts=[['upkeep','its upkeep'],['endStep','its end step'],['yourUpkeep','your upkeep']];return `<select title="when this auto-fires" onchange="setEnemyEmblem(${em.id},'trigger',this.value)">${opts.map(([v,l])=>`<option value="${v}" ${(em.trigger||'upkeep')===v?'selected':''}>⏱ ${l}</option>`).join('')}</select>`;}
+/* P13.2: attach a static emblem (aura) to one enemy creature — else it affects all enemy creatures. */
+function emblemAttachSel(em){const foes=[...(S.tokens||[]),(S.cmd&&S.cmd.inPlay?S.cmd:null)].filter(Boolean);return `<select title="attach to one enemy creature (else affects all)" onchange="setEmblemAttach(${em.id},this.value)"><option value="">▦ all enemy creatures</option>${foes.map(c=>`<option value="${c.id}" ${''+em.attachId===''+c.id?'selected':''}>↳ ${embEsc(c.name||c.n)}</option>`).join('')}</select>`;}
+function setEmblemAttach(id,v){const em=(S.emblemsEnemy||[]).find(e=>e.id===id);if(!em)return;em.attachId=(v===''?null:parseInt(v,10));log("dm",`✦ <b>${em.name}</b> ${em.attachId==null?'now affects all enemy creatures':'attached to a creature'}.`);render();}
 function renderEnemyEmblems(){fillEmblemTemplates();const box=$('enemyEmbList');if(!box)return;const list=S.emblemsEnemy||[];
   if(!list.length){box.innerHTML='<span class="empty">None yet. Pick a type + template above — ⚡ ones fire automatically on the enemy’s upkeep; the rest are reminders you apply yourself. Effects that hit YOU show a red box.</span>';return;}
   box.innerHTML='';
   ENEMY_FX_KINDS.forEach(group=>{const items=list.filter(em=>{const k=em.kind||'emblem';return group.k==='emblem'?(k!=='artifact'&&k!=='enchantment'):k===group.k;});if(!items.length)return;
     const sub=document.createElement('div');sub.className='enemyfx-sub';sub.innerHTML=`${group.label} <span class="tag">${items.length}</span>`;box.appendChild(sub);
     items.forEach(em=>{const el=document.createElement('div');el.className='brow'+(em.vsYou?' vsyou':'');
-      const ctrl=em.auto?`<button class="tiny ${em.autoOn?'gold on':''}" title="automation fires on the enemy’s upkeep — click to toggle" onclick="toggleEmblemAuto(${em.id})">⚡ ${em.autoOn?'auto':'off'}</button><button class="tiny" title="fire this now" onclick="fireOneEmblem(${em.id})">▸ fire</button>`:'<span class="badge">reminder</span>';
+      let ctrl;
+      if(em.auto&&em.static)ctrl=`<span class="badge" title="continuous — applies every render while on the battlefield">⟳ static</span><button class="tiny ${em.autoOn?'gold on':''}" title="toggle this static effect" onclick="toggleEmblemAuto(${em.id})">${em.autoOn?'on':'off'}</button>${(em.auto.k==='anthemEnemy'||em.auto.k==='buffEnemyCreatures')?emblemAttachSel(em):''}`;
+      else if(em.auto)ctrl=`<button class="tiny ${em.autoOn?'gold on':''}" title="automation fires on the chosen step — click to toggle" onclick="toggleEmblemAuto(${em.id})">⚡ ${em.autoOn?'auto':'off'}</button>${emblemTriggerSel(em)}<button class="tiny" title="fire this now" onclick="fireOneEmblem(${em.id})">▸ fire</button>`;
+      else ctrl='<span class="badge" title="not auto-modeled — apply its effect yourself">⚠ apply manually</span>';
       el.innerHTML=`<span class="kindchip">${em.kind||'emblem'}</span><input type="text" value="${embEsc(em.name)}" style="width:138px" onchange="setEnemyEmblem(${em.id},'name',this.value)"><input type="text" placeholder="effect" value="${embEsc(em.note)}" style="width:178px" onchange="setEnemyEmblem(${em.id},'note',this.value)">${ctrl}<button class="tiny ${em.vsYou?'ember on':''}" title="mark this as affecting YOU — shows a red box" onclick="toggleEmblemVsYou(${em.id})">⚠ vs you</button><button class="tiny ember" onclick="rmEnemyEmblem(${em.id})">✕</button>`;
       box.appendChild(el);});});}
 function setMy(cat,id,f,v){const o=S.my[cat].find(x=>x.id===id);if(o){o[f]=v;render();}}
@@ -1553,7 +1580,7 @@ function playEnemyLand(){if(S.over||S.bossLandPlayed)return;const li=S.hand.find
   if(li>=0){S.hand.splice(li,1);S.bossLands=(S.bossLands||0)+1;S.bossMana++;S.bossManaMax++;S.bossLandPlayed=true;log("dm",`${ENs()} plays a land — ${S.bossLands} mana source${S.bossLands===1?'':'s'} (usable ${usableMana()}).`);return;}
   if((S.bossLands||0)<S.turn-1&&S.turn>1){S.bossLands=(S.bossLands||0)+1;S.bossMana++;S.bossManaMax++;S.bossLandPlayed=true;log("dm",`${ENs()} scrounges a mana source (mana-light) — now ${S.bossLands}.`);}}
 function vaelUpkeep(){S.rules.filter(r=>r.side==="boss"&&r.heal).forEach(r=>{bossHealLife(r.heal);log("dm",`${r.name}: ${ENs()} gains ${r.heal}. (${S.boss.life})`);});
-  fireEnemyEmblems();if(S.over)return;/* a drain emblem can end the game on the enemy's upkeep — stop the rest of the upkeep */
+  fireEnemyEmblems('upkeep');if(S.over)return;/* a drain emblem can end the game on the enemy's upkeep — stop the rest of the upkeep */
   tickBossBattles();if(S.over)return;/* P7.7: Vael's Siege heals it each upkeep while it stands */
   if(S.pw)pwAct();}
 function pwAct(){if(S.over)return;const pw=S.pw;let ab;
@@ -1649,7 +1676,7 @@ function vaelCombat(){resolveLeftoverPlays();if(S.over)return;const cands=vaelAt
   const atk=pay.kept;if(!atk.length){log("dm",`${ENs()} can't afford to attack into your defenses.`);return;}
   const pool=S.my.creatures.filter(c=>!c.tapped&&!kw(c,"can't block")&&!c.phased);const assign={};atk.forEach(a=>assign[a.id]=[]);
   openCombat('vael',atk,pool,assign,aiTargets(atk));}
-function vaelEnd(){resolveLeftoverPlays();if(S.bossManaFrozen){log("dm",`❄ ${ENs()}'s frozen mana thaws (was ${S.bossManaFrozen}).`);S.bossManaFrozen=0;}
+function vaelEnd(){resolveLeftoverPlays();fireEnemyEmblems('endStep');if(S.over)return;if(S.bossManaFrozen){log("dm",`❄ ${ENs()}'s frozen mana thaws (was ${S.bossManaFrozen}).`);S.bossManaFrozen=0;}
   /* P5.2: clear until-end-of-turn anthem buffs (Warren Overrun) — reset temp P/T and strip the granted keywords */
   [...S.tokens,S.cmd].forEach(c=>{if(c&&(c._tp||c._tt||((c._grantKw||[]).length))){c._tp=0;c._tt=0;(c._grantKw||[]).forEach(k=>{const i=(c.kw||[]).indexOf(k);if(i>=0)c.kw.splice(i,1);});c._grantKw=[];}});
   clearExpiringTokens();/* P7.1: until-end-of-turn tokens cease at the enemy's end step */
@@ -1657,7 +1684,7 @@ function vaelEnd(){resolveLeftoverPlays();if(S.bossManaFrozen){log("dm",`❄ ${E
 
 /* --- Your phases --- */
 function youUntap(){S.my.creatures.forEach(c=>{c.tapped=false;c.sick=false;c._atk=false;});log("you",`Your untap — creatures untap, summoning sickness clears.`);}
-function youUpkeep(){if(S.rules.some(r=>r.side==='you'))log("you",`Your upkeep — resolve your enchantment triggers in “Enchantments in play.”`);else log("you",`Your upkeep.`);if(S.inv.some(it=>it.id==='scholar'))log("loot",`Scholar's Token: draw an extra card (apply yourself).`);enemyInstant("your upkeep");}
+function youUpkeep(){if(S.rules.some(r=>r.side==='you'))log("you",`Your upkeep — resolve your enchantment triggers in “Enchantments in play.”`);else log("you",`Your upkeep.`);if(S.inv.some(it=>it.id==='scholar'))log("loot",`Scholar's Token: draw an extra card (apply yourself).`);fireEnemyEmblems('yourUpkeep');if(S.over)return;enemyInstant("your upkeep");}
 function youDraw(){log("you",`Draw step — draw your card for the turn.`);}
 function youMain(){/* freeform: use your board tools */}
 function youCombat(){log("you",`Combat — pick attackers in “Your attack,” hit Swing, or Continue to skip.`);enemyInstant("your combat");}
@@ -2146,7 +2173,7 @@ function clearSave(){try{if(typeof DB!=='undefined'&&DB){DB.save=null;saveDB();}
 function descentInProgress(){return hasSave()||!!(_liveGame&&typeof S!=='undefined'&&S&&!S.over);}
 function migrate(s){if(!s||typeof s!=='object')return s;
   ['tokens','rules','plays','inv','lib','hand','gy','exile','deckColors','myGy','myExile','battles','emblemsEnemy'].forEach(k=>{if(!Array.isArray(s[k]))s[k]=[];});
-  (s.emblemsEnemy||[]).forEach(e=>{if(e&&!e.kind)e.kind='emblem';if(e&&e.vsYou==null)e.vsYou=!!(e.auto&&e.auto.k==='youLose');});/* enemy persistent-effects gained a kind (artifact/enchantment/emblem) + vsYou flag */
+  (s.emblemsEnemy||[]).forEach(e=>{if(e&&!e.kind)e.kind='emblem';if(e&&e.vsYou==null)e.vsYou=!!(e.auto&&e.auto.k==='youLose');if(e&&!e.trigger)e.trigger='upkeep';if(e&&e.static==null)e.static=false;if(e&&e.attachId===undefined)e.attachId=null;});/* enemy persistent-effects gained a kind (artifact/enchantment/emblem) + vsYou flag; P13.2 added trigger window + static + attachId */
   if(!s.my||typeof s.my!=='object')s.my={};['creatures','artifacts','enchants','walkers','emblems'].forEach(k=>{if(!Array.isArray(s.my[k]))s.my[k]=[];});
   if(!s.counters||typeof s.counters!=='object')s.counters={};['poison','energy','experience','cmdDmg'].forEach(k=>{if(typeof s.counters[k]!=='number')s.counters[k]=0;});
   if(!s.ui||typeof s.ui!=='object')s.ui={tabs:{}};if(!s.ui.tabs)s.ui.tabs={};if(!s.ui.panels||typeof s.ui.panels!=='object')s.ui.panels={};/* P12.1: per-panel collapse state */
