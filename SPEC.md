@@ -155,6 +155,8 @@
 | &nbsp;&nbsp;P30.6 Counters on ALL permanents (both sides): give +1/+1 (−1/−1 · named) · ⊖ remove · ↺ reset | ⬜ planned |
 | **Phase 31 — Expandable enemy cards in the deck-tools (full stats + effects)** | ⬜ **PLANNED** — when looking at the enemy's library (and hand/graveyard/exile) in 🂠 Manipulate enemy deck, each card row expands to show its full stats (P/T + keywords for creatures), cost, colours, oracle text, and mechanical effect — collapsed by default to cut noise. See Phase 31 below |
 | &nbsp;&nbsp;P31.1 Expandable card rows in enemy deck-tools — reveal stats/keywords/effect on click | ⬜ planned |
+| **Phase 32 — Per-combat: negate an attacker / prevent its combat damage (one-shot)** | ⬜ **PLANNED** — in the combat resolver, per attacker: 🚫 **negate** (remove it from this combat) or 🛡 **prevent its combat damage** (one-shot Fog on that attacker) — for the enemy's attackers (and yours). The transient counterpart to P14.2's persistent Fog-Bank markers. See Phase 32 below |
+| &nbsp;&nbsp;P32.1 Resolver actions: negate attacker · prevent its combat damage (this combat only) | ⬜ planned |
 
 ---
 
@@ -2236,6 +2238,28 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** enemy card rows start collapsed (summary only) and expand on click to show P/T + keywords (creatures), cost, colours, oracle text, flavour, and an effect summary; combined-run cards list each body; collapse/expand persists across `dtRender` within the open modal; the action buttons still work; non-creature cards show their effect sensibly; no game-state change (view only).
 **Verify:** jsdom — `fxItem` for a creature card renders a collapsed summary, and after `dtToggleCard(id)` the body shows the right P/T + keywords (from the spawn run) + text; a combined-run card lists multiple bodies; a burn card shows its effect summary; toggling re-renders; action buttons present; syntax + id-diff (only the new expand toggle ids). (Refines P14.7 / P9.4.)
+
+
+# PHASE 32 — Per-combat: negate an attacker / prevent its combat damage ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** During a combat the player should be able to **negate** an attacking creature (take it out of this combat) or **prevent its combat damage** (a one-shot Fog on that single attacker) — primarily for the enemy's attackers, and symmetrically for yours. This is the **per-combat** counterpart to **P14.2** (which adds *persistent* "deals no combat dmg" / "prevents combat dmg to it" markers): same effect, but a one-time action in the resolver rather than a standing marker. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded audit:**
+- **Combat object:** `openCombat(dir,attackers,pool,assign,target)` (~1210) sets `S.combat={dir,attackers,pool,assign,target}`. The enemy-attack direction (`dir==='vael'`) is where the player faces the enemy's attackers.
+- **Resolver render:** `renderCombat` (~1213) draws one row per attacker (name/P-T/keywords, target select for walkers, blocker assignment); `combatDel` (~1231) edits assignments; `predictCombat` (~1232) previews; `approveCombat` (~1243) resolves via `resolveAttack` (~1067).
+- **Damage source:** `resolveAttack` computes each attacker's `out = effP(att)*(double strike?2:1)`, then face/trample/lifelink. To **prevent** an attacker's damage, zero its `out` (no face, no trample, no lifelink) — exactly the gate **P14.2** introduces for the `'deals no combat dmg'` marker. To **negate**, the attacker shouldn't be in the combat at all.
+
+**How:**
+1. **Per-attacker resolver controls (in `renderCombat` ~1213):** add to each attacker row, for the enemy-attack direction (and yours, for symmetry):
+   - **🚫 negate** → `combatNegate(attId)`: remove the attacker from `S.combat.attackers` and clean its `assign`/`target` entries, then `renderCombat()`. It no longer deals or takes combat damage this combat (it's simply not attacking). Log "🚫 {name}'s attack is negated."
+   - **🛡 prevent damage** → `combatPreventDmg(attId)`: add the attacker id to a transient `S.combat.prevented` Set (toggle), re-render. The attacker stays in combat (can still be blocked / die to blockers) but **deals no combat damage**. Log "🛡 {name}'s combat damage is prevented."
+2. **Honor prevention in `resolveAttack` (~1067):** if `att.id ∈ S.combat.prevented`, set its `out=0` (no face, no trample, no attacker-lifelink) — reuse P14.2's `'deals no combat dmg'` gate if that's built, else add the equivalent check. The attacker can still be destroyed by blockers (its toughness is unchanged), matching MTG fog-on-one-attacker semantics. (Note: `resolveAttack` reads `S.combat.prevented` only in the resolver context; keep it a combat-scoped set, cleared when combat ends.)
+3. **Prediction mirrors it:** `predictCombat` (~1232) shows the negated attacker gone and the prevented attacker contributing 0, with a note ("🛡 {name} — damage prevented") so the preview matches the resolution.
+4. **Transient only:** `S.combat.prevented` and negation live for the current combat; they vanish when `S.combat` is cleared (no persisted markers — that's P14.2). `cancelCombat` discards them.
+5. **Both directions:** primarily the enemy's attackers (the player negating/fogging incoming attacks); offer the same on your own attackers for completeness (e.g. to model an effect that stops your creature's damage). Note which side each control shows on.
+
+**ACs:** in the combat resolver, a player can negate any attacker (removed from this combat — deals/takes no combat damage) or prevent a specific attacker's combat damage (stays, can still die to blockers, deals 0 — no face/trample/lifelink); the prediction reflects both; both are logged; they apply this combat only and don't persist; works on enemy attackers (and yours); resolving/cancelling clears them.
+**Verify:** jsdom — `combatNegate(id)` drops the attacker from `S.combat.attackers` (resolveAttack ignores it); `combatPreventDmg(id)` → `resolveAttack` gives it `out=0` (no face/trample/lifelink) while a lethal blocker still kills it; `predictCombat` reflects both; `cancelCombat`/resolve clears `prevented`; enemy + player directions; syntax + id-diff. (Complements P14.2; reuses its damage-prevention gate.)
 
 ---
 
