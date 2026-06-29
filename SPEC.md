@@ -1953,7 +1953,7 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **Specced 2026-06-29, NOT built.** Documentation/UX polish: the tab notes and ⓘ info popups predate the recent feature work and under-describe what the game now does, and the "Your attack" box starts collapsed. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
-## P25.1 — "Your attack" box starts open by default
+## P25.1 — "Your attack" box starts open by default ✅ DONE & verified (`defaultPanelStates` opens `p-attack` too; one-time migrate nudge opens it for existing players only when unset, never overriding an explicit collapse; 11-check jsdom + P12.1 panel regression updated)
 
 **Goal:** the "Your attack" panel opens by default (alongside the turn-flow box), instead of starting collapsed.
 
