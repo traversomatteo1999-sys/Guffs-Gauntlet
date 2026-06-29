@@ -151,6 +151,7 @@
 | &nbsp;&nbsp;P30.2 Walker option parity sweep (token · markers/deal/copy · threat · attack-tax targeted · enemy walker) | ⬜ planned |
 | &nbsp;&nbsp;P30.3 Artifact & enchantment drawer parity (protection · hexproof/shroud/indestructible · markers · threat) | ⬜ planned |
 | &nbsp;&nbsp;P30.4 Universal guarantees — every permanent (both sides) can go to hand/exile/graveyard; prot/hexproof/shroud honoured wherever targetable | ⬜ planned |
+| &nbsp;&nbsp;P30.5 Bulk "return all permanents to library" (scope yours/enemy/both · top/bottom/shuffle · tokens cease) | ⬜ planned |
 
 ---
 
@@ -2171,6 +2172,21 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** every permanent kind on both boards can be returned to hand, exiled, and graveyarded (tokens cease); a hexproof/shroud/colour-protected permanent of any kind is skipped by a targeting effect that would otherwise hit it; the matrix shows full coverage; round-trips + migrate; no regression to existing creature/zone behavior.
 **Verify:** jsdom — for each permanent kind (player + enemy) a move to hand/exile/graveyard lands in the right zone (or ceases for tokens); a hexproof/protected non-creature is skipped by a targeting effect; coverage matrix asserted in the driver; syntax + id-diff. (Cross-ref P9.1, P13.3, P24.2, P26.1.)
+
+## P30.5 — Bulk "return all permanents to library" (enemy and/or player)
+
+**Goal:** one action that returns **all permanents** (creatures + artifacts + enchantments + walkers) to the library, for the **enemy**, the **player**, or **both** — the library counterpart of P14.6 (return-all-to-hand).
+
+**Grounded building blocks:** the P9.1 mover already supports library destinations — `moveBoardCard(obj,'libtop'|'libbottom'|'libshuffle')` (~1089-1096): an **enemy** card goes to the modelled `S.lib` (top/bottom, with shuffle), a **player** card's library is physical (logged "to your library" — it leaves the app), a **token ceases**, a **commander** routes to the command zone. P14.6's `returnAllToHand(scope,what)` is the bulk precedent (slice-loop + summary log); the Tools panel (near Boardwipe ~457 / the P14.6 control) is the home.
+
+**How:**
+1. **`returnAllToLibrary(scope, where)`** — `scope ∈ {yours, enemy, both}`, `where ∈ {top, bottom, shuffle}`. Loop `slice()` copies of the relevant permanent arrays (player `S.my.{creatures,artifacts,enchants,walkers}`; enemy `S.tokens` + enemy artifacts/enchants (P13.3) + `S.pw`/`S.cmd` per the commander/walker rules) and call `moveBoardCard(obj,'lib'+where)` on each. Tokens cease automatically; the commander routes to the command zone (or is skipped — pick one and log it), consistent with P14.6.
+2. **Shuffle once:** if `where==='shuffle'`, do the enemy `S.lib` Fisher-Yates **once after** all cards are placed (not per-card) so the result is a proper shuffle; the player side stays a logged physical action.
+3. **NON-death** (no `killMy`/`removeRef`) → no Pit's Tithe / death triggers, matching P14.6. One summary log: `🔀 Returned N permanents to {who} library (M tokens ceased).` Single `render()`.
+4. **UI:** a "Return all to library" row in Tools beside P14.6's "Return to hand" — `scope` + `where` selectors + a button.
+
+**ACs:** the action returns every non-token permanent to the chosen library position for the chosen side(s); enemy cards land in `S.lib` (top/bottom/shuffled once); player permanents log as returned to the physical library; tokens cease; commander handled deliberately (command zone or skip) and logged; no life change / no death triggers; collapses to one undo step.
+**Verify:** jsdom — `returnAllToLibrary('enemy','top')` moves all enemy permanents to `S.lib` top (count matches, tokens ceased, no `S.gy` entries); `'shuffle'` shuffles `S.lib` once; player scope logs + empties the board without `S.myGy` changes; commander to command zone; one undo step; syntax + id-diff. (Cross-ref P14.6, P9.1.)
 
 ---
 
