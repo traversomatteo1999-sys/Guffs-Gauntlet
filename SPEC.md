@@ -117,6 +117,9 @@
 | &nbsp;&nbsp;P18.0 Diagnostic FIRST — pin the exact cause of the enemy-menace bug + capture regression tests (both directions) | ⬜ planned |
 | &nbsp;&nbsp;P18.1 Fix menace: blockable only by 2+, counts as blocked only when ≥2 (enemy + player) — `minBlockers` short-circuit + keyword carry | ⬜ planned |
 | &nbsp;&nbsp;P18.2 Combat keyword automation audit (deathtouch · lifelink · trample · strikes · vigilance · indestructible · protection) | ⬜ planned |
+| **Phase 19 — Symmetric enemy counters: poison · commander damage · energy · experience** | ⬜ **PLANNED** — the enemy tracks the same counters the player does (today `S.counters` is player-only): poison (10 = enemy dies), commander damage (your commander dealing 21 = enemy dies), energy, experience — with adjusters, render, win-condition wiring, and auto-accrual of your commander's combat damage to the enemy. See Phase 19 below |
+| &nbsp;&nbsp;P19.1 Enemy counter state + Tools-panel UI/adjusters/render (poison/10 · cmd-dmg/21 · energy · exp) | ⬜ planned |
+| &nbsp;&nbsp;P19.2 Win-condition wiring + auto-accrual (enemy poison 10 / your cmd-dmg 21 → boss falls; commander combat dmg accrues) | ⬜ planned |
 
 ---
 
@@ -1694,6 +1697,45 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** in both directions, deathtouch kills with 1 damage (and assigns 1-then-tramples), lifelink gains the correct side full damage, trample spills correctly past lethal/indestructible/protection, first/double strike ordering is correct, vigilant attackers don't tap, indestructible never dies to combat, protection zeroes the right damage; the resolver popup + logs reflect each; no keyword requires manual application.
 **Verify:** jsdom — targeted unit tests per keyword in `resolveAttack` (deathtouch+trample assignment, lifelink side/amount per direction, double-strike strike-back, indestructible survives lethal+DT, protection zeroes, vigilance tap) + an end-to-end `approveCombat` for each direction; regressions on the existing P6/P12.2 combat drivers; syntax + id-diff.
+
+
+# PHASE 19 — Symmetric enemy counters: poison · commander damage · energy · experience ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** The player can accrue poison / commander-damage / energy / experience counters, but the **enemy can't** — so poison-out and commander-damage kills only work in one direction. Make the counters symmetric: the enemy tracks the same set, with the same lethal thresholds, adjusters, rendering, and (for commander damage) auto-accrual from combat. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded counter audit:**
+- **State:** `S.counters={poison,energy,experience,cmdDmg}` (player-only), reset per-game in `freshGameForDungeon` (~1740) and backfilled in `migrate` (~2190). **No enemy equivalent.**
+- **UI:** the 🧰 Tools panel renders the player chips — `poison <b id=cPoison>/10`, `cmd-dmg <b id=cCmd>/21`, `energy <b id=cEnergy>`, `exp <b id=cExp>` — each with `cnt('poison'|'cmdDmg'|'energy'|'experience', ±1)` adjusters (~465-468).
+- **Render/adjust:** `renderCounters()` (~1971) maps the chip ids to `S.counters`; `cnt(k,n)` (~1972) clamps `≥0`, re-renders, calls `checkLose()`.
+- **Lose conditions (player):** `checkLose()` (~1940) fires `lose()` on `youLife≤0 || poison≥10 || cmdDmg≥21` (with the Phoenix Charm save).
+- **Win/boss-death path:** `bossDown()` (~1557) handles the enemy "falling" (Vael phase-2, else loot+gold+clear). Enemy death today is driven only by `S.boss.life<=0`.
+- **Commander damage to the player (the auto-accrual precedent to mirror):** in `approveCombat` `dir==='vael'` (~1189-1190): `cmdToYou=S.cmd.inPlay && attackers.includes(S.cmd) && no blockers && target==='you'` → `S.counters.cmdDmg+=effP(S.cmd)`. **The player-attack branch (`dir==='you'`, ~1173) has no symmetric accrual** for *your* commander hitting the enemy.
+
+## P19.1 — Enemy counter state + Tools-panel UI, adjusters, and render
+
+**Goal:** the enemy has its own `poison / cmdDmg / energy / experience` counters, visible and adjustable beside the player's, persisted and migrated.
+
+**How:**
+1. **State:** add `S.enemyCounters={poison:0,energy:0,experience:0,cmdDmg:0}` parallel to `S.counters`. Reset per battle in `enterRoom`/`freshGameForDungeon` alongside `S.counters` (~1740) — poison and commander damage are per-game in MTG, so a new boss starts clean. `migrate()` (~2190) backfills (`if(!s.enemyCounters||typeof…!=='object')…` then the four keys default to 0). It lives in `S` → serializes/undo for free.
+2. **UI:** add an enemy counter row in the 🧰 Tools panel (mirroring ~465-468) — `poison /10 · cmd-dmg /21 · energy · exp` with new chip ids (e.g. `eqPoison/eqCmd/eqEnergy/eqExp`), labelled for the enemy (use `ENs()`), each with adjusters. **Generalize the setter** rather than duplicate: `cnt(k,n,side='you')` → writes `S.counters` or `S.enemyCounters`; the enemy buttons pass `side='enemy'`. Keep the existing player calls working (default arg).
+3. **Render:** extend `renderCounters()` (~1971) to also map the enemy chip ids to `S.enemyCounters`.
+4. **Log** enemy counter changes to the `dm` channel (player ones stay on their channel), per the no-silent-mutation principle.
+
+**ACs:** the Tools panel shows an enemy counter row with the same four counters + adjusters; adjusting them mutates `S.enemyCounters` (clamped ≥0); they render correctly; a fresh battle starts the enemy at 0 on all four; old saves migrate; player counters are byte-for-byte unaffected; everything round-trips through save/undo.
+**Verify:** jsdom — `cnt('poison',3,'enemy')` sets `S.enemyCounters.poison===3` and leaves `S.counters` untouched; `renderCounters` reflects both sides; `enterRoom` resets enemy counters; migrate backfills; player `cnt('poison',1)` unchanged; syntax + id-diff (only the new enemy chip ids added).
+
+## P19.2 — Win-condition wiring + commander-damage auto-accrual to the enemy
+
+**Goal:** the enemy can actually **lose** to its counters (10 poison, or 21 commander damage from *your* commander), exactly mirroring the player's loss conditions — and your commander's unblocked combat damage to the enemy accrues automatically.
+
+**How:**
+1. **Enemy "out" check:** add `checkEnemyOut()` (mirror of `checkLose` ~1940) — if `S.enemyCounters.poison>=10 || S.enemyCounters.cmdDmg>=21` and `!S.over`, log the reason to `dm` (e.g. "☠ 10 poison — {enemy} falls." / "☠ 21 commander damage — {enemy} falls.") and route through **`bossDown()`** (so Vael's phase-2 still triggers, loot/clear still fires — same path as life-based death). Call it from `cnt()` after an enemy-counter change (the way `cnt` already calls `checkLose`), and after combat accrual.
+2. **Commander-damage auto-accrual (your commander → enemy):** in `approveCombat` `dir==='you'` (~1173), mirror the enemy-side logic: if your designated commander is among `attackers`, is **unblocked** (`(assign[cmd.id]||[]).length===0`), and is dealing face damage, add its `effP` to `S.enemyCounters.cmdDmg` and log `Commander damage to {enemy}: N/21.` Identify your commander via `isCmd`/`S.pcmd` (the on-board commander object). Then `checkEnemyOut()`.
+3. **Poison from combat (optional, consistent):** if a player attacker has infect/toxic-style behavior it's manual today; keep poison primarily a manual adjuster for both sides (no infect keyword exists yet) — note it as the manual path so nothing's implied that isn't built.
+4. **Phoenix-style saves:** none on the enemy side — the enemy simply falls (no equivalent of the player's Phoenix Charm).
+
+**ACs:** setting the enemy to 10 poison (or 21 cmd-dmg) makes the boss fall through `bossDown` (Vael still gets phase-2; a normal boss drops loot/gold/clear); your unblocked commander's combat damage to the enemy accrues to `S.enemyCounters.cmdDmg` and a 21 total ends the fight; the player's own loss conditions are unchanged; counters reset between battles so damage doesn't carry to the next boss.
+**Verify:** jsdom — `S.enemyCounters.poison=10; checkEnemyOut()` → `bossDown` path (assert phase-2 for Vael, clear for a normal boss); an unblocked player-commander swing adds `effP` to `enemyCounters.cmdDmg` and 21 triggers the fall; a blocked/again-non-commander swing doesn't accrue; `checkLose` (player) untouched; reset on `enterRoom`; syntax + id-diff.
 
 ---
 
