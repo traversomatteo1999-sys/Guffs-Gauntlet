@@ -77,10 +77,10 @@
 | **Phase 10 — Enemy retune & loot/store rebalance** | ✅ **DONE** + committed (`acd6a7c`/`42efed6`) — explicit per-difficulty boss HP (hpMult retired) · loot heal-floor + cool tier · Brutal-luck loot nudge · 2 new boons (Pyre Charge · Spellbreaker Sigil) · store restock (ember/scholar/pyre/breaker) |
 | **Post-P10 build — Satchel-lock · Scryfall commander · enemy abilities/artifacts** | ✅ **DONE** + committed (`afbffe4`/`6bdc57a`/`9f829f8`) — Merchant locked mid-descent + pending-purchase bucket applied at next descent · Scryfall commander search · cmdBuff permanent-target fix + ⚜ enemy Abilities popup · enemy **artifacts/enchantments/emblems** on the board (⚡ auto-on-upkeep + ⚠ red box for effects that hit you) |
 | **Phase 11 — Chapter I: Story foundation (L1 re-lore)** | ✅ **DONE** + committed/merged (`0063a2e`) — Arrival cutscene · Vael **death→escape** (3-beat `win()` chain) · Guff-freed · L2-bridge epilogue · 📖 Lore-page · framing copy + new `shroud` keyword. **Text-only deck/stat-wise.** Built, verified & merged; see Phase 11 below |
-| **Phase 12 — UI & card-mechanic upgrades** | 🔨 **IN PROGRESS** — P12.1+P12.2 done; enter-as-a-copy clone remains. See Phase 12 below |
+| **Phase 12 — UI & card-mechanic upgrades** | ✅ **DONE & verified** — collapsible panels · combat block-restrictions · enter-as-a-copy clone. See Phase 12 below |
 | &nbsp;&nbsp;P12.1 Collapsible boxes inside tabs | ✅ **DONE & verified** (per-panel `.collapsed`; `S.ui.panels`; `applyPanels`/`togglePanel`; first-box-open defaults; migrate backfill; jsdom 12-check pass) |
 | &nbsp;&nbsp;P12.2 Block-restriction infrastructure + mechanic audit | ✅ **DONE & verified** (`block:{min,max}` + `minBlockers`/`maxBlockers`; menace folded in; `combatAdd` max-cap + `approveCombat` min/lure gates; `aiBlocks` honors min/max + lure-aware; Scryfall auto-parse → `props.block`; haste+can't-attack in KW_LIST & enforced; round-trips. 17-check jsdom + 3-agent adversarial review, 7 findings fixed) |
-| &nbsp;&nbsp;P12.3 Enter-as-a-copy (clone) with on-board picker | ⬜ planned |
+| &nbsp;&nbsp;P12.3 Enter-as-a-copy (clone) with on-board picker | ✅ **DONE & verified** (`props.clone` toggle → `openClonePicker`→`cloneInto`; lists your+enemy permanents; non-token copy, reset state, anthem-kw stripped; legendary gating via "copy won't be legendary"; empty-board fallback; deferred-resolve recoverable. 20-check jsdom + 3-agent review, 2 findings fixed) |
 | **Phase 13 — Symmetric enemy board: full enemy-card editing + first-class artifacts/enchantments + deeper automation** | ⬜ **PLANNED** — the enemy board behaves like the player's: modify the enemy's spells/cards (keywords·P/T·counters·markers·stack-edit) · enemy artifacts/enchantments are real permanents (bounce/destroy/move/copy/control like any card) · fuller persistent-effect automation. See Phase 13 below |
 | &nbsp;&nbsp;P13.1 Edit enemy permanents & stack spells (owner-agnostic editor) | ⬜ planned |
 | &nbsp;&nbsp;P13.2 Fuller enemy artifact/enchantment automation (static auras · more triggers · manual-reminder fallback) | ⬜ planned |
@@ -1062,7 +1062,7 @@ Tutorial loop `<p>` (line 1880, column 0):
 | **Phase 12 — UI & card-mechanic upgrades** | ⬜ **PLANNED** — collapsible tab panels · combat block-restrictions (+ Scryfall auto-parse + mechanic audit) · enter-as-a-copy clone |
 | &nbsp;&nbsp;P12.1 Collapsible boxes inside tabs | ✅ DONE & verified |
 | &nbsp;&nbsp;P12.2 Block-restriction infrastructure + mechanic audit | ✅ DONE & verified |
-| &nbsp;&nbsp;P12.3 Enter-as-a-copy (clone) with on-board picker | ⬜ planned |
+| &nbsp;&nbsp;P12.3 Enter-as-a-copy (clone) with on-board picker | ✅ DONE & verified |
 ```
 
 ## P12.1 — Collapsible boxes inside tabs
