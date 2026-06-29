@@ -100,7 +100,7 @@
 | &nbsp;&nbsp;P15.1 End-of-level gold wheel-spin (%/double/rare-legendary item) | ⬜ planned |
 | &nbsp;&nbsp;P15.2 Store & loot overhaul (Tonic fix · legendary tier · variety · gold tuning) | ⬜ planned |
 | &nbsp;&nbsp;P15.3 Persist unused satchel items across runs (profile stash) | ⬜ planned |
-| &nbsp;&nbsp;P15.4 Difficulty-scaled healing on descend | ⬜ planned |
+| &nbsp;&nbsp;P15.4 Difficulty-scaled healing on descend | ✅ **DONE & verified** (`DESCENT_HEAL` table: easy ½ missing <70%, std ⅓ <50%, brutal ¼ <25%; in `advance()` after `enterRoom`, strict `<`, floor, capped; only on room transitions. 9-check jsdom) |
 | **Phase 16 — Token variety (treasure/blood/utility · enemy tokens · enemy uses them) + between-boss life reset to 40** | ⬜ **PLANNED** — enemy can be given tokens (creatures share the player's token library) · resource tokens (Treasure · Blood · Clue · Food) for both sides, with expiry · enemy actively sacrifices Treasure for mana · descending past a boss resettles life >40 back to 40 (spent magic, not damage). See Phase 16 below |
 | &nbsp;&nbsp;P16.1 Deploy tokens to the enemy board (creatures share the player's token library) | ⬜ planned |
 | &nbsp;&nbsp;P16.2 Resource-token types — Treasure · Blood · Clue · Food (both sides, with expiry) | ⬜ planned |
