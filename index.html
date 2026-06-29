@@ -315,6 +315,12 @@
   .tab.collapsed .tabbody{display:none}
   .tabbody{padding:clamp(10px,2vw,16px);display:flex;flex-direction:column;gap:12px}
   .tabbody>.grid{margin-top:0}
+  /* P12.1: per-panel collapse inside a tab — header stays, body hides. Mirrors the tab chevron. */
+  .panel.collapsed>:not(h2){display:none}
+  #tb-action-top{align-items:start} /* so a collapsed Your-attack box doesn't stretch to the open Turn-flow's height (the You/Boss duo keeps its stretch — its commander box relies on it) */
+  .pchev{margin-left:auto;font-family:'Space Mono',monospace;font-size:.78rem;color:var(--bone-dim);transition:transform .2s;flex:none;user-select:none;padding-left:8px}
+  .panel>h2>.pchev{align-self:center}
+  .panel.collapsed .pchev{transform:rotate(-90deg)}
   @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -804,7 +810,7 @@ let _dt={};
 const LOOT_D20=[[1,3,"heal5"],[4,5,"map"],[6,8,"ember"],[9,11,"scholar"],[12,14,"heal10"],[15,16,"ward"],[17,17,"spark"],[18,18,"pyre"],[19,19,"breaker"],[20,20,"jackpot"]];/* P10: loot retuned — heal5 is the bankable floor (was map), cool tier 17-20 (spark/Pyre Charge/Spellbreaker Sigil/jackpot). Brutal luck nudges the roll up (see lootRoll). */
 
 let S;
-function fresh(){histReset();S={diff:"standard",youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],stackProposal:null,phasesFired:[],nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,bossManaFrozen:0,bossLands:0,bossLandPlayed:false,emblemsEnemy:[],battles:[],plane:null,ui:{tabs:{}},my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",_spoils:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
+function fresh(){histReset();S={diff:"standard",youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],stackProposal:null,phasesFired:[],nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,bossManaFrozen:0,bossLands:0,bossLandPlayed:false,emblemsEnemy:[],battles:[],plane:null,ui:{tabs:{},panels:{}},my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",_spoils:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
 function enterRoom(i,first){S.roomIndex=i;const room=DUNGEON[i];const baseHp=(room.hp&&room.hp[S.diff])||room.life;let life=Math.max(1,Math.round(baseHp*(S.balanceScale||1)));/* P10: explicit per-difficulty HP (room.hp); balanceScale still scales it for in-run effects. */if(S.weakenNext){life=Math.max(1,life-4);S.weakenNext=false;}
   S.boss={name:room.villain,life,max:life,isVael:!!room.isVael,colors:(room.colors||["R"]).slice()};
   S.enemy={name:room.villain,colors:(room.colors||["R"]).slice(),lore:room.lore||"",isFinal:!!room.isVael};
@@ -1243,7 +1249,7 @@ function render(){
   const sc=$("satchelCount");if(sc)sc.textContent=S.inv.length?`${S.inv.length} item${S.inv.length===1?'':'s'}`:'empty';
   $("turnTag").textContent="Turn "+S.turn+" · "+DUNGEON[S.roomIndex].name;renderFlow();renderZones();renderMyZones();renderDeckColors();renderBoardTokens();const gn=$("goldNote");if(gn)gn.textContent="💰 "+getGold();
   if(S.combat)renderCombat();
-  applyTabs();applyLog();
+  applyTabs();applyLog();applyPanels();
 }
 /* P7.3: one-click select-all (toggles to clear-all when everything eligible is already picked). */
 function selectAllAttackers(){const av=S.my.creatures.filter(c=>!c.tapped&&!c.sick&&!c.phased&&!kw(c,'defender'));if(!av.length){log("sys","No untapped, non-sick, non-defender creatures to attack with.");return;}const allOn=av.every(c=>c._atk);av.forEach(c=>c._atk=!allOn);log("you",allOn?"Cleared all attackers.":`Selected all ${av.length} eligible attacker${av.length===1?'':'s'}.`);render();}
@@ -2066,7 +2072,7 @@ function migrate(s){if(!s||typeof s!=='object')return s;
   (s.emblemsEnemy||[]).forEach(e=>{if(e&&!e.kind)e.kind='emblem';if(e&&e.vsYou==null)e.vsYou=!!(e.auto&&e.auto.k==='youLose');});/* enemy persistent-effects gained a kind (artifact/enchantment/emblem) + vsYou flag */
   if(!s.my||typeof s.my!=='object')s.my={};['creatures','artifacts','enchants','walkers','emblems'].forEach(k=>{if(!Array.isArray(s.my[k]))s.my[k]=[];});
   if(!s.counters||typeof s.counters!=='object')s.counters={};['poison','energy','experience','cmdDmg'].forEach(k=>{if(typeof s.counters[k]!=='number')s.counters[k]=0;});
-  if(!s.ui||typeof s.ui!=='object')s.ui={tabs:{}};if(!s.ui.tabs)s.ui.tabs={};
+  if(!s.ui||typeof s.ui!=='object')s.ui={tabs:{}};if(!s.ui.tabs)s.ui.tabs={};if(!s.ui.panels||typeof s.ui.panels!=='object')s.ui.panels={};/* P12.1: per-panel collapse state */
   ['over','paused','phase2done','phoenixUsed','weakenNext'].forEach(k=>{s[k]=!!s[k];});
   if(typeof s.bossManaMod!=='number')s.bossManaMod=0;if(typeof s.bossManaFrozen!=='number')s.bossManaFrozen=0;if(typeof s.bossLands!=='number')s.bossLands=Math.max(0,(s.bossManaMax||s.bossMana||0));if(typeof s.bossLandPlayed!=='boolean')s.bossLandPlayed=false;
   if(typeof s.balanceScale!=='number')s.balanceScale=1;if(s.plane===undefined)s.plane=null;if(s.stackProposal===undefined)s.stackProposal=null;if(!Array.isArray(s.phasesFired))s.phasesFired=[];
@@ -2449,13 +2455,21 @@ function buildTabs(){const byId=id=>document.getElementById(id),q=s=>document.qu
   mv(tbPlayer,yourBoard);mv(tbPlayer,yourZones);mv(tbPlayer,rules);
   [['info','tab-info'],['action','tab-action'],['enemy','tab-enemy'],['player','tab-player']].forEach(([k,id])=>{const t=byId(id),lab=t&&t.querySelector('.tabnote');if(lab&&!lab.querySelector('.ibtn'))lab.insertAdjacentHTML('beforeend',' '+infoBtn(k));});
   const sh=byId('plays')&&byId('plays').querySelector('h3');if(sh&&!sh.querySelector('.ibtn'))sh.insertAdjacentHTML('beforeend',infoBtn('stack'));
-  const bph=byId('battlesPanel')&&byId('battlesPanel').querySelector('h2');if(bph&&!bph.querySelector('.ibtn'))bph.insertAdjacentHTML('beforeend',infoBtn('battles'));}                                 // Your board
+  const bph=byId('battlesPanel')&&byId('battlesPanel').querySelector('h2');if(bph&&!bph.querySelector('.ibtn'))bph.insertAdjacentHTML('beforeend',infoBtn('battles'));
+  /* P12.1: make each box collapsible — first box of a multi-box tab open, the rest closed. The Info You/Foe duo + the Dungeon Log (its own ⤢ toggle) are left as-is per spec. A tab with only one collapsible box gets no chevron. */
+  const pgroups=[[[turnflow,'p-turnflow'],[yourAttack,'p-attack'],[tools,'p-tools'],[battles,'p-battles']],[[enemyCrea,'p-enemycrea'],[pw,'p-pw'],[enemyEmb,'p-enemyemb'],[enemyZones,'p-enemyzones']],[[yourBoard,'p-board'],[yourZones,'p-myzones'],[rules,'p-rules']]];
+  pgroups.forEach(list=>{const present=list.filter(([el])=>el);if(present.length<2)return;present.forEach(([el,key])=>{el.dataset.panel=key;const h2=el.querySelector('h2');if(h2&&!h2.querySelector('.pchev')){h2.style.cursor='pointer';h2.insertAdjacentHTML('beforeend','<span class="pchev" aria-hidden="true">▾</span>');h2.addEventListener('click',ev=>{if(ev.target.closest('button,a,input,select,textarea,.ibtn'))return;togglePanel(key);});}});});
+  applyPanels();}                                 // Your board
 /* Tabs default CLOSED: a never-toggled tab (undefined) is collapsed; only an explicit `false` means the player opened it. */
 function applyTabs(){if(typeof S==='undefined'||!S||!S.ui||!S.ui.tabs)return;TABS.forEach(k=>{const el=document.getElementById('tab-'+k);if(el)el.classList.toggle('collapsed',S.ui.tabs[k]!==false);});}
 function toggleTab(k){if(!S.ui)S.ui={tabs:{}};if(!S.ui.tabs)S.ui.tabs={};S.ui.tabs[k]=(S.ui.tabs[k]===false);applyTabs();scheduleAutosave();}
 /* P-UX: Dungeon Log expand/collapse (a tab-like toggle). Default = fixed height + internal scroll; expanded = taller. State on S.ui.logExpanded (in the saved/restored ui, excluded from undo like the tabs). */
 function applyLog(){const box=document.getElementById('logBox');if(!box)return;const exp=!!(typeof S!=='undefined'&&S&&S.ui&&S.ui.logExpanded);box.classList.toggle('expanded',exp);const b=document.getElementById('logToggle');if(b){b.textContent=exp?'⤡':'⤢';b.title=exp?'Collapse the log':'Expand the log';}}
 function toggleLog(){if(!S.ui)S.ui={tabs:{}};S.ui.logExpanded=!S.ui.logExpanded;applyLog();scheduleAutosave();}
+/* P12.1: per-panel collapse inside tabs. State on S.ui.panels[panelKey]=open(bool). Defaults (when unset) = first box of each tab open, the rest closed; computed from DOM order so it stays correct if panels move. Excluded from undo with the rest of `ui`; persisted via autosave. */
+function defaultPanelStates(){const out={};TABS.forEach(k=>{const tab=document.getElementById('tab-'+k);if(!tab)return;[...tab.querySelectorAll('.panel[data-panel]')].forEach((el,i)=>{out[el.dataset.panel]=(i===0);});});return out;}
+function applyPanels(){if(typeof S==='undefined'||!S)return;if(!S.ui)S.ui={tabs:{},panels:{}};if(!S.ui.panels||typeof S.ui.panels!=='object')S.ui.panels={};if(!Object.keys(S.ui.panels).length){const d=defaultPanelStates();if(Object.keys(d).length)S.ui.panels=d;}document.querySelectorAll('.panel[data-panel]').forEach(el=>{el.classList.toggle('collapsed',S.ui.panels[el.dataset.panel]===false);});}
+function togglePanel(k){if(!S.ui)S.ui={tabs:{},panels:{}};if(!S.ui.panels||typeof S.ui.panels!=='object')S.ui.panels={};if(!Object.keys(S.ui.panels).length)S.ui.panels=defaultPanelStates();S.ui.panels[k]=(S.ui.panels[k]===false);applyPanels();scheduleAutosave();}
 /* ===== Satchel popup (opened from the You panel, above the commander box) ===== */
 function openSatchel(){if(typeof S==='undefined'||!S)return;$("modalBody").innerHTML=satchelHTML();$("overlay").classList.add("show");}
 function satchelHTML(){const items=(S&&S.inv)||[];if(!items.length)return `<h2>🎒 Satchel</h2><p style="color:var(--bone-dim);font-style:italic">Empty for now. Clearing a room drops <b>loot</b> here automatically; the <b>🛒 Merchant</b> restocks you <b>between descents</b>. Once you descend the Merchant is closed — no shopping until the level ends.</p>`;
