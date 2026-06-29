@@ -163,6 +163,12 @@
 | **Phase 34 — Smarter enemy combat AI: strategic attacking, targeting & blocking** | ⬜ **PLANNED** — extend the P6.x combat AI: attack with lethal/race awareness + defensive hold-back when behind + smarter face/walker targeting; block survival-first against lethal, gang-block to kill, don't chump tramplers, exploit deathtouch/first-strike, preserve key blockers. Difficulty-scaled. See Phase 34 below |
 | &nbsp;&nbsp;P34.1 Smarter attacking & targeting (lethal/race push · defensive hold-back · face vs walker) | ⬜ planned |
 | &nbsp;&nbsp;P34.2 Smarter blocking (survival-first vs lethal · gang-block to kill · trample/deathtouch/first-strike-aware · preserve bombs) | ⬜ planned |
+| **Phase 35 — Realistic enemy decks: real permanents · ramp/mana base · faithful card design · graveyard strategies** | ⬜ **PLANNED** — rebuild the enemy decks as believable MTG decks now that they must build mana: real (non-token) creature permanents, colour-appropriate **ramp** (rocks/dorks/rituals/lands), faithful real-card-style design with a proper curve/removal/threats/finishers (per-difficulty swaps already exist), all spells using the full player option set, and **graveyard strategies** (reanimation/recursion/aristocrats) giving black enemies — Murglax especially — a real identity. See Phase 35 below |
+| &nbsp;&nbsp;P35.1 Enemy creatures as real non-token permanents (close the asymmetry; foundation for graveyard play) | ⬜ planned |
+| &nbsp;&nbsp;P35.2 Real mana base + ramp (lands · rocks · dorks · rituals as legit sources — reconciles P17.1) | ⬜ planned |
+| &nbsp;&nbsp;P35.3 Faithful real-MTG-style card design + coherent balanced decks per enemy (curve · removal · threats · finishers) | ⬜ planned |
+| &nbsp;&nbsp;P35.4 Graveyard strategies (reanimation · recursion · aristocrats) — Murglax identity; black/Rakdos enemies | ⬜ planned |
+| &nbsp;&nbsp;P35.5 Enemy spells use the full real-spell option set (parity with player mechanics) | ⬜ planned |
 
 ---
 
@@ -1418,7 +1424,7 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **How:**
 1. **Lands are the only thing that grows `bossLands`.** Keep `playEnemyLand`/`dtPlayCard`-land + the `vaelUntap` refill (`bossManaMax=bossLands(+bossManaMod)`, `bossMana=bossManaMax`) as the whole engine.
 2. **Remove the pre-seed:** at `enterRoom` (~814) start `bossLands=bossManaMax=bossMana=0`; drop `room.landStart` (rooms ~739/745/751) and `DIFF.manaBonus` (~582) as mana levers. Move difficulty scaling off mana onto the already-explicit HP knobs (P10) / luck / land draw — **flag as a balance decision (confirm with the user).**
-3. **Ramp rocks (obol/altar):** under the rule they're non-land mana → either remove them from the decks or reclassify as real lands. **Flag for the user** (mana rocks are arguably legit MTG); default per the rule = remove/neutralize their mana.
+3. **Ramp rocks (obol/altar):** ~~under the rule they're non-land mana → remove/neutralize.~~ **⤴ REVISED by the user (Phase 35.2):** ramp is *wanted* — rocks/dorks/rituals the enemy **plays** are legitimate mana sources (real decks ramp). The lands-only rule means "no **free/pre-seeded** mana" (no opening pool, no scrounge), NOT "no ramp." Keep ramp permanents as real sources per **P35.2**; only the pre-seed (#1) and the non-card `enemyMana` emblem (#3) are removed.
 4. **Remove the `enemyMana` emblem template** (~1401/1422) — non-land mana.
 5. **De-duplicate:** delete or clearly rename the `bossMana()` projection function so it can't be confused with the `S.bossMana` field (e.g. `projectedBossMana()`, used only for the player-turn display at ~1198/1231-1232/1646); make any kept path consistent; `usableMana()` stays the single affordability accessor.
 6. **migrate:** for old saves, recompute `bossLands` to reflect lands-only (don't inflate from a stale `bossManaMax`).
@@ -1609,7 +1615,7 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 1. **Zero opening:** in `enterRoom` (~820) set `S.bossLands=S.bossManaMax=S.bossMana=0` (drop the `room.landStart`/`DIFF.manaBonus` pre-seed). Retire `room.landStart` (rooms ~745/751/757) and `DIFF.manaBonus` (~588) as mana levers.
 2. **Remove the scrounge floor:** delete the `if((S.bossLands||0)<S.turn-1…)` branch in `playEnemyLand()` (~1542). The enemy plays a land **only** when it actually has one in hand; mana-screw is now a real outcome (mitigated by the 7-card hand + mulligan in P17.2, not by free mana).
 3. **Keep the legit engine:** `playEnemyLand` (land-from-hand), the `dtPlayCard` land branch (~858), and the `vaelUntap` refill (`bossManaMax=bossLands+bossManaMod; bossMana=bossManaMax`) remain the whole mana system.
-4. **Non-land mana (per P14.10):** ramp rocks (`run:["ramp",N]` ~972) and the `enemyMana` emblem (~1436) are non-land mana — neutralize/remove per the decided rule (default: remove their mana grant; reclassify mana rocks as lands only if the user wants them kept). `bossManaMod` (admin ritual/stax modifier) and `bossManaFrozen` (freeze) stay.
+4. **Non-land mana:** remove only the **free** sources — the pre-seed (#2 above) and the non-card **`enemyMana` emblem** (~1436). **Ramp permanents the enemy plays (rocks/dorks/rituals, `run:["ramp",N]`) STAY as legitimate sources** — see the P35.2 reconciliation (real decks ramp; "lands-only" meant no *free* mana, not no ramp). `bossManaMod` (admin ritual/stax modifier) and `bossManaFrozen` (freeze) stay.
 5. **De-duplicate (carry from P14.10):** rename the display-only projection so it can't shadow the `S.bossMana` field; `usableMana()` stays the single affordability accessor.
 6. **Difficulty re-tune:** difficulty no longer scales starting mana — push the swing onto HP (P10), luck, and **land density in the deck** (a per-difficulty land count / mulligan strictness is the natural new lever; see P17.2).
 7. **migrate:** recompute `bossLands` for old saves to a lands-only basis (don't inflate from a stale `bossManaMax`).
@@ -2357,6 +2363,86 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** facing lethal, the enemy blocks down below lethal (chumping if needed) rather than dying; it gang-blocks to kill an attacker no single blocker can; it won't chump a trampler pointlessly; deathtouch/first-strike blockers are used well; it preserves bombs when safe; menace/`maxBlk`/lure rules from P12.2/P20.3 still hold; difficulty scales it.
 **Verify:** jsdom — lethal incoming → blocks reduce damage below `S.boss.life`; a 6/6 attacker with two 3/x blockers → gang-blocked dead; a trampler isn't chumped; a deathtouch blocker is assigned to the biggest attacker; a bomb isn't traded for a 1/1 when not under pressure; P6.x/P12.2/P20.3 regressions pass; easy vs brutal differ; syntax + id-diff.
+
+
+# PHASE 35 — Realistic enemy decks: real permanents · ramp/mana base · faithful card design · graveyard strategies ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** Now that the enemy must **build its mana** like a player (P17.1), its decks should play like believable MTG decks — real creature permanents, colour-appropriate ramp, a coherent curve with removal/threats/finishers, spells that use the full option set, and graveyard strategies that give black enemies (Murglax above all) a real identity. **Large creative + balance effort — build it via the multi-agent workflow** (deck-design + adversarial-balance agents), in the task order below. **Depends on:** P17 (lands-only mana), P33 (token flag), P13.3 (real enemy artifacts/enchants), P30 (full permanent options). Grounded in the current `index.html` (re-grep names; line numbers drift). Each task ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded audit:**
+- **Decks are data-driven:** `buildDeck(room)` (~876) assembles from `room.pool` (array = cost-based copies via `deckCopies` ~618, or `{key:count}` map = singleton) + `room.lands` + per-difficulty `room.swaps[diff]` (cut/add). Shuffled on build. So a deck rework is largely **data** (FX entries + room pools) plus a few engine effects.
+- **Every enemy creature is a spawned token today** (confirmed: all 63 `type:"creature"` FX have a `run:["spawn",…]`; the card goes to graveyard on resolve, P7.2). The commander (`S.cmd`) is the only real enemy creature; artifacts/enchants (P13.3) are real permanents.
+- **Mana:** P17.1 makes enemy mana lands-only and leans toward **removing** ramp rocks/dorks (`run:["ramp",N]` ~1054) as "non-land mana." Real decks need ramp — this phase **reconciles** that (see P35.2).
+- **Graveyard hooks:** `S.gy` holds resolved enemy cards; deck-tools already allow **manual** reanimation (gy card → battlefield via spawn, P9.4). `bloodpact` (Pit's Tithe ~1056) is the existing aristocrats-style death payoff. No AI-driven reanimation/recursion yet.
+- **Effects:** `applyRun` (spawn/ramp/rule/bossrule/anthem/cmdBuff/bloodpact/bossHeal/…), `applyTarget` (removal shapes), `castValue` (AI valuation) — the toolbox a realistic deck draws on.
+
+## P35.1 — Enemy creatures as real, non-token permanents (foundation)
+
+**Goal:** an enemy creature **card** resolves as a **real non-token permanent** on the enemy board (dies to the graveyard as a recurable card, can be bounced to hand, copied, edited — full parity), while explicit token-makers still spawn `token:true` bodies. This closes the last big board asymmetry and is the substrate for graveyard play (P35.4).
+
+**How:**
+1. **Two resolution paths:** a creature **card** (the FX entry the enemy cast) enters the enemy creature array as a real object carrying its `key`, `token:false`, `dies:'graveyard'`, full stats/keywords — NOT via `spawn`. Reserve `run:["spawn",…]` for cards/effects that genuinely **make tokens** (Goblin Warband, Resurgence, anthem bodies). Distinguish in `resolvePlay`: if the card *is* a creature, put the card itself onto the board; if its effect *creates* tokens, spawn those.
+2. **Death → graveyard as a real card:** a real enemy creature dying routes its **card** to `S.gy` (recurable), not "ceases"; tokens still cease (P33). `removeRef`/`killMy`-equivalent for the enemy board handles both per the `token` flag.
+3. **Keep `S.tokens` as the enemy creature board** (real creatures + tokens coexist there, distinguished by `token`), or introduce `S.enemyCreatures` — pick the lower-churn option; many reads (`vaelAttackers`/`aiBlocks`/emblems) already iterate `S.tokens`, so extending it is likely cleaner. Migrate accordingly.
+4. **Full options:** real enemy creatures get the P30 option set (bounce/exile/graveyard, prot/hexproof/shroud, counters, edit) already wired for the enemy board.
+5. **Balance-neutral first:** this is a representation change — the *same* creatures, now real. Verify combat/AI/emblems still behave; then P35.3 redesigns the actual card lists.
+
+**ACs:** an enemy creature card enters as a real `token:false` permanent that dies to `S.gy` as a recurable card and can be bounced/edited; token-makers still spawn `token:true` bodies that cease; combat/AI/emblems unaffected by the representation; saves migrate.
+**Verify:** jsdom — casting an enemy creature card yields a real board permanent (`token:false`, has `key`); it dies to `S.gy` (card present, reanimatable); a token-maker still yields `token:true` ceasing bodies; `vaelAttackers`/`aiBlocks` still work; migrate; syntax + id-diff.
+
+## P35.2 — Real mana base + ramp (reconciles P17.1)
+
+**Goal:** enemy decks have a believable mana base and **ramp** appropriate to their colours — lands plus mana **rocks** (artifacts), mana **dorks** (creatures that tap for mana, where colour/flavour permit), and **rituals** — so the curve actually functions now that mana is built, not free.
+
+**How:**
+1. **Reconcile P17.1:** the lands-only rule's intent was "no **free/pre-seeded** mana" (no opening pool, no scrounge) — **not** "no ramp." A ramp permanent the enemy **plays** (rock/dork/ritual) is a *legitimate* source. So: mana grows from **played mana sources** = lands + resolved ramp permanents. Update P17.1's ramp step (which leaned toward removing rocks) to **keep ramp as real sources**, and make `bossLands`/the mana pool count them consistently (a dork taps like a land; a rock adds; a ritual is one-shot). Flag the small balance retune.
+2. **Colour-appropriate ramp:** red = rituals (one-shot burst, e.g. "add RR this turn") + the occasional rock; black = rituals + a mana rock/altar (sacrifice-for-mana fits the aristocrats theme); avoid green-style mass ramp (off-colour). Mana **dorks** only where a creature tapping for mana fits the colour's flavour. Model each via a clean effect (`ramp`/a tap-for-mana creature property `mana>0` the engine already supports on creatures).
+3. **Curve + land count:** each deck gets a real land count (~17-18 in a 40-ish, scale to the ~99 singleton) + a few ramp pieces, tuned so the enemy hits its curve without flooding/screwing (the P17.2 mulligan helps). Per-difficulty `swaps` adjust land/ramp density (brutal smoother, easy rougher) — reuse the existing lever.
+4. **Consistency with the mana engine:** ramp sources integrate with `usableMana()`/`bossMana`/`vaelUntap` so the AI spends them correctly; a tapped dork/used ritual is tracked.
+
+**ACs:** each enemy deck has a functioning land base + colour-appropriate ramp; ramp permanents the enemy plays add to its usable mana consistently (rock/dork persistent, ritual one-shot); difficulty swaps tune mana density; no free/pre-seed mana (P17.1 intent preserved); the enemy reliably curves out.
+**Verify:** jsdom — a played rock/dork raises usable mana; a ritual gives a one-turn burst that doesn't persist; lands-only "no free mana" still holds (no pre-seed/scrounge); difficulty swaps change land/ramp counts; syntax + id-diff. **(Reconciles P17.1 — confirm the ramp re-allow with the user; default per this request = ramp is in.)**
+
+## P35.3 — Faithful real-MTG-style card design + coherent, balanced decks per enemy
+
+**Goal:** redesign each enemy's deck as a believable, balanced archetype — cards designed from scratch but **working like real MTG cards** (and may be modeled on real cards) — with a proper curve, interaction (removal/answers), threats, and a finisher, so each enemy is a worthwhile, characterful fight.
+
+**How:**
+1. **Per-enemy identity & curve:** give each boss a clear archetype with a real mana curve (1-drops → finisher), interaction, and inevitability — Grakk = aggro/go-wide burn; Murglax = black attrition/aristocrats/graveyard (P35.4); Vael = Rakdos midrange with reanimation. Build the card lists as faithful, self-consistent cards (cost matches effect, colours match the pie — red burns/haste, black removal/drain/recursion; no off-colour effects).
+2. **Faithful card modeling:** cards may be **inspired by or modeled on real MTG cards** (or designed fresh) but must obey real card rules — proper cost, type, colour identity, and effects expressed through the existing engine (`run`/`target`/keywords). Add the few **new engine effects** a faithful design needs (e.g. reanimation, recursion — P35.4) rather than fudging.
+3. **Balance:** tune so each deck is beatable but threatening at standard, with the **per-difficulty `swaps`** (existing) making easy gentler and brutal sharper. Adversarially balance-test (a workflow agent plays/evaluates curves, threat density, answer count).
+4. **Immersion/character:** flavour names + oracle-style text + `flav` lines that fit the Warren-of-Embers setting, reinforcing each boss's personality.
+5. **Data-first:** most of this is FX entries + `room.pool`/`lands`/`swaps` edits via `buildDeck`; keep changes data-driven and the deck size/structure (singleton ~99 per P5.2) intact unless intentionally revised.
+
+**ACs:** each enemy deck is a coherent archetype with a real curve, colour-faithful cards, interaction, threats, and a finisher; cards behave like real MTG cards via the engine; standard is balanced (beatable, threatening) with difficulty swaps scaling it; flavour reinforces character; every card resolves without error and builds to the intended size on every difficulty.
+**Verify:** jsdom — each deck builds to its target size on easy/std/brutal; every FX entry resolves (cast/spawn/effect) without throwing; curve/colour sanity asserted (no off-colour effects; cost bands sane); finisher present; adversarial balance review; regressions green; syntax + id-diff.
+
+## P35.4 — Graveyard strategies (reanimation · recursion · aristocrats) — Murglax's identity
+
+**Goal:** black (and Rakdos) enemies interact with the graveyard — reanimating creatures, recurring spells, and exploiting deaths — so Murglax plays a real attrition/graveyard game (and Vael uses reanimation where it fits his Rakdos midrange). This is why P35.1 (real creatures → recurable cards) matters.
+
+**How:**
+1. **Reanimation effect:** a new `applyRun` case (e.g. `reanimate`) that returns a creature **card** from `S.gy` to the enemy battlefield as a real permanent (P35.1) — the AI picks the best target (highest `castValue`/threat). Cards like "Raise the Pyre" / a Murglax bomb-reanimator. (Manual reanimation already exists in deck-tools; this is the AI/card-driven version.)
+2. **Recursion:** an effect to return a spell/card from `S.gy` to hand (regrowth-style), letting Murglax rebuy removal/drain — attrition inevitability.
+3. **Aristocrats/sacrifice:** lean on the existing `bloodpact` (Pit's Tithe death drain) plus a sacrifice-for-value outlet (sac a creature/token → drain or draw) so deaths feed the engine — pairs with go-wide tokens (the enemy sacrifices its own spawned tokens for value, tying into P16.3's "enemy uses tokens").
+4. **AI usage:** `vaelMain`/`castValue` value reanimating a big creature from the yard, recurring an answer, and sacrificing chaff for value — so the AI actually pursues the graveyard plan, not just holds the cards.
+5. **Scope by enemy:** Murglax = full graveyard/attrition; Vael = a reanimation finisher angle (he already has reanimation flavour, P5.2); Grakk = none (mono-red aggro). Colour-gate the effects.
+
+**ACs:** Murglax reanimates a creature card from `S.gy` onto the board (real permanent), recurs an answer to hand, and sacrifices chaff for value; the AI chooses these when they're the best play; Vael uses reanimation where it fits; Grakk doesn't; effects are colour-gated and resolve cleanly; pairs with P35.1 (creatures die as recurable cards) and P16.3 (enemy sacrifices tokens).
+**Verify:** jsdom — a `reanimate` run returns the best `S.gy` creature to the enemy board as `token:false`; recursion returns a card to `S.hand`; a sacrifice outlet drains/draws and feeds `bloodpact`; the AI fires them via `castValue` when best; colour-gated (Grakk has none); regressions green; syntax + id-diff. (Builds on P35.1; uses `bloodpact`/P16.3.)
+
+## P35.5 — Enemy spells use the full real-spell option set (parity with player mechanics)
+
+**Goal:** the enemy's spells and permanents use the same real-spell mechanics and options the player's do — keywords, protection/ward, counters, targeting rules, ETB/triggers — so "enemy cards" aren't a reduced subset.
+
+**How:**
+1. **Audit the enemy card effects** against the player's full option set (P13/P30): keywords (incl. hexproof/shroud/protection), counters, attack/block restrictions, triggers, zone behavior. Ensure enemy cards can carry and use them (the symmetric-board work P13.x/P30 provides the substrate).
+2. **Real targeting/resolution:** enemy removal/effects obey the same targeting rules (protection/hexproof/shroud/ward honoured both ways — P30.4) and resolve through the shared engine, not bespoke shortcuts.
+3. **ETB/triggered abilities:** where a faithful card has an enters-the-battlefield or triggered ability, model it through the engine (a `run` on resolve / a trigger window) consistently for enemy and player.
+4. **No reduced subset:** any option the player has on a card, an enemy card of the same type can have — verified by the P30 parity work; this task is the deck-design-side guarantee that the new cards actually exercise it.
+
+**ACs:** enemy cards use the full keyword/counter/protection/targeting/trigger option set; enemy removal honours protection/hexproof/shroud/ward; ETB/triggers resolve through the shared engine; no player option is unavailable to an equivalent enemy card.
+**Verify:** jsdom — a designed enemy creature with hexproof/protection is honoured in targeting; an enemy ETB trigger fires on resolve; enemy removal respects ward/protection both ways; parity matrix (player option ↔ enemy card) asserted; syntax + id-diff. (Leans on P13.x / P30.)
 
 ---
 
