@@ -1768,7 +1768,10 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — `S.enemyCounters.poison=10; checkEnemyOut()` → `bossDown` path (assert phase-2 for Vael, clear for a normal boss); an unblocked player-commander swing adds `effP` to `enemyCounters.cmdDmg` and 21 triggers the fall; a blocked/again-non-commander swing doesn't accrue; `checkLose` (player) untouched; reset on `enterRoom`; syntax + id-diff.
 
 
-# PHASE 20 — Combat-count restrictions: blockable-by-N (creatures) · attackable-by-N (planeswalkers) · enemy max-blockers box ⬜ PLANNED
+# PHASE 20 — Combat-count restrictions: blockable-by-N (creatures) · attackable-by-N (planeswalkers) · enemy max-blockers box ✅ DONE
+
+> **✅ BUILT & verified.** **P20.1:** creature block-by-N parity confirmed (both drawers expose the min/max steppers via `setBlockMy`/`setObjBlock`); added a `max<min` warning (`_blockWarn`, counts menace's implied 2) and a compact `blockBadge` on both boards' creature tiles. **P20.2:** planeswalker `attackableBy` cap — `setWalkerCap(id,n)` (0=unlimited), walker-drawer editor, enforced in `combatTarget` (refuse a 2nd attacker onto a cap-1 walker) + a hard guard at approve + a `predictCombat` ⚠; absent = unlimited (no migrate). Enemy walker `S.pw` stores the field (drawer parity is a follow-up — no player→enemy-walker targeting yet). **P20.3:** enemy **Max blockers** box (`#maxBlk`, mirrors `#maxAtk`) enforced in `aiBlocks` via a running `used`/`room()` cap; a menace attacker that can't reach its min within the cap is left UNBLOCKED, never partially. 15-check jsdom + full combat regression (P12.2/P14.2/P18); id-diff adds only `#maxBlk`.
+
 
 **Specced 2026-06-29, NOT built.** The user wants per-card combat-count limits, unified across player and enemy. **Clarified meaning (user, 2026-06-29):** for a **creature**, "attackable only by N" *means blockable only by N* (the existing `block:{min,max}`); for a **planeswalker**, it means the walker can be *attacked* by at most N creatures. Plus a global enemy "max blockers" box mirroring the existing "max attackers". Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 

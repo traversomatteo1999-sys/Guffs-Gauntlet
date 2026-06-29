@@ -388,7 +388,7 @@
       <div class="bar"><i id="bossBar" style="width:100%"></i></div>
       <div class="pips" id="manaPips"></div><div class="manaline" id="manaLine">Mana: <b>0</b></div>
       <div class="btnrow"><button class="ember" onclick="dmgBoss()">Direct damage</button><input type="number" id="bossDmgIn" min="1" placeholder="dmg"><div class="setbtns"><button class="mini" onclick="adjBoss(-1)">−1</button><button class="mini" onclick="adjBoss(1)">+1</button><button class="mini" onclick="adjBoss(5)">+5</button><button class="mini gold" onclick="setBossLife()">Set…</button></div></div>
-      <div class="btnrow"><span class="manaline">Max attackers (Silent Arbiter → 1):</span><input type="number" id="maxAtk" min="0" value="0" onchange="render()"></div>
+      <div class="btnrow"><span class="manaline">Max attackers (Silent Arbiter → 1):</span><input type="number" id="maxAtk" min="0" value="0" onchange="render()"><span class="manaline">Max blockers:</span><input type="number" id="maxBlk" min="0" value="0" onchange="render()" title="Silent Arbiter → 1 · 0 = unlimited"></div>
       <div class="btnrow"><span class="manaline">Enemy mana now:</span><button class="mini" onclick="bossManaAdj(-5)">−5</button><button class="mini" onclick="bossManaAdj(-1)">−1</button><b id="bossPoolVal" class="manaline" style="color:var(--gold);min-width:42px;text-align:center">0</b><button class="mini" onclick="bossManaAdj(1)">+1</button><button class="mini" onclick="bossManaAdj(5)">+5</button><button class="mini azor" onclick="bossManaSet()">Set…</button><button class="mini ember" onclick="bossManaEmpty()">empty</button></div>
       <div class="btnrow"><span class="manaline">Per-turn modifier (ritual + / stax −):</span><button class="mini" onclick="bossManaModAdj(-1)">−1</button><b id="bossManaModVal" class="manaline" style="color:var(--gold);min-width:24px;text-align:center">0</b><button class="mini" onclick="bossManaModAdj(1)">+1</button><button class="mini azor" onclick="bossManaModSet()">Set…</button></div>
       <div class="btnrow"><span class="manaline">❄ Freeze mana (tapped down)</span><span class="ibtn" role="button" tabindex="0" onclick="showInfo('freeze')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showInfo('freeze')}" title="What's this?">i</span><button class="mini" onclick="bossFreezeAdj(-1)">−1</button><b id="bossFrozenVal" class="manaline" style="color:var(--azor);min-width:24px;text-align:center">0</b><button class="mini" onclick="bossFreezeAdj(1)">+1</button><button class="mini" onclick="bossFreezeClear()">clear</button></div>
@@ -1064,6 +1064,8 @@ function legalBlock(att,b){if(b.phased)return false;if(kw(b,"can't block"))retur
 function minBlockers(c){const explicit=(c&&c.block&&c.block.min)||0;return Math.max(explicit,kw(c,'menace')?2:1);}/* P18.1: Math.max so an explicit block.min can RAISE the requirement but never LOWER menace below 2 (the `||` short-circuit let block.min=1 defeat menace — confirmed enemy-menace bug). Symmetric for player + enemy. */
 function maxBlockers(c){return (c&&c.block&&c.block.max)||Infinity;}
 function blockLabel(c){const mn=minBlockers(c),mx=maxBlockers(c),p=[];if(mn>1)p.push('blocked by '+mn+'+');if(mx!==Infinity)p.push('max '+mx+' blocker'+(mx===1?'':'s'));return p.length?' <span class="manaline">['+p.join(' · ')+']</span>':'';}
+/* P20.1: compact board-tile badge for a creature's block-count restriction (both boards). */
+function blockBadge(c){const mn=minBlockers(c),mx=maxBlockers(c),p=[];if(mn>1)p.push('blk '+mn+'+');if(mx!==Infinity)p.push('≤'+mx+' blk');return p.length?`<span class="badge" title="block-count restriction">${p.join(' · ')}</span>`:'';}
 function resolveAttack(attackers,assign){ // assign: {attId:[blockerObjs]}
   let face=0,attLifelink=0,defLifelink=0;const deadAtt=[],deadBlk=[],perAtt=[];
   attackers.forEach(att=>{
@@ -1166,6 +1168,7 @@ function clearExpiringTokens(){
 function vaelDefenders(){const ds=[...S.tokens.filter(c=>!c.tapped&&!c.phased&&!kw(c,"can't block"))];if(S.cmd.inPlay&&!S.cmd.tapped&&!S.cmd.phased&&!kw(S.cmd,"can't block"))ds.push(S.cmd);return ds;}
 function aiBlocks(attackers){
   const assign={};let avail=vaelDefenders();
+  const maxB=parseInt(($("maxBlk")||{}).value,10)||0;let used=0;const room=k=>maxB<=0||(used+k)<=maxB;/* P20.3: global cap on total enemy blockers (Silent Arbiter etc.); 0 = unlimited. A menace attacker that can't reach its min within the remaining cap is left unblocked rather than partially (illegal) blocked. */
   attackers.slice().sort((a,b)=>threatScore(b)-threatScore(a)).forEach(att=>{
     const need=minBlockers(att);const cap=maxBlockers(att);if(need>cap)return;/* P12.2: a creature whose required blockers exceed its max can't be legally blocked at all */let elig=avail.filter(b=>legalBlock(att,b));if(elig.length<need)return;
     const kills=b=>(effP(b)>=effT(att)||kw(b,'deathtouch'))&&!kw(att,'indestructible');/* P6.3 (folded-in, pre-existing): the enemy can't kill an INDESTRUCTIBLE player attacker by damage or deathtouch — matches resolveAttack — so it won't try a "favorable" block, only chump a big one */const survives=b=>(effT(b)>effP(att)&&!kw(att,'deathtouch'))||kw(b,'indestructible');const ts=combatThreat(att);/* P6.1: block-decision GATES read the legacy-equivalent metric (effP+strength), never the enriched threatScore — so thresholds are byte-identical to pre-P6.1 while the sort above prioritises by full threat */
@@ -1174,11 +1177,11 @@ function aiBlocks(attackers){
       if(!pick&&ts>=4)pick=elig.filter(b=>!b._cmd&&kills(b)).sort((a,b)=>effP(a)-effP(b))[0];
       if(!pick&&ts>=Math.max(5,S.boss.life*0.4))pick=elig.filter(b=>!b._cmd).sort((a,b)=>effP(a)-effP(b))[0];
       if(!pick){const cb=elig.find(b=>b._cmd&&kills(b)&&survives(b));if(cb)pick=cb;}
-      if(pick){assign[att.id]=[pick];avail=avail.filter(b=>b!==pick);}
-    }else{const grp=elig.filter(b=>!b._cmd).sort((a,b)=>effP(a)-effP(b)).slice(0,need);if(grp.length>=need&&ts>=4){assign[att.id]=grp;avail=avail.filter(b=>!grp.includes(b));}}
+      if(pick&&room(1)){assign[att.id]=[pick];avail=avail.filter(b=>b!==pick);used++;}
+    }else{const grp=elig.filter(b=>!b._cmd).sort((a,b)=>effP(a)-effP(b)).slice(0,need);if(grp.length>=need&&ts>=4&&room(grp.length)){assign[att.id]=grp;avail=avail.filter(b=>!grp.includes(b));used+=grp.length;}}
   });
   /* P12.2: lure — a lured attacker must be blocked by every able free defender (up to its max). Pre-satisfy the approve-time rule so the proposal isn't rejected; only force it when a LEGAL block (>= minBlockers) can actually be formed. */
-  attackers.forEach(att=>{if(!kw(att,'lure'))return;const cap=maxBlockers(att),cur=assign[att.id]||[];const free=avail.filter(b=>legalBlock(att,b)&&cur.indexOf(b)<0);const add=[];for(const b of free){if(cur.length+add.length>=cap)break;add.push(b);}if(add.length&&cur.length+add.length>=minBlockers(att)){assign[att.id]=cur.concat(add);avail=avail.filter(b=>add.indexOf(b)<0);}});
+  attackers.forEach(att=>{if(!kw(att,'lure'))return;const cap=maxBlockers(att),cur=assign[att.id]||[];const free=avail.filter(b=>legalBlock(att,b)&&cur.indexOf(b)<0);const add=[];for(const b of free){if(cur.length+add.length>=cap)break;if(!room(add.length+(cur.length?0:1)))break;/* P20.3: respect the global blocker cap */add.push(b);}if(add.length&&cur.length+add.length>=minBlockers(att)&&room(add.length)){assign[att.id]=cur.concat(add);avail=avail.filter(b=>add.indexOf(b)<0);used+=add.length;}});
   return assign;
 }
 /* ===== COMBAT PROPOSAL (propose -> edit -> approve) ===== */
@@ -1234,7 +1237,12 @@ function renderCombat(){
   });
   predictCombat();
 }
-function combatTarget(attId,val){if(!S.combat)return;S.combat.target=S.combat.target||{};S.combat.target[attId]=val;renderCombat();}
+/* P20.2: a planeswalker can be attackable by at most N creatures. 0/absent = no limit. Stored on the walker; enforced when the enemy assigns attackers to your walkers (combatTarget) + a hard guard at approve. */
+function setWalkerCap(id,n){const w=getMy('walkers',id)||(S.pw&&''+S.pw.id===''+id?S.pw:null);if(!w)return;w.attackableBy=(n>0?n:null);log("you",`✎ ${w.name}: attackable by ${n>0?'at most '+n:'any number of'} creature${n===1?'':'s'}.`);render();}
+function walkerAtkCount(tmap,wid){return Object.keys(tmap).filter(k=>''+tmap[k]===''+wid).length;}
+function combatTarget(attId,val){if(!S.combat)return;S.combat.target=S.combat.target||{};
+  if(val!=='you'){const w=(S.my.walkers||[]).find(x=>''+x.id===''+val);const cap=(w&&w.attackableBy>0)?w.attackableBy:Infinity;if(cap!==Infinity){const cur=Object.keys(S.combat.target).filter(k=>k!==''+attId&&''+S.combat.target[k]===''+val).length;if(cur>=cap){log("sys",`⚠ ${w.name} can be attacked by at most ${cap} creature${cap===1?'':'s'}.`);renderCombat();return;}}}
+  S.combat.target[attId]=val;renderCombat();}
 function combatAdd(attId){const sel=$("cbsel_"+attId);const ci=parseInt(sel.value,10);if(isNaN(ci))return;const a=S.combat.attackers.find(x=>''+x.id===''+attId);if(!a)return;const cap=maxBlockers(a);if((S.combat.assign[attId]||[]).length>=cap){log("sys",`${a.name} can be blocked by at most ${cap} creature${cap===1?'':'s'}.`);return;}/* P12.2: hard max-blocker cap */const used=combatUsed();const elig=S.combat.pool.filter(b=>!used.has(b)&&legalBlock(a,b));const obj=elig[ci];if(!obj)return;S.combat.assign[attId]=S.combat.assign[attId]||[];S.combat.assign[attId].push(obj);renderCombat();}
 function combatDel(attId,bi){(S.combat.assign[attId]||[]).splice(bi,1);renderCombat();}
 function predictCombat(){const r=resolveAttack(S.combat.attackers,S.combat.assign);const dead=[...r.deadAtt,...r.deadBlk];let s;
@@ -1247,6 +1255,8 @@ function predictCombat(){const r=resolveAttack(S.combat.attackers,S.combat.assig
   /* P12.2: flag illegal partial (under-min / menace) blocks — approveCombat will refuse these, so the prediction above is not what will actually happen. */
   const partial=S.combat.attackers.filter(a=>{const n=(S.combat.assign[a.id]||[]).length;return n>0&&n<minBlockers(a);});
   if(partial.length)s+=` <span style="color:var(--ember)">⚠ ${partial.map(cnm).join(', ')} blocked by too few (needs ${partial.map(a=>minBlockers(a)).join('/')}) — Approve will reject this.</span>`;
+  /* P20.2: warn when a walker is attacked beyond its attackableBy cap (Approve will reject). */
+  if(S.combat.dir==='vael'){const tmap=S.combat.target||{};const over=(S.my.walkers||[]).filter(w=>w.attackableBy>0&&walkerAtkCount(tmap,w.id)>w.attackableBy);if(over.length)s+=` <span style="color:var(--ember)">⚠ ${over.map(w=>w.name).join(', ')} attacked by too many (max ${over.map(w=>w.attackableBy).join('/')}) — Approve will reject this.</span>`;}
   $("combatPred").innerHTML=s;}
 function approveCombat(){
   if(!S.combat)return;const dir=S.combat.dir,attackers=S.combat.attackers,assign=S.combat.assign;
@@ -1268,6 +1278,8 @@ function approveCombat(){
     if(S.boss.life<=0)bossDown();render();
   }else{
     const tmap=S.combat.target||{};
+    /* P20.2: hard guard — refuse to resolve while any of your walkers is attacked by more creatures than its attackableBy cap. */
+    for(const w of (S.my.walkers||[])){if(w.attackableBy>0&&walkerAtkCount(tmap,w.id)>w.attackableBy){log("sys",`⚠ ${w.name} can be attacked by at most ${w.attackableBy} — reassign attackers before approving.`);return;}}
     let toYou=0;const wHits={};r.perAtt.forEach(({att,toFace})=>{const tg=tmap[att.id]||'you';if(tg==='you')toYou+=toFace;else wHits[tg]=(wHits[tg]||0)+toFace;});
     const ward=(S.inv.some(it=>it.id==="ward")?2:0)+(S.inv.some(it=>it.id==="aegis")?4:0)+(S.inv.some(it=>it.id==="buckler")?1:0);/* P15.2: Iron Buckler stacks +1 */const face=Math.max(0,toYou-ward);if(ward&&toYou>0)log("you",`Your charms soak ${Math.min(ward,toYou)}.`);
     if(face>0){S.youLife-=face;sfx('hit');log("dm",`<b>${face}</b> to your life. (${S.youLife})`);}
@@ -1296,7 +1308,7 @@ function kwBadges(scope,id,c){return (c.kw||[]).map(k=>`<span class="badge kw" o
 function enemyCard(c){const buff=c.plus||0,deb=c.minus||0;return `<button class="slay mini ember" onclick="slay(${c.id})">Slay</button><button class="mini" onclick="moveBoardById('token',${c.id},'hand')" title="bounce — return to ${ENs()}'s hand (not a death)">↩ hand</button><button class="mini" onclick="takeControl(${c.id})" title="gain control — it joins your board">⇄ take</button>
   <div class="cn">${c.name}${c.sick?' <span class="tag">sick</span>':''}</div>
   <div class="cpt">${effP(c)}/${effT(c)}${buff?` <span class="buff">+${buff}</span>`:''}${deb?` <span class="deb">−${deb}</span>`:''} ${colorDots(c)}</div>
-  <div class="badges">${c._controlled?'<span class="badge" title="control changed — may revert">⇄ controlled</span>':''}${c.tapped?'<span class="badge tap">tapped</span>':''}${c.phased?'<span class="badge ph">phased out</span>':''}${c.legendary?'<span class="badge leg">legendary</span>':''}${c.token?'<span class="badge tok">token</span>':''}${c.expires?'<span class="badge ph" title="ceases to exist at end of turn">⌛ EOT</span>':''}${(c.prot||[]).length?`<span class="badge prot">prot ${c.prot.join("")}</span>`:''}${c.noAbil?'<span class="badge no">no-abil</span>':''}${kwBadges('token',c.id,c)}${(c.other||[]).map((o,oi)=>`<span class="badge" style="cursor:pointer" title="click to remove" onclick="remCtrOther('token',${c.id},${oi})">${o} ✕</span>`).join("")}</div>
+  <div class="badges">${c._controlled?'<span class="badge" title="control changed — may revert">⇄ controlled</span>':''}${c.tapped?'<span class="badge tap">tapped</span>':''}${c.phased?'<span class="badge ph">phased out</span>':''}${c.legendary?'<span class="badge leg">legendary</span>':''}${c.token?'<span class="badge tok">token</span>':''}${c.expires?'<span class="badge ph" title="ceases to exist at end of turn">⌛ EOT</span>':''}${(c.prot||[]).length?`<span class="badge prot">prot ${c.prot.join("")}</span>`:''}${c.noAbil?'<span class="badge no">no-abil</span>':''}${kwBadges('token',c.id,c)}${blockBadge(c)}${(c.other||[]).map((o,oi)=>`<span class="badge" style="cursor:pointer" title="click to remove" onclick="remCtrOther('token',${c.id},${oi})">${o} ✕</span>`).join("")}</div>
   <div class="ctr"><button class="${c.tapped?'on':''}" onclick="tapT(${c.id})">tap</button><button class="${c.noAbil?'on':''}" onclick="noAbilT('token',${c.id})">no-abil</button><button onclick="cctr(${c.id},'plus',1)">+1/+1</button><button onclick="cctr(${c.id},'minus',1)">−1/−1</button><button onclick="cctrCustom(${c.id})">＋ctr</button><button onclick="remCtr('token',${c.id})">⊖ ctr</button><button onclick="cp(${c.id},'p',1)">P+</button><button onclick="cp(${c.id},'p',-1)">P−</button><button onclick="cp(${c.id},'t',1)">T+</button><button onclick="cp(${c.id},'t',-1)">T−</button></div>
   ${kwSelect('token',c.id)}
   <button class="drawtoggle tiny" onclick="toggleDrawer('token',${c.id})">${c._drawer?'▾ properties':'▸ properties'}</button><button class="tiny" onclick="resetCard('token',${c.id})" title="reset to original — base P/T, clear counters">↺ reset</button>
@@ -1364,7 +1376,7 @@ function renderMy(){
     el.innerHTML=`<button class="slay mini ember" onclick="rmMy('creatures',${c.id})">✕</button>
       <input type="text" value="${c.name}" style="width:100%;font-size:.8rem" onchange="setMy('creatures',${c.id},'name',this.value)">
       <div class="cpt">${effP(c)}/${effT(c)}${buff?` <span class="buff">+${buff}</span>`:''}${deb?` <span class="deb">−${deb}</span>`:''}${colorDots(c)}</div>
-      <div class="badges">${c.tapped?'<span class="badge tap">tapped</span>':''}${c.sick?'<span class="badge tap">sick</span>':''}${c.noAbil?'<span class="badge no">no-abil</span>':''}${propBadges(c)}${kwBadges('my',c.id,c)}${(c.other||[]).map((o,oi)=>`<span class="badge" style="cursor:pointer" title="click to remove" onclick="remCtrOther('creatures',${c.id},${oi})">${o} ✕</span>`).join("")}</div>
+      <div class="badges">${c.tapped?'<span class="badge tap">tapped</span>':''}${c.sick?'<span class="badge tap">sick</span>':''}${c.noAbil?'<span class="badge no">no-abil</span>':''}${propBadges(c)}${kwBadges('my',c.id,c)}${blockBadge(c)}${(c.other||[]).map((o,oi)=>`<span class="badge" style="cursor:pointer" title="click to remove" onclick="remCtrOther('creatures',${c.id},${oi})">${o} ✕</span>`).join("")}</div>
       <div class="ctr"><button class="${c.tapped?'on':''}" onclick="tapMy(${c.id})">tap</button><button class="${c.sick?'on':''}" onclick="sickMy(${c.id})">sick</button><button class="${c.noAbil?'on':''}" onclick="noAbilT('my',${c.id})">no-abil</button><button onclick="myctr(${c.id},'plus',1)">+1/+1</button><button onclick="myctr(${c.id},'minus',1)">−1/−1</button><button onclick="myctrCustom(${c.id})">＋ctr</button><button onclick="remCtr('creatures',${c.id})">⊖ ctr</button><button onclick="mp(${c.id},'p',1)">P+</button><button onclick="mp(${c.id},'p',-1)">P−</button><button onclick="mp(${c.id},'t',1)">T+</button><button onclick="mp(${c.id},'t',-1)">T−</button></div>
       ${kwSelect('my',c.id)}
       <button class="drawtoggle tiny" onclick="toggleDrawer('creatures',${c.id})">${c._drawer?'▾ properties':'▸ properties'}</button><button class="tiny" onclick="dupMy('creatures',${c.id})">⧉ copy</button><button class="tiny" onclick="resetCard('creatures',${c.id})" title="reset to original — base P/T, clear counters">↺ reset</button><button class="tiny gold" onclick="saveBoardToLibrary('creatures',${c.id})">★ save</button>
@@ -1387,12 +1399,13 @@ function toggleDrawer(scope,id){const o=getObj(scope,id);if(o){o._drawer=!o._dra
 function setCatk(cat,id,f,v){const o=getMy(cat,id);if(!o)return;o.catk=o.catk||{amt:0,type:'mana',tgt:false};o.catk[f]=v;if(!(o.catk.amt>0))o.catk=null;render();}
 function setCward(cat,id,f,v){const o=getMy(cat,id);if(!o)return;o.cward=o.cward||{amt:0,type:'mana'};o.cward[f]=v;if(!(o.cward.amt>0))o.cward=null;render();}
 /* P12.2: edit a creature's block-count restriction in place (which='min'|'max'; 0 clears that side; both clear → block=null). */
-function setBlockMy(cat,id,which,v){const o=getMy(cat,id);if(!o)return;o.block=o.block||{min:null,max:null};o.block[which]=(v>0?v:null);if(o.block.min==null&&o.block.max==null)o.block=null;log("you",`✎ ${o.name}: ${which} blockers ${(v>0)?'= '+v:'cleared'}.`);render();}
+function _blockWarn(o){if(o&&o.block&&o.block.max!=null){const effMin=Math.max(o.block.min||0,kw(o,'menace')?2:1);if(o.block.max<effMin)log("sys",`⚠ ${o.name||o.n}: max blockers (${o.block.max}) is below its minimum (${effMin}) — it can't be legally blocked.`);}}/* P20.1: warn when max < min (incl. menace's implied 2) */
+function setBlockMy(cat,id,which,v){const o=getMy(cat,id);if(!o)return;o.block=o.block||{min:null,max:null};o.block[which]=(v>0?v:null);if(o.block.min==null&&o.block.max==null)o.block=null;_blockWarn(o);log("you",`✎ ${o.name}: ${which} blockers ${(v>0)?'= '+v:'cleared'}.`);render();}
 function colorDots(c){return (c.color||[]).map(col=>`<span class="cdot" style="background:${COLOR_HEX[col]}" title="${col}"></span>`).join("");}
 function colorToggles(scope,id,field){const o=getObj(scope,id)||{};const cur=o[field]||[];const idl=id===null?'null':id;return COLORS.map(col=>`<button class="manapip ${cur.indexOf(col)>=0?'on':''}" style="--mc:${COLOR_HEX[col]}" onclick="toggleColorField('${scope}',${idl},'${field}','${col}')">${col}</button>`).join("");}
 /* P13.1: owner-agnostic permanent editors — mutate ANY board object (player S.my[cat], enemy S.tokens, enemy commander S.cmd) via getObj, so the enemy board edits at parity with yours. The player drawer keeps its own setMy/setBlockMy setters (unchanged). */
 function setObjF(scope,id,f,v){const o=getObj(scope,id);if(!o)return;o[f]=v;log("you",`✎ ${o.name||o.n}: ${f} = ${v}.`);render();}
-function setObjBlock(scope,id,which,v){const o=getObj(scope,id);if(!o)return;o.block=o.block||{min:null,max:null};o.block[which]=(v>0?v:null);if(o.block.min==null&&o.block.max==null)o.block=null;log("you",`✎ ${o.name||o.n}: ${which} blockers ${(v>0)?'= '+v:'cleared'}.`);render();}
+function setObjBlock(scope,id,which,v){const o=getObj(scope,id);if(!o)return;o.block=o.block||{min:null,max:null};o.block[which]=(v>0?v:null);if(o.block.min==null&&o.block.max==null)o.block=null;_blockWarn(o);log("you",`✎ ${o.name||o.n}: ${which} blockers ${(v>0)?'= '+v:'cleared'}.`);render();}
 function enemyDrawer(scope,id,c){const idl=id===null?'null':id;return `<div class="drawer">
   <div class="drow"><span class="dlab">flags</span><button class="tiny ${c.legendary?'on':''}" onclick="flagObj('${scope}',${idl},'legendary')">legendary</button><button class="tiny ${c.token?'on':''}" onclick="flagObj('${scope}',${idl},'token')">token</button>${scope==='token'?`<button class="tiny ${c.expires?'on':''}" onclick="flagObj('${scope}',${idl},'expires')" title="ceases to exist at the next end of turn">expires (EOT)</button>`:''}<button class="tiny ${c.phased?'on':''}" onclick="flagObj('${scope}',${idl},'phased')">phase out</button></div>
   <div class="drow"><span class="dlab">color</span><div class="setbtns">${colorToggles(scope,id,'color')}</div></div>
@@ -1428,6 +1441,7 @@ function walkerDrawer(w){const id=w.id;return `<div class="drawer">
   <div class="drow"><span class="dlab">legendary</span><span style="color:var(--gold);font-size:.62rem">★ always — planeswalkers are legendary</span></div>
   <div class="drow"><span class="dlab">color</span><div class="setbtns">${colorToggles('walkers',id,'color')}</div></div>
   ${moveRow('walkers',id,false)}
+  <div class="drow"><span class="dlab">attackable by</span><input type="number" min="0" value="${w.attackableBy||0}" style="width:42px" onchange="setWalkerCap(${id},+this.value)"><span class="manaline">max creatures that may attack it (0 = no limit)</span></div>
   <div class="drow"><span class="dlab">dies to</span><select onchange="setMy('walkers',${id},'dies',this.value)"><option value="graveyard" ${w.dies!=='exile'?'selected':''}>graveyard</option><option value="exile" ${w.dies==='exile'?'selected':''}>exile</option></select></div>
   <div class="drow"><span class="dlab">attack tax (enemy pays)</span><input type="number" min="0" value="${w.catk?w.catk.amt:0}" style="width:42px" onchange="setCatk('walkers',${id},'amt',+this.value)"><select onchange="setCatk('walkers',${id},'type',this.value)"><option value="mana" ${!w.catk||w.catk.type==='mana'?'selected':''}>mana</option><option value="life" ${w.catk&&w.catk.type==='life'?'selected':''}>life</option></select></div>
   <div class="drow"><span class="dlab">ward (enemy pays to target)${infoBtn('ward')}</span><input type="number" min="0" value="${w.cward?w.cward.amt:0}" style="width:42px" onchange="setCward('walkers',${id},'amt',+this.value)"><select onchange="setCward('walkers',${id},'type',this.value)"><option value="mana" ${!w.cward||w.cward.type==='mana'?'selected':''}>mana</option><option value="life" ${w.cward&&w.cward.type==='life'?'selected':''}>life</option></select></div>
