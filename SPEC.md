@@ -174,6 +174,11 @@
 | &nbsp;&nbsp;P36.1 `advance()` resets the undo history at the descent | ⬜ planned |
 | **Phase 37 — Enemy mana-box UI reflects the lands-only model** | ⬜ **PLANNED** — update the enemy box mana readout to match the built lands-only mana (P17.1): show usable mana + **mana sources (lands/ramp) count**, an honest next-turn projection, frozen, and no text implying free/pre-seeded mana. See Phase 37 below |
 | &nbsp;&nbsp;P37.1 Enemy box shows usable mana · sources count · projection · frozen (lands-only) | ⬜ planned |
+| **Phase 38 — Enemy planeswalkers as cards/permanents; Vael's commander becomes a planeswalker (ult = overpowered Avatar)** | ⬜ **PLANNED** — retire the hardcoded auto-firing `S.pw`: enemy planeswalkers are **cast cards** that resolve to real walker permanents with AI-activated loyalty abilities (like the player's). Support an enemy **commander that IS a planeswalker**, and redesign Vael so his **commander is the planeswalker** whose **ultimate spawns Vael's Avatar — an overpowered bomb** (replacing the separate Nyx walker + the 5/5 Cinder Wraith ult). See Phase 38 below |
+| &nbsp;&nbsp;P38.1 Enemy planeswalkers = cast cards → real walker permanents with AI-activated loyalty abilities (retire `pwAct` auto-fire) | ⬜ planned |
+| &nbsp;&nbsp;P38.2 Enemy commander-as-planeswalker (parity with the player's walker-commander) | ⬜ planned |
+| &nbsp;&nbsp;P38.3 Vael redesign: planeswalker commander whose ult spawns an overpowered Vael's Avatar | ⬜ planned |
+| &nbsp;&nbsp;P38.4 Sorcery-speed loyalty (main-phase, empty stack, 1/turn, player picks when) + enemy sequences stacks & reserves plays for main2 | ⬜ planned |
 
 ---
 
@@ -2510,6 +2515,71 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** the enemy box shows current usable mana, the mana-source count, an honest next-turn projection, and frozen; nothing implies free/pre-seeded mana; under freeze it shows usable vs pool correctly; no mana logic changes; the readout matches the log's "N mana sources."
 **Verify:** jsdom/string-check — `manaLine` includes `S.bossLands` source count and `usableMana()`; your-turn shows `projBossMana()`; frozen note present when `bossManaFrozen>0`; no "free/pre-seed"-implying text; syntax + id-diff. (Pairs with P17.1; forward-compatible with P35.2.)
+
+
+# PHASE 38 — Enemy planeswalkers as cards/permanents; Vael's commander becomes a planeswalker ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** Enemy planeswalkers should work like everything else — **cast cards** that resolve to real walker permanents with **activated loyalty abilities at sorcery speed**, not a hardcoded auto-firing `S.pw`. The enemy commander may itself be a planeswalker, and **Vael** is redesigned so his **commander is the planeswalker** whose **ultimate spawns an overpowered Vael's Avatar**. **Depends on:** P35.1 (real enemy creatures — the spawned Avatar is a real permanent), P29 (command-zone/tax — a walker commander uses it), P30.2 (walker options), and mirrors the **player walker** model (the template). Grounded in the current `index.html` (re-grep names; line numbers drift). Large rework — build carefully (workflow-friendly); each task ships behind the standard per-task workflow.
+
+**Grounded audit:**
+- **Hardcoded enemy walker:** `S.pw` (~871) = `{name,loy,baseLoy,colors,ultThreshold,plus,minus,ult}`, set from `room.pw`; `pwAct()` (~1826) **auto-fires** one ability each enemy upkeep (from `vaelUpkeep`); manual `adjLoy`/`damagePW` (~1766/1777) edit/kill it; `walkerMinLoy3` (~) targets it. It is **not** a card and does **not** resolve through the stack.
+- **Player walkers (the template):** real cast cards → `resolvePlayerItem` planeswalker branch (~2041) → `S.my.walkers` permanent with `loyalty`/`baseLoy`; manual loyalty +/−; can be a **commander** (`kind:'walkers'`, `castCmd` casts a walker, ~1485).
+- **Vael today (~782-788):** `cmd:{n:"Vael's Avatar",p:5,t:5,kw:["trample"],cost:5}` (a creature commander) **plus** a separate `pw:{name:"Nyx, Voice of Cinders",loy:3,ultThreshold:7, …ult: spawn 5/5 Cinder Wraith…}`. Two separate threats. There are also `ashreborn` ("The Avatar Reborn", 6/6) and `embershape` (Cinder Avatar) cards in the pool.
+- **Multi-stack already supported:** P4.1 lets either side cast → resolve → cast again within a phase (multiple stacks); `vaelMain` runs in **main1 and main2** (`which===1`/main2).
+
+## P38.1 — Enemy planeswalkers = cast cards → real walker permanents (sorcery-speed loyalty; retire `pwAct` auto-fire)
+
+**Goal:** an enemy planeswalker is a **card** the enemy casts (from its deck or command zone), resolving onto a **real walker permanent** on the enemy board; each turn the enemy **activates one loyalty ability** (+/−/ult) **at sorcery speed** (its main phase, empty stack, once per turn per walker), chosen strategically — replacing the auto-firing `S.pw`.
+
+**How:**
+1. **Real permanent:** planeswalker cards (FX `type:'planeswalker'` with loyalty + `plus`/`minus`/`ult` abilities) resolve to an **enemy walker permanent** (a real object like the player's `S.my.walkers`, on the enemy board — reuse/parallel `S.pw` as a real permanent, or an `S.enemyWalkers` array; pick the lower-churn path). It carries `loyalty`/`baseLoy`, gets the P30.2 option set, takes loyalty damage from combat/`walkerMinLoy3`, and dies to the graveyard as a recurable card (P35.1).
+2. **Sorcery-speed activated abilities (replaces `pwAct`):** the enemy activates **one** loyalty ability per walker **per turn**, only in its **main phase with an empty stack** (not on upkeep, not at instant speed). Move the decision out of `vaelUpkeep`/`pwAct` into the main-phase AI (`vaelMain`), choosing +/−/ult by board state + loyalty (build loyalty when safe; fire minus/removal at a real threat; ult at threshold) — leaning on the P34 "smarter" valuation. Loyalty changes by the ability's `sign`.
+3. **Cast like a spell:** the walker card goes on the stack (the player may respond) before resolving — like any enemy spell (`dtPlayCard`/`vaelMain` cast path).
+4. **Migrate the old `S.pw`:** convert an in-flight hardcoded `S.pw` to the new permanent representation (preserve loyalty); old saves don't break.
+5. **Player walkers unchanged** — they already work this way; this brings the enemy to parity.
+
+**ACs:** an enemy planeswalker enters as a real permanent via a cast (stack-respondable); the enemy activates exactly one loyalty ability per walker per turn, only in a main phase with an empty stack; abilities raise/lower loyalty per `sign`; it takes loyalty damage and dies to the graveyard; the old upkeep auto-fire is gone; saves migrate.
+**Verify:** jsdom — casting an enemy PW card yields a real walker permanent; in main-phase the AI fires one ability (empty stack) and loyalty changes; it cannot fire on upkeep / with a non-empty stack / twice in a turn; `walkerMinLoy3`/combat reduce loyalty and lethal routes to graveyard; migrate old `S.pw`; syntax + id-diff.
+
+## P38.2 — Enemy commander-as-planeswalker (parity with the player's walker-commander)
+
+**Goal:** the enemy commander may itself be a planeswalker — cast from the command zone, resolving as a walker permanent, with the commander recast-tax model on death (P29) — exactly as a player can designate a planeswalker commander.
+
+**How:**
+1. **Commander kind:** let `S.cmd` represent a **planeswalker** (loyalty/`baseLoy`/abilities) as well as a creature — a `kind`/`isWalker` distinction (mirror the player's `kind:'walkers'` commander). `room.cmd` may specify a planeswalker commander.
+2. **Cast from command zone:** the `_enemyCmd` resolve path (~) puts a walker commander onto the enemy board with loyalty; the P29 hand/command-zone cost model applies (base from hand, base+tax from the command zone); death → command zone with rising tax (loyalty reset to base).
+3. **Loyalty abilities:** the walker commander activates abilities at sorcery speed per P38.1 while on the battlefield.
+4. **Rendering:** the enemy commander box/card shows loyalty + abilities for a walker commander (vs P/T for a creature commander), reusing the walker render.
+
+**ACs:** an enemy planeswalker commander casts from the command zone, resolves as a walker permanent with loyalty, activates one ability/turn at sorcery speed, and on death returns to the command zone with +tax (loyalty reset); the creature-commander path is unchanged; mirrors the player's walker-commander.
+**Verify:** jsdom — a walker `S.cmd` casts from the command zone → walker permanent with loyalty; fires a loyalty ability in main; dies → command zone, tax +inc, loyalty reset; hand vs command-zone cost (P29) holds; syntax + id-diff.
+
+## P38.3 — Vael redesign: planeswalker commander whose ult spawns an overpowered Vael's Avatar
+
+**Goal:** rebuild Vael so his **commander is the planeswalker** (consolidating the old creature-commander + separate Nyx walker into one), and its **ultimate creates Vael's Avatar — a genuinely overpowered bomb** (replacing the 5/5 Cinder Wraith ult).
+
+**How:**
+1. **Commander = planeswalker:** replace Vael's `cmd:{n:"Vael's Avatar",5/5 creature}` + separate `pw:{Nyx…}` with a **single planeswalker commander** (e.g. "Vael, the Ember Tyrant" as a walker) in `room.cmd`, using P38.2. Drop the standalone `room.pw` (or fold its identity into the commander).
+2. **Overpowered Avatar ult:** the ult (`sign` to threshold) **spawns "Vael's Avatar" as a real, overpowered creature** (P35.1/P35.4) — much bigger than the old 5/5 (e.g. a 7-8/7-8 with trample + haste + lifelink/deathtouch, or scaling) so it's a real finisher; keep a life cost on the ult for flavour. Tune so it's threatening but beatable, scaled by difficulty (room HP/`reborn` already scale).
+3. **Plus/minus abilities:** give the walker a sensible +ability (build loyalty / chip the player / make a small body) and a −ability (removal/drain) so it plays as a planeswalker, not just an ult-bot. Colour-faithful R/B.
+4. **Reconcile the two-phase boss:** Vael's `reborn` second phase (~782) and the existing `ashreborn`/`embershape` avatar cards — make the avatar ult and the phase-2 revival coherent (the Avatar is the ult payoff; the reborn mechanic stays the boss's second life). Avoid double-avatars unless intended.
+5. **Flavour:** name/oracle/`flav` fitting Vael — the planeswalker *is* the Tyrant; the Avatar is the fire given a body.
+
+**ACs:** Vael fields a single **planeswalker commander** (no separate Nyx walker); its ultimate spawns an overpowered Vael's Avatar (a real bomb, far beyond the old 5/5); the +/− abilities play sensibly; difficulty scales the threat; the reborn second phase stays coherent (no unintended double-avatar); flavour fits.
+**Verify:** jsdom — Vael's room yields a planeswalker commander (loyalty, no separate `S.pw`); reaching the ult threshold + firing it spawns the overpowered Avatar (correct big stats/keywords, real permanent); +/− abilities resolve; reborn phase intact; builds on every difficulty; syntax + id-diff.
+
+## P38.4 — Sorcery-speed loyalty for the player + enemy strategic stack sequencing (reserve for main2)
+
+**Goal:** formalize loyalty-ability timing as **sorcery speed** for both sides (main phase, empty stack, once per turn per walker, the controller chooses *when*), and let the enemy **sequence multiple stacks** across its turn and **strategically reserve** plays for its **second main** phase.
+
+**How:**
+1. **Sorcery-speed gate (both sides):** a loyalty ability can be activated only in a **main phase** of its controller's turn, with an **empty stack**, **once per turn per walker** (track a per-turn "activated" flag, cleared each turn). The **player chooses when/which** to activate (a UI affordance on the player walker — pick the ability in main1 or main2). The enemy AI obeys the same gate (P38.1).
+2. **Enemy sequential stacks:** the enemy already supports multiple stacks per phase (P4.1) — make `vaelMain` deliberately **propose stacks one after another** (cast → let it resolve → cast again) within a main phase, rather than dumping everything at once, so the player can respond to each.
+3. **Reserve for main2 (strategy):** the enemy AI decides what to **hold for the second main** — e.g. develop threats in main1, **reserve removal / a combat trick / a walker ult / mana** for after combat (main2) when it's more valuable (kill a blocker post-combat, push a finisher, answer what the player committed). Drive this with the P34 valuation: a play whose value is higher post-combat is reserved. Keep instant-speed answers for the player's turn (the existing `enemyInstant` windows).
+4. **Logging/clarity:** the enemy narrates when it holds back ("{enemy} holds {card} for after combat") so the sequencing reads intentionally, not as passivity.
+
+**ACs:** loyalty abilities (player + enemy) are activatable only at sorcery speed (main, empty stack, 1/turn/walker), and the player picks when; the enemy casts in sequential stacks the player can respond to; the enemy reserves higher-post-combat-value plays (removal/trick/ult/mana) for main2 and uses them there; held-back plays are logged; instant-speed windows still work.
+**Verify:** jsdom — a loyalty ability is rejected outside a main / with a non-empty stack / on a second activation that turn; the player can fire in main1 or main2; the enemy proposes ≥2 sequential stacks in a turn when it has plays; a post-combat-valuable removal is reserved for main2 and fired there; held-back log present; syntax + id-diff. (Builds on P4.1, P34, P38.1.)
 
 ---
 
