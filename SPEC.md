@@ -179,6 +179,9 @@
 | &nbsp;&nbsp;P38.2 Enemy commander-as-planeswalker (parity with the player's walker-commander) | ⬜ planned |
 | &nbsp;&nbsp;P38.3 Vael redesign: planeswalker commander whose ult spawns an overpowered Vael's Avatar | ⬜ planned |
 | &nbsp;&nbsp;P38.4 Sorcery-speed loyalty (main-phase, empty stack, 1/turn, player picks when) + enemy sequences stacks & reserves plays for main2 | ⬜ planned |
+| **Phase 39 — Attack-target selection: swing at the enemy, its planeswalkers, or its sieges/battles (+ enemy blocks battle attacks)** | ⬜ **PLANNED** — when a boss siege/battle is in play, each of your attackers picks its target (enemy face · planeswalker · siege/battle) via a per-attacker select in the combat resolver (like the enemy-attack target panel); damage routes to the chosen target (face/loyalty/defense counters, breaking a siege at 0); the enemy can choose to block — or not — attacks aimed at its sieges/battles. See Phase 39 below |
+| &nbsp;&nbsp;P39.1 Per-attacker target select on your swing (enemy · walker · siege/battle) + damage routing | ⬜ planned |
+| &nbsp;&nbsp;P39.2 Enemy can block attacks aimed at its sieges/battles (aiBlocks defends them; chooses to or not) | ⬜ planned |
 
 ---
 
@@ -2580,6 +2583,43 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** loyalty abilities (player + enemy) are activatable only at sorcery speed (main, empty stack, 1/turn/walker), and the player picks when; the enemy casts in sequential stacks the player can respond to; the enemy reserves higher-post-combat-value plays (removal/trick/ult/mana) for main2 and uses them there; held-back plays are logged; instant-speed windows still work.
 **Verify:** jsdom — a loyalty ability is rejected outside a main / with a non-empty stack / on a second activation that turn; the player can fire in main1 or main2; the enemy proposes ≥2 sequential stacks in a turn when it has plays; a post-combat-valuable removal is reserved for main2 and fired there; held-back log present; syntax + id-diff. (Builds on P4.1, P34, P38.1.)
+
+
+# PHASE 39 — Attack-target selection: swing at the enemy, its planeswalkers, or its sieges/battles ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** When a boss siege/battle is on the field, the player should be able to send each attacker at the **enemy**, an **enemy planeswalker**, or a **siege/battle** — chosen per-attacker in the combat resolver, like the panel the enemy uses to target your walkers — and the enemy should be able to **block (or not) attacks aimed at its sieges/battles**. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded audit:**
+- **Battles/sieges:** `S.battles` (`{id,name,def,maxDef,side:'you'|'boss',tick,defeated,_vael,note}`). **Boss-side** entries are sieges — `fieldVaelBattle` (~1538) adds "Siege of the Ember Throne" (def 6, heals Vael 2/upkeep via `tickBossBattles` ~1539); breaking it (def→0) is meant to deal 6 to Vael (per its note). Today battles are attacked **manually** in the Battles panel (⚔/±), **not** through the combat resolver.
+- **Combat resolver target select (the template):** `renderCombat` (~1213) builds a per-attacker target `<select>` **only for the enemy-attack direction** (`vael`), listing you + your walkers → `combatTarget(attId,val)` into `S.combat.target`; `approveCombat` (~1243, `vael` branch) splits `perAtt` by target and applies to your life / walker loyalty. **Your-attack direction (`dir==='you'`) has no target select — all damage hits `S.boss.life`.**
+- **Blocking:** `aiBlocks` (~1185) assigns the enemy's blockers to your attackers (threat-sorted); it has no notion of an attacker aimed at a siege/battle.
+
+## P39.1 — Per-attacker target select on your swing (enemy · walker · siege/battle) + damage routing
+
+**Goal:** when you swing and a boss siege/battle (or enemy planeswalker) is in play, each attacker row shows a **target select** — enemy face · each enemy planeswalker · each boss-side siege/battle — and damage routes to the chosen target.
+
+**How:**
+1. **Target select for your attackers:** in `renderCombat` (~1213), for `dir==='you'`, render a per-attacker target `<select>` (mirroring the `vael`-direction `tsel`) whose options are: **the enemy** (face, default), each enemy **planeswalker** (`S.pw`/enemy walkers — real & targetable once P38 lands), and each **boss-side `S.battles` siege/battle** that isn't `defeated`. Store in `S.combat.target[attId]` via `combatTarget`. Only show the select when there's more than the face to choose (a siege/battle or walker exists) — otherwise plain face attack as today.
+2. **Damage routing in `approveCombat` (`dir==='you'` branch):** split `perAtt` by target (mirror the enemy-direction split): face → `S.boss.life` (+ commander-damage/counters as today), walker → loyalty, **siege/battle → reduce its `def`** by the attacker's damage; clamp at 0 and mark `defeated`. When a **boss siege** breaks (def→0), fire its payoff (e.g. Vael's "deal 6 to Vael" per its note / stop the upkeep heal). Log each routing.
+3. **Trample/keywords:** if a creature attacking a siege/battle is blocked, normal combat applies (it fights the blocker); unblocked, its damage goes to the chosen target. Trample over a blocker spills to the **targeted** object (face or battle), per MTG.
+4. **Prediction:** `predictCombat` reflects per-target damage (X to enemy, Y to walker, Z to the siege) so the preview matches.
+5. **Keep the manual Battles panel** as a fallback/bookkeeping tool; this adds the *combat* path.
+
+**ACs:** with a siege/battle (or enemy walker) in play, each of your attackers can pick its target; damage routes correctly (face/loyalty/defense counters); a siege at 0 def is defeated and fires its break payoff (Vael takes 6 / heal stops); prediction matches; with nothing but the face to hit, the select is hidden and it behaves as today.
+**Verify:** jsdom — your attacker targeting a boss siege reduces its `def` and breaks it at 0 (firing the payoff); targeting the face hits `S.boss.life`; targeting a walker hits loyalty; `predictCombat` splits by target; no select when only the face exists; syntax + id-diff. (Pairs with P38 for walker targets; P7.7 for sieges.)
+
+## P39.2 — Enemy can block attacks aimed at its sieges/battles
+
+**Goal:** the enemy may assign blockers to defend a siege/battle — choosing whether to block an attacker pointed at it — just as it blocks attackers aimed at its face.
+
+**How:**
+1. **`aiBlocks` considers battle-targeted attackers:** extend `aiBlocks` (~1185) so an attacker whose `S.combat.target` is a boss siege/battle is a **blockable** target — the enemy decides whether to block it (protect the siege) or let the defense counters be removed. Value the decision: block to **save the siege** when the siege is worth more than the trade (e.g. Vael's siege still healing/about to matter), else let it through (don't waste a blocker on a near-dead siege or a cheap chip). Reuse the P34 valuation.
+2. **Block resolution:** a blocked attacker fights the blocker (normal combat); if it survives/tramples, the remainder still reduces the siege per P39.1. An unblocked battle-attacker removes defense as chosen.
+3. **Menace/min-block/`maxBlk` rules** (P12.2/P20.3) apply identically to a battle-targeted attacker.
+4. **Player-side parity (optional):** if the player ever fields a battle the enemy attacks, the player already assigns blockers via the resolver — note symmetry; the focus is the enemy defending its sieges.
+
+**ACs:** the enemy can block an attacker aimed at its siege/battle (chosen by value — protect a worthwhile siege, let a doomed/low-value one through); a blocked battle-attacker fights the blocker and only its excess/trample reaches the siege; menace/`maxBlk` rules hold; an unblocked battle-attacker removes defense; difficulty scales the choice.
+**Verify:** jsdom — an attacker targeting the enemy siege can be assigned an enemy blocker by `aiBlocks`; the enemy blocks when the siege is worth saving and declines when not; a blocked battle-attacker's excess still hits the siege; `maxBlk`/menace respected; syntax + id-diff. (Builds on P39.1, P34, P12.2/P20.3.)
 
 ---
 
