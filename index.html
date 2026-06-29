@@ -194,6 +194,11 @@
   .storeitem.legendary,.item.legendary{border-color:rgba(168,120,224,.7);background:linear-gradient(180deg,rgba(168,120,224,.12),var(--ink-3));box-shadow:0 0 0 1px rgba(168,120,224,.25) inset}
   .item.rare{border-color:rgba(217,164,65,.55)}
   .item.legendary .ir,.storeitem.legendary .si-r{color:#c79bf0}
+  /* P15.1: Fortune Wheel overlay */
+  .wheel{display:flex;flex-direction:column;gap:4px;margin:10px 0}
+  .wslice{border:1px solid var(--line);border-radius:8px;padding:7px 11px;font-family:'Space Mono',monospace;font-size:.78rem;color:var(--bone-dim);background:var(--ink-3);display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .wslice.on{border-color:var(--gold);background:linear-gradient(180deg,rgba(217,164,65,.16),var(--ink-3));color:var(--bone);font-weight:700;box-shadow:0 0 0 1px rgba(217,164,65,.3) inset;animation:wheelpulse .8s ease 2}
+  @keyframes wheelpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
   .si-ic{font-size:1.55rem;width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex:none;border-radius:10px;background:var(--ink);border:1px solid var(--line)}
   .si-body{flex:1;min-width:0}
   .si-n{font-family:'Grenze Gotisch',serif;font-weight:700;font-size:.98rem;line-height:1.1}
@@ -838,6 +843,19 @@ const STORE=[
 function goldReward(roomIdx){const base=12+roomIdx*10;return Math.max(1,Math.round(base*((DIFF[S.diff]&&DIFF[S.diff].goldMult)||1)));}
 let _dt={};
 const LOOT_D20=[[1,3,"heal5"],[4,5,"map"],[6,8,"ember"],[9,11,"scholar"],[12,14,"heal10"],[15,16,"ward"],[17,17,"spark"],[18,18,"pyre"],[19,19,"breaker"],[20,20,"jackpot"]];/* P10: loot retuned — heal5 is the bankable floor (was map), cool tier 17-20 (spark/Pyre Charge/Spellbreaker Sigil/jackpot). Brutal luck nudges the roll up (see lootRoll). */
+/* P15.1: end-of-level Fortune Wheel — d100 weighted slices (mirrors LOOT_D20 range tuples). Most slices are a % of the level's gold base; rare double-gold; very rare a random rare/legendary item. */
+const WHEEL=[[1,25,'g50',"50% gold"],[26,55,'g100',"100% gold"],[56,78,'g150',"150% gold"],[79,90,'g2x',"DOUBLE gold"],[91,97,'rare',"a rare relic"],[98,100,'legendary',"a LEGENDARY relic"]];
+function wheelBase(){return goldReward(S.roomIndex);}
+function wheelSliceFor(roll){return WHEEL.find(s=>roll>=s[0]&&roll<=s[1])||WHEEL[1];}
+function pickByRarity(r){const ids=Object.keys(BOONS).filter(id=>BOONS[id].r===r);return ids.length?ids[Math.floor(Math.random()*ids.length)]:null;}
+/* apply the wheel reward for a given roll (headless-safe: pass a roll, no animation). Returns {slice,roll,desc}. */
+function spinWheel(roll,base){roll=roll||(1+Math.floor(Math.random()*100));base=(base!=null?base:wheelBase());const s=wheelSliceFor(roll),k=s[2];let desc;
+  if(k==='g50'){const g=Math.round(base*0.5);addGold(g);desc=`💰 ${g} gold (50%)`;}
+  else if(k==='g100'){addGold(base);desc=`💰 ${base} gold (100%)`;}
+  else if(k==='g150'){const g=Math.round(base*1.5);addGold(g);desc=`💰 ${g} gold (150%)`;}
+  else if(k==='g2x'){addGold(base*2);desc=`💰💰 ${base*2} gold (DOUBLE!)`;}
+  else{const id=pickByRarity(k);if(id){grantBoon(id);desc=`✦ ${BOONS[id].n} (${k})`;}else{addGold(base);desc=`💰 ${base} gold`;}}
+  log("loot",`🎡 The Fortune Wheel lands on <b>${desc}</b> — account ${getGold()}.`);render();return {slice:k,roll,desc};}
 
 let S;
 function fresh(){histReset();S={diff:"standard",youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],stackProposal:null,phasesFired:[],nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,bossManaFrozen:0,bossLands:0,bossLandPlayed:false,emblemsEnemy:[],enemyArtifacts:[],enemyEnchants:[],battles:[],plane:null,ui:{tabs:{},panels:{}},my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",_spoils:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
@@ -2029,10 +2047,18 @@ function undoPlay(i){const p=S.plays[i];p.status="pending";if(p._card){const gi=
 function checkLose(){if(S.over)return;const poison=(S.counters&&S.counters.poison)||0,cmdd=(S.counters&&S.counters.cmdDmg)||0;if(S.youLife<=0||poison>=10||cmdd>=21){if(S.youLife<=0&&S.inv.some(it=>it.id==="phoenix")&&!S.phoenixUsed){S.phoenixUsed=true;S.inv=S.inv.filter(it=>it.id!=="phoenix");S.youLife=1;log("loot",`🔥 <b>Phoenix Charm</b> catches you at <b>1</b>!`);render();return;}if(poison>=10)log("sys","☠ 10 poison counters - you fall.");if(cmdd>=21)log("sys","☠ 21 commander damage - you fall.");lose();}}
 function win(){if(S.over)return;S.over=true;saveUnusedItems();clearSave();sfx('victory');/* P15.3: stash unused items before the save is wiped */
   recordResult(true);S.boss.life=0;
-  const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);
-  log("loot",`💰 You claim <b>${gold} gold</b> from the Tyrant's abandoned hoard (account balance ${getGold()}).`);
+  const lr=lootRoll();
   log("sys",`🏆 <b>THE WARREN BREAKS — VAEL FLEES.</b> You could not kill the deathless thing; the Ember relit him beyond your reach. You broke his hold here — and freed the prisoner.`);
-  render();const v=DUNGEON[2];
+  render();
+  /* P15.1: spin the Fortune Wheel for the level-clear gold/item, THEN run the victory cutscene chain. */
+  openWheel(lr);}
+/* P15.1: Fortune-Wheel overlay shown on the final clear; on Claim it applies the reward then proceeds to the victory cutscene. */
+let _wheelCtx=null;
+function openWheel(lr){const roll=1+Math.floor(Math.random()*100);_wheelCtx={roll,lr};$("modalBody").innerHTML=wheelHTML(wheelSliceFor(roll));$("overlay").classList.add("show");}
+function wheelHTML(landed){const base=wheelBase();const slices=WHEEL.map(s=>{const on=s===landed;const pct=s[2]==='g50'?`${Math.round(base*0.5)}g`:s[2]==='g100'?`${base}g`:s[2]==='g150'?`${Math.round(base*1.5)}g`:s[2]==='g2x'?`${base*2}g`:(s[2]==='rare'?'rare item':'legendary item');return `<div class="wslice${on?' on':''}">${on?'▸ ':''}${s[3]} <span class="manaline">${pct}</span></div>`;}).join('');
+  return `<h2>🎡 Fortune Wheel</h2><p style="color:var(--bone-dim);font-style:italic">The Tyrant's hoard spills out — the wheel decides your share of the spoils.</p><div class="wheel">${slices}</div><div class="btnrow" style="margin-top:12px"><button class="big ok inline" onclick="claimWheel()">🎡 Claim ▸</button></div>`;}
+function claimWheel(){const ctx=_wheelCtx;if(!ctx)return;_wheelCtx=null;const res=spinWheel(ctx.roll);$("overlay").classList.remove("show");winCutscene(ctx.lr,res.desc);}
+function winCutscene(lr,wheelDesc){const v=DUNGEON[2];
   /* BEAT 1 — Vael escapes (his death-line becomes an escape curse) */
   showCutscene(v.vaelEscape,"The Ember Keeps Its Own","The Tyrant slips the leash","Find Guff ▸",{
     sigil:'🔥',accent:'var(--ember)',speaker:'Vael',quote:"Embers... do not... choose... twice...",
@@ -2046,7 +2072,7 @@ function win(){if(S.over)return;S.over=true;saveUnusedItems();clearSave();sfx('v
           showCutscene(v.epilogue,"The Long Way Back","Level I complete · The road ahead",null,{
             sigil:'✦',accent:'var(--gold)',eyebrowAcc:'var(--gold)',speaker:'Commodore Guff',
             quote:"The Conclave is not dead while one of us still stands. Walk with me.",
-            spoils:`🎲 Spoils: ${lr.names.join(" + ")}!  ·  💰 +${gold} gold (account ${getGold()})`,
+            spoils:`🎲 Spoils: ${lr.names.join(" + ")}!  ·  🎡 ${wheelDesc}  ·  account ${getGold()}g`,
             buttons:[{label:"↻ Descend again",on:restart,cls:"big ok"},{label:"Quit to Menu",on:quitToMenu,cls:"big"}]
           })
         }]
@@ -2076,7 +2102,7 @@ $("pwDmgIn").addEventListener("keydown",e=>{if(e.key==="Enter")damagePW();});
 
 /* ===== Lore / Tutorial / Cutscene overlays ===== */
 /* P3.1: dismiss is no longer a trap. While choosing a commander, a backdrop/✕/cancel either steps back from the create sub-form to the chooser (_cmdCreating) or, on the chooser itself, skips ("set one later"). */
-function closeOverlay(){if(_cmdChooseActive){if(_cmdCreating){_cmdCreating=false;chooseCommander();return;}skipCommander();return;}$("overlay").classList.remove("show");}
+function closeOverlay(){if(_wheelCtx){claimWheel();return;}/* P15.1: dismissing the wheel (backdrop click) still claims the reward + proceeds to the victory cutscene — never lose it */if(_cmdChooseActive){if(_cmdCreating){_cmdCreating=false;chooseCommander();return;}skipCommander();return;}$("overlay").classList.remove("show");}
 /* P3.1: a COMMITTED cast (put-on-stack / cast-from-library) is a definitive exit from the commander flow — it must not bounce back to the chooser the way a cancel does. */
 function closeOverlayCommit(){if(_cmdChooseActive){proceedAfterCommander();return;}$("overlay").classList.remove("show");}
 function openTutorial(){$("modalBody").innerHTML=TUTORIAL_HTML;$("overlay").classList.add("show");}

@@ -97,7 +97,7 @@
 | &nbsp;&nbsp;P14.9 Enemy reliably proposes a stack response (bug) | ✅ **DONE & verified** (`buildEnemyCandidates` scores with `castValue` not `bestTargetThreat` so non-targeted burn/heal get real value; gate relaxed to only HOLD a weak *targeted* removal, always offer a do-something non-targeted response; no fizzles; window path safe. 5-check jsdom) |
 | &nbsp;&nbsp;P14.10 Enemy mana = lands only; de-duplicate mana code | ⤴ **SUPERSEDED by P17.1** — built in Phase 17 (enemy engine overhaul) |
 | **Phase 15 — Economy, rewards & difficulty balance** | ⬜ **PLANNED** — end-of-level gold wheel-spin · store/loot overhaul (fix Tonic of Vigor dup · +legendary rarity · item variety · gold tuning) · persist unused satchel items across runs · difficulty-scaled heal on descend. See Phase 15 below |
-| &nbsp;&nbsp;P15.1 End-of-level gold wheel-spin (%/double/rare-legendary item) | ⬜ planned |
+| &nbsp;&nbsp;P15.1 End-of-level gold wheel-spin (%/double/rare-legendary item) | ✅ **DONE & verified** (`WHEEL` d100 slices 50/100/150%/2×/rare/legendary; `spinWheel(roll,base)` headless-safe core + `pickByRarity`; Fortune-Wheel overlay on `win()` → Claim applies + runs the victory cutscene; backdrop-dismiss still claims (no lost reward). 15-check jsdom + adversarial review, 1 finding fixed) |
 | &nbsp;&nbsp;P15.2 Store & loot overhaul (Tonic fix · legendary tier · variety · gold tuning) | ✅ **DONE & verified** (Tonic = legendary heal-20/+5-max (no longer dup of Spark); `legendary` rarity recognized in satchel+store with violet accent CSS; +6 items filling category/rarity gaps (acid·buckler·tome·surge·rally·comet); every category has a rare; prices on rarity bands (Tonic a deliberate 28g budget-legendary). 12-check jsdom) |
 | &nbsp;&nbsp;P15.3 Persist unused satchel items across runs (profile stash) | ✅ **DONE & verified** (`p.stash`; `saveUnusedItems()` in win/lose before `clearSave`; `applyStashItems()` after `applyPendingPurchases` in restart/startNewDescent; separate bucket, no double-count. 7-check jsdom) |
 | &nbsp;&nbsp;P15.4 Difficulty-scaled healing on descend | ✅ **DONE & verified** (`DESCENT_HEAL` table: easy ½ missing <70%, std ⅓ <50%, brutal ¼ <25%; in `advance()` after `enterRoom`, strict `<`, floor, capped; only on room transitions. 9-check jsdom) |
@@ -1410,7 +1410,7 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — fresh room → `bossMana===0` until a land is played; playing a land raises usable mana by 1; ramp/emblem no longer add mana (per option); no `bossMana()` function shadowing the field; freeze/thaw intact; migrate; syntax + id-diff. **(Balance tradeoff: removing manaBonus/landStart scaling + ramp is significant — confirm the difficulty re-tune with the user before building.)**
 
 
-# PHASE 15 — Economy, rewards & difficulty balance ⬜ PLANNED
+# PHASE 15 — Economy, rewards & difficulty balance ✅ DONE
 
 **Specced 2026-06-29, NOT built.** Requested QoL/economy/balance items, grounded in the current `index.html` (re-grep; `BOONS`/`STORE`/`DIFF` are single long lines). Spec text only; build later behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
