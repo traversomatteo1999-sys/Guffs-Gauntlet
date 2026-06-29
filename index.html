@@ -461,6 +461,12 @@
       <button class="mini" id="bwLeg" onclick="this.classList.toggle('on')">skip legendary</button>
       <select id="bwScope"><option value="mine">your board</option><option value="enemy">enemy tokens</option><option value="both">both boards</option></select>
       <button class="mini ember" onclick="boardWipe()">⚡ Wipe</button></div>
+    <div class="btnrow"><span class="lab">Bulk counters</span>
+      <select id="bcTarget"><option value="yours">your creatures</option><option value="enemy">enemy creatures</option><option value="all-creatures">all creatures</option><option value="all-permanents">all permanents</option></select>
+      <select id="bcKind"><option value="plus">+1/+1</option><option value="minus">−1/−1</option><option value="custom">custom type</option></select>
+      <input type="text" id="bcCustom" placeholder="type" style="width:66px">
+      <input type="number" id="bcN" min="1" value="1" style="width:42px"><span class="lab">×</span>
+      <button class="mini ok" onclick="bulkCtr()">✦ Apply</button></div>
     <div class="btnrow"><span class="lab">Counters</span>
       <span class="chip">poison <b id="cPoison" style="cursor:default">0</b>/10 <button class="tiny" onclick="cnt('poison',-1)">−</button><button class="tiny" onclick="cnt('poison',1)">+</button></span>
       <span class="chip">cmd-dmg <b id="cCmd" style="cursor:default">0</b>/21 <button class="tiny" onclick="cnt('cmdDmg',-1)">−</button><button class="tiny" onclick="cnt('cmdDmg',1)">+</button></span>
@@ -1547,6 +1553,18 @@ function bossManaEmpty(){S.bossMana=0;log("sys",`Enemy mana pool emptied.`);rend
 /* P5.1: freeze — the player taps down the enemy's mana. Lowers usableMana() (the frozen part stays in the pool, unusable) until it thaws at vaelEnd. */
 function bossFreezeAdj(n){S.bossManaFrozen=Math.max(0,(S.bossManaFrozen||0)+n);log("sys",`❄ ${ENs()}'s mana frozen: <b>${S.bossManaFrozen}</b> (usable now ${usableMana()}).`);render();}
 function bossFreezeClear(){if(!S.bossManaFrozen)return;log("sys",`❄ Cleared the freeze on ${ENs()}'s mana.`);S.bossManaFrozen=0;render();}
+/* P14.4: apply a counter to MANY permanents at once (yours / enemy / all creatures / all permanents). plus/minus = +1/+1 or −1/−1; custom = a named counter pushed n times into obj.other. Counters live on the object → round-trip free. */
+function _bulkCtrTargets(target){const mine=S.my.creatures||[],foes=(S.tokens||[]).concat(S.cmd&&S.cmd.inPlay?[S.cmd]:[]);
+  if(target==='yours')return mine.slice();
+  if(target==='enemy')return foes.slice();
+  if(target==='all-creatures')return mine.concat(foes);
+  return mine.concat(foes,S.my.artifacts||[],S.my.enchants||[],S.my.walkers||[],S.enemyArtifacts||[],S.enemyEnchants||[]);/* all-permanents */}
+function bulkCtr(){const target=$("bcTarget").value,kind=$("bcKind").value,custom=($("bcCustom")?$("bcCustom").value:'').trim(),n=Math.max(1,parseInt($("bcN").value,10)||1);
+  const set=_bulkCtrTargets(target);if(!set.length){log("sys","No permanents in that target set.");return;}let label;
+  if(kind==='plus'){set.forEach(o=>{o.plus=(o.plus||0)+n;});label=`+${n}/+${n}`;}
+  else if(kind==='minus'){set.forEach(o=>{o.minus=(o.minus||0)+n;});label=`−${n}/−${n}`;}
+  else{const t=custom||'counter';set.forEach(o=>{o.other=o.other||[];for(let q=0;q<n;q++)o.other.push(t);});label=`${n}× ${t}`;}
+  log("you",`✦ Bulk counters — ${label} on ${set.length} permanent${set.length===1?'':'s'} (${target.replace('-',' ')}).`);render();}
 function boardWipe(){const mode=$("bwMode").value,N=parseInt($("bwN").value,10)||0,skipTok=$("bwTok").classList.contains("on"),skipLeg=$("bwLeg").classList.contains("on"),scope=$("bwScope").value;
   const hit=c=>{if(skipTok&&c.token)return false;if(skipLeg&&c.legendary)return false;if(mode==='all')return true;if(mode==='toughLE')return effT(c)<=N;if(mode==='powGE')return effP(c)>=N;return true;/*dmgAll handled separately*/};
   let mine=0,foe=0;const dmg=mode==='dmgAll';
