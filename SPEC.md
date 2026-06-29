@@ -2037,7 +2037,10 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** string/jsdom checks — each `INFO_TEXT` entry and tab note is present and mentions its system; new keys resolve via `showInfo`; no `infoBtn('key')` points at a missing entry; syntax + id-diff. **Run/refresh after P16–P24 land (living doc).**
 
 
-# PHASE 26 — Slay asks graveyard or exile (enemy creature death destination) ⬜ PLANNED
+# PHASE 26 — Slay asks graveyard or exile (enemy creature death destination) ✅ DONE
+
+> **✅ BUILT & verified (P26.1).** `slay(id)` on a real (non-token) enemy creature opens a graveyard/exile popup → `slayTo(id,where)` fires the **Pit's Tithe** (`bloodTithe`) once, then routes the body to `S.gy`/`S.exile` as a reanimatable record via `moveBoardCard(...,quiet)`. Tokens still cease (death + Tithe, no popup); the commander still uses `slayCmdBtn`→`removeRef` (command zone). This is the **death**-flavoured counterpart to P24.2's non-death ✕ (graveyard/exile, no "none"). 9-check jsdom + full regression; id-diff clean.
+
 
 **Specced 2026-06-29, NOT built.** Clicking ✦ Slay on an enemy creature should ask where the slain creature goes — graveyard or exile — instead of silently ceasing. This is the enemy-side, **death-flavoured** counterpart to P24.2 (the player's non-death ✕ popup). Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 

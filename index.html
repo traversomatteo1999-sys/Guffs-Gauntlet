@@ -1764,7 +1764,13 @@ function boardWipe(){const mode=$("bwMode").value,N=parseInt($("bwN").value,10)|
   log("sys",`🌊 Boardwipe — ${label}${skipTok?' (sparing tokens)':''}${skipLeg?' (sparing legendaries)':''}: ${mine} of yours, ${foe} enemy.`);
   checkLose();render();}
 function adjLoy(n){if(!S.pw)return;S.pw.loy+=n;if(S.pw.loy<=0){log("sys",`${S.pw.name} destroyed.`);S.pw=null;}render();}
-function slay(id){const i=S.tokens.findIndex(c=>c.id===id);if(i<0)return;const c=S.tokens[i];log("you",`Slew <b>${c.name}</b>.`);removeRef(c);render();}/* P5.2: a slain enemy creature is a death — route through removeRef (pays the Pit's Tithe) */
+/* P5.2 / P26.1: slaying an enemy creature is a DEATH (pays the Pit's Tithe). A token ceases (no zone); a real (non-token) enemy creature asks graveyard or exile — the death-flavoured counterpart to P24.2's clean ✕ (which also offers "none"). The commander uses slayCmdBtn → removeRef (command zone), never this popup. */
+function slay(id){const i=S.tokens.findIndex(c=>c.id===id);if(i<0)return;const c=S.tokens[i];
+  if(c.token){log("you",`Slew <b>${cnm(c)}</b>.`);removeRef(c);render();return;}/* a token ceases (death + Tithe), no zone — unchanged */
+  $("modalBody").innerHTML=`<div style="padding:4px 2px"><h3 style="margin:0 0 6px">Slay ${embEsc(cnm(c))} —</h3><p class="manaline" style="margin:0 0 10px">A death — the Pit's Tithe fires. Where does the body go?</p><div class="btnrow" style="gap:6px;flex-wrap:wrap"><button class="tiny ember" onclick="slayTo(${id},'graveyard')">⚰ graveyard</button><button class="tiny" onclick="slayTo(${id},'exile')">⊘ exile</button><button class="tiny" onclick="closeOverlay()">cancel</button></div></div>`;
+  $("overlay").classList.add("show");}
+function slayTo(id,where){const c=S.tokens.find(x=>x.id===id);if(!c){closeOverlay();return;}where=(where==='exile')?'exile':'graveyard';
+  log("you",`✦ <b>${cnm(c)}</b> is slain → ${ENs()}'s ${where}.`);bloodTithe();/* the death trigger fires (matches removeRef) */moveBoardCard(c,where,true);/* then route the body to S.gy/S.exile as a reanimatable record — quiet so no double log/render */closeOverlay();render();}
 function destroyRule(id){const i=S.rules.findIndex(r=>r.id===id);if(i<0)return;log("you",`Destroyed <b>${S.rules[i].name}</b>.`);S.rules.splice(i,1);render();}
 function rollRule(id){const r=S.rules.find(x=>x.id===id);if(!r)return;log("sys",`${r.name}: rolled <b>${d(r.die)}</b> on d${r.die}.`);}
 function dmgBoss(){const q=$("bossDmgIn");const v=parseInt(q.value,10);if(isNaN(v)||v<=0){log("sys","Enter direct damage.");return;}S.boss.life-=v;log("you",`Direct damage <b>${v}</b>. (${Math.max(0,S.boss.life)})`);q.value="";if(S.boss.life<=0)bossDown();render();}
