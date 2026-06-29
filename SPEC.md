@@ -81,6 +81,9 @@
 | &nbsp;&nbsp;P12.1 Collapsible boxes inside tabs | ⬜ planned |
 | &nbsp;&nbsp;P12.2 Block-restriction infrastructure + mechanic audit | ⬜ planned |
 | &nbsp;&nbsp;P12.3 Enter-as-a-copy (clone) with on-board picker | ⬜ planned |
+| **Phase 13 — Full enemy-card editing + deeper persistent-effect automation** | ⬜ **PLANNED** — modify the enemy's spells/cards (keywords·P/T·counters·markers·stack-edit) at full parity with your own toolbox · fuller enemy artifact/enchantment automation. See Phase 13 below |
+| &nbsp;&nbsp;P13.1 Edit enemy permanents & stack spells (owner-agnostic editor) | ⬜ planned |
+| &nbsp;&nbsp;P13.2 Fuller enemy artifact/enchantment automation (static auras · more triggers · manual-reminder fallback) | ⬜ planned |
 
 ---
 
@@ -1109,6 +1112,53 @@ Round-trip the field wherever the other per-permanent props go: `cmdObjFromCfg` 
 **ACs:** a creature card with "enters as a copy" → on resolve, popup lists on-board permanents; picking a non-legendary creature makes the card enter as a 1:1 copy (summoning-sick, untapped, non-token, dies to graveyard); legendary targets unselectable until "copy won't be legendary" is ticked, after which the copy enters non-legendary; empty board → graceful "nothing to copy" path; the copy is independent (later buffs to the original don't affect it).
 **Verify:** jsdom — clone flag round-trips; resolving a clone card opens the picker (overlay shown + permanents listed); `cloneInto` yields a non-token copy with copied P/T+kw and reset counters; legendary gating (button disabled → enabled with `noLeg`, result `legendary:false`); empty-board path; syntax + id-diff.
 
+
+# PHASE 13 — Full enemy-card editing + deeper persistent-effect automation ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** Two additive features the user asked for after P12. Grounded in the current `index.html` (re-grep names; line numbers drift). Each ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**STATUS-table rows (already slotted into the table at the top of this doc — kept here for reference):**
+```
+| **Phase 13 — Full enemy-card editing + deeper persistent-effect automation** | ⬜ **PLANNED** — modify the enemy's spells/cards (keywords·P/T·counters·markers·stack-edit) at full parity with your own toolbox · fuller enemy artifact/enchantment automation |
+| &nbsp;&nbsp;P13.1 Edit enemy permanents & stack spells (owner-agnostic editor) | ⬜ planned |
+| &nbsp;&nbsp;P13.2 Fuller enemy artifact/enchantment automation | ⬜ planned |
+```
+
+## P13.1 — Modify the enemy's spells & cards (parity with your own toolbox)
+
+**Goal:** as the game's bookkeeper the player can edit the ENEMY's cards the same way they edit their own — give/remove **keywords**, adjust **P/T**, add/remove **counters** and **status markers**, rename/retype, and **edit a spell while it is on the stack** — covering enemy permanents (`S.tokens`, `S.cmd`) and enemy spells on the stack (`S.plays`). Today the player can take-control / copy / damage / move-zone an enemy creature (P9.2–P9.4) but **cannot edit an enemy card's intrinsic characteristics in place, nor touch a spell mid-stack**.
+
+**Grounded building blocks:**
+- Player-permanent editors already exist in the per-permanent drawer: `toggleKwMy`/`kwSelect` (keywords), `cp`/`adjMy` (P/T), `cctr`/`cctrCustom`/`remCtr` (counters), `toggleMarker` (markers on `obj.other`), `resetCard`. These currently assume a player object in `S.my.*`.
+- Enemy permanents: `S.tokens` (keyless spawned bodies — guard `FX[c.key]&&` on any FX read), `S.cmd` (enemy commander). The enemy creature row + `.cmdbox` already render and host the P9 actions (⇄ take, ⧉ copy, ⚔ damage, ↩ move).
+- The stack is `S.plays` (both sides while resolving), rendered by `renderPlays`; items carry a `cfg`-shaped body + `cantCounter`/`auto`/keywords.
+
+**How:**
+1. **Owner-agnostic editor `editPermanent(scope,id)`** — extract the drawer's edit controls into a shared core that mutates any object (`setKw(obj,kw,on)`, `setPT(obj,dp,dt)`, counter/marker helpers) regardless of which array it lives in. The existing player drawer calls into it unchanged; add `S.tokens`/`S.cmd` as valid scopes.
+2. **Entry points:** an **✎ edit** control on each enemy board creature row, the enemy `.cmdbox`, and each enemy artifact/enchantment/emblem row.
+3. **Stack editing:** in `renderPlays`, add **✎ edit** on each stack item (either side) → open `castFormHTML` bound to that item (or a compact inline editor) to change keywords / P/T / `auto` / `cantCounter` / note **before it resolves**; re-render the stack. The player keeps the existing "can't-be-countered" affordance.
+4. **Log** every edit (principle #5: silent mutations are bugs). `S.tokens`/`S.cmd`/`S.plays` already serialize → round-trips through save/undo for free; no schema bump, no migrate.
+
+**ACs:** give an enemy creature flying → it shows and combat/AI honor it; add a +1/+1 counter or a marker to an enemy permanent; edit an enemy spell on the stack to add "can't be countered" or change its P/T before resolution; player-side editing is byte-for-byte unchanged; every edit round-trips through undo + save.
+**Verify:** jsdom — `editPermanent` mutates an enemy token's kw/PT/counters; a stack-item edit changes `S.plays[i]` and the resolved board result; player-drawer regression; syntax gate + id-diff (only new ✎ controls).
+
+## P13.2 — Fuller enemy artifact/enchantment automation
+
+**Goal:** extend the enemy persistent-effects system so MORE of each artifact/enchantment's behavior is automated, with anything that can't be modeled clearly flagged as a manual reminder (so nothing is silently dropped). Today auto effects = `enemyGain`/`youLose`/`enemyDraw`/`enemyMana`/`buffEnemyCreatures` firing **once on the enemy upkeep** via `fireEnemyEmblems` (~1496); anthem/menace/custom are manual.
+
+**Grounded building blocks:** `S.emblemsEnemy` (each `{kind∈artifact|enchantment|emblem, auto:{k,n}, autoOn, vsYou, note}`), templates `ENEMY_EMBLEMS`/`ENEMY_FX_KINDS`, `addEnemyEmblem`/`setEnemyEmblem`/`toggleEmblemAuto`/`toggleEmblemVsYou`, `fireEnemyEmblems` (iterates the whole array on upkeep), `migrate()` backfill. The existing anthem precedent applies a **continuous** buff via `_tp/_tt` in `effP/effT`.
+
+**How:**
+1. **More auto templates:** add common effects — `tokenEachUpkeep` (spawn a token via `applyRun`), `enemyScry`, `damageYou` (=`youLose` framed as damage), `youMill`/`youDiscard`-reminder — each tagged with the `kind` it usually belongs to (label-only).
+2. **Trigger windows:** add a `trigger∈{upkeep,endStep,yourUpkeep}` field (default `upkeep`); `fireEnemyEmblems` is invoked from the matching step hook. Backwards-compatible (missing → `upkeep`).
+3. **Static (continuous) effects:** a `static:true` entry (e.g. "+1/+1 to all enemy creatures", "your creatures get −1/−0") contributes in the **render/`effP` path each frame** (like the anthem `_tp/_tt`), not fire-once — so the AI/combat always see the modified stats.
+4. **Attach-to-permanent auras:** allow an enchantment entry to carry an `attachId` targeting one enemy creature; its bonus applies to that creature only and the aura **falls off (logged) when the creature leaves** (checked in render/cleanup).
+5. **Manual-reminder fallback (explicit):** when an effect can't be auto-modeled, the row keeps its reminder text and shows a **"⚠ apply manually"** badge — documented as the deliberate catch-all so no card behavior is silently lost.
+
+**ACs:** an artifact "each upkeep you lose 2" auto-fires on the right step; a `static` "+1/+1 to all enemy creatures" shows on every render and combat/AI use the buffed stats; an aura attached to one enemy creature buffs only it and detaches on its death; non-modelable effects show the ⚠ manual badge; all new fields round-trip through save + `migrate` backfill.
+**Verify:** jsdom — each new auto template fires on its trigger; static buff reflected in `effP/effT`; aura attach/detach; manual-reminder fallback present; migrate backfill; syntax gate + id-diff.
+
+---
 
 ## Open questions (non-blocking — assume the stated default unless overridden)
 
