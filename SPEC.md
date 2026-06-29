@@ -126,6 +126,8 @@
 | &nbsp;&nbsp;P20.3 Enemy "max blockers" box mirroring "max attackers" (global cap on enemy blockers) | ⬜ planned |
 | **Phase 21 — Items reliably expire after use (consumables consumed; no stale-index mis-removal)** | ⬜ **PLANNED** — user reports items not expiring after use. `useBoon` does splice the consumed item, so the prime suspect is a **stale array-index** in the satchel Use handler (removing the wrong/no item). Diagnose, switch to a stable item identity, add a regression test. See Phase 21 below |
 | &nbsp;&nbsp;P21.1 Consumables reliably consumed on use (stable uid instead of array index) | ⬜ planned |
+| **Phase 22 — Editable enemy emblem value (tune the magnitude: +2/+2 vs +1/+1, drain/gain/draw N)** | ⬜ **PLANNED** — each enemy emblem/artifact/enchant carries `auto:{k,n}` but `n` isn't editable in the row. Add a value field so the magnitude can be tuned (anthem/buff +N/+N, drain/gain/draw N), with an optional split power/toughness for buff effects. See Phase 22 below |
+| &nbsp;&nbsp;P22.1 Per-emblem value editor for `auto.n` (all auto sources; optional p/t split) | ⬜ planned |
 
 ---
 
@@ -1814,6 +1816,30 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** using any consumable removes exactly that item (verified even when `S.inv` changed since the satchel was rendered); the satchel + You-panel count update immediately; passives/reminders still expire at descent end (not lingering); instants never enter the satchel; old saves get uids via migrate; using a consumable that drops the boss to 0 (bomb/pyre) still both fires `bossDown` and removes the item.
 **Verify:** jsdom — the diagnostic from step 1 now passes (correct item removed by uid under a mutated `S.inv`); each consumable id decrements `S.inv.length` by exactly 1 and applies its effect once; bomb/pyre lethal still calls `bossDown` and removes the item; passives cleared on `fresh()`/new descent; migrate backfills `uid`; syntax + id-diff.
+
+
+# PHASE 22 — Editable enemy emblem value (tune the magnitude) ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** The user wants to tune an enemy emblem's numeric strength — e.g., make an anthem/buff **+2/+2** instead of +1/+1, or change a drain/gain/draw amount. Today the magnitude is fixed at the template's value with no in-row editor. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded audit:**
+- **Where the value lives:** every automated enemy persistent-effect carries `auto:{k,n}` — `k` is the effect kind, **`n` is the magnitude**. Templates in `ENEMY_EMBLEMS` (~1469, e.g. `{n:'Growth +1/+1…',auto:{k:'buffEnemyCreatures',n:1}}`); `addEnemyEmblem` (~1490) deep-copies the template's `auto` so each instance owns its `n`.
+- **How `n` is consumed:** `emblemEffect(em)` (~1497) reads `n=a.n` — `enemyGain` heals `n`, `youLose` drains `n`, `enemyDraw` draws `n`, `buffEnemyCreatures` adds `+n/+n` counters; `applyStaticEmblems` (~1512) applies `_stp+=n;_stt+=n` for `anthemEnemy`/`buffEnemyCreatures` (continuous, symmetric p/t).
+- **Row controls (the gap):** `renderEnemyEmblems` (~1530-1543) renders per-row: ⚡ auto/⟳ static toggle, attach select (`emblemAttachSel`), trigger select (`emblemTriggerSel`), vsYou, ▸ fire, remove, and inline name/note via `setEnemyEmblem(id,f,v)` (~1494, sets a **top-level** field). **No control edits `em.auto.n`.**
+- **Persistence:** `auto` is part of `S.emblemsEnemy`/`S.enemyArtifacts`/`S.enemyEnchants` → editing `auto.n` round-trips through save/undo for free; no migrate needed (existing `n` preserved). The auto engine spans all three arrays via `enemyAutoSources()` (~1506).
+
+## P22.1 — Per-emblem value editor for `auto.n` (all auto sources; optional power/toughness split)
+
+**Goal:** every automated enemy emblem/artifact/enchant row shows a numeric **value** control that edits its magnitude, so the player can tune it (e.g. anthem/buff +1/+1 → +2/+2, drain 2 → 4, draw 1 → 2). Applies to all three enemy auto arrays uniformly.
+
+**How:**
+1. **Nested setter:** add `setEmblemValue(id,n)` (mirror of `setEnemyEmblem`, via `findEnemyFx`) that writes `em.auto.n = Math.max(0, n|0)` (guard non-negative; allow 0), logs the change to `dm` (e.g. `✦ {name}: value set to N`), and `render()`s.
+2. **Row UI:** in `renderEnemyEmblems` (~1539+), for any row where `em.auto` exists, render a small number input (e.g. `<input type="number" min="0" value="${em.auto.n}" onchange="setEmblemValue(${em.id},+this.value)">`) with a context label that adapts to the kind — "+N/+N" for `buffEnemyCreatures`/`anthemEnemy`, "N life" for `enemyGain`/`youLose`, "N cards" for `enemyDraw`. Reminder rows (no `auto`) show no value field.
+3. **Live effect:** because `emblemEffect`/`applyStaticEmblems` already read `auto.n`, changing it immediately changes the result — a static anthem re-applies the new `_stp/_stt` next render; a triggered drain/gain/draw uses the new `n` on its next fire. Confirm the template label text (the fixed "+1/+1" string in `em.name`) doesn't mislead after tuning — either update the displayed name to reflect `n`, or show the live value beside it so the row reads truthfully.
+4. **Optional power/toughness split (buff/anthem):** to allow **+2/+1**-style asymmetry, optionally extend `auto` with `np`/`nt` (default both = `n`); `buffEnemyCreatures`/`anthemEnemy` use `np` for power and `nt` for toughness when present, else fall back to `n`. **Default: keep the single symmetric `n`** (matches the user's +2/+2 example); ship the split only if asymmetry is wanted — flag it as the open choice.
+
+**ACs:** an auto emblem/artifact/enchant row shows a value editor bound to `auto.n`; raising a buff/anthem to 2 yields +2/+2 (counter on fire, or `_stp/_stt` if static); raising a drain to 4 drains 4 on its next trigger; draw/gain likewise; the row label reads truthfully after tuning (no stale "+1/+1"); reminders show no value field; value persists through save/undo; player emblems (`S.my.emblems`) are out of scope (note-only today).
+**Verify:** jsdom — `setEmblemValue(id,2)` sets `auto.n===2`; firing a `buffEnemyCreatures` emblem then adds +2/+2; a static anthem reflects +2/+2 in `effP/effT` via `applyStaticEmblems`; a `youLose` at n=4 drains 4 on trigger; value round-trips through serialize; reminder rows render no input; syntax + id-diff.
 
 ---
 
