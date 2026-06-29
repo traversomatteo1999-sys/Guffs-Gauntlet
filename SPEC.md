@@ -124,6 +124,8 @@
 | &nbsp;&nbsp;P20.1 Creatures: "blockable only by N" (min/max) on the unified player+enemy drawer | ⬜ planned |
 | &nbsp;&nbsp;P20.2 Planeswalkers: "attackable only by N" — cap attackers assignable to a walker (player + enemy) | ⬜ planned |
 | &nbsp;&nbsp;P20.3 Enemy "max blockers" box mirroring "max attackers" (global cap on enemy blockers) | ⬜ planned |
+| **Phase 21 — Items reliably expire after use (consumables consumed; no stale-index mis-removal)** | ⬜ **PLANNED** — user reports items not expiring after use. `useBoon` does splice the consumed item, so the prime suspect is a **stale array-index** in the satchel Use handler (removing the wrong/no item). Diagnose, switch to a stable item identity, add a regression test. See Phase 21 below |
+| &nbsp;&nbsp;P21.1 Consumables reliably consumed on use (stable uid instead of array index) | ⬜ planned |
 
 ---
 
@@ -1787,6 +1789,31 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** with "Max blockers" = 1, the enemy assigns at most 1 blocker total across the whole combat; = 0 means unlimited (today's behavior); it composes with menace (a menace attacker that can't reach its min within the cap is left unblocked, logged); the "Max attackers" box is unchanged.
 **Verify:** jsdom — set `maxBlk=1`, give the enemy several blockers + several player attackers → `aiBlocks` assigns ≤1 blocker total; `maxBlk=0` unlimited; menace-vs-cap leaves the attacker unblocked with a log; `maxAtk` regression intact; syntax + id-diff.
+
+
+# PHASE 21 — Items reliably expire after use ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** User reports satchel items **not expiring after use**. Diagnose-then-fix (the P18-style approach). Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded audit (what the code does today):**
+- **Consumption already exists:** `useBoon(i)` (~1610) reads `S.inv[i]`, applies the effect per `it.id` (heal5/heal10/elixir/tonic/antidote/bomb/pyre), logs "Used …", and **`S.inv.splice(i,1)`** — then `render()`. So a consumable *is* meant to be removed.
+- **The Use button (prime suspect):** `satchelHTML` (~2671) renders `onclick="useBoon(${i});openSatchel()"`, where `i` is the **array index captured at render time** from `items.map((it,i)=>…)` (`items=S.inv`, unfiltered). **Risk:** the index is stale if `S.inv` changed since render (loot dropped, another item used, a re-order) — `splice(i,1)` then removes the *wrong* item (or none), leaving the just-"used" item sitting in the satchel. Items have **no stable identity** today (`{id,descents}` only), so index is the sole handle.
+- **Passives/reminders:** non-consumables (ward/aegis/scholar/map) aren't "used" — they last exactly one descent and are wiped when `fresh()` clears `S.inv` at the next descent (P14.5). Not the reported problem, but verify they don't linger across descents.
+- **Instants:** `spark` etc. apply in `grantBoon` and never enter `S.inv` — nothing to expire.
+
+## P21.1 — Consumables reliably consumed on use (stable identity, not array index)
+
+**Goal:** using a consumable **always** removes exactly that item from the satchel, every time, regardless of what else changed in `S.inv` — and the satchel reflects it immediately.
+
+**How:**
+1. **Diagnose first (capture the failing case):** a jsdom test that builds `S.inv` with several items, renders `satchelHTML`, then simulates using a consumable whose render-time index no longer matches (e.g., an earlier item removed / loot pushed) → assert today's `useBoon(i)` removes the wrong item or none. Record the exact failure.
+2. **Stable item identity:** stamp a unique `uid` on every satchel item at creation — `grantBoon` (~1611, `S.inv.push({id,descents:1,uid:…})`) and `applyPendingPurchases` (~2052). `migrate()` (~2267) backfills a `uid` on existing `S.inv` items. (No `Date.now()`/random constraints here — this is game code, not a workflow script.)
+3. **Remove by uid, not index:** change the Use button to pass the uid (`useBoon('${it.uid}')`) and have `useBoon` resolve `const i=S.inv.findIndex(x=>x.uid===uid)` before applying/splicing. Keep a numeric-index fallback for safety only if needed. This makes consumption robust to any `S.inv` mutation between render and click.
+4. **Guaranteed re-render:** ensure the satchel view refreshes after use — `useBoon` already calls `render()`; keep the `openSatchel()` re-render (or fold it in) so the modal always shows the post-use list. Confirm the You-panel `satchelCount` (~1305) updates too.
+5. **Audit every consumable id** in `useBoon` (~1610) reaches the splice (no early `return` before it for any consumable branch) and that bomb/pyre's post-`bossDown` path still removes the item (it splices before the `bossDown` check — verify).
+
+**ACs:** using any consumable removes exactly that item (verified even when `S.inv` changed since the satchel was rendered); the satchel + You-panel count update immediately; passives/reminders still expire at descent end (not lingering); instants never enter the satchel; old saves get uids via migrate; using a consumable that drops the boss to 0 (bomb/pyre) still both fires `bossDown` and removes the item.
+**Verify:** jsdom — the diagnostic from step 1 now passes (correct item removed by uid under a mutated `S.inv`); each consumable id decrements `S.inv.length` by exactly 1 and applies its effect once; bomb/pyre lethal still calls `bossDown` and removes the item; passives cleared on `fresh()`/new descent; migrate backfills `uid`; syntax + id-diff.
 
 ---
 
