@@ -1836,7 +1836,10 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — the diagnostic from step 1 now passes (correct item removed by uid under a mutated `S.inv`); each consumable id decrements `S.inv.length` by exactly 1 and applies its effect once; bomb/pyre lethal still calls `bossDown` and removes the item; passives cleared on `fresh()`/new descent; migrate backfills `uid`; syntax + id-diff.
 
 
-# PHASE 22 — Editable enemy emblem value (tune the magnitude) ⬜ PLANNED
+# PHASE 22 — Editable enemy emblem value (tune the magnitude) ✅ DONE
+
+> **✅ BUILT & verified (P22.1):** every auto emblem/artifact/enchant row shows a kind-labelled value input (`emblemValueInput` → `setEmblemValue(id,n)` via `findEnemyFx`, clamp ≥0) bound to `auto.n`, across all three enemy auto arrays; reminders (no auto) show no input. Live: a tuned drain/gain drains/gains the new `n` on its trigger, a static anthem reflects +N/+N in `effP/effT`, a buff adds +N/+N counters on fire. Symmetric `n` only (no p/t split, per the user's decision). Round-trips via `S`. **Prereq for P23.3.** 10-check jsdom + P13.2 regression; id-diff clean.
+
 
 **Specced 2026-06-29, NOT built.** The user wants to tune an enemy emblem's numeric strength — e.g., make an anthem/buff **+2/+2** instead of +1/+1, or change a drain/gain/draw amount. Today the magnitude is fixed at the template's value with no in-row editor. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
