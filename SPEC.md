@@ -140,6 +140,8 @@
 | &nbsp;&nbsp;P25.2 Refresh tab notes + ⓘ INFO_TEXT panels (+ instructions) to match current features | ⬜ planned |
 | **Phase 26 — Slay asks graveyard or exile (enemy creature death destination)** | ⬜ **PLANNED** — clicking ✦ Slay on an enemy creature opens a popup: graveyard or exile (still a death → Pit's Tithe fires; tokens cease regardless). Enemy-side, death-flavoured analog of P24.2. See Phase 26 below |
 | &nbsp;&nbsp;P26.1 Slay → graveyard/exile popup (death routing; tokens cease; commander → command zone) | ⬜ planned |
+| **Phase 27 — Collapsible Cards & Tokens sections in the Library** | ⬜ **PLANNED** — make the Library's "Cards" and "Tokens" lists expand/collapse (with a count badge when collapsed) to cut noise, reusing the P12.1 collapse idiom. See Phase 27 below |
+| &nbsp;&nbsp;P27.1 Expand/collapse the Library "Cards" and "Tokens" lists (state persisted) | ⬜ planned |
 
 ---
 
@@ -2001,6 +2003,29 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** clicking Slay on a non-token enemy creature opens a graveyard/exile popup; choosing routes it to `S.gy`/`S.exile` as a reanimatable record AND fires the Pit's Tithe; a token slay ceases (no zone entry) as today, still firing the Tithe; the commander slay still goes to the command zone; cancel leaves state unchanged; all paths log + re-render.
 **Verify:** jsdom — `slayTo(id,'graveyard')` pushes the creature to `S.gy` and calls `bloodTithe` once; `slayTo(id,'exile')` → `S.exile`; a `token:true` slay ceases with no `S.gy` entry but still Tithes; commander slay → command zone (unchanged); cancel no-ops; syntax + id-diff (only the new slay-popup ids).
+
+
+# PHASE 27 — Collapsible Cards & Tokens sections in the Library ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** The Library lists every card and every token flat, which gets noisy. Make the "Cards" and "Tokens" sections expand/collapse so the player can hide whichever they're not using. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded findings:**
+- **Library modal (~567-588):** a `.subh` "Cards" header (with the `#libCardCount` tag + add buttons, ~572) over the `#libCards` `.liblist` (~573); a `.subh` "Tokens" header (~574) over `#libTokens` (~575); then the quick-make token form. Filled by `renderLibrary()` (~2287 area). No collapse today.
+- **Collapse idiom to reuse (P12.1):** `.panel.collapsed>:not(h2){display:none}` + a `pchev` chevron + `togglePanel(key)` with state on `S.ui.panels` (persisted via autosave, excluded from undo). The Library is a modal (not a tab panel), so adapt the pattern with a lightweight per-section toggle rather than the `data-panel` machinery.
+
+## P27.1 — Expand/collapse the Library "Cards" and "Tokens" lists
+
+**Goal:** each Library section ("Cards", "Tokens") can be collapsed to just its header (showing a count) and expanded again; the choice persists.
+
+**How:**
+1. **Toggle headers:** make the two `.subh` headers clickable with a chevron (▾ open / ▸ collapsed), reusing the `pchev` visual. Clicking the header (but not its action buttons — guard `event.target.closest('button,a,input,select')` like `togglePanel` does) toggles its list's visibility. A new `toggleLibSection('cards'|'tokens')`.
+2. **State:** store on `S.ui.lib={cards:true,tokens:true}` (open booleans), seeded if absent; persisted via autosave, excluded from undo like the other `S.ui` flags. Default **both expanded** (collapsing is opt-in to cut noise). *(Open option: default Tokens collapsed since it's secondary — flag for the user; default = both open.)*
+3. **Apply on render:** `renderLibrary()` (and on open) hides `#libCards`/`#libTokens` (and the Cards add-button row / token quick-make form as appropriate) when their section is collapsed, and sets the chevron state. When collapsed, keep the header's **count visible** — `#libCardCount` already shows the card count; add a token count tag to the Tokens header so a collapsed section still tells you how many it holds.
+4. **Search interaction:** when a `#libSearch` query is active, auto-expand (or keep expanded) any section with matches so a filtered result isn't hidden behind a collapsed header — don't let a collapse swallow search hits. (Or: searching temporarily overrides collapse.)
+5. Pure UI/state; no card-data or schema change beyond the `S.ui.lib` flag (migrate-free: absent → default open).
+
+**ACs:** clicking the Cards or Tokens header collapses/expands its list with a chevron; collapsed sections still show their count; the state persists across reopening the Library and across saves; an active search reveals matching sections rather than hiding hits; the quick-make token form's behavior is preserved; no change to card/token data.
+**Verify:** jsdom — `toggleLibSection('tokens')` flips `S.ui.lib.tokens` and hides/shows `#libTokens`; the chevron + count reflect state; reopening the Library preserves it; a search with token matches keeps the Tokens section visible; header action buttons still work (toggle guard); syntax + id-diff (only the new chevron/handler ids).
 
 ---
 
