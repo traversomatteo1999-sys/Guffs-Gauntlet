@@ -154,6 +154,7 @@
 | &nbsp;&nbsp;P30.4 Universal guarantees — every permanent (both sides) can go to hand/exile/graveyard; prot/hexproof/shroud honoured wherever targetable | ⬜ planned |
 | &nbsp;&nbsp;P30.5 Bulk "return all permanents to library" (scope yours/enemy/both · top/bottom/shuffle · tokens cease) | ⬜ planned |
 | &nbsp;&nbsp;P30.6 Counters on ALL permanents (both sides): give +1/+1 (−1/−1 · named) · ⊖ remove · ↺ reset | ⬜ planned |
+| &nbsp;&nbsp;P30.7 Enemy commander gets ↺ reset + ⧉ copy (the gap; `copyPermanent` must handle the `cmd` scope) | ⬜ planned |
 | **Phase 31 — Expandable enemy cards in the deck-tools (full stats + effects)** | ⬜ **PLANNED** — when looking at the enemy's library (and hand/graveyard/exile) in 🂠 Manipulate enemy deck, each card row expands to show its full stats (P/T + keywords for creatures), cost, colours, oracle text, and mechanical effect — collapsed by default to cut noise. See Phase 31 below |
 | &nbsp;&nbsp;P31.1 Expandable card rows in enemy deck-tools — reveal stats/keywords/effect on click | ⬜ planned |
 | **Phase 32 — Per-combat: negate an attacker / prevent its combat damage (one-shot)** | ⬜ **PLANNED** — in the combat resolver, per attacker: 🚫 **negate** (remove it from this combat) or 🛡 **prevent its combat damage** (one-shot Fog on that attacker) — for the enemy's attackers (and yours). The transient counterpart to P14.2's persistent Fog-Bank markers. See Phase 32 below |
@@ -2257,6 +2258,22 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** every permanent kind on both boards exposes give +1/+1 (−1/−1, named), ⊖ remove, and ↺ reset; counters live on `plus/minus/other` and round-trip; reset restores base (P/T or loyalty) and clears all counters for every kind (no-op-safe for artifacts/enchants without base stats); named counters render as removable badges everywhere; creatures/tokens/commander behavior is unchanged; the bulk version (P14.4) is unaffected.
 **Verify:** jsdom — `setCtr('enchants',id,'plus',2)` sets `plus=2` and renders the counter; `setCtr('walkers',id,'minus',1)`; `remCtr` removes one; `resetCard('artifacts',id)` clears `plus/minus/other` (and `resetCard('walkers',id)` restores `baseLoy`); enemy artifact/enchant + `S.pw` get the same; migrate backfills fields; syntax + id-diff. (Cross-ref P14.4 bulk counters, P13.1.)
+
+## P30.7 — Enemy commander: ↺ reset + ⧉ copy (close the last gap)
+
+**Goal:** the enemy commander gets the same **↺ reset-to-base** and **⧉ copy** the player's commander and the enemy's other permanents have. (Enemy creatures/tokens already have both; walkers/artifacts/enchants are covered by P30.2/P30.3/P30.6 — the commander is the lone omission.)
+
+**Grounded findings:**
+- **Reset works via `getObj` but isn't exposed:** `resetCard(scope,id)` resolves `'cmd'` through `getObj` (→ `S.cmd`) and restores `baseP/baseT` + clears counters — but `cmdFieldCard` (~1807, the enemy commander's on-board card) renders **no ↺ reset button** (it has slay/tap/counters/kw/drawer only).
+- **Copy isn't wired for the commander:** `copyPermanent(scope,id)` reads `_boardArr(scope)`, which handles `token`/`eart`/`eench`/`S.my[*]` but **not `'cmd'`** — so `copyPermanent('cmd',…)` finds no array and no-ops.
+
+**How:**
+1. **↺ reset button:** add a ↺ reset control to `cmdFieldCard` (~1807) calling `resetCard('cmd',null)` (the commander uses the `id=null`/`'cmd'` scope convention) — restores base P/T and clears counters/markers/until-EOT buffs, logging to `dm`. (Don't touch tax/deaths — reset is the card's printed state, not a zone change.)
+2. **⧉ copy support for `cmd`:** extend `copyPermanent` (or `_boardArr`) so the `'cmd'` scope deep-copies `S.cmd` into a **token copy on the enemy creature board** (`S.tokens`, `token:true`, `sick:true`, `isCmd:false`/no `_cmd`, new id) — a copy is not the commander, so it drops command-zone identity (and the recast tax). Add a ⧉ copy control to `cmdFieldCard`.
+3. **Parity note:** this matches the player commander (a creature with the full reset+copy row) and the enemy tokens; the result is every enemy permanent — creature, **commander**, artifact, enchantment, walker — has reset + copy.
+
+**ACs:** the enemy commander card shows ↺ reset (restores base P/T, clears counters, leaves tax/deaths alone) and ⧉ copy (makes a non-commander `token:true` copy on the enemy board); `copyPermanent('cmd',…)` works; player commander + other enemy permanents unchanged; round-trips through save/undo.
+**Verify:** jsdom — `resetCard('cmd',null)` restores `S.cmd` base P/T + clears counters without changing `tax`/`deaths`; `copyPermanent('cmd',S.cmd.id)` pushes a `token:true`, non-`_cmd` copy to `S.tokens`; the buttons render in `cmdFieldCard`; syntax + id-diff. (Completes the P30 permanent-parity set.)
 
 
 # PHASE 31 — Expandable enemy cards in the deck-tools (full stats + effects) ⬜ PLANNED
