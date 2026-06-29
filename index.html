@@ -190,6 +190,10 @@
   .storeitem:hover{border-color:var(--bone-dim);transform:translateY(-1px)}
   .storeitem.uncommon{border-color:rgba(77,168,218,.32)}
   .storeitem.rare{border-color:rgba(217,164,65,.6);background:linear-gradient(180deg,rgba(217,164,65,.07),var(--ink-3))}
+  /* P15.2: legendary tier — a distinct purple/violet accent in store + satchel */
+  .storeitem.legendary,.item.legendary{border-color:rgba(168,120,224,.7);background:linear-gradient(180deg,rgba(168,120,224,.12),var(--ink-3));box-shadow:0 0 0 1px rgba(168,120,224,.25) inset}
+  .item.rare{border-color:rgba(217,164,65,.55)}
+  .item.legendary .ir,.storeitem.legendary .si-r{color:#c79bf0}
   .si-ic{font-size:1.55rem;width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex:none;border-radius:10px;background:var(--ink);border:1px solid var(--line)}
   .si-body{flex:1;min-width:0}
   .si-n{font-family:'Grenze Gotisch',serif;font-weight:700;font-size:.98rem;line-height:1.1}
@@ -798,24 +802,38 @@ const ARRIVAL_LINES=[
  "Yet something dragged you to this exact wound, and now you know its name. Caged in the deep, in iron of Vael's own forging, the founder of the beaten Conclave still breathes — <em>Commodore Guff</em>. Free him, and a lost cause has its keystone again.",
  "You owe this plane nothing. You go down anyway. Below, the Ember Gate yawns open, breathing heat up into the cold."
 ];
-const BOONS={heal5:{n:"Healing Draught",r:"common",kind:"consumable",t:"Restore 5 life."},heal10:{n:"Greater Draught",r:"uncommon",kind:"consumable",t:"Restore 10 life."},ward:{n:"Ward Stone",r:"uncommon",kind:"passive",t:"Prevent the first 2 damage of every enemy assault."},phoenix:{n:"Phoenix Charm",r:"rare",kind:"passive",t:"The first time you'd hit 0 life, survive at 1 instead."},ember:{n:"Ember Sigil",r:"common",kind:"reminder",t:"Your direct damage to the boss deals +1 (apply yourself)."},spark:{n:"Spark of Vigor",r:"uncommon",kind:"instant",t:"+5 maximum life, heal 5."},map:{n:"Sapper's Map",r:"common",kind:"passive",t:"The next villain enters with 4 less life."},scholar:{n:"Scholar's Token",r:"common",kind:"reminder",t:"Draw an extra card each turn (apply yourself)."},elixir:{n:"Grand Elixir",r:"rare",kind:"consumable",t:"Restore 15 life."},tonic:{n:"Tonic of Vigor",r:"uncommon",kind:"consumable",t:"+5 maximum life, then heal 5."},antidote:{n:"Cleansing Antidote",r:"common",kind:"consumable",t:"Remove all of your poison counters."},bomb:{n:"Cinder Bomb",r:"uncommon",kind:"consumable",t:"Hurl it for 4 damage to the enemy's life."},aegis:{n:"Aegis Charm",r:"rare",kind:"passive",t:"Prevent the first 4 damage of every enemy assault (stacks with Ward Stone)."},whet:{n:"Whetstone",r:"common",kind:"reminder",t:"Your commander may enter with a +1/+1 counter (apply it yourself)."},pyre:{n:"Pyre Charge",r:"uncommon",kind:"consumable",t:"Hurl it for 8 damage to the enemy's life."},breaker:{n:"Spellbreaker Sigil",r:"rare",kind:"reminder",t:"Once per battle, negate (counter) one enemy spell or ability — apply it yourself."}};
+const BOONS={heal5:{n:"Healing Draught",r:"common",kind:"consumable",t:"Restore 5 life."},heal10:{n:"Greater Draught",r:"uncommon",kind:"consumable",t:"Restore 10 life."},ward:{n:"Ward Stone",r:"uncommon",kind:"passive",t:"Prevent the first 2 damage of every enemy assault."},phoenix:{n:"Phoenix Charm",r:"legendary",kind:"passive",t:"The first time you'd hit 0 life, survive at 1 instead."},ember:{n:"Ember Sigil",r:"common",kind:"reminder",t:"Your direct damage to the boss deals +1 (apply yourself)."},spark:{n:"Spark of Vigor",r:"uncommon",kind:"instant",t:"+5 maximum life, heal 5."},map:{n:"Sapper's Map",r:"common",kind:"passive",t:"The next villain enters with 4 less life."},scholar:{n:"Scholar's Token",r:"common",kind:"reminder",t:"Draw an extra card each turn (apply yourself)."},elixir:{n:"Grand Elixir",r:"rare",kind:"consumable",t:"Restore 15 life."},tonic:{n:"Tonic of Vigor",r:"legendary",kind:"consumable",t:"Restore 20 life and +5 maximum life."},antidote:{n:"Cleansing Antidote",r:"common",kind:"consumable",t:"Remove all of your poison counters."},bomb:{n:"Cinder Bomb",r:"uncommon",kind:"consumable",t:"Hurl it for 4 damage to the enemy's life."},aegis:{n:"Aegis Charm",r:"rare",kind:"passive",t:"Prevent the first 4 damage of every enemy assault (stacks with Ward Stone)."},whet:{n:"Whetstone",r:"common",kind:"reminder",t:"Your commander may enter with a +1/+1 counter (apply it yourself)."},pyre:{n:"Pyre Charge",r:"uncommon",kind:"consumable",t:"Hurl it for 8 damage to the enemy's life."},breaker:{n:"Spellbreaker Sigil",r:"rare",kind:"reminder",t:"Once per battle, negate (counter) one enemy spell or ability — apply it yourself."},
+  /* P15.2: variety + rarity fill — a damage Potion, a low-cost stacking-ward Relic, a Utility rare (mana surge), a draw reminder, a deploy-buff Relic, and two legendaries (Tonic above, Falling Comet). */
+  acid:{n:"Acid Flask",r:"common",kind:"consumable",t:"Hurl it for 3 damage to the enemy's life."},
+  buckler:{n:"Iron Buckler",r:"common",kind:"passive",t:"Prevent the first 1 damage of every enemy assault (stacks with Ward Stone & Aegis)."},
+  tome:{n:"Arcane Tome",r:"uncommon",kind:"reminder",t:"Draw an extra card on each of your first two turns (apply yourself)."},
+  surge:{n:"Mana Surge",r:"rare",kind:"reminder",t:"Once per turn, add 2 mana to your pool (apply yourself)."},
+  rally:{n:"Rally Banner",r:"rare",kind:"reminder",t:"Each creature you deploy this descent enters with a +1/+1 counter (apply it yourself)."},
+  comet:{n:"Falling Comet",r:"legendary",kind:"consumable",t:"Hurl it for 12 damage to the enemy's life."}};
 /* ===== Store: utilities bought with gold earned by clearing dungeons. "Potions for now" — modest, journey-focused. ===== */
 const STORE=[
+  /* P15.2: prices follow rarity bands \u2014 common 5-8 \u00B7 uncommon 12-20 \u00B7 rare 18-34 \u00B7 legendary 36+. */
   {id:"heal5",cost:6,cat:"Potions",icon:"\uD83E\uDDEA"},
-  {id:"heal10",cost:12,cat:"Potions",icon:"\uD83C\uDF76"},
-  {id:"elixir",cost:18,cat:"Potions",icon:"\uD83C\uDFFA"},
-  {id:"tonic",cost:16,cat:"Potions",icon:"\uD83C\uDF75"},
+  {id:"acid",cost:7,cat:"Potions",icon:"\uD83E\uDDEB"},
   {id:"antidote",cost:8,cat:"Potions",icon:"\uD83D\uDC9A"},
+  {id:"heal10",cost:12,cat:"Potions",icon:"\uD83C\uDF76"},
+  {id:"elixir",cost:20,cat:"Potions",icon:"\uD83C\uDFFA"},
+  {id:"tonic",cost:28,cat:"Potions",icon:"\uD83C\uDF75"},/* P15.2: a deliberate "budget legendary" heal (spec ~28g), below the 36g+ legendary floor */
+  {id:"ember",cost:6,cat:"Utility",icon:"\uD83D\uDD25"},
+  {id:"map",cost:8,cat:"Utility",icon:"\uD83D\uDDFA\uFE0F"},
+  {id:"whet",cost:8,cat:"Utility",icon:"\u2692\uFE0F"},
+  {id:"scholar",cost:8,cat:"Utility",icon:"\uD83D\uDCDC"},
   {id:"bomb",cost:12,cat:"Utility",icon:"\uD83D\uDCA3"},
-  {id:"pyre",cost:24,cat:"Utility",icon:"\uD83D\uDCA5"},
-  {id:"map",cost:10,cat:"Utility",icon:"\uD83D\uDDFA\uFE0F"},
-  {id:"whet",cost:10,cat:"Utility",icon:"\u2692\uFE0F"},
-  {id:"ember",cost:8,cat:"Utility",icon:"\uD83D\uDD25"},
-  {id:"scholar",cost:12,cat:"Utility",icon:"\uD83D\uDCDC"},
-  {id:"ward",cost:20,cat:"Relics",icon:"\uD83D\uDEE1\uFE0F"},
+  {id:"tome",cost:14,cat:"Utility",icon:"\uD83D\uDCD6"},
+  {id:"pyre",cost:20,cat:"Utility",icon:"\uD83D\uDCA5"},
+  {id:"surge",cost:22,cat:"Utility",icon:"\u26A1"},
+  {id:"comet",cost:38,cat:"Utility",icon:"\u2604\uFE0F"},
+  {id:"buckler",cost:8,cat:"Relics",icon:"\uD83D\uDEE1\uFE0F"},
+  {id:"ward",cost:18,cat:"Relics",icon:"\uD83D\uDEE1\uFE0F"},
+  {id:"rally",cost:26,cat:"Relics",icon:"\uD83D\uDEA9"},
   {id:"breaker",cost:30,cat:"Relics",icon:"\uD83D\uDEAB"},
   {id:"aegis",cost:34,cat:"Relics",icon:"\uD83D\uDD30"},
-  {id:"phoenix",cost:44,cat:"Relics",icon:"\uD83E\uDEB6"},
+  {id:"phoenix",cost:40,cat:"Relics",icon:"\uD83E\uDEB6"},
 ];
 function goldReward(roomIdx){const base=12+roomIdx*10;return Math.max(1,Math.round(base*((DIFF[S.diff]&&DIFF[S.diff].goldMult)||1)));}
 let _dt={};
@@ -1225,7 +1243,7 @@ function approveCombat(){
   }else{
     const tmap=S.combat.target||{};
     let toYou=0;const wHits={};r.perAtt.forEach(({att,toFace})=>{const tg=tmap[att.id]||'you';if(tg==='you')toYou+=toFace;else wHits[tg]=(wHits[tg]||0)+toFace;});
-    const ward=(S.inv.some(it=>it.id==="ward")?2:0)+(S.inv.some(it=>it.id==="aegis")?4:0);const face=Math.max(0,toYou-ward);if(ward&&toYou>0)log("you",`Your charms soak ${Math.min(ward,toYou)}.`);
+    const ward=(S.inv.some(it=>it.id==="ward")?2:0)+(S.inv.some(it=>it.id==="aegis")?4:0)+(S.inv.some(it=>it.id==="buckler")?1:0);/* P15.2: Iron Buckler stacks +1 */const face=Math.max(0,toYou-ward);if(ward&&toYou>0)log("you",`Your charms soak ${Math.min(ward,toYou)}.`);
     if(face>0){S.youLife-=face;sfx('hit');log("dm",`<b>${face}</b> to your life. (${S.youLife})`);}
     Object.keys(wHits).forEach(wid=>{const w=S.my.walkers.find(x=>''+x.id===wid);if(w&&wHits[wid]>0){w.loyalty-=wHits[wid];log("dm",`${ENs()} hits <b>${w.name}</b> for ${wHits[wid]} (loyalty ${Math.max(0,w.loyalty)}).`);if(w.loyalty<=0){log("dm",`<b>${w.name}</b> is destroyed.`);killMy(w);}}});
     const cmdToYou=S.cmd.inPlay&&attackers.includes(S.cmd)&&!((assign[S.cmd.id]||[]).length)&&(tmap[S.cmd.id]||'you')==='you';
@@ -1607,7 +1625,7 @@ function rollRule(id){const r=S.rules.find(x=>x.id===id);if(!r)return;log("sys",
 function dmgBoss(){const q=$("bossDmgIn");const v=parseInt(q.value,10);if(isNaN(v)||v<=0){log("sys","Enter direct damage.");return;}S.boss.life-=v;log("you",`Direct damage <b>${v}</b>. (${Math.max(0,S.boss.life)})`);q.value="";if(S.boss.life<=0)bossDown();render();}
 function damagePW(){if(!S.pw)return;const v=parseInt($("pwDmgIn").value,10);if(isNaN(v)||v<=0){log("sys","Enter damage.");return;}S.pw.loy-=v;log("you",`Hit ${S.pw.name} for <b>${v}</b>.`);$("pwDmgIn").value="";if(S.pw.loy<=0){log("you",`<b>${S.pw.name} destroyed.</b>`);S.pw=null;}render();}
 
-function useBoon(i){const it=S.inv[i];if(!it)return;const b=BOONS[it.id];if(b.kind!=="consumable")return;if(it.id==="heal5")adjLife('you',5);if(it.id==="heal10")adjLife('you',10);if(it.id==="elixir")adjLife('you',15);if(it.id==="tonic"){S.youMax+=5;adjLife('you',5);}if(it.id==="antidote"){S.counters.poison=0;renderCounters&&renderCounters();}if(it.id==="bomb"){S.boss.life-=4;log("you",`💣 Cinder Bomb hits ${S.boss.name} for <b>4</b>. (${Math.max(0,S.boss.life)})`);}if(it.id==="pyre"){S.boss.life-=8;log("you",`🔥 Pyre Charge sears ${S.boss.name} for <b>8</b>. (${Math.max(0,S.boss.life)})`);}log("loot",`Used <b>${b.n}</b>.`);S.inv.splice(i,1);if((it.id==="bomb"||it.id==="pyre")&&S.boss.life<=0)bossDown();render();}
+function useBoon(i){const it=S.inv[i];if(!it)return;const b=BOONS[it.id];if(b.kind!=="consumable")return;if(it.id==="heal5")adjLife('you',5);if(it.id==="heal10")adjLife('you',10);if(it.id==="elixir")adjLife('you',15);if(it.id==="tonic"){S.youMax+=5;adjLife('you',20);}if(it.id==="antidote"){S.counters.poison=0;renderCounters&&renderCounters();}if(it.id==="bomb"){S.boss.life-=4;log("you",`💣 Cinder Bomb hits ${S.boss.name} for <b>4</b>. (${Math.max(0,S.boss.life)})`);}if(it.id==="acid"){S.boss.life-=3;log("you",`🧫 Acid Flask burns ${S.boss.name} for <b>3</b>. (${Math.max(0,S.boss.life)})`);}if(it.id==="pyre"){S.boss.life-=8;log("you",`🔥 Pyre Charge sears ${S.boss.name} for <b>8</b>. (${Math.max(0,S.boss.life)})`);}if(it.id==="comet"){S.boss.life-=12;log("you",`☄️ Falling Comet smashes ${S.boss.name} for <b>12</b>. (${Math.max(0,S.boss.life)})`);}log("loot",`Used <b>${b.n}</b>.`);S.inv.splice(i,1);if((it.id==="bomb"||it.id==="pyre"||it.id==="acid"||it.id==="comet")&&S.boss.life<=0)bossDown();render();}
 function grantBoon(id){const b=BOONS[id];if(!b)return;if(b.kind==="instant"){if(id==="spark"){S.youMax+=5;S.youLife+=5;}log("loot",`Gained <b>${b.n}</b>.`);return;}if(id==="map")S.weakenNext=true;S.inv.push({id,descents:1});/* P7.4: descents = how many descents a passive/reminder lasts (default 1 = this descent only) */log("loot",`Looted <b>${b.n}</b> (${b.r}).`);}
 function lootRoll(){const luck=Math.max(0,(DIFF[S.diff]&&DIFF[S.diff].luck)||0);/* P10: difficulty luck now nudges loot — but ONLY upward (brutal +1); easy/std are never penalized, so newer players keep full jackpot odds. */const raw=d(20);const roll=Math.min(20,raw+luck);let id="heal5";for(const[a,z,bid]of LOOT_D20){if(roll>=a&&roll<=z){id=bid;break;}}if(id==="map"&&!DUNGEON[S.roomIndex+1])id="heal10";/* P10: 'map' weakens the NEXT villain; on the final Vael win there is none, so a heal instead of a dead drop. */let names=[];if(id==="jackpot"){grantBoon("phoenix");grantBoon("elixir");names=["Phoenix Charm","Grand Elixir"];}else{grantBoon(id);names=[BOONS[id].n];}const label=raw===roll?`${roll}/20`:`${raw} (+${roll-raw} brutal luck) → ${roll}/20`;return{roll,raw,names,label};}
 
@@ -2672,7 +2690,7 @@ function satchelHTML(){const items=(S&&S.inv)||[];if(!items.length)return `<h2>�
   return `<h2>🎒 Satchel <span class="tag">${items.length} item${items.length===1?'':'s'}</span></h2><p class="manaline" style="margin:2px 0 10px">Consumables you trigger; passives apply automatically; reminders you apply yourself. Passives & reminders last exactly <b>one descent</b>. New gear comes from room-clear <b>loot</b> (as you descend) and the <b>🛒 Merchant</b> (between descents only) — once you descend the Merchant is closed until the level ends.</p><div class="inv">${items.map((it,i)=>{const b=BOONS[it.id];const lasts=b.kind==='passive'||b.kind==='reminder';
     const durRow=lasts?`<div class="btnrow" style="margin-top:6px"><span class="ir" style="color:var(--bone-dim)">⏳ lasts 1 descent</span></div>`:'';/* P14.5: item duration is fixed at 1 descent — no player-set stepper */
     const ctrl=b.kind==='consumable'?`<button class="mini ok" onclick="useBoon(${i});openSatchel()">Use</button>`:`<span class="ir" style="color:var(--bone-dim)">${b.kind==='reminder'?'reminder':'passive · auto'}</span>`;
-    return `<div class="item${b.r==='rare'?' rare':''}"><div class="in">${b.n}<span class="ir">${b.r}</span></div><div class="it">${b.t}</div>${ctrl}${durRow}</div>`;}).join('')}</div>`;}
+    return `<div class="item${b.r==='rare'?' rare':''}${b.r==='legendary'?' legendary':''}"><div class="in">${b.n}<span class="ir">${b.r}</span></div><div class="it">${b.t}</div>${ctrl}${durRow}</div>`;}).join('')}</div>`;}
 
 /* ===== P7.8: synthesized WebAudio SFX (no audio assets) — soft, low cues; persisted mute; first-gesture unlock.
    Everything is wrapped so a context that blocks autoplay, an old browser, or a headless run silently no-ops. */
