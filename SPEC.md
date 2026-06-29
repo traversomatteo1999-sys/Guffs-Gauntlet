@@ -1804,7 +1804,10 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — set `maxBlk=1`, give the enemy several blockers + several player attackers → `aiBlocks` assigns ≤1 blocker total; `maxBlk=0` unlimited; menace-vs-cap leaves the attacker unblocked with a log; `maxAtk` regression intact; syntax + id-diff.
 
 
-# PHASE 21 — Items reliably expire after use ⬜ PLANNED
+# PHASE 21 — Items reliably expire after use ✅ DONE
+
+> **✅ BUILT & verified (P21.1):** stable `uid` on every satchel item (`newUid()`) stamped at all creation sites (grantBoon · applyPendingPurchases · stash save/restore) + migrate backfill; `useBoon(uid)` resolves by `uid` (numeric-index fallback kept), so the Use button removes exactly that item regardless of `S.inv` mutation since render; bomb/acid/pyre/comet lethal still fires `bossDown` then removes. 7-check jsdom (incl. the stale-index diagnostic) + item regression.
+
 
 **Specced 2026-06-29, NOT built.** User reports satchel items **not expiring after use**. Diagnose-then-fix (the P18-style approach). Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
