@@ -144,6 +144,8 @@
 | **Phase 28 — Base-life model + heal items (Grand Elixir +25/25g · Tonic of Vigor +10 base/36g legendary) · item automation · gold rebalance** | ⬜ **PLANNED** — a permanent base-life stat (`youMax`) that Tonic of Vigor raises +10 (and the P16.4 reset + P15.4 descent-heal both track it) · Grand Elixir heals +25 (25g) · automate items where possible · rebalance store gold prices. Refines P15.2; pairs with P16.4. See Phase 28 below |
 | &nbsp;&nbsp;P28.1 Base-life model: `adjLife` stops inflating `youMax`; only max-boons raise base; reset + descent-heal track it | ⬜ planned |
 | &nbsp;&nbsp;P28.2 Grand Elixir (+25 life · 25g) · Tonic of Vigor (+10 base · 36g legendary band) · automate items · gold rebalance | ⬜ planned |
+| **Phase 29 — Commander zone distinction: command zone (recast tax) vs hand (base cost)** | ⬜ **PLANNED** — distinguish where the enemy commander sits: from the **command zone** it recasts at base + the +2-per-death tax (current); if it's been returned to **hand** it casts at **base cost, no tax** (standard MTG). Add a ↩-hand affordance + zone-aware cost; player-commander parity. See Phase 29 below |
+| &nbsp;&nbsp;P29.1 Enemy commander hand vs command zone — base cost from hand, base+tax from command zone (+ ↩ hand, player parity) | ⬜ planned |
 
 ---
 
@@ -2055,6 +2057,33 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** Grand Elixir heals 25 (consumable, 25g) and its overheal trims at the next descent; Tonic of Vigor permanently raises `youMax` by 10 (heals 10), 36g (legendary band), and the reset/descent-heal track the new base; every consumable/stat item auto-applies on use, reminders only where unmodelable; store prices follow the bands (Grand Elixir 25 / Tonic 36 anchored) and round-trip through buy/pending; items consumed on use (P21).
 **Verify:** jsdom — `useBoon` Grand Elixir → `youLife+25` (base unchanged), trims next descent; Tonic → `youMax+10,youLife+10`, reset trims to 50 and descent-heal computes off 50; each `BOONS` id resolves without throwing; prices within bands (Grand Elixir 25 / Tonic 36 anchored); syntax + id-diff.
+
+
+# PHASE 29 — Commander zone distinction: command zone (recast tax) vs hand (base cost) ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** Standard MTG: commander tax (+{2} per cast from the command zone) applies **only** when casting from the **command zone**. If the commander is returned to **hand**, it casts at its plain mana cost — no tax. Today the enemy commander only ever sits in the command zone (or on the battlefield) and always recasts at base + tax. Add the hand state. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded audit:**
+- **Enemy commander `S.cmd`:** state is binary — `inPlay:true` (battlefield) or `!inPlay` (command zone). Fields `baseCost`, `tax`, `deaths`, `cost` (= `baseCost+tax`, set on death in `removeRef` ~1072). No hand state.
+- **Death → command zone (+tax):** `removeRef(S.cmd)` (~1072) increments `deaths`, adds the tax increment (`CMD_TAX_BASE`, doubling if `CMD_TAX_DOUBLE`), sets `inPlay=false`, recomputes `cost=baseCost+tax`.
+- **Cast (always "from command zone"):** `vaelMain` (~1736) — `if(!S.cmd.inPlay && usableMana()>=S.cmd.cost){spend S.cmd.cost; push _enemyCmd stack item; log "casts from its command zone (spent cost)"}`. The dormant box (~1278) shows `Needs ${c.cost}` with `(base ${baseCost} + tax ${tax})`.
+- **No bounce-to-hand path:** the enemy commander isn't in `S.tokens`/`S.my`, so `moveBoardCard`/`moveBoardById` don't reach it; `cmdFieldCard` (~1807) offers only Slay. So there's currently no way it lands in hand.
+- **Player commander `S.pcmd`** (parity): `sendCmdToZone(c,died)` (~1410) always routes to the command zone (`died` → `cmdTax += inc`); `castCmd`/`deployCmd` pay base + `cmdTax`. Also no hand state.
+
+## P29.1 — Enemy commander: base cost from hand, base + tax from the command zone
+
+**Goal:** track whether the (enemy) commander is in the **command zone** or in **hand**, and charge accordingly — command zone = base + accumulated tax; hand = base cost only, with no tax added by casting from hand. Provide a way for it to be returned to hand.
+
+**How:**
+1. **Zone flag:** add `S.cmd.inHand` (bool), meaningful only when `!inPlay` — `inPlay` → battlefield; `!inPlay && inHand` → hand; `!inPlay && !inHand` → command zone. Default `false` (starts in the command zone). `migrate` backfills `if(S.cmd && S.cmd.inHand==null) S.cmd.inHand=false`. Keep `inPlay` exactly as-is so every existing `S.cmd.inPlay` read (combat/emblems/etc.) is unchanged.
+2. **Zone-aware cast cost:** define `cmdCastCost() = (!S.cmd.inPlay && S.cmd.inHand) ? S.cmd.baseCost : (S.cmd.baseCost + (S.cmd.tax||0))`. Use it in `vaelMain` (~1736) for both the affordability check and the spend, and in the dormant-box display (~1278) — label it "from hand — {base}" vs "from command zone — {base} + tax {tax}". Cast log says which zone.
+3. **Casting from hand adds no tax:** when cast from hand it resolves to the battlefield (`inPlay=true; inHand=false`) and **does not** increment `deaths`/`tax` (MTG: only command-zone casts carry the tax; this game's tax model keys off battlefield→command-zone deaths, so a hand cast simply skips it). A later death still routes to the command zone with +tax via `removeRef` (unchanged).
+4. **Return-to-hand affordance:** add a **↩ hand** control on the enemy commander card (`cmdFieldCard` ~1807) and the dormant command-zone box → `cmdToHand()`: set `inPlay=false; inHand=true`, and **clear board-state modifiers** as a zone change does (tapped/sick/phased/plus/minus/other reset, like `sendCmdToZone`), **without** incrementing tax/deaths (a bounce is not a death). Log "♛ {cmd} returns to {enemy}'s hand." From hand, the existing cast path picks it up at base cost.
+5. **Player-commander parity:** mirror for `S.pcmd` — a `pcmdInHand` state, a "↩ hand" option, and `castCmd`/`deployCmd` charging base (hand) vs base + `cmdTax` (command zone). Keep `sendCmdToZone(c,died)` (death → command zone + tax) unchanged; add the hand path alongside it. *(If scope must be trimmed, do the enemy side first per the user's ask and note player parity as a fast follow.)*
+6. **Reset:** `freshGameForDungeon`/`enterRoom` start the commander in the command zone (`inHand=false`) as today.
+
+**ACs:** an enemy commander in the command zone recasts at base + tax (current behavior); returned to hand (↩ hand) it casts at base cost with no tax, and casting from hand adds no tax/death; a later battlefield death still routes to the command zone with +2 tax; the dormant box + cast log name the correct zone and cost; bouncing to hand clears its counters/tapped/sick like a zone change; player commander mirrors this; round-trips through save/undo + migrate.
+**Verify:** jsdom — set `S.cmd` in command zone with tax 4 → `cmdCastCost()===baseCost+4`; `cmdToHand()` → `inHand=true`, modifiers cleared, tax unchanged; `cmdCastCost()===baseCost`; cast-from-hand resolves to battlefield without bumping `deaths`/`tax`; subsequent `removeRef` → command zone, tax +inc; dormant box text reflects zone; migrate backfills `inHand`; player `S.pcmd` parity; syntax + id-diff.
 
 ---
 
