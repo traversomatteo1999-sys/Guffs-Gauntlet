@@ -101,6 +101,12 @@
 | &nbsp;&nbsp;P15.2 Store & loot overhaul (Tonic fix · legendary tier · variety · gold tuning) | ⬜ planned |
 | &nbsp;&nbsp;P15.3 Persist unused satchel items across runs (profile stash) | ⬜ planned |
 | &nbsp;&nbsp;P15.4 Difficulty-scaled healing on descend | ⬜ planned |
+| **Phase 16 — Token variety (treasure/blood/utility · enemy tokens · enemy uses them) + between-boss life reset to 40** | ⬜ **PLANNED** — enemy can be given tokens (creatures share the player's token library) · resource tokens (Treasure · Blood · Clue · Food) for both sides, with expiry · enemy actively sacrifices Treasure for mana · descending past a boss resettles life >40 back to 40 (spent magic, not damage). See Phase 16 below |
+| &nbsp;&nbsp;P16.1 Deploy tokens to the enemy board (creatures share the player's token library) | ⬜ planned |
+| &nbsp;&nbsp;P16.2 Resource-token types — Treasure · Blood · Clue · Food (both sides, with expiry) | ⬜ planned |
+| &nbsp;&nbsp;P16.3 Enemy actively uses its tokens (sacrifices Treasure for mana; temporary tokens expire) | ⬜ planned |
+| &nbsp;&nbsp;P16.4 Between-boss life reset: life above 40 resettles to 40 on descend (spent magic, not damage) | ⬜ planned |
+| &nbsp;&nbsp;P16.5 Info/instructions for the new token + life-reset rules | ⬜ planned |
 
 ---
 
@@ -1429,7 +1435,94 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 3. Use strict `<` on the threshold; `floor` never overheals.
 
 **ACs:** descending while below the difficulty threshold heals the right fraction of missing HP (never above max); at/above the threshold heals nothing; only fires on room transitions (not game start/restart); each difficulty uses its own frac+threshold; no conflict with the Vael-win heal.
-**Verify:** jsdom — per-difficulty: below threshold heals `floor(missing*frac)`, at/above heals 0, cap respected; `advance` triggers it, `fresh`/`restart` don't; syntax + id-diff.
+**Verify:** jsdom — per-difficulty: below threshold heals `floor(missing*frac)`, at/above heals 0, cap respected; `advance` triggers it, `fresh`/`restart` don't; syntax + id-diff. **Interacts with P16.4** (the between-boss life-reset-to-40 cap): order them so the cap applies to >40 life *first*, then the missing-HP heal runs against the post-cap value — see P16.4.
+
+
+# PHASE 16 — Token variety (treasure/blood/utility · enemy tokens · enemy uses them) + between-boss life reset ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** Requested by the user after Phase 15. Two themes: (A) richer **token** support — give the *enemy* tokens too (creature tokens drawing from the same library the player's do), add **resource tokens** (Treasure · Blood · Clue · Food) for both sides with expiry, and let the **enemy actively use** them (sacrifice Treasure for mana); (B) a **between-boss life reset** — descending past a boss resettles any life above 40 back to 40 (spent magic, distinct from damage you must heal). Grounded in the current `index.html` (re-grep names; line numbers drift — line 456 is the base64 `ART` blob, real JS 457→end). Each ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Grounded token-infra audit (read once for all of P16.1–P16.3):**
+- **Player creature tokens:** `deployTokenCfg(cfg,n)` (~2277) pushes `n` token objects onto **`S.my.creatures`** (`token:true, sick:true, expires:false, …`). Saved tokens live on the profile in **`p.tokens`** (`{tid,name,p,t,kw,color}`), built by `readTokenForm()` (~2276), deployed/saved/copied via `quickDeployToken`/`saveTokenToLibrary`/`libDeployToken`/`libCopyToken`/`deploySavedToken` (~2279–2284) and rendered in the Library modal (`renderLibrary` ~2290) + the board "deploy saved token" row (`renderBoardTokens` ~2278).
+- **Enemy creature tokens:** live on **`S.tokens`** (keyless bodies — guard `FX[c.key]&&`); created today only by the engine (`applyRun` `case "spawn"`, Resurgence, reanimation). **There is no player-facing way to put a token onto the enemy board.**
+- **Expiry (P7.1):** `clearExpiringTokens()` (~1062) sweeps **both** boards for `token && expires` and removes them (cease, no graveyard, no Pit's Tithe); wired into `youEnd` (~1635) and `vaelEnd`. The per-permanent `expires` flag already toggles on both boards (drawers). **The infra for "temporary token that vanishes at end of turn" already exists** — P16.2/P16.3 reuse it.
+- **Enemy mana:** `S.bossMana` / `usableMana()` (~924). The player casts freely (no player mana pool), so a player-side resource token is a **manual reminder/value tool**, while an enemy Treasure is **functional** (feeds `S.bossMana`).
+- **Death/sacrifice routing:** tokens cease via `removeRef` (enemy) / `killMy` token-short-circuit (player); a sacrifice IS a death (fires Pit's Tithe). `slay`/`removeRef` (~1483/enemy), `killMy` (~1017).
+
+## P16.1 — Deploy tokens to the enemy board (creature tokens share the player's token library)
+
+**Goal:** the player (as bookkeeper) can put **creature tokens onto the ENEMY board** too, not just their own. Standard creature tokens behave exactly like player ones and are drawn from the **same saved-token library** (`p.tokens`) — one token catalogue, deployable to either side.
+
+**Grounded building blocks:** `deployTokenCfg(cfg,n)` (~2277) — today hardcodes `S.my.creatures`. The enemy creature object shape is `S.tokens`' (keyless, `token:true`); `colorsOf` (~987) already falls back to the boss colours for keyless enemy bodies, so an enemy creature token with no explicit colour inherits the enemy identity. The board "deploy saved token" row (`renderBoardTokens` ~2278, `deploySavedToken` ~2279) and the Library deploy buttons (`libDeployToken` ~2282) are the entry points.
+
+**How:**
+1. **Parameterize the deployer:** `deployTokenCfg(cfg,n,scope='mine')` — `scope==='mine'` → `S.my.creatures` (unchanged default, so every existing call is byte-for-byte identical); `scope==='enemy'` → `S.tokens`, building the enemy-shaped object (no `_cat`, colour defaulting to boss colours when blank, `expires:false`, summoning-sick). Log to the right channel (`you` vs `dm`).
+2. **Entry points:** add an **"into → [your board | enemy board]"** selector beside the existing deploy controls — the board quick-deploy row (`renderBoardTokens`/`deploySavedToken`) and the Library token rows (`libDeployToken` ~2282, `quickDeployToken` ~2280). One library, a target toggle. Default = your board.
+3. **Parity:** an enemy creature token then flows through every existing enemy-board tool (slay/move/copy/edit/expire) and combat (`vaelAttackers`/`vaelDefenders`) identically to an engine-spawned token — no new per-token code.
+4. **No schema change** — `S.tokens` already serializes; `p.tokens` is unchanged.
+
+**ACs:** a saved token can be deployed ×N onto the enemy board and appears as a normal enemy creature (attacks/blocks, slayable, movable, can be flagged `expires`); the same token library feeds both sides; deploying to your own board is unchanged; the target defaults to your board; round-trips through save/undo.
+**Verify:** jsdom — `deployTokenCfg(cfg,2,'enemy')` adds 2 bodies to `S.tokens` with boss-colour fallback + `token:true`; `scope='mine'` (default) still hits `S.my.creatures`; an enemy token attacks via `vaelAttackers`; syntax + id-diff (only the target selector ids added).
+
+## P16.2 — Resource-token types: Treasure · Blood · Clue · Food (both sides, with expiry)
+
+**Goal:** beyond creature tokens, support the common **resource/artifact token** types for **both** boards: **Treasure** (sacrifice for one mana), **Blood** (sacrifice + discard a card to draw), **Clue** (sacrifice + pay to draw), **Food** (sacrifice + pay to gain 3 life). Each is a real token permanent that can be made, sat on the board, sacrificed for its value, and — like any token — flagged to **expire** at end of turn.
+
+**Grounded building blocks:** tokens already carry arbitrary fields and round-trip; the `expires` sweep (`clearExpiringTokens` ~1062) and the per-permanent drawer toggles cover temporary tokens for free (P7.1). Resource tokens are **non-creature artifact tokens**, so they want their own light representation rather than riding `S.my.creatures` (P/T) — but a minimal first cut can store them as a small array on each side. The player has no mana pool (cast freely), so a player Treasure is a **manual reminder** ("sacrifice → +1 mana available, apply as you cast"); the enemy Treasure is **functional** (P16.3 spends it into `S.bossMana`).
+
+**How:**
+1. **Token-kind catalogue** `RESOURCE_TOKENS` — data table keyed by kind, each `{name, glyph, sac:<what sacrificing does>, note}`: `treasure` (💰, "Sacrifice: add one mana of any colour"), `blood` (🩸, "Sacrifice + discard a card: draw a card"), `clue` (🔍, "Sacrifice, pay 2: draw a card"), `food` (🍖, "Sacrifice, pay 2: gain 3 life"). Extensible — a `custom` entry with a free-text note covers any other kind so nothing is blocked.
+2. **Representation:** add parallel resource-token arrays per board (e.g. `S.my.resources` / `S.enemyResources`) holding `{id,kind,name,glyph,note,expires,token:true}` — or, if simpler at build time, reuse the artifact arrays with a `resKind` tag. Add to `fresh()`, save/`stripJSON`, and `migrate()` backfill (`if(!Array.isArray(...))=[]`). **Decision to confirm at build:** dedicated arrays (cleaner, recommended) vs. tagging existing artifact tokens.
+3. **Make:** a "Make token" control gains a **kind picker** (creature | Treasure | Blood | Clue | Food | custom) + count + **target board** (reusing the P16.1 selector). Creature → existing path; resource kinds → push resource-token objects onto the chosen side's array. Log to the right channel.
+4. **Render + sacrifice:** each board shows its resource tokens as small chips (glyph · name · `expires` ⌛ badge) with a **"⚑ sacrifice"** button. Sacrificing is a **death** (ceases like any token — and per the rules can pay the Pit's Tithe). The button applies the kind's effect where it's automatable: player Food → `adjLife('you',3)`; player Blood/Clue → draw is the player's physical/library action so it logs a reminder; player Treasure → reminder ("+1 mana available this cast"). Enemy resource sacrifice is driven by P16.3 (and a manual "⚑ sac" for the bookkeeper).
+5. **Expiry:** resource tokens honor the same `expires` flag and are swept by `clearExpiringTokens()` (extend its sweep to the new arrays) — so a "Treasure until end of turn" vanishes at the end step on either board.
+
+**ACs:** the player can make Treasure/Blood/Clue/Food on either board; each renders as a token chip with a sacrifice button and an optional ⌛ expire flag; sacrificing a Food heals 3, a Treasure/Clue/Blood logs its reminder (player) or feeds the enemy engine (P16.3); resource tokens cease on sacrifice/expiry leaving no graveyard; all new arrays round-trip through save + `migrate` backfill; creature tokens (P16.1) are unaffected.
+**Verify:** jsdom — make each kind on both boards; `clearExpiringTokens` removes an expiring resource token from each new array; sacrificing Food calls `adjLife('you',3)`; sacrifice ceases the token (no graveyard entry); migrate backfills the arrays; round-trip; syntax + id-diff.
+
+## P16.3 — The enemy actively uses its tokens (sacrifices Treasure for mana; temporary tokens expire)
+
+**Goal:** the enemy isn't just *given* tokens — it **uses** them. When the enemy needs mana to cast and has Treasure tokens, it sacrifices them for mana; its temporary tokens expire on schedule like the player's.
+
+**Grounded building blocks:** enemy casting decides affordability against `usableMana()` (~924) / `S.bossMana`; `vaelMain` (~1605+) is where the enemy chooses and pays for a play. Enemy resource tokens live on the P16.2 array. Expiry already runs in `vaelEnd` via `clearExpiringTokens` (P7.1).
+
+**How:**
+1. **Treasure → mana:** a helper `enemySacForMana(need)` — when the enemy wants to cast a spell it can't quite afford, sacrifice enemy Treasure tokens (each +1 to `S.bossMana`, one colour) up to what closes the gap, ceasing each and logging it (`dm`). Hook it into the `vaelMain` affordability check **before** abandoning a desired cast (so a 1-mana-short enemy cracks a Treasure rather than passing). Cap at the tokens available; never go negative.
+2. **Other resource kinds (optional automation, bounded):** Food → enemy gains 3 (`bossHealLife`) when low; Clue → enemy draws (`vaelDraw`) when flooded/low-on-gas; Blood is loot-filtering — model as a reminder if not cleanly automatable. **Each effect that can't be modeled cleanly keeps a manual reminder (principle: nothing silently dropped).** Keep automation conservative — Treasure-for-mana is the primary, must-have behavior; the rest are nice-to-have and may ship as reminders.
+3. **Expiry:** confirm enemy resource + creature tokens flagged `expires` are swept at `vaelEnd` (P16.2 extends the sweep) so the enemy's temporary tokens vanish correctly.
+4. **Log** every enemy sacrifice/use (silent mutation = bug). No new persisted state beyond P16.2's arrays.
+
+**ACs:** an enemy 1 mana short of a castable spell, holding ≥1 Treasure, sacrifices exactly enough Treasure to cast (logged) and then casts; with no Treasure it behaves as before; enemy Food/Clue automation (or reminders) fire on the right window; enemy expiring tokens cease at `vaelEnd`; never spends below 0 or beyond tokens held.
+**Verify:** jsdom — enemy with `bossMana` one short + 1 Treasure casts after `enemySacForMana` (+1 mana, Treasure ceased, logged); no Treasure → no cast/no crash; Food heal / Clue draw fire when triggered; expiring enemy token swept at end step; syntax + id-diff.
+
+## P16.4 — Between-boss life reset: life above 40 resettles to 40 on descend (spent magic, not damage)
+
+**Goal:** when advancing through the dungeon from one boss to the next, any life **above 40** resettles **down to 40**. This represents temporary magical life-boosts wearing off between battles — it is **distinct from damage** (damage you still have to heal back with items; this only trims *excess* life above the 40 baseline). Life **at or below 40 is never touched** by this rule.
+
+**Grounded building blocks:** `advance()` (~1494) is the **sole** room-transition path — `freshGameForDungeon()` → `enterRoom(next)` → the "your life (N) … carry over" log. Game start/restart use `enterRoom(0,true)` (not `advance`), so they're unaffected. `S.youLife` / `S.youMax`. **P15.4** (difficulty-scaled descent heal) also hooks `advance()` right after `enterRoom(next)` — these two MUST be ordered.
+
+**How:**
+1. In `advance()` (~1494), after `enterRoom(next)` and **before** the P15.4 descent-heal block: `if(S.youLife>40)S.youLife=40;` — trim only the excess; never raise life, never touch ≤40, never change `S.youMax`.
+2. **Ordering with P15.4:** cap to 40 **first**, then run the missing-HP heal against the post-cap value — so a player who ends a boss at 55 starts the next boss assessment from 40 (excess magic gone), and only *then* is "missing HP" (relative to `youMax`) considered for the descent heal. Document this in both P15.4 and here.
+3. **Log** the reset distinctly from healing/damage, e.g. `✨ Temporary vigor fades — your life settles to 40 between battles.` (only when a trim actually happened). Keep the existing "life carries over" log for the ≤40 case.
+4. **Baseline constant:** define `LIFE_RESET_BASELINE=40` (single source) rather than a magic number, so it's tunable. (Open question: should the baseline equal the player's *starting* life rather than a literal 40? **Default: literal 40** per the user's instruction; flag if `youMax`/start-life ever diverges from 40.)
+
+**ACs:** descending with life >40 sets it to exactly 40 (logged as fading magic, not as damage/heal); life ≤40 is unchanged and not logged as a reset; `youMax` is never altered; the reset runs only on `advance()` (not on game start/restart); when P15.4 is also present, the 40-cap applies before the missing-HP heal.
+**Verify:** jsdom — `advance()` with `youLife=55` → 40 + reset log; `youLife=40`/`30` → unchanged, no reset log; `youMax` untouched; `enterRoom(0,true)`/restart never reset; with P15.4 stubbed, cap precedes heal (heal computed off 40); syntax + id-diff.
+
+## P16.5 — Info & instructions for the new token + life-reset rules
+
+**Goal:** surface the new mechanics where the player will look for them — the ⓘ info popups (P1.8), the in-game instructions/help, and the lore/help copy — so nothing is undocumented (principle #5 spirit: visible, not silent).
+
+**Grounded building blocks:** the `INFO` map + ⓘ buttons (P1.8, ~1878 area — e.g. `action:{t,h}` entries); the instructions/help sections (~1999+ "The loop", ~2008 library bullet). New tooltips reuse the existing `INFO` entry shape.
+
+**How:**
+1. **Token info:** add/extend an ⓘ entry covering token kinds (creature vs Treasure/Blood/Clue/Food), that creature tokens share one library and deploy to either board (P16.1), how to make/sacrifice resource tokens, the `expires` flag, and that the enemy will spend its own Treasure for mana (P16.3).
+2. **Life-reset info:** add a short note (ⓘ near the life total and/or in the descend cutscene/help) explaining the between-boss reset to 40 and that it differs from damage — temporary magic fades; damage must still be healed with items (P16.4).
+3. **Instructions/help:** add a bullet to the help/instructions section for both features. Keep copy terse, in the established voice.
+
+**ACs:** the relevant ⓘ popups describe token kinds, dual-board deploy, resource-token use/sacrifice, expiry, the enemy's Treasure-for-mana behavior, and the 40-life reset rule; the help/instructions mention both features; no new game state.
+**Verify:** jsdom/string-check — the `INFO`/help strings include the new token + life-reset copy; syntax + id-diff.
 
 ---
 
@@ -1440,3 +1533,6 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 - **Sound palette (P7.8):** vibe? *Default:* soft, low, synthesized UI/combat cues.
 - **Enemy "play this card" mana (P6.5):** spend vs free override? *Default:* offer both.
 - **Stack popup (P1.10):** docked-dismissible panel vs full modal overlay? *Default (unless you say):* a docked, auto-surfacing popup that doesn't block the board, openable on demand.
+- **Resource-token representation (P16.2):** dedicated arrays (`S.my.resources`/`S.enemyResources`) vs. tagging existing artifact tokens? *Default:* dedicated arrays (cleaner, recommended).
+- **Life-reset baseline (P16.4):** literal 40 vs. the player's starting/max life? *Default:* literal 40 per the user's instruction (flag if `youMax`/start-life ever diverges from 40).
+- **Enemy resource-token automation depth (P16.3):** how much beyond Treasure-for-mana to auto-model? *Default:* Treasure-for-mana is must-have; Food/Clue auto where clean, Blood + anything unclear as a manual reminder (nothing silently dropped).
