@@ -107,12 +107,11 @@
 | &nbsp;&nbsp;P16.3 Enemy actively uses its tokens (sacrifices Treasure for mana; temporary tokens expire) | ⬜ planned |
 | &nbsp;&nbsp;P16.4 Between-boss life reset: life above 40 resettles to 40 on descend (spent magic, not damage) | ⬜ planned |
 | &nbsp;&nbsp;P16.5 Info/instructions for the new token + life-reset rules | ⬜ planned |
-| **Phase 17 — Enemy engine overhaul: lands-only mana · opening hand & mulligan · max-hand discard · attack-tax targeting · draw-N** | ⬜ **PLANNED** — enemy starts with **0** mana, no scrounge floor, mana only from played lands (finalizes P14.10) · shuffle + draw a **7-card** opening hand, mulligan (reshuffle/redraw) while fewer than 3 lands · max hand size **7**, discard wisely at end of turn unless "no maximum hand size" · manual "enemy draws N" control · attack-tax **target selector** (player / planeswalkers / both) + **enemy-side** attack tax (Propaganda/Ghostly Prison/Oathkeeper the enemy controls). See Phase 17 below |
+| **Phase 17 — Enemy engine overhaul: lands-only mana · opening hand & mulligan · max-hand discard · attack-tax targeting** | ⬜ **PLANNED** — enemy starts with **0** mana, no scrounge floor, mana only from played lands (finalizes P14.10) · shuffle + draw a **7-card** opening hand, mulligan (reshuffle/redraw) while fewer than 3 lands · max hand size **7**, discard wisely at end of turn unless "no maximum hand size" · attack-tax **target selector** (player / planeswalkers / both) + **enemy-side** attack tax (Propaganda/Ghostly Prison/Oathkeeper the enemy controls). See Phase 17 below |
 | &nbsp;&nbsp;P17.1 Enemy mana strictly from played lands — remove opening pre-seed + scrounge floor (finalizes P14.10) | ⬜ planned |
 | &nbsp;&nbsp;P17.2 Shuffle + 7-card opening hand + mulligan while &lt;3 lands | ⬜ planned |
 | &nbsp;&nbsp;P17.3 Max hand size 7 — discard-to-7 wisely at end of turn (unless "no maximum hand size") | ⬜ planned |
-| &nbsp;&nbsp;P17.4 Manual "enemy draws N cards" control | ⬜ planned |
-| &nbsp;&nbsp;P17.5 Attack-tax target selector (player/walkers/both) + enemy-side attack tax | ⬜ planned |
+| &nbsp;&nbsp;P17.4 Attack-tax target selector (player/walkers/both) + enemy-side attack tax | ⬜ planned |
 | **Phase 18 — Combat correctness: menace enforcement + keyword automation audit** | ⬜ **PLANNED** — **⚠ CONFIRMED BUG: enemy menace creatures are blockable by ONE** (works for player creatures — asymmetry). Fix `minBlockers` short-circuit + enemy-keyword carry, then audit deathtouch · lifelink · trample · first/double strike · vigilance · indestructible · protection so they auto-resolve identically for **player and enemy**, both directions. See Phase 18 below |
 | &nbsp;&nbsp;P18.0 Diagnostic FIRST — pin the exact cause of the enemy-menace bug + capture regression tests (both directions) | ⬜ planned |
 | &nbsp;&nbsp;P18.1 Fix menace: blockable only by 2+, counts as blocked only when ≥2 (enemy + player) — `minBlockers` short-circuit + keyword carry | ⬜ planned |
@@ -1567,11 +1566,11 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom/string-check — the `INFO`/help strings include the new token + life-reset copy; syntax + id-diff.
 
 
-# PHASE 17 — Enemy engine overhaul: lands-only mana · opening hand & mulligan · max-hand discard · attack-tax targeting · draw-N ⬜ PLANNED
+# PHASE 17 — Enemy engine overhaul: lands-only mana · opening hand & mulligan · max-hand discard · attack-tax targeting ⬜ PLANNED
 
 **Specced 2026-06-29, NOT built.** Requested by the user to make the enemy play by real Magic rules for mana and hand management, and to support Propaganda/Ghostly-Prison/Oathkeeper-style attack taxes the enemy controls. **This phase finalizes the open balance question in P14.10** (the user has decided: lands-only mana, no free opening, no scrounge floor). Grounded in the current `index.html` (re-grep names; line numbers drift — line 456 is the base64 `ART` blob, real JS 457→end). Each ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
-**Grounded enemy deck/mana/hand audit (read once for all of P17.1–P17.4):**
+**Grounded enemy deck/mana/hand audit (read once for all of P17.1–P17.3):**
 - **Deck build + shuffle:** `buildDeck(room)` (~824) assembles the library and **already shuffles** it (Fisher-Yates ~830). `enterRoom` (~814) sets `S.lib=buildDeck(room); S.hand=[]; S.gy=[]; S.exile=[];` then **`vaelDraw(4)`** (~821) — today the opening hand is **4**, not 7, and there is **no mulligan**.
 - **Mana pre-seed (to remove):** `enterRoom` (~820) `S.bossLands=Math.max(0,(room.landStart||0)+(DIFF[S.diff].manaBonus||0)); S.bossManaMax=S.bossLands; S.bossMana=S.bossLands;` → free pre-developed mana. Room `landStart` 1/2/3 (~745/751/757), `DIFF.manaBonus` −1/0/+1 (~588).
 - **Scrounge floor (to remove):** `playEnemyLand()` (~1540) plays a land from hand if present (`FX[c.key]&&FX[c.key].type==='land'`), else **scrounges** a free source when mana-light (`if((S.bossLands||0)<S.turn-1&&S.turn>1){…+1…}`, ~1542).
@@ -1627,21 +1626,7 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **ACs:** an enemy ending its turn with >7 cards discards exactly down to 7, pitching the lowest-value/redundant cards (surplus land, then cheapest filler) and keeping bombs/answers/needed lands; with a "no maximum hand size" effect active it discards nothing; the discard logs and routes to the graveyard; ≤7 cards → no-op; round-trips through save/undo.
 **Verify:** jsdom — a 9-card hand discards to 7 choosing the two lowest-value cards (and not its last needed land); a hand under the "no max" flag is untouched; discards land in `S.gy` and log; ≤7 no-op; syntax + id-diff.
 
-## P17.4 — Manual "enemy draws N cards" control
-
-**Goal:** an explicit control to make the enemy draw **N** cards on demand (for cards/abilities that say "the enemy draws N").
-
-**Grounded building blocks:** `vaelDraw(n)` (~831) already draws N (with deck-out). `dtDraw()` (~905) + the `dtN` input in the deck-tools modal ("🂠 Manipulate enemy deck", ~414) **already provide a manual draw-N** — this task mostly **surfaces it** and confirms it's robust.
-
-**How:**
-1. **Surface a quick draw-N:** add a compact "🃏 Draw N" control (number input + button → `vaelDraw(n)` + log + render) to the enemy zones/deck panel (near the `libCount`/`handCount` display, `renderZones` ~1675), so it's reachable without opening the full deck-tools modal. Reuse `dtDraw`'s logic (or call a shared `enemyDrawN(n)`).
-2. **Robustness:** guard `n>=1`; on empty library mid-draw, the existing `bossDeckOut`/deck-out (P5.2) applies — confirm a partial draw + deck-out is logged sanely (no crash).
-3. **Log** `🃏 {enemy} draws N (hand … · library …)` (matches `dtDraw`). No schema change.
-
-**ACs:** the player can make the enemy draw any N from a visible control; it draws min(N, library) and decks out correctly if the library empties; hand/library counts update; logs; no crash on an empty library.
-**Verify:** jsdom — `enemyDrawN(3)` moves 3 from `S.lib` to `S.hand` + logs; drawing past an empty library triggers deck-out without throwing; the control renders in the zones panel; syntax + id-diff. *(Note: the deck-tools `dtDraw` path may already satisfy this — verify before adding a duplicate; if so, this task just adds the convenience entry point.)*
-
-## P17.5 — Attack-tax target selector (player / planeswalkers / both) + enemy-side attack tax
+## P17.4 — Attack-tax target selector (player / planeswalkers / both) + enemy-side attack tax
 
 **Goal:** support Propaganda / Ghostly Prison / Norn's Annex / "Oathkeeper"-style taxes with two additions: (a) a **target selector** on an attack tax — does it tax attacks aimed at the **player**, at **planeswalkers**, or **both**; (b) an **enemy-side** attack tax (the enemy controls the Propaganda, so the **player** must pay mana/and-or life to attack the enemy face and/or its planeswalkers) — mirroring today's player-side tax (where the enemy pays to attack you).
 
@@ -1974,7 +1959,7 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **Goal:** the tab subtitles and ⓘ info popups accurately and completely describe what the game now does — kept in sync as the recent feature phases land.
 
-**Grounded findings:** tab notes are the `.tabnote` spans (~362-365): Info "you · foe · log", Action "turn flow · attack · tools", Enemy "creatures · walker · zones", Your Board "board · zones · enchantments". The ⓘ popups are `INFO_TEXT` (~2084-2095): `info/action/enemy/player/stack/commander/threat/ward/freeze/battles`. The in-game help/instructions also carry feature copy (the menu instructions + the help section). Several recently-specced/added systems are **not** reflected: token variety + resource tokens (P16), enemy counters (P19), player emblems with targeting/colour (P23), attack-tax targeting (P17.5), combat-count restrictions (P20), spell-card graveyard routing + ✕ removal popup (P24), editable emblem values (P22).
+**Grounded findings:** tab notes are the `.tabnote` spans (~362-365): Info "you · foe · log", Action "turn flow · attack · tools", Enemy "creatures · walker · zones", Your Board "board · zones · enchantments". The ⓘ popups are `INFO_TEXT` (~2084-2095): `info/action/enemy/player/stack/commander/threat/ward/freeze/battles`. The in-game help/instructions also carry feature copy (the menu instructions + the help section). Several recently-specced/added systems are **not** reflected: token variety + resource tokens (P16), enemy counters (P19), player emblems with targeting/colour (P23), attack-tax targeting (P17.4), combat-count restrictions (P20), spell-card graveyard routing + ✕ removal popup (P24), editable emblem values (P22).
 
 **How:**
 1. **Audit each tab note + `INFO_TEXT` entry against the live feature set** and rewrite for accuracy/completeness — e.g. Enemy Board note/popup should mention emblems/counters/artifacts-enchants and the deck tools; Your Board should mention emblems-with-automation, counters, zones routing; the Action/threat/ward popups should reflect the current combat options (block-count limits, attack taxes, max attackers/blockers).
