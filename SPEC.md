@@ -146,6 +146,11 @@
 | &nbsp;&nbsp;P28.2 Grand Elixir (+25 life · 25g) · Tonic of Vigor (+10 base · 36g legendary band) · automate items · gold rebalance | ⬜ planned |
 | **Phase 29 — Commander zone distinction: command zone (recast tax) vs hand (base cost)** | ⬜ **PLANNED** — distinguish where the enemy commander sits: from the **command zone** it recasts at base + the +2-per-death tax (current); if it's been returned to **hand** it casts at **base cost, no tax** (standard MTG). Add a ↩-hand affordance + zone-aware cost; player-commander parity. See Phase 29 below |
 | &nbsp;&nbsp;P29.1 Enemy commander hand vs command zone — base cost from hand, base+tax from command zone (+ ↩ hand, player parity) | ⬜ planned |
+| **Phase 30 — Permanent option parity: every permanent gets the options for its kind (both sides)** | ⬜ **PLANNED** — ALL permanents (creature · artifact · enchantment · planeswalker, player AND enemy) get the full option set for their kind: protection-from-colour, **hexproof/shroud** (+ indestructible), markers/deal/copy, and **return-to-hand / exile / graveyard** — with protection/hexproof/shroud actually honoured in targeting. See Phase 30 below |
+| &nbsp;&nbsp;P30.1 Protection-from-colour on planeswalkers — drawer toggles + honoured in targeting/removal | ⬜ planned |
+| &nbsp;&nbsp;P30.2 Walker option parity sweep (token · markers/deal/copy · threat · attack-tax targeted · enemy walker) | ⬜ planned |
+| &nbsp;&nbsp;P30.3 Artifact & enchantment drawer parity (protection · hexproof/shroud/indestructible · markers · threat) | ⬜ planned |
+| &nbsp;&nbsp;P30.4 Universal guarantees — every permanent (both sides) can go to hand/exile/graveyard; prot/hexproof/shroud honoured wherever targetable | ⬜ planned |
 
 ---
 
@@ -2084,6 +2089,85 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** an enemy commander in the command zone recasts at base + tax (current behavior); returned to hand (↩ hand) it casts at base cost with no tax, and casting from hand adds no tax/death; a later battlefield death still routes to the command zone with +2 tax; the dormant box + cast log name the correct zone and cost; bouncing to hand clears its counters/tapped/sick like a zone change; player commander mirrors this; round-trips through save/undo + migrate.
 **Verify:** jsdom — set `S.cmd` in command zone with tax 4 → `cmdCastCost()===baseCost+4`; `cmdToHand()` → `inHand=true`, modifiers cleared, tax unchanged; `cmdCastCost()===baseCost`; cast-from-hand resolves to battlefield without bumping `deaths`/`tax`; subsequent `removeRef` → command zone, tax +inc; dormant box text reflects zone; migrate backfills `inHand`; player `S.pcmd` parity; syntax + id-diff.
+
+
+# PHASE 30 — Permanent option parity: every permanent gets the options for its kind (both sides) ⬜ PLANNED
+
+**Specced 2026-06-29, NOT built.** The user's rule: **every permanent — creature, artifact, enchantment, planeswalker, on the player's board AND the enemy's — must offer all the options appropriate to its kind.** Concretely: every permanent can be **returned to hand / exiled / sent to graveyard**, given **protection-from-colour** and **hexproof/shroud** (and indestructible), and the common controls (markers, dies-to, ward); each kind also keeps its kind-specific options (creatures: P/T, blocked-by, combat keywords; walkers: loyalty, attackable-by-N; etc.). Protection/hexproof/shroud must be **honoured in targeting**, not cosmetic. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
+
+**Implementation note:** the clean approach is a shared **`commonPermRow(scope,id,obj)`** helper emitting the universal options (move-to-zone, protection-from-colour, hexproof/shroud/indestructible keywords, markers, dies-to, ward) that every drawer (`creatureDrawer`/`permDrawer`/`walkerDrawer`/`enemyDrawer`) calls, plus per-kind rows on top. Factor it once and reuse, rather than copy-pasting rows into four drawers.
+
+**Grounded audit (per drawer, what exists vs missing):**
+- `creatureDrawer` (~1396): the most complete — has protection-from-colour (~1401), markers (~1400), keywords via `kwSelect` on the card (~1342, incl. hexproof/shroud), move-to-zone, dies, ward, attack-tax(+tgt), threat, etc. **Reference for parity.**
+- `permDrawer` (artifacts/enchants, ~1411): has flags(legendary/token/phase), colour, move-to-zone, dies, attack-tax, ward. **MISSING: protection-from-colour, hexproof/shroud/indestructible keywords, markers, threat.**
+- `walkerDrawer` (~1418): see P30.1/P30.2 (missing protection + token/markers/threat/etc.).
+- **Enemy permanents:** `enemyDrawer` (~1387) has protection (~1390) + the P13.1 owner-agnostic editors for `S.tokens`/`S.cmd`/enemy artifacts/enchants; the enemy walker `S.pw` and enemy artifacts/enchants need the same universal set + move-to-zone parity.
+- **Keywords on non-creatures:** only creatures get `kwSelect`; artifacts/enchants/walkers have no keyword UI, so hexproof/shroud can't be set on them today.
+- **Move-to-zone (`moveRow`)** exists on player creature/perm/walker drawers and enemy creatures; verify it reaches the enemy walker + enemy artifacts/enchants (P13.3) so *every* permanent can be bounced/exiled/graveyarded.
+
+**Grounded audit (walker drawer vs creature drawer):**
+- `walkerDrawer(w)` (~1418) has: legendary (static "always"), colour, move-to-zone, dies-to, attack-tax, ward, set-as-commander.
+- `creatureDrawer(c)` (~1396) additionally has: **protection from {colour}** (`colorToggles('creatures',id,'prot')` ~1401), token flag, **phase out**, defender, **markers + deal-damage + copy + flip** (`markerRow` ~1400), blocked-by min/max, abilities, taps-for-mana, **threat (AI hint)**, the attack-tax **`targeted` toggle** (P17.4), give-control.
+- **Walker objects already carry `prot`** when cast (`resolvePlayerItem` planeswalker branch ~1886 sets `prot:(pr.prot||[]).slice()`); the **manual add-walker path + `migrate`** must guarantee `prot:[]` too.
+- **Functional gap (must fix):** in `applyTarget` (~1047) `wk=S.my.walkers` is **unfiltered** — `walkerMinLoy3` (~1054) checks only ward (`payWard`), NOT `prot`/hexproof/shroud/phased. So walker protection would be cosmetic unless targeting honors it. (`hasProtFrom` ~1061 already reads `.prot` on any object; the `safe` predicate ~1047 is the creature filter to mirror.)
+
+## P30.1 — Protection-from-colour on planeswalkers (drawer + honoured in targeting)
+
+**Goal:** a planeswalker can be given protection from one or more colours, and a protected walker can't be targeted by enemy removal of those colours — matching how creature protection works.
+
+**How:**
+1. **Drawer UI:** add a "protection from" row to `walkerDrawer` (~1418) — `<div class="drow"><span class="dlab">protection from</span><div class="setbtns">${colorToggles('walkers',id,'prot')}</div></div>` (identical to the creature row).
+2. **Ensure the field exists:** the manual add-walker path initializes `prot:[]`; `migrate` backfills `if(!Array.isArray(w.prot))w.prot=[]` on `S.my.walkers` (and the enemy `S.pw`). Cast already sets it.
+3. **Honour it in targeting (the functional half):** in `applyTarget` (~1047) filter the walker pool through the same `safe` predicate the creatures use — `const wk=S.my.walkers.filter(safe);` — so `walkerMinLoy3` (and any future walker-targeting effect) skips a walker that is protected-from-the-source-colour / hexproof / shroud / phased. A fully-protected lone walker → the effect is warded/can't-target (return the existing "warded off / no target" message), not a silent hit. Keep ward (`payWard`) behavior on top.
+4. **Scope note:** match creature semantics exactly (protection blocks *targeting* by that colour, as `hasProtFrom`/`safe` model today). Don't newly model combat-damage prevention by protection for walkers — creatures don't model that either; staying at parity avoids inconsistency. Note this explicitly.
+
+**ACs:** a walker drawer offers protection-from-colour toggles; a walker with protection-from-the-enemy's-colour can't be hit by `walkerMinLoy3` (warded/no-target message, loyalty unchanged); an unprotected walker is hit as before; hexproof/shroud/phased walkers are likewise skipped; the field round-trips + migrates; creature targeting is unchanged.
+**Verify:** jsdom — set `prot:['B']` on a walker vs a black `walkerMinLoy3` → not targeted (message, loyalty intact); `prot:['R']` vs black source → still hit; phased/hexproof walker skipped; `migrate` backfills `prot`; syntax + id-diff (only the new prot row).
+
+## P30.2 — Walker option parity sweep
+
+**Goal:** the planeswalker drawer offers the rest of the options that make sense for a walker, so it's not a second-class permanent.
+
+**How (add to `walkerDrawer`, reusing the creature helpers; ensure fields + migrate):**
+1. **Token flag:** `flagMy('walkers',id,'token')` (token planeswalkers exist) — a token walker ceases on leaving the battlefield per the existing token rules.
+2. **Phase out:** the P23.1 toggle (`flagMy('walkers',id,'phased')`) — **cross-ref P23.1**; ensure it lands in this drawer if not already.
+3. **Markers + deal-damage + copy + flip:** add `markerRow('walkers',id)` — deal-damage to a walker reduces loyalty (wire `dealDmg`/`getObj` for the `walkers` scope so ⚔ damage subtracts loyalty and a lethal hit routes through `killMy`), copy makes a token walker, flip handles DFC walkers. (Drop creature-only markers that make no sense on a walker, or leave the generic set — pick one and note it.)
+4. **Threat (AI hint):** `strength` select (`infoBtn('threat')`) so the enemy AI's walker targeting can weigh it.
+5. **Attack-tax `targeted` toggle:** add the P17.4 `tgt` toggle to the walker's attack-tax row for parity with creatures.
+6. **Attackable-by-N:** the P20.2 walker cap — **cross-ref P20.2** (ensure it's reachable from this drawer).
+7. **Fields + migrate:** initialize/backfill `token`, `phased`, `other`, `strength`, `block`/`attackableBy`, `catk.tgt` on walker objects so the controls work and round-trip.
+8. **Enemy walker (`S.pw`) parity:** expose the same option set on the enemy walker where its editor is reachable (P13.1 owner-agnostic editing); if `S.pw` lacks a drawer, note it as the follow-up rather than building a new editor here.
+
+**ACs:** the walker drawer exposes protection (P30.1), token, phase-out, markers/deal-damage/copy, threat, attack-tax (+targeted), and attackable-by-N; dealing lethal damage to a walker routes through `killMy`; token walkers cease correctly; all fields round-trip + migrate; the enemy walker reaches the same options (or a noted follow-up); creature/artifact drawers unchanged.
+**Verify:** jsdom — each new walker control mutates the right field; `dealDmg('walkers',id,n)` reduces loyalty and kills at ≤0; token-walker cease; migrate backfills the fields; syntax + id-diff. (Cross-ref P17.4, P20.2, P23.1.)
+
+## P30.3 — Artifact & enchantment drawer parity (protection · hexproof/shroud/indestructible · markers · threat)
+
+**Goal:** artifacts and enchantments (player and enemy) get the universal permanent options they currently lack — protection-from-colour, hexproof/shroud/indestructible, markers, and a threat hint — so they're editable at parity with creatures.
+
+**How:**
+1. **Protection-from-colour:** add the `colorToggles(cat,id,'prot')` row to `permDrawer` (~1411) and the enemy artifact/enchant editor. Ensure artifact/enchant objects carry `prot:[]` (`addP` ~1501 already does; cast `resolvePlayerItem` artifact/enchant branch ~1885 does; `migrate` backfills).
+2. **Keywords (hexproof/shroud/indestructible):** give non-creature permanents a **relevant keyword subset** — at minimum hexproof, shroud, indestructible (the combat keywords like flying/trample don't apply). Either a compact `kwSelect` limited to that subset, or dedicated toggles. Ensure `kw(obj,'hexproof')` etc. read correctly (the `kw` helper already reads `obj.kw`).
+3. **Markers + deal/copy/flip:** add `markerRow(cat,id)` to `permDrawer` so an artifact/enchant can take status markers, be dealt-with (⚔ destroy via `dealDmg`→`killMy`), copied, or flipped (DFC). Drop creature-only markers that don't fit, or keep the generic set (note which).
+4. **Threat (AI hint):** add the `strength` select for consistency (even if the AI rarely targets non-creatures today).
+5. **Shared helper:** implement via the `commonPermRow` helper from the phase intro so creature/perm/walker drawers share one source of truth.
+6. **Fields + migrate:** backfill `prot`, `other`, `kw`, `strength` on existing artifacts/enchants (both boards).
+
+**ACs:** artifact/enchant drawers (player + enemy) expose protection-from-colour, hexproof/shroud/indestructible, markers/deal/copy, and threat; setting hexproof/shroud on an enchantment is readable by `kw()`; fields round-trip + migrate; creature/walker drawers unchanged in behavior (or share the new helper without regression).
+**Verify:** jsdom — `permDrawer` emits the prot + keyword + marker rows; `kw(enchant,'hexproof')` true after toggling; `dealDmg('enchants',id,big)` routes to `killMy`; migrate backfills; syntax + id-diff.
+
+## P30.4 — Universal guarantees: every permanent can go to hand/exile/graveyard; protection honoured wherever targetable
+
+**Goal:** close the two universal gaps — (a) **every** permanent on **both** boards can be returned to hand, exiled, or sent to the graveyard; (b) protection/hexproof/shroud is **honoured** anywhere a permanent of that kind can be targeted (not just creatures).
+
+**How:**
+1. **Move-to-zone everywhere:** verify `moveRow`/`moveBoardCard` (P9.1) is present and correct on every permanent drawer/card — player creatures/artifacts/enchants/walkers (have it), enemy creatures (have it), **enemy artifacts/enchants (P13.3)** and the **enemy walker `S.pw`** (add it if missing). Owner-aware routing already exists (enemy → modelled `S.hand/lib/gy/exile`; player → physical hand / `S.myGy`/`S.myExile`; tokens cease). The deliverable is *coverage*: no permanent type lacks return-to-hand / exile / graveyard on either side.
+2. **Honour protection in targeting (all kinds):** wherever an enemy (or player) effect can *target* a permanent, filter by the shared `safe` predicate (`!hexproof && !shroud && !phased && !prot-matches-source-colour`): creatures (already), walkers (P30.1), and any artifact/enchant-targeting path (e.g. a destroy-enchantment effect, or `dealDmg`-as-removal) must skip a hexproof/shroud/protected permanent. Reuse `hasProtFrom`/`safe`.
+3. **Consistency:** keep semantics identical across kinds — protection blocks *targeting* by the matching colour (as today); don't introduce per-kind divergence. Token permanents still cease when they leave the battlefield regardless of the chosen zone.
+4. **Audit deliverable:** a short matrix (permanent kind × {to-hand, exile, graveyard, prot, hexproof, shroud}) confirming each cell is wired on both boards, so nothing is silently missing.
+
+**ACs:** every permanent kind on both boards can be returned to hand, exiled, and graveyarded (tokens cease); a hexproof/shroud/colour-protected permanent of any kind is skipped by a targeting effect that would otherwise hit it; the matrix shows full coverage; round-trips + migrate; no regression to existing creature/zone behavior.
+**Verify:** jsdom — for each permanent kind (player + enemy) a move to hand/exile/graveyard lands in the right zone (or ceases for tokens); a hexproof/protected non-creature is skipped by a targeting effect; coverage matrix asserted in the driver; syntax + id-diff. (Cross-ref P9.1, P13.3, P24.2, P26.1.)
 
 ---
 
