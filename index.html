@@ -931,6 +931,8 @@ function bossMana(){const willLand=Array.isArray(S.hand)&&(S.hand.some(c=>FX[c.k
 function usableMana(){return Math.max(0,(S.bossMana||0)-(S.bossManaFrozen||0));}
 function effP(c){return Math.max(0,c.p+(c.plus||0)-(c.minus||0)+(c._tp||0)+(c._stp||0));} /* _tp/_tt = temporary until-end-of-turn buffs (e.g. Warren Overrun anthem); _stp/_stt = continuous static-emblem buffs (P13.2, recomputed each render by applyStaticEmblems) */
 function effT(c){return c.t+(c.plus||0)-(c.minus||0)+(c._tt||0)+(c._stt||0);}
+/* P14.1: combat name accessor — the enemy commander stores its name in .n (not .name), so reading a.name showed "undefined". cnm() falls back; a no-op for player creatures & enemy tokens (.name). */
+function cnm(c){return (c&&(c.name||c.n))||'creature';}
 function kw(c,k){return (c.kw||[]).some(x=>(''+x).toLowerCase()===k);}
 /* ===== P6.1: generalized threat assessment — score ANY object/stack-spell on one hierarchy
    (planeswalkers > creatures > artifacts/enchantments > instants/sorceries), layered over the
@@ -1143,10 +1145,10 @@ function renderCombat(){
     const tgt=(S.combat.target&&S.combat.target[a.id])||'you';
     const tsel=(vael&&wks.length)?`<div class="btnrow"><span class="lab">target</span><select onchange="combatTarget('${a.id}',this.value)"><option value="you" ${tgt==='you'?'selected':''}>you</option>${wks.map(w=>`<option value="${w.id}" ${''+tgt===''+w.id?'selected':''}>↳ ${w.name} (${w.loyalty})</option>`).join("")}</select></div>`:'';
     const el=document.createElement("div");el.className="blockrow";
-    el.innerHTML=`<div class="ba">${a.name} ${effP(a)}/${effT(a)} ${(a.kw||[]).length?'<span class="manaline">['+a.kw.join(', ')+']</span>':''}${blockLabel(a)}</div>
+    el.innerHTML=`<div class="ba">${cnm(a)} ${effP(a)}/${effT(a)} ${(a.kw||[]).length?'<span class="manaline">['+a.kw.join(', ')+']</span>':''}${blockLabel(a)}</div>
       ${tsel}
-      <div class="assigned">${assigned.length?assigned.map((b,bi)=>`<span class="chip">${b.name} ${effP(b)}/${effT(b)}<b onclick="combatDel('${a.id}',${bi})">x</b></span>`).join(""):'<span class="manaline">unblocked</span>'}</div>
-      <div class="btnrow"><select id="cbsel_${a.id}"><option value="">+ blocker...</option>${elig.map((c,ci)=>`<option value="${ci}">${c.name} ${effP(c)}/${effT(c)}</option>`).join("")}</select><button class="tiny azor" onclick="combatAdd('${a.id}')">assign</button></div>`;
+      <div class="assigned">${assigned.length?assigned.map((b,bi)=>`<span class="chip">${cnm(b)} ${effP(b)}/${effT(b)}<b onclick="combatDel('${a.id}',${bi})">x</b></span>`).join(""):'<span class="manaline">unblocked</span>'}</div>
+      <div class="btnrow"><select id="cbsel_${a.id}"><option value="">+ blocker...</option>${elig.map((c,ci)=>`<option value="${ci}">${cnm(c)} ${effP(c)}/${effT(c)}</option>`).join("")}</select><button class="tiny azor" onclick="combatAdd('${a.id}')">assign</button></div>`;
     box.appendChild(el);
   });
   predictCombat();
@@ -1158,20 +1160,20 @@ function predictCombat(){const r=resolveAttack(S.combat.attackers,S.combat.assig
   if(S.combat.dir==='you'){s=`<b>Prediction:</b> ${r.face} damage to ${S.boss.name}'s life.`;}
   else{let toYou=0;const wmap={};r.perAtt.forEach(({att,toFace})=>{const tg=(S.combat.target&&S.combat.target[att.id])||'you';if(tg==='you')toYou+=toFace;else wmap[tg]=(wmap[tg]||0)+toFace;});
     const parts=[`${toYou} to your life`];Object.keys(wmap).forEach(wid=>{const w=S.my.walkers.find(x=>''+x.id===wid);if(w)parts.push(`${wmap[wid]} to ${w.name}`);});s=`<b>Prediction:</b> ${parts.join(", ")}.`;}
-  if(dead.length)s+=` Dies: ${dead.map(c=>c.name).join(", ")}.`;
+  if(dead.length)s+=` Dies: ${dead.map(cnm).join(", ")}.`;
   if(r.attLifelink)s+=` Lifelink ${S.combat.dir==='you'?'you':ENs()} +${r.attLifelink}.`;
   if(r.defLifelink)s+=` Lifelink ${S.combat.dir==='you'?ENs():'you'} +${r.defLifelink}.`;
   /* P12.2: flag illegal partial (under-min / menace) blocks — approveCombat will refuse these, so the prediction above is not what will actually happen. */
   const partial=S.combat.attackers.filter(a=>{const n=(S.combat.assign[a.id]||[]).length;return n>0&&n<minBlockers(a);});
-  if(partial.length)s+=` <span style="color:var(--ember)">⚠ ${partial.map(a=>a.name).join(', ')} blocked by too few (needs ${partial.map(a=>minBlockers(a)).join('/')}) — Approve will reject this.</span>`;
+  if(partial.length)s+=` <span style="color:var(--ember)">⚠ ${partial.map(cnm).join(', ')} blocked by too few (needs ${partial.map(a=>minBlockers(a)).join('/')}) — Approve will reject this.</span>`;
   $("combatPred").innerHTML=s;}
 function approveCombat(){
   if(!S.combat)return;const dir=S.combat.dir,attackers=S.combat.attackers,assign=S.combat.assign;
   /* P12.2: enforce block-count restrictions before resolving. A min-N (incl. menace) attacker blocked by 1..N-1 is an illegal partial block — refuse until it's blocked by N+ or by 0. */
-  for(const a of attackers){const n=(assign[a.id]||[]).length,mn=minBlockers(a);if(n>0&&n<mn){log("sys",`${a.name} can't be blocked by fewer than ${mn} creatures — block it with ${mn}+ or leave it unblocked.`);return;}}
+  for(const a of attackers){const n=(assign[a.id]||[]).length,mn=minBlockers(a);if(n>0&&n<mn){log("sys",`${cnm(a)} can't be blocked by fewer than ${mn} creatures — block it with ${mn}+ or leave it unblocked.`);return;}}
   /* P12.2: lure — every able, unassigned blocker must block a lure attacker (up to its max). But lure can't force an ILLEGAL block: if there aren't enough total blockers to reach the attacker's min (e.g. lure+menace vs a lone blocker), it simply can't be blocked, so unblocked is the only legal outcome — don't refuse it. */
-  for(const a of attackers){if(!kw(a,'lure'))continue;const cap=maxBlockers(a),mn=minBlockers(a),assigned=assign[a.id]||[];const elsewhere=b=>Object.keys(assign).some(k=>k!=a.id&&(assign[k]||[]).includes(b));const ableFree=S.combat.pool.filter(b=>legalBlock(a,b)&&!assigned.includes(b)&&!elsewhere(b));if(assigned.length+ableFree.length<mn)continue;if(assigned.length<cap&&ableFree.length){log("sys",`${a.name} has lure — every able blocker must block it.`);return;}}
-  attackers.forEach(a=>{const bl=assign[a.id]||[];log("cbt",`${dir==='you'?'attack':ENs()}: ${a.name} (${effP(a)}/${effT(a)}) ${bl.length?'blocked by '+bl.map(b=>b.name).join(" & "):'is unblocked'}.`);});
+  for(const a of attackers){if(!kw(a,'lure'))continue;const cap=maxBlockers(a),mn=minBlockers(a),assigned=assign[a.id]||[];const elsewhere=b=>Object.keys(assign).some(k=>k!=a.id&&(assign[k]||[]).includes(b));const ableFree=S.combat.pool.filter(b=>legalBlock(a,b)&&!assigned.includes(b)&&!elsewhere(b));if(assigned.length+ableFree.length<mn)continue;if(assigned.length<cap&&ableFree.length){log("sys",`${cnm(a)} has lure — every able blocker must block it.`);return;}}
+  attackers.forEach(a=>{const bl=assign[a.id]||[];log("cbt",`${dir==='you'?'attack':ENs()}: ${cnm(a)} (${effP(a)}/${effT(a)}) ${bl.length?'blocked by '+bl.map(cnm).join(" & "):'is unblocked'}.`);});
   const r=resolveAttack(attackers,assign);
   if(dir==='you'){
     if(r.face>0){S.boss.life-=r.face;sfx('strike');log("you",`<b>${r.face}</b> to ${S.boss.name}'s life. (${Math.max(0,S.boss.life)})`);}
@@ -1179,8 +1181,8 @@ function approveCombat(){
     if(r.defLifelink){bossHealLife(r.defLifelink);log("dm",`${ENs()} lifelink: +${r.defLifelink}.`);}
     r.deadBlk.forEach(removeRef);r.deadAtt.forEach(removeRef);
     attackers.forEach(a=>{if(!kw(a,'vigilance')&&S.my.creatures.includes(a))a.tapped=true;a._atk=false;});
-    if(r.deadAtt.length)log("cbt",`Your losses: ${r.deadAtt.map(c=>c.name).join(", ")}.`);
-    if(r.deadBlk.length)log("cbt",`${ENs()} loses: ${r.deadBlk.map(c=>c.name).join(", ")}.`);
+    if(r.deadAtt.length)log("cbt",`Your losses: ${r.deadAtt.map(cnm).join(", ")}.`);
+    if(r.deadBlk.length)log("cbt",`${ENs()} loses: ${r.deadBlk.map(cnm).join(", ")}.`);
     S.combat=null;$("resolver").classList.remove("show");
     if(S.boss.life<=0)bossDown();render();
   }else{
@@ -1196,8 +1198,8 @@ function approveCombat(){
     r.deadBlk.forEach(removeRef);r.deadAtt.forEach(removeRef);
     const enTap=attackers.filter(a=>r.deadAtt.indexOf(a)<0&&!kw(a,'vigilance')&&!(a===S.cmd&&!S.cmd.inPlay));enTap.forEach(a=>{a.tapped=true;});
     if(enTap.length)log("dm",`${ENs()} taps ${enTap.length===1?'its attacker':'its attackers'} (vigilant creatures stay untapped).`);
-    if(r.deadAtt.length)log("cbt",`${ENs()} loses: ${r.deadAtt.map(c=>c.name).join(", ")}.`);
-    if(r.deadBlk.length)log("cbt",`Your losses: ${r.deadBlk.map(c=>c.name).join(", ")}.`);
+    if(r.deadAtt.length)log("cbt",`${ENs()} loses: ${r.deadAtt.map(cnm).join(", ")}.`);
+    if(r.deadBlk.length)log("cbt",`Your losses: ${r.deadBlk.map(cnm).join(", ")}.`);
     S.combat=null;$("resolver").classList.remove("show");
     checkLose();render();
   }
@@ -1691,7 +1693,7 @@ function vaelMain(which){
 function vaelCombat(){resolveLeftoverPlays();if(S.over)return;const cands=vaelAttackers();if(!cands.length){log("dm",`${ENs()} has no ready attackers this turn.`);return;}
   const pay=payAttackTax(cands);
   if(pay.pm||pay.pl)log("dm",`${ENs()} pays your attack tax — ${[pay.pm?pay.pl?(pay.pm+" mana"):(pay.pm+" mana"):"",pay.pl?(pay.pl+" life"):""].filter(Boolean).join(" + ")} for ${pay.kept.length} attacker(s).`);
-  if(pay.skipped.length)log("dm",`${ENs()} holds back ${pay.skipped.map(c=>c.name).join(", ")} — can't pay the tax.`);
+  if(pay.skipped.length)log("dm",`${ENs()} holds back ${pay.skipped.map(cnm).join(", ")} — can't pay the tax.`);
   const atk=pay.kept;if(!atk.length){log("dm",`${ENs()} can't afford to attack into your defenses.`);return;}
   const pool=S.my.creatures.filter(c=>!c.tapped&&!kw(c,"can't block")&&!c.phased);const assign={};atk.forEach(a=>assign[a.id]=[]);
   openCombat('vael',atk,pool,assign,aiTargets(atk));}
