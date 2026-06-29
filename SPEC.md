@@ -1876,7 +1876,10 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — `setEmblemValue(id,2)` sets `auto.n===2`; firing a `buffEnemyCreatures` emblem then adds +2/+2; a static anthem reflects +2/+2 in `effP/effT` via `applyStaticEmblems`; a `youLose` at n=4 drains 4 on trigger; value round-trips through serialize; reminder rows render no input; syntax + id-diff.
 
 
-# PHASE 23 — Phase-out for planeswalkers + player emblems as a full system (mirror the enemy's) ⬜ PLANNED
+# PHASE 23 — Phase-out for planeswalkers + player emblems as a full system (mirror the enemy's) ✅ DONE
+
+> **✅ BUILT & verified (adversarially reviewed; 5 findings fixed).** **P23.1:** walker phase-out toggle (`flagMy('walkers',id,'phased')`) + dimmed `.brow.phased` + badge; `applyTarget` also now filters phased walkers (parity with the other two targeting paths). **P23.2:** `PLAYER_EMBLEMS` + `addPlayerEmblem` (template select), structured `S.my.emblems`, `playerEmblemEffect`/`firePlayerEmblems` (fired from `youUpkeep`/`youEnd`/`vaelUpkeep`), `applyStaticEmblems` extended with a player-static pass; migrate backfills old emblems. **P23.3:** `renderMyEmblems` full row parity + a blue `.brow.vsenemy` when the emblem targets the enemy; static emblems derive colour from the effect kind (toggle locked) so the box can't lie; the turn-phase guards stop on `S.over||S.paused` (a player emblem felling a mini-boss no longer lets enemy automation run on a cleared encounter). **Prereqs P19 + P22 satisfied.** 21+6-check jsdom + full regression; id-diff adds only `#pEmbTemplate`.
+
 
 **Specced 2026-06-29, NOT built.** Two requests: (a) let planeswalkers phase out like creatures; (b) give the player's emblems the same automation the enemy's have, targetable at player or enemy, with a colour convention mirroring the enemy's red box. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
