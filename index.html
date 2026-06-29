@@ -1006,18 +1006,18 @@ function resolveAttack(attackers,assign){ // assign: {attId:[blockerObjs]}
   let face=0,attLifelink=0,defLifelink=0;const deadAtt=[],deadBlk=[],perAtt=[];
   attackers.forEach(att=>{
     const bl=(assign[att.id]||[]).filter(Boolean);
-    const out=effP(att)*(kw(att,'double strike')?2:1);
+    const out=hasMarker(att,'deals no combat dmg')?0:effP(att)*(kw(att,'double strike')?2:1);/* P14.2: a "deals no combat dmg" attacker deals 0 to face/blockers (lifelink keys off out so it also zeroes) */
     if(!bl.length){face+=out;perAtt.push({att,toFace:out});if(kw(att,'lifelink'))attLifelink+=out;return;}
     // attacker assigns to blockers (smallest toughness first); protected blockers take no damage
     let left=out;const killed=[];
-    bl.slice().sort((a,b)=>effT(a)-effT(b)).forEach(b=>{if(hasProtFrom(b,att))return;const lethal=kw(att,'deathtouch')?1:effT(b);if(left>=lethal&&!kw(b,'indestructible')){left-=lethal;killed.push(b);}else{left-=Math.min(left,lethal);}});
+    bl.slice().sort((a,b)=>effT(a)-effT(b)).forEach(b=>{if(hasProtFrom(b,att))return;const lethal=kw(att,'deathtouch')?1:effT(b);const prevTo=hasMarker(b,'prevents combat dmg to it');/* P14.2: lethal is still ASSIGNED over a damage-prevented (or indestructible) blocker so trample spills correctly, but it isn't killed */if(left>=lethal&&!kw(b,'indestructible')&&!prevTo){left-=lethal;killed.push(b);}else{left-=Math.min(left,lethal);}});
     const tramp=(kw(att,'trample')&&left>0)?left:0;if(tramp){face+=tramp;}perAtt.push({att,toFace:tramp});
     if(kw(att,'lifelink'))attLifelink+=out; // total damage dealt
     // blockers strike back (those not killed by attacker's first/double strike); an attacker protected from a blocker takes no damage from it
     const attFirst=kw(att,'first strike')||kw(att,'double strike');
     let blkPow=0,blkDT=false;
-    bl.forEach(b=>{if(hasProtFrom(att,b))return;const dies=killed.includes(b);const bFirst=kw(b,'first strike')||kw(b,'double strike');if(attFirst&&dies&&!bFirst)return;const bp=effP(b)*(kw(b,'double strike')?2:1);blkPow+=bp;if(kw(b,'deathtouch'))blkDT=true;if(kw(b,'lifelink'))defLifelink+=bp;});
-    if((blkPow>=effT(att)||blkDT)&&!kw(att,'indestructible'))deadAtt.push(att);
+    bl.forEach(b=>{if(hasProtFrom(att,b))return;const dies=killed.includes(b);const bFirst=kw(b,'first strike')||kw(b,'double strike');if(attFirst&&dies&&!bFirst)return;const bp=hasMarker(b,'deals no combat dmg')?0:effP(b)*(kw(b,'double strike')?2:1);blkPow+=bp;if(bp>0&&kw(b,'deathtouch'))blkDT=true;/* P14.2: a "deals no combat dmg" blocker contributes 0 strike-back, no lifelink, and its deathtouch can't kill (0 damage) */if(kw(b,'lifelink'))defLifelink+=bp;});
+    if((blkPow>=effT(att)||blkDT)&&!kw(att,'indestructible')&&!hasMarker(att,'prevents combat dmg to it'))deadAtt.push(att);/* P14.2: an attacker with combat damage prevented can't die to it (incl. deathtouch) */
     killed.forEach(b=>deadBlk.push(b));
   });
   return{face,deadAtt,deadBlk,attLifelink,defLifelink,perAtt};
@@ -1063,7 +1063,9 @@ function giveControl(scope,id){const arr=S.my[scope]||S.my.creatures;const i=arr
 /* ===== P9.3: per-permanent extras — copy/clone · status markers · direct damage ===== */
 function _boardArr(scope){if(scope==='token')return S.tokens;if(scope==='eart')return (S.enemyArtifacts||(S.enemyArtifacts=[]));if(scope==='eench')return (S.enemyEnchants||(S.enemyEnchants=[]));return (S.my[scope]||S.my.creatures);}
 function copyPermanent(scope,id){const arr=_boardArr(scope);const o=arr.find(x=>x.id===id);if(!o)return;const c=JSON.parse(JSON.stringify(o));c.id=S.nextId++;c.token=true;c.sick=true;c.tapped=false;c._atk=false;c.isCmd=false;c._controlled=false;delete c._cat;arr.push(c);log("you",`⧉ A token copy of <b>${o.name}</b> enters ${scope==='token'?ENs()+"'s":'your'} board.`);render();}
-const STATUS_MARKERS=['goad','monarch','the initiative',"can't block",'day','night'];
+const STATUS_MARKERS=['goad','monarch','the initiative',"can't block",'day','night','deals no combat dmg','prevents combat dmg to it'];
+/* P14.2: Fog-Bank-style combat-damage prevention markers (live in obj.other, round-trip free; render as toggles in markerRow on both boards). */
+function hasMarker(c,m){return !!(c&&c.other&&c.other.indexOf(m)>=0);}
 function toggleMarker(scope,id,name){const o=_boardArr(scope).find(x=>x.id===id);if(!o)return;o.other=o.other||[];const i=o.other.indexOf(name);if(i>=0)o.other.splice(i,1);else o.other.push(name);log("you",`<b>${o.name}</b> ${i>=0?'loses':'gains'} <i>${name}</i>.`);render();}
 function dealDmg(scope,id,n,dt){const o=_boardArr(scope).find(x=>x.id===id);if(!o)return;const T=effT(o);if(dt||n>=T){log("you",`⚔ <b>${o.name}</b> takes ${n}${dt?' deathtouch':''} damage — lethal.`);if(scope==='token')removeRef(o);else killMy(o);render();return;}log("you",`⚔ <b>${o.name}</b> takes ${n} damage — survives (would need ${T}).`);render();}
 function dealDmgInput(scope,id,dt){const el=$("dmg_"+scope+"_"+id);const n=el?Math.max(1,parseInt(el.value,10)||1):1;dealDmg(scope,id,n,dt);}
