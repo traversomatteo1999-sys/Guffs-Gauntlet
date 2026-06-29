@@ -152,6 +152,7 @@
 | &nbsp;&nbsp;P30.3 Artifact & enchantment drawer parity (protection · hexproof/shroud/indestructible · markers · threat) | ⬜ planned |
 | &nbsp;&nbsp;P30.4 Universal guarantees — every permanent (both sides) can go to hand/exile/graveyard; prot/hexproof/shroud honoured wherever targetable | ⬜ planned |
 | &nbsp;&nbsp;P30.5 Bulk "return all permanents to library" (scope yours/enemy/both · top/bottom/shuffle · tokens cease) | ⬜ planned |
+| &nbsp;&nbsp;P30.6 Counters on ALL permanents (both sides): give +1/+1 (−1/−1 · named) · ⊖ remove · ↺ reset | ⬜ planned |
 
 ---
 
@@ -2187,6 +2188,22 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** the action returns every non-token permanent to the chosen library position for the chosen side(s); enemy cards land in `S.lib` (top/bottom/shuffled once); player permanents log as returned to the physical library; tokens cease; commander handled deliberately (command zone or skip) and logged; no life change / no death triggers; collapses to one undo step.
 **Verify:** jsdom — `returnAllToLibrary('enemy','top')` moves all enemy permanents to `S.lib` top (count matches, tokens ceased, no `S.gy` entries); `'shuffle'` shuffles `S.lib` once; player scope logs + empties the board without `S.myGy` changes; commander to command zone; one undo step; syntax + id-diff. (Cross-ref P14.6, P9.1.)
+
+## P30.6 — Counters on ALL permanents (both sides): give +1/+1 · ⊖ remove · ↺ reset
+
+**Goal:** every permanent kind — creature, artifact, enchantment, planeswalker, on the player's board AND the enemy's — can be given **+1/+1** counters (and −1/−1 and named/custom), have counters **removed** (⊖), and be **reset** (↺ restore to base, clear all counters). Today only creatures (and enemy creature tokens / commander) have the full counter row; artifacts/enchants/walkers don't.
+
+**Grounded building blocks:** counters live on `obj.plus` (+1/+1), `obj.minus` (−1/−1), `obj.other[]` (named). Existing per-kind helpers: `myctr`/`myctrCustom` (player creatures ~?), `cctr`/`cctrCustom` (enemy tokens ~1446/1448), `cmdCtr` (commander), `remCtr(scope,id)` (~1449), `resetCard(scope,id)` (~1515 — restores `baseP/baseT`/`baseLoy`, zeroes `plus/minus`, empties `other[]`, clears until-EOT buffs, logs to the right channel). Generic accessor `getObj(scope,id)` (~1354) already resolves any scope (`creatures/artifacts/enchants/walkers/token/cmd/eart/eench`). `effP/effT` read `plus/minus` for creatures; for non-creatures `plus/minus` are just tracked values (no P/T) — and **named counters via `other[]` still display** (charge, etc.).
+
+**How:**
+1. **Generic counter setter:** add (or generalize to) a scope-aware `setCtr(scope,id,kind,n)` over `getObj` — `kind∈{plus,minus}` → `o[kind]=Math.max(0,(o[kind]||0)+n)`; named → push/pop on `o.other`. Reuse for every board via the **`commonPermRow` helper** (the phase-intro shared row), so a single counter control set (`+1/+1 · −1/−1 · ＋ctr · ⊖ ctr`) appears on creature/artifact/enchant/walker drawers, player and enemy alike. Keep the existing creature/token row behavior (don't regress `myctr`/`cctr`).
+2. **Remove (⊖):** `remCtr(scope,id)` already works via scope; ensure it's wired on every kind's controls (removes the most-recent / a chosen counter, as today).
+3. **Reset (↺):** ensure `resetCard(scope,id)` handles non-creature permanents — for an artifact/enchant (no `baseP/baseT`) it simply zeroes `plus/minus` and empties `other[]` (and clears markers/until-EOT buffs); for a walker it restores `baseLoy` and clears counters; for creatures unchanged. Add a ↺ reset control to the artifact/enchant/walker rows (creatures + enemy tokens already have it).
+4. **Both boards:** the enemy artifact/enchant (P13.3) and enemy walker (`S.pw`) get the same counter + remove + reset controls via the owner-agnostic editors (P13.1). Named counters (`other[]`) render as removable badges on every kind (the creature pattern).
+5. **Note (non-creature +1/+1):** +1/+1 on an artifact/enchant doesn't change a P/T it doesn't have — it's a tracked counter (meaningful if it becomes a creature, or for cards that count counters). Display the counter; don't fabricate stats. `migrate` backfills `plus/minus/other` on any permanent missing them.
+
+**ACs:** every permanent kind on both boards exposes give +1/+1 (−1/−1, named), ⊖ remove, and ↺ reset; counters live on `plus/minus/other` and round-trip; reset restores base (P/T or loyalty) and clears all counters for every kind (no-op-safe for artifacts/enchants without base stats); named counters render as removable badges everywhere; creatures/tokens/commander behavior is unchanged; the bulk version (P14.4) is unaffected.
+**Verify:** jsdom — `setCtr('enchants',id,'plus',2)` sets `plus=2` and renders the counter; `setCtr('walkers',id,'minus',1)`; `remCtr` removes one; `resetCard('artifacts',id)` clears `plus/minus/other` (and `resetCard('walkers',id)` restores `baseLoy`); enemy artifact/enchant + `S.pw` get the same; migrate backfills fields; syntax + id-diff. (Cross-ref P14.4 bulk counters, P13.1.)
 
 ---
 
