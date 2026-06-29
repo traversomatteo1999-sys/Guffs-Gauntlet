@@ -8,7 +8,7 @@
 
 ## STATUS (update as you go)
 
-- **Branch:** `phase-0-foundations`
+- **Branch:** `main` (== `origin/main`; latest `0063a2e`). *(Active feature branch: `satchel-lock-commander-scryfall`, also at `0063a2e`.)*
 - **Canonical file:** `index.html` (the deployed PWA build; line 456 is a ~1.3 MB base64 `ART` blob — never open that line; real JS is 457→end). `guffs-gauntlet-level1.html` is a stale pre-embed copy — ignore it.
 - **Verification harness:** headless engine smoke test (Node + DOM shim) drives boot→turn-cycle→undo→save; syntax gate via `node -e` + `vm.Script` over the `<script>` body; **id-set diff** (`grep -oE 'id="[^"]+"'` before/after) after any DOM restructure — nothing may be removed. For visual phases, review live at `http://localhost:8000/` (`python -m http.server 8000` from the repo; incognito to dodge a cached service worker).
 
@@ -74,7 +74,13 @@
 | &nbsp;&nbsp;P9.3 Per-permanent extras (copy · flip · markers · direct dmg) | ✅ **done & verified** — `copyPermanent` (token clone) · status markers (goad/monarch/initiative/can't-block/day/night) · `dealDmg` (⚔ deathtouch/lethal-aware) · `flipPermanent` for DFCs (`_faces` carried import→board) |
 | &nbsp;&nbsp;P9.4 Enemy hand &amp; library completeness (tutor / reanimate / draw) | ✅ **done & verified** — `dtMoveObj` (a card from any enemy zone → hand/library/gy/exile, or a creature → battlefield via spawn) · `dtRevealMove` (👁 look / 🤚 hand-reveal now actionable) · `dtDraw` (🃏 enemy draws N); disclaimer updated |
 | &nbsp;&nbsp;P9.5 Instruction overhaul (LAST — documents Phase 8 + 9) | ✅ **done** — tutorial rewritten for Phase 8 (launcher/search/decklist/Create-a-card) + Phase 9 (new 🔀 Moving-cards section: move-to-zone/return-to-hand · control · copy · flip · markers · damage · tutor/reanimate/draw); no stale Quick Cast ref *(deferred cosmetic: remove the creator's redundant From-library row)* |
-| **Phase 11 — Chapter I: Story foundation (L1 re-lore)** | ⬜ **PLANNED** — Arrival cutscene · Vael **death→escape** (3-beat `win()` chain) · Guff-freed · L2-bridge epilogue rewrite · 📖 Lore-page rewrite · framing copy. **Text-only; no deck/stat changes.** Copy drafted + canon/feasibility-reviewed; see Phase 11 below |
+| **Phase 10 — Enemy retune & loot/store rebalance** | ✅ **DONE** + committed (`acd6a7c`/`42efed6`) — explicit per-difficulty boss HP (hpMult retired) · loot heal-floor + cool tier · Brutal-luck loot nudge · 2 new boons (Pyre Charge · Spellbreaker Sigil) · store restock (ember/scholar/pyre/breaker) |
+| **Post-P10 build — Satchel-lock · Scryfall commander · enemy abilities/artifacts** | ✅ **DONE** + committed (`afbffe4`/`6bdc57a`/`9f829f8`) — Merchant locked mid-descent + pending-purchase bucket applied at next descent · Scryfall commander search · cmdBuff permanent-target fix + ⚜ enemy Abilities popup · enemy **artifacts/enchantments/emblems** on the board (⚡ auto-on-upkeep + ⚠ red box for effects that hit you) |
+| **Phase 11 — Chapter I: Story foundation (L1 re-lore)** | ✅ **DONE** + committed/merged (`0063a2e`) — Arrival cutscene · Vael **death→escape** (3-beat `win()` chain) · Guff-freed · L2-bridge epilogue · 📖 Lore-page · framing copy + new `shroud` keyword. **Text-only deck/stat-wise.** Built, verified & merged; see Phase 11 below |
+| **Phase 12 — UI & card-mechanic upgrades** | ⬜ **PLANNED** — collapsible tab panels · combat block-restrictions (+ Scryfall auto-parse + mechanic audit) · enter-as-a-copy clone. See Phase 12 below |
+| &nbsp;&nbsp;P12.1 Collapsible boxes inside tabs | ⬜ planned |
+| &nbsp;&nbsp;P12.2 Block-restriction infrastructure + mechanic audit | ⬜ planned |
+| &nbsp;&nbsp;P12.3 Enter-as-a-copy (clone) with on-board picker | ⬜ planned |
 
 ---
 
@@ -775,7 +781,7 @@ match the shipped game **after Phase 8 + P9.1–P9.4**:
 
 ---
 
-# PHASE 11 — Chapter I: Story Foundation (Level 1 re-lore) ⬜ PLANNED
+# PHASE 11 — Chapter I: Story Foundation (Level 1 re-lore) ✅ DONE (built, verified & merged — `0063a2e`)
 
 **Goal.** Re-lore Level 1 ("re-lore, not rebuild") to establish Chapter I canon: the player is an **off-plane planeswalker** drawn to **Ashveil** with nothing to gain, descending the **Warren of Embers** to free **Commodore Guff** (caged founder of **the Conclave**) from the Ember-tyrant **Vael**. The marquee change is the victory flip — Vael does **not die**; his deathless **Ember** relights him elsewhere and he **flees weakened**, while Guff walks free. All text-only: new Arrival cutscene, a 3-beat victory chain, a Lore-page rewrite, and four framing strings.
 
@@ -1016,7 +1022,7 @@ Tutorial loop `<p>` (line 1880, column 0):
 
 **Specced 2026-06-29, NOT built.** Three independent, additive features. All hooks grounded in the current `index.html` (re-grep names; line numbers drift). Each ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
-**STATUS-table rows to slot into the table at the top of this doc (kept out of the table here so this section commits in isolation from the in-flight P11 row):**
+**STATUS-table rows (now slotted into the table at the top of this doc — kept here too for reference):**
 ```
 | **Phase 12 — UI & card-mechanic upgrades** | ⬜ **PLANNED** — collapsible tab panels · combat block-restrictions (+ Scryfall auto-parse + mechanic audit) · enter-as-a-copy clone |
 | &nbsp;&nbsp;P12.1 Collapsible boxes inside tabs | ⬜ planned |
