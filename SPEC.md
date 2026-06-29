@@ -94,7 +94,7 @@
 | &nbsp;&nbsp;P14.6 Return all board / all creatures to hand (tokens deleted) | ✅ **DONE & verified** (`returnAllToHand(scope,what)` reuses `moveBoardCard` with a new `quiet` flag → one summary log + one undo step; tokens cease, commanders stay, enemy cards→`S.hand`, NON-death no Pit's Tithe; Tools-panel row. 8-check jsdom + move regression) |
 | &nbsp;&nbsp;P14.7 Browse enemy library, searchable by card type | ⬜ planned |
 | &nbsp;&nbsp;P14.8 Emblems addable by either side; artifacts/enchants are enemy-cast (adder = emblems only) | ⬜ planned |
-| &nbsp;&nbsp;P14.9 Enemy reliably proposes a stack response (bug) | ⬜ planned |
+| &nbsp;&nbsp;P14.9 Enemy reliably proposes a stack response (bug) | ✅ **DONE & verified** (`buildEnemyCandidates` scores with `castValue` not `bestTargetThreat` so non-targeted burn/heal get real value; gate relaxed to only HOLD a weak *targeted* removal, always offer a do-something non-targeted response; no fizzles; window path safe. 5-check jsdom) |
 | &nbsp;&nbsp;P14.10 Enemy mana = lands only; de-duplicate mana code | ⬜ planned |
 | **Phase 15 — Economy, rewards & difficulty balance** | ⬜ **PLANNED** — end-of-level gold wheel-spin · store/loot overhaul (fix Tonic of Vigor dup · +legendary rarity · item variety · gold tuning) · persist unused satchel items across runs · difficulty-scaled heal on descend. See Phase 15 below |
 | &nbsp;&nbsp;P15.1 End-of-level gold wheel-spin (%/double/rare-legendary item) | ⬜ planned |
@@ -120,6 +120,10 @@
 | **Phase 19 — Symmetric enemy counters: poison · commander damage · energy · experience** | ⬜ **PLANNED** — the enemy tracks the same counters the player does (today `S.counters` is player-only): poison (10 = enemy dies), commander damage (your commander dealing 21 = enemy dies), energy, experience — with adjusters, render, win-condition wiring, and auto-accrual of your commander's combat damage to the enemy. See Phase 19 below |
 | &nbsp;&nbsp;P19.1 Enemy counter state + Tools-panel UI/adjusters/render (poison/10 · cmd-dmg/21 · energy · exp) | ⬜ planned |
 | &nbsp;&nbsp;P19.2 Win-condition wiring + auto-accrual (enemy poison 10 / your cmd-dmg 21 → boss falls; commander combat dmg accrues) | ⬜ planned |
+| **Phase 20 — Combat-count restrictions: blockable-by-N (creatures, both sides) · attackable-by-N (planeswalkers) · enemy max-blockers box** | ⬜ **PLANNED** — per-creature "blockable only by N" on the unified drawer (player + enemy; the existing `block:{min,max}`, surfaced/confirmed) · per-planeswalker "attackable only by N" cap on how many creatures may attack it · a "max blockers" box in the enemy box, mirroring the existing "max attackers". See Phase 20 below |
+| &nbsp;&nbsp;P20.1 Creatures: "blockable only by N" (min/max) on the unified player+enemy drawer | ⬜ planned |
+| &nbsp;&nbsp;P20.2 Planeswalkers: "attackable only by N" — cap attackers assignable to a walker (player + enemy) | ⬜ planned |
+| &nbsp;&nbsp;P20.3 Enemy "max blockers" box mirroring "max attackers" (global cap on enemy blockers) | ⬜ planned |
 
 ---
 
