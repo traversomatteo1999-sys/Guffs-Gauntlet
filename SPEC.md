@@ -2149,7 +2149,10 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — `useBoon` Grand Elixir → `youLife+25` (base unchanged), trims next descent; Tonic → `youMax+10,youLife+10`, reset trims to 50 and descent-heal computes off 50; each `BOONS` id resolves without throwing; prices within bands (Grand Elixir 25 / Tonic 36 anchored); syntax + id-diff.
 
 
-# PHASE 29 — Commander zone distinction: command zone (recast tax) vs hand (base cost) ⬜ PLANNED
+# PHASE 29 — Commander zone distinction: command zone (recast tax) vs hand (base cost) ✅ DONE
+
+> **✅ BUILT & verified (P29.1, enemy + player parity).** Added `S.cmd.inHand` (meaningful only when `!inPlay`; migrate backfill). `cmdCastCost()` = base from hand, base + tax from the command zone — used in `vaelMain` (affordability + spend, cast log names the zone) and the dormant box (zone label + cost + a ↩hand / →command-zone toggle). `cmdToHand`/`cmdToZone` clear board modifiers (tapped/sick/phased/plus/minus/other) without touching tax/deaths (a bounce isn't a death); the `_enemyCmd` resolve clears `inHand`; a battlefield death still routes to the command zone with +tax via `removeRef`. `cmdFieldCard` gains a ↩hand button. Player commander mirrors it (`S.pcmd.cmdInHand`, `pcmdToHand`/`pcmdToZone`, zone-aware cost reminders in `deployCmd`/`resolveCmdToBoard`). 13-check jsdom + full regression; id-diff clean.
+
 
 **Specced 2026-06-29, NOT built.** Standard MTG: commander tax (+{2} per cast from the command zone) applies **only** when casting from the **command zone**. If the commander is returned to **hand**, it casts at its plain mana cost — no tax. Today the enemy commander only ever sits in the command zone (or on the battlefield) and always recasts at base + tax. Add the hand state. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
