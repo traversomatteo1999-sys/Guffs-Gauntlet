@@ -90,7 +90,7 @@
 | &nbsp;&nbsp;P14.2 Prevent combat damage dealt by/to any creature (Fog Bank) | ✅ **DONE & verified** (markers `deals no combat dmg` / `prevents combat dmg to it` + `hasMarker`; gated in `resolveAttack` — out=0, blocker-not-killed but trample still assigns, strike-back/deathtouch/lifelink zeroed, attacker can't die; both boards; preview mirrors via predictCombat→resolveAttack. 11-check jsdom) |
 | &nbsp;&nbsp;P14.3 Enchantments as normal permanents + enemy special-ability audit (Resurgence) | ⬜ planned |
 | &nbsp;&nbsp;P14.4 Bulk counters (give counters/types to many cards at once) | ⬜ planned |
-| &nbsp;&nbsp;P14.5 Item duration fixed at 1 descent (no player-set reminders/duration) | ⬜ planned |
+| &nbsp;&nbsp;P14.5 Item duration fixed at 1 descent (no player-set reminders/duration) | ✅ **DONE & verified** (durRow stepper → read-only "⏳ lasts 1 descent"; `invDuration` retired; `grantBoon`/`applyPendingPurchases` force `descents=1`; `migrate` clamps; `carryInvForward`→`[]`. 8-check jsdom. Resolves P7.4 open Q) |
 | &nbsp;&nbsp;P14.6 Return all board / all creatures to hand (tokens deleted) | ⬜ planned |
 | &nbsp;&nbsp;P14.7 Browse enemy library, searchable by card type | ⬜ planned |
 | &nbsp;&nbsp;P14.8 Emblems addable by either side; artifacts/enchants are enemy-cast (adder = emblems only) | ⬜ planned |
