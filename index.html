@@ -404,7 +404,7 @@
 
   <div class="panel" style="margin-top:12px">
     <h2>✶ <span id="enemyName2">Enemy</span>'s artifacts, enchantments &amp; emblems <span class="tag">persistent effects · ⚡ auto on its upkeep</span></h2>
-    <div class="btnrow" style="margin-top:2px"><select id="embKind" style="max-width:128px"><option value="enchantment">Enchantment</option><option value="artifact">Artifact</option><option value="emblem">Emblem</option></select><select id="embTemplate" style="max-width:188px"></select><button class="tiny ok" onclick="addEnemyEmblem()">+ add</button><button class="tiny azor" onclick="addEnemyEmblem(true)" title="cast an artifact/enchantment onto the stack so you can respond / counter before it resolves">⊕ to stack</button></div>
+    <div class="btnrow" style="margin-top:2px"><span class="lab">＋ emblem</span><select id="embTemplate" style="max-width:208px"></select><button class="tiny ok" onclick="addEnemyEmblem()">+ add</button><span class="manaline">artifacts/enchantments are cards the enemy casts (deck tools) — they enter the board below as real permanents</span></div>
     <div id="enemyEmbList" style="margin-top:6px"></div>
   </div>
 
@@ -1484,16 +1484,11 @@ const ENEMY_EMBLEMS=[
 ];
 function embEsc(s){return (''+(s==null?'':s)).replace(/"/g,'&quot;');}
 function fillEmblemTemplates(){const sel=$('embTemplate');if(sel&&!sel.options.length)sel.innerHTML=ENEMY_EMBLEMS.map((t,i)=>`<option value="${i}">${t.n}${t.auto?' ⚡':''}</option>`).join('');}
-function addEnemyEmblem(toStack){const sel=$('embTemplate');const i=sel?parseInt(sel.value,10):ENEMY_EMBLEMS.length-1;const t=ENEMY_EMBLEMS[i]||ENEMY_EMBLEMS[ENEMY_EMBLEMS.length-1];
-  const kindSel=$('embKind');const kind=(kindSel&&kindSel.value)||'emblem';
-  const vsYou=!!(t.auto&&(t.auto.k==='youLose'||t.auto.k==='debuffYou'));/* effects that drain/damage/debuff YOU get the red box (toggle below for custom ones) */
-  const base={id:S.nextId++,name:t.n,note:t.note,auto:t.auto?Object.assign({},t.auto):null,autoOn:!!t.auto,kind,vsYou,static:!!t.static,trigger:t.trigger||'upkeep',attachId:null};
-  const article=kind==='artifact'?'an artifact':kind==='enchantment'?'an enchantment':'an emblem';
-  /* P13.3: artifacts/enchantments are REAL permanents (S.enemyArtifacts/S.enemyEnchants) — full toolbox parity; true emblems stay tracker-only. */
-  if(kind==='artifact'||kind==='enchantment'){const perm=Object.assign(base,{color:[],token:false,dies:'graveyard',legendary:false,_pscope:kind==='artifact'?'eart':'eench'});
-    if(toStack){S.plays.push({id:S.nextId++,side:'dm',status:'pending',_enemyPerm:true,_permKind:kind,_permData:perm,name:t.n,n:t.n,ctype:kind,type:kind,text:t.note||'',cantCounter:false});log("dm",`✦ ${ENs()} casts ${article}: <b>${t.n}</b> — it's on the stack (you may respond/counter).`);showPlays();render();return;}
-    (kind==='artifact'?S.enemyArtifacts:S.enemyEnchants).push(perm);log("dm",`✦ ${ENs()} gains ${article}: <b>${t.n}</b>${t.auto?(t.static?' (⟳ static)':' (⚡ auto)'):''} — a real permanent.`);render();return;}
-  S.emblemsEnemy.push(base);log("dm",`✦ ${ENs()} gains ${article}: <b>${t.n}</b>${t.auto?' (⚡ auto on upkeep)':' (reminder)'}.`);render();}
+/* P14.8: the adder makes EMBLEMS only (addable by either side). Enemy artifacts/enchantments are CARDS the enemy casts from its deck (P14.3 routes them to S.enemyArtifacts/S.enemyEnchants as real permanents) — never player-added tracker rows. */
+function addEnemyEmblem(){const sel=$('embTemplate');const i=sel?parseInt(sel.value,10):ENEMY_EMBLEMS.length-1;const t=ENEMY_EMBLEMS[i]||ENEMY_EMBLEMS[ENEMY_EMBLEMS.length-1];
+  const vsYou=!!(t.auto&&(t.auto.k==='youLose'||t.auto.k==='debuffYou'));
+  S.emblemsEnemy.push({id:S.nextId++,name:t.n,note:t.note,auto:t.auto?Object.assign({},t.auto):null,autoOn:!!t.auto,kind:'emblem',vsYou,static:!!t.static,trigger:t.trigger||'upkeep',attachId:null});
+  log("dm",`✶ ${ENs()} gains an emblem: <b>${t.n}</b>${t.auto?(t.static?' (⟳ static)':' (⚡ auto)'):' (reminder)'}.`);render();}
 function setEnemyEmblem(id,f,v){const em=findEnemyFx(id);if(em){em[f]=v;render();}}
 function toggleEmblemAuto(id){const em=findEnemyFx(id);if(em&&em.auto){em.autoOn=!em.autoOn;log("dm",`✦ <b>${em.name}</b>: automation ${em.autoOn?'on':'off'}.`);render();}}
 function rmEnemyEmblem(id){const em=findEnemyFx(id);if(!em)return;const arr=_enemyFxArr(em);if(!arr)return;const nm=em.name,kind=em.kind||'emblem';arr.splice(arr.indexOf(em),1);log("dm",`✦ ${ENs()} loses the ${kind} <b>${nm}</b>.`);render();}
@@ -1533,7 +1528,7 @@ function enemyPermDrawer(scope,p){const idl=p.id;return `<div class="drawer"><di
 function renderEnemyEmblems(){fillEmblemTemplates();const box=$('enemyEmbList');if(!box)return;
   const groups=[{label:'⚙ Artifacts',items:S.enemyArtifacts||[],perm:true,scope:'eart'},{label:'🪶 Enchantments',items:S.enemyEnchants||[],perm:true,scope:'eench'},{label:'✶ Emblems',items:S.emblemsEnemy||[],perm:false,scope:null}];
   const total=groups.reduce((n,g)=>n+g.items.length,0);
-  if(!total){box.innerHTML='<span class="empty">None yet. Pick a type + template above. <b>Artifacts/enchantments</b> enter as real permanents (bounce/destroy/exile/copy/take-control/edit, like any card); <b>emblems</b> are tracker-only. ⚡ autos fire on their trigger, ⟳ static ones apply continuously, the rest are reminders. Effects that hit YOU show a red box.</span>';return;}
+  if(!total){box.innerHTML='<span class="empty">None yet. Pick a template above to add an <b>emblem</b> (tracker-only). <b>Artifacts/enchantments</b> are cards the enemy casts (deck tools) — they land here as real permanents (bounce/destroy/exile/copy/take-control/edit, like any card). ⚡ autos fire on their trigger, ⟳ static ones apply continuously, the rest are reminders. Effects that hit YOU show a red box.</span>';return;}
   box.innerHTML='';
   groups.forEach(group=>{const items=group.items;if(!items.length)return;
     const sub=document.createElement('div');sub.className='enemyfx-sub';sub.innerHTML=`${group.label} <span class="tag">${items.length}</span>`;box.appendChild(sub);
@@ -1682,7 +1677,7 @@ function wouldDoSomething(fx){
   if(runs.length&&runs.every(r=>r&&r[0]==='cmdBuff')&&!(S.cmd&&S.cmd.inPlay))return false;/* a spell that ONLY pumps the commander does nothing while the commander is in the command zone — don't cast it (a card that ALSO spawns a body, e.g. Firebrand, still passes: its run isn't all-cmdBuff) */
   if(runs.length&&!(fx.selfLoss>0||fx.dieLoss)
      &&runs.every(r=>r&&(r[0]==='rule'||r[0]==='bossrule'))
-     &&runs.every(r=>S.rules&&S.rules.some(x=>x.name===r[1])))return false;/* fizzle only when EVERY effect is a recurring engine ALREADY in play (a card mixing a dupe rule with a NEW rule / spawn / burn still does something) */
+     &&runs.every(r=>S.rules&&S.rules.some(x=>x.name===r[1])))return false;/* fizzle only when EVERY effect is a recurring engine ALREADY in play. NOTE (P14.3): enemy enchant/artifact rule/bossrule CARDS now resolve to real permanents (S.enemyEnchants/Artifacts), not S.rules, so this dedup applies only to genuine non-card S.rules engines (e.g. the Pit's Tithe bloodpact); recasting a card enchant legitimately stacks a second permanent. */
   return true;
 }
 /* a SPAWN scored as if its token were already on the board — the parallel of bestTargetThreat, on the same
@@ -1826,10 +1821,20 @@ function renderPlays(){const box=$("playCards");box.innerHTML="";if(!S.plays.len
     else acts=`<span class="ir" style="color:var(--bone-dim);font-family:Space Mono;font-size:.66rem">COUNTERED ✕</span><button class="mini" onclick="undoPlay(${i})">undo</button>`;
     if(mine)acts+=`<button class="mini gold" onclick="saveStackToLibrary(${i})">★ save</button>`;
     el.innerHTML=`<div class="ph">${i===topIdx?'<span class="topbadge">TOP ▸</span>':''}<span class="pn">${nm}</span>${colChips?`<span style="margin-left:2px">${colChips}</span>`:''}${p.cost!=null?`<span class="cost">${p.cost}◇</span>`:''}<span class="typechip ${ty}">${ty}</span>${mine?'<span class="typechip" style="color:var(--azor)">your spell</span>':''}${p._instant?'<span class="typechip" style="color:var(--azor)">flash</span>':''}${p.cantCounter?'<span class="typechip" style="color:var(--gold)">uncounterable</span>':''}${p.target?'<span class="typechip" style="color:var(--ember)">targets you</span>':''}</div><div class="pt">${txt}${p.die?` <span class="die">→ rolled ${p.roll}/${p.die}</span>`:''}</div>${p.flav?`<div class="flav">${p.flav}</div>`:''}<div class="pacts">${acts}</div>${(p.status==='pending'&&p._edit)?stackEditor(i,p):''}`;box.appendChild(el);});}
+/* P14.3: convert a resolving enemy enchantment/artifact CARD into a real board permanent (S.enemyEnchants/S.enemyArtifacts), mapping a run:['rule'|'bossrule'] persistent effect onto the permanent's automation (P13.2) so destroying/bouncing it stops the effect — no more stray S.rules row. */
+function _enemyCardToPerm(p){const isEnch=p.type==='enchant';const arr=isEnch?(S.enemyEnchants||(S.enemyEnchants=[])):(S.enemyArtifacts||(S.enemyArtifacts=[]));
+  const colors=String(p.color||'').split('').filter(c=>'WUBRGC'.indexOf(c)>=0);
+  const perm={id:S.nextId++,name:p.n||p.name||(isEnch?'Enchantment':'Artifact'),note:p.text||'',kind:isEnch?'enchantment':'artifact',color:colors,token:false,dies:'graveyard',legendary:false,_pscope:isEnch?'eench':'eart',key:(p._card&&p._card.key)||null,auto:null,autoOn:false,static:false,trigger:'upkeep',attachId:null,vsYou:false};
+  const run=Array.isArray(p.run)?p.run:null;
+  if(run&&run[0]==='rule'){const m=/lose (\d+) life/i.exec(run[2]||'');if(m){perm.auto={k:'youLose',n:+m[1]};perm.autoOn=true;perm.trigger='yourUpkeep';perm.vsYou=true;}}
+  else if(run&&run[0]==='bossrule'&&(run[3]||0)>0){perm.auto={k:'enemyGain',n:run[3]};perm.autoOn=true;perm.trigger='upkeep';}
+  arr.push(perm);log("dm",`✦ <b>${perm.name}</b> resolves onto ${ENs()}'s battlefield as a real ${isEnch?'enchantment':'artifact'}${perm.auto?' (⚡ auto)':''}.`);return perm;}
 function resolvePlay(i){const p=S.plays[i];if(!p||p.status==="resolved")return;if(S.stackProposal&&S.stackProposal.forId===p.id)S.stackProposal=null;p.status="resolved";sfx('resolve');
   if(p._player){if(p._pcmd)resolveCmdToBoard(p);else resolvePlayerItem(p);checkLose();renderPlays();render();return;}
   if(p._enemyCmd){S.cmd.inPlay=true;S.cmd.sick=true;log("dm",`♛ <b>${S.cmd.n}</b> resolves onto ${ENs()}'s battlefield, summoning-sick.`);checkLose();renderPlays();render();return;}
-  if(p._enemyPerm){const arr=p._permKind==='artifact'?(S.enemyArtifacts||(S.enemyArtifacts=[])):(S.enemyEnchants||(S.enemyEnchants=[]));const perm=p._permData||{};if(perm.id==null||p._copy)perm.id=S.nextId++;/* P13.3-fix: a ⧉-copied enemy-perm spell must get a FRESH id so the copy doesn't collide with the original */arr.push(perm);log("dm",`✦ <b>${perm.name||p.n}</b> resolves onto ${ENs()}'s battlefield.`);checkLose();renderPlays();render();return;}/* P13.3: an enemy artifact/enchant cast resolves onto its real-permanent array */
+  /* P14.3 (supersedes P13.3's player-added _enemyPerm path, now retired with the adder): an enemy ENCHANTMENT/ARTIFACT card resolves to a REAL permanent (P13.3) — destroyable/bounceable, its effect riding on the permanent — instead of the run:['rule']→S.rules shortcut. A mana rock (ramp) still applies its mana AND becomes a permanent body. Each resolve mints a fresh id, so a ⧉-copied card never collides. */
+  if(p.type==='enchant'||p.type==='artifact'){const run=Array.isArray(p.run)?p.run:null;const simple=!run||run[0]==='rule'||run[0]==='bossrule'||run[0]==='ramp';
+    if(simple){if(run&&run[0]==='ramp')applyRun(p.run);/* a mana rock still ramps; its body becomes the permanent */_enemyCardToPerm(p);checkLose();renderPlays();render();return;}/* else (a special-run enchant/artifact like the Pit's Tithe bloodpact) keeps its existing resolution — don't duplicate it as a permanent */}
   if(p.run)applyRun(p.run);if(p.target){const msg=applyTarget(p.target,(p.color||'').split('').filter(Boolean));if(msg)log("dm",`${p.n}: ${ENs()} ${msg}.`);else log("dm",`${p.n} — no valid target on your tracked board.`);}if(p.selfLoss){S.youLife-=p.selfLoss;log("dm",`${p.n} → you lose <b>${p.selfLoss}</b>. (${S.youLife})`);}else if(!p.target&&!p.run)log("dm",`${p.n} resolves.`);
   if(p._card&&!p._copy&&p.type!=='enchant'){S.gy.push(p._card);if(p.run&&JSON.stringify(p.run).indexOf('"spawn"')>=0)log("dm",`📜 The <b>${p.n}</b> spell card goes to ${ENs()}'s graveyard — the token it created stays on the battlefield.`);}/* P7.2: when a creature/token spell resolves, make the two facts explicit — the token enters (logged in applyRun), and the same-named spell CARD goes to the graveyard */
   checkLose();renderPlays();render();}
