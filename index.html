@@ -1372,9 +1372,12 @@ function renderCombat(){
   S.combat.attackers.forEach(a=>{
     const elig=S.combat.pool.filter(b=>!used.has(b)&&legalBlock(a,b));
     const assigned=S.combat.assign[a.id]||[];
-    const tgt=(S.combat.target&&S.combat.target[a.id])||'you';
+    const tgt=(S.combat.target&&S.combat.target[a.id])||(vael?'you':'boss');/* P39.1: your-swing default target is the enemy face */
     const prevented=(S.combat.prevented||[]).indexOf(a.id)>=0;/* P32 */
-    const tsel=(vael&&wks.length)?`<div class="btnrow"><span class="lab">target</span><select onchange="combatTarget('${a.id}',this.value)"><option value="you" ${tgt==='you'?'selected':''}>you</option>${wks.map(w=>`<option value="${w.id}" ${''+tgt===''+w.id?'selected':''}>↳ ${w.name} (${w.loyalty})</option>`).join("")}</select></div>`:'';
+    let tsel='';
+    if(vael&&wks.length){tsel=`<div class="btnrow"><span class="lab">target</span><select onchange="combatTarget('${a.id}',this.value)"><option value="you" ${tgt==='you'?'selected':''}>you</option>${wks.map(w=>`<option value="${w.id}" ${''+tgt===''+w.id?'selected':''}>↳ ${w.name} (${w.loyalty})</option>`).join("")}</select></div>`;}
+    else if(!vael){const ewk=(S.enemyWalkers||[]).filter(w=>!w.phased).concat(S.cmd.isWalker&&S.cmd.inPlay&&!S.cmd.phased?[S.cmd]:[]);const ebat=(S.battles||[]).filter(b=>b.side==='boss'&&!b.defeated);/* P39.1: swing at the enemy face, an enemy planeswalker, or a boss siege/battle */
+      if(ewk.length||ebat.length)tsel=`<div class="btnrow"><span class="lab">target</span><select onchange="combatTarget('${a.id}',this.value)"><option value="boss" ${tgt==='boss'?'selected':''}>⚔ ${ENs()}</option>${ewk.map(w=>`<option value="w:${w.id}" ${tgt==='w:'+w.id?'selected':''}>↳ ${embEsc(w.name||w.n)} (loy ${w.loyalty})</option>`).join("")}${ebat.map(b=>`<option value="b:${b.id}" ${tgt==='b:'+b.id?'selected':''}>🜨 ${embEsc(b.name)} (def ${b.def})</option>`).join("")}</select></div>`;}
     const el=document.createElement("div");el.className="blockrow";
     el.innerHTML=`<div class="ba">${cnm(a)} ${effP(a)}/${effT(a)} ${(a.kw||[]).length?'<span class="manaline">['+a.kw.join(', ')+']</span>':''}${blockLabel(a)}${prevented?' <span class="manaline">🛡 dmg prevented</span>':''}</div>
       ${tsel}
@@ -1389,15 +1392,26 @@ function renderCombat(){
 function setWalkerCap(id,n){const w=getMy('walkers',id)||enemyWalkerList().find(x=>''+x.id===''+id);if(!w)return;w.attackableBy=(n>0?n:null);log("you",`✎ ${w.name||w.n}: attackable by ${n>0?'at most '+n:'any number of'} creature${n===1?'':'s'}.`);render();}
 function walkerAtkCount(tmap,wid){return Object.keys(tmap).filter(k=>''+tmap[k]===''+wid).length;}
 function combatTarget(attId,val){if(!S.combat)return;S.combat.target=S.combat.target||{};
-  if(val!=='you'){const w=(S.my.walkers||[]).find(x=>''+x.id===''+val);const cap=(w&&w.attackableBy>0)?w.attackableBy:Infinity;if(cap!==Infinity){const cur=Object.keys(S.combat.target).filter(k=>k!==''+attId&&''+S.combat.target[k]===''+val).length;if(cur>=cap){log("sys",`⚠ ${w.name} can be attacked by at most ${cap} creature${cap===1?'':'s'}.`);renderCombat();return;}}}
-  S.combat.target[attId]=val;renderCombat();}
+  if(S.combat.dir==='vael'&&val!=='you'){const w=(S.my.walkers||[]).find(x=>''+x.id===''+val);const cap=(w&&w.attackableBy>0)?w.attackableBy:Infinity;if(cap!==Infinity){const cur=Object.keys(S.combat.target).filter(k=>k!==''+attId&&''+S.combat.target[k]===''+val).length;if(cur>=cap){log("sys",`⚠ ${w.name} can be attacked by at most ${cap} creature${cap===1?'':'s'}.`);renderCombat();return;}}}
+  S.combat.target[attId]=val;
+  if(S.combat.dir==='you'&&(''+val).slice(0,2)==='b:')enemyDefendSiege(attId,getBattle(+(''+val).slice(2)));/* P39.2: the enemy may throw a blocker in front of an attacker aimed at its siege */
+  renderCombat();}
+/* P39.2: when you aim an attacker at a boss siege/battle, the enemy decides — by value — whether to block it (protect the siege). Standard+ defends a siege still worth saving; easy lets it through. Value-based, respects legality/menace, and the player can still edit the block. */
+function enemyDefendSiege(attId,b){if(!S.combat||enemyLuck()<0||!b||b.defeated)return;const a=S.combat.attackers.find(x=>''+x.id===''+attId);if(!a)return;if((S.combat.assign[attId]||[]).length)return;/* already blocked (proposal or the player) */
+  const worth=(b.tick||0)>0||b.def>=3;if(!worth)return;/* don't spend a body defending a near-dead / value-less siege */
+  const need=minBlockers(a),cap=maxBlockers(a);if(need>cap)return;const used=combatUsed();const elig=S.combat.pool.filter(bl=>!used.has(bl)&&legalBlock(a,bl)&&!bl._cmd);if(elig.length<need)return;
+  const survives=bl=>(effT(bl)>effP(a)&&!kw(a,'deathtouch'))||kw(bl,'indestructible');
+  let grp=elig.filter(survives).sort((x,y)=>effP(x)-effP(y)).slice(0,need);/* prefer blockers that survive */
+  if(grp.length<need&&(b.tick||0)>0)grp=elig.slice().sort((x,y)=>effP(x)-effP(y)).slice(0,need);/* a still-healing siege is worth a chump */
+  if(grp.length>=need){S.combat.assign[attId]=grp;log("dm",`${ENs()} throws ${grp.map(cnm).join(" & ")} in front of the siege — blocking ${cnm(a)}.`);}}
 function combatAdd(attId){const sel=$("cbsel_"+attId);const ci=parseInt(sel.value,10);if(isNaN(ci))return;const a=S.combat.attackers.find(x=>''+x.id===''+attId);if(!a)return;const cap=maxBlockers(a);if((S.combat.assign[attId]||[]).length>=cap){log("sys",`${a.name} can be blocked by at most ${cap} creature${cap===1?'':'s'}.`);return;}/* P12.2: hard max-blocker cap */const used=combatUsed();const elig=S.combat.pool.filter(b=>!used.has(b)&&legalBlock(a,b));const obj=elig[ci];if(!obj)return;S.combat.assign[attId]=S.combat.assign[attId]||[];S.combat.assign[attId].push(obj);renderCombat();}
 function combatDel(attId,bi){(S.combat.assign[attId]||[]).splice(bi,1);renderCombat();}
 /* P32: per-combat one-shot combat tricks — transient (cleared with S.combat when combat ends). 🚫 negate removes the attacker from THIS combat (deals/takes no combat damage — it simply isn't attacking); 🛡 prevent keeps it in combat (can still be blocked and die) but it deals NO combat damage (a one-shot Fog on that attacker). Both directions; the complement of P14.2's persistent markers. */
 function combatNegate(attId){if(!S.combat)return;const i=S.combat.attackers.findIndex(a=>''+a.id===''+attId);if(i<0)return;const a=S.combat.attackers[i];S.combat.attackers.splice(i,1);delete S.combat.assign[attId];if(S.combat.target)delete S.combat.target[attId];if(S.combat.prevented){const p=S.combat.prevented.indexOf(a.id);if(p>=0)S.combat.prevented.splice(p,1);}log(S.combat.dir==='you'?'you':'dm',`🚫 <b>${cnm(a)}</b>'s attack is negated — out of this combat.`);renderCombat();}
 function combatPreventDmg(attId){if(!S.combat)return;const a=S.combat.attackers.find(x=>''+x.id===''+attId);if(!a)return;S.combat.prevented=S.combat.prevented||[];const i=S.combat.prevented.indexOf(a.id);if(i>=0){S.combat.prevented.splice(i,1);log(S.combat.dir==='you'?'you':'dm',`<b>${cnm(a)}</b>'s combat damage is no longer prevented.`);}else{S.combat.prevented.push(a.id);log(S.combat.dir==='you'?'you':'dm',`🛡 <b>${cnm(a)}</b>'s combat damage is prevented this combat (it can still die to blockers).`);}renderCombat();}
 function predictCombat(){const r=resolveAttack(S.combat.attackers,S.combat.assign);const dead=[...r.deadAtt,...r.deadBlk];let s;
-  if(S.combat.dir==='you'){s=`<b>Prediction:</b> ${r.face} damage to ${S.boss.name}'s life.`;}
+  if(S.combat.dir==='you'){const tmap=S.combat.target||{};let toBoss=0;const wm={},bm={};r.perAtt.forEach(({att,toFace})=>{const tg=''+(tmap[att.id]||'boss');if(tg.slice(0,2)==='w:')wm[tg.slice(2)]=(wm[tg.slice(2)]||0)+toFace;else if(tg.slice(0,2)==='b:')bm[tg.slice(2)]=(bm[tg.slice(2)]||0)+toFace;else toBoss+=toFace;});
+    const parts=[`${toBoss} to ${S.boss.name}`];Object.keys(wm).forEach(wid=>{const w=enemyWalkerList().find(x=>''+x.id===wid);if(w)parts.push(`${wm[wid]} to ${w.name||w.n}`);});Object.keys(bm).forEach(bid=>{const b=getBattle(+bid);if(b)parts.push(`${bm[bid]} to ${b.name}`);});s=`<b>Prediction:</b> ${parts.join(", ")}.`;}/* P39.1: split by target */
   else{let toYou=0;const wmap={};r.perAtt.forEach(({att,toFace})=>{const tg=(S.combat.target&&S.combat.target[att.id])||'you';if(tg==='you')toYou+=toFace;else wmap[tg]=(wmap[tg]||0)+toFace;});
     const parts=[`${toYou} to your life`];Object.keys(wmap).forEach(wid=>{const w=S.my.walkers.find(x=>''+x.id===wid);if(w)parts.push(`${wmap[wid]} to ${w.name}`);});s=`<b>Prediction:</b> ${parts.join(", ")}.`;}
   if(dead.length)s+=` Dies: ${dead.map(cnm).join(", ")}.`;
@@ -1419,17 +1433,23 @@ function approveCombat(){
   attackers.forEach(a=>{const bl=assign[a.id]||[];log("cbt",`${dir==='you'?'attack':ENs()}: ${cnm(a)} (${effP(a)}/${effT(a)}) ${bl.length?'blocked by '+bl.map(cnm).join(" & "):'is unblocked'}.`);});
   const r=resolveAttack(attackers,assign);
   if(dir==='you'){
-    if(r.face>0){S.boss.life-=r.face;sfx('strike');log("you",`<b>${r.face}</b> to ${S.boss.name}'s life. (${Math.max(0,S.boss.life)})`);}
+    /* P39.1: route each attacker's face damage to its chosen target — enemy face (boss) / enemy planeswalker (w:id) / boss siege-battle (b:id). */
+    const tmap=S.combat.target||{};let toBoss=0;const wHits={},bHits={};
+    r.perAtt.forEach(({att,toFace})=>{const tg=''+(tmap[att.id]||'boss');if(tg.slice(0,2)==='w:')wHits[tg.slice(2)]=(wHits[tg.slice(2)]||0)+toFace;else if(tg.slice(0,2)==='b:')bHits[tg.slice(2)]=(bHits[tg.slice(2)]||0)+toFace;else toBoss+=toFace;});
+    if(toBoss>0){S.boss.life-=toBoss;sfx('strike');log("you",`<b>${toBoss}</b> to ${S.boss.name}'s life. (${Math.max(0,S.boss.life)})`);}
+    Object.keys(wHits).forEach(wid=>{const w=enemyWalkerList().find(x=>''+x.id===wid);if(w&&wHits[wid]>0){w.loyalty-=wHits[wid];log("you",`Your attackers hit <b>${w.name||w.n}</b> for ${wHits[wid]} (loyalty ${Math.max(0,w.loyalty)}).`);if(w.loyalty<=0)enemyWalkerDies(w);}});
     if(r.attLifelink){S.youLife+=r.attLifelink;log("you",`Lifelink: you +${r.attLifelink}.`);}
     if(r.defLifelink){bossHealLife(r.defLifelink);log("dm",`${ENs()} lifelink: +${r.defLifelink}.`);}
     r.deadBlk.forEach(removeRef);r.deadAtt.forEach(removeRef);
     attackers.forEach(a=>{if(!kw(a,'vigilance')&&S.my.creatures.includes(a))a.tapped=true;a._atk=false;});
     if(r.deadAtt.length)log("cbt",`Your losses: ${r.deadAtt.map(cnm).join(", ")}.`);
     if(r.deadBlk.length)log("cbt",`${ENs()} loses: ${r.deadBlk.map(cnm).join(", ")}.`);
-    S.combat=null;$("resolver").classList.remove("show");
-    /* P19.2: your unblocked commander's combat damage accrues as commander damage to the enemy (mirror of the enemy→you accrual). Uses its perAtt face share, so it respects double strike / "deals no combat dmg". */
-    const pcmd=attackers.find(a=>a.isCmd&&(assign[a.id]||[]).length===0);
+    /* P19.2: your unblocked, FACE-targeted commander's combat damage accrues as commander damage (respects double strike / "deals no combat dmg"). */
+    const pcmd=attackers.find(a=>a.isCmd&&(assign[a.id]||[]).length===0&&(''+(tmap[a.id]||'boss'))==='boss');
     if(pcmd){const cmdFace=((r.perAtt.find(x=>x.att===pcmd)||{}).toFace)||0;if(cmdFace>0){if(!S.enemyCounters)S.enemyCounters={poison:0,energy:0,experience:0,cmdDmg:0};S.enemyCounters.cmdDmg+=cmdFace;log("you",`Commander damage to ${S.boss.name}: +${cmdFace} → ${S.enemyCounters.cmdDmg}/21.`);renderCounters();}}
+    S.combat=null;$("resolver").classList.remove("show");
+    /* P39.1: apply siege/battle damage last — battleDmg → battleDefeat may fire the break payoff (a boss siege deals its maxDef to the enemy) and bossDown. */
+    Object.keys(bHits).forEach(bid=>{const b=getBattle(+bid);if(b&&!b.defeated&&bHits[bid]>0)battleDmg(b.id,bHits[bid]);});
     if(S.boss.life<=0)bossDown();else checkEnemyOut();render();
   }else{
     const tmap=S.combat.target||{};
