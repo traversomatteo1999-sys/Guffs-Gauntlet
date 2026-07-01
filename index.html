@@ -1385,7 +1385,12 @@ function render(){
   const bt=$("bossTag");if(bt)bt.textContent=S.boss.isVael?"FINAL BOSS · fights via commander":"enemy general · fights via commander";
   ["enemyName1","enemyName2","turnEnemyName"].forEach(id=>{const e=$(id);if(e)e.textContent=ENs();});
   const manaShow=S.activeTurn==='vael'?usableMana():projBossMana();const pips=$("manaPips");pips.innerHTML="";for(let i=0;i<Math.max(manaShow,3);i++){const el=document.createElement("span");el.className="pip"+(i<manaShow?"":" off");pips.appendChild(el);}
-  $("manaLine").innerHTML=(S.activeTurn==='vael'?`Mana remaining: <b>${usableMana()}</b> / ${S.bossManaMax}`:`Mana next turn: <b>${projBossMana()}</b>`)+((S.bossManaFrozen||0)>0?` · <span class="frz">❄ ${S.bossManaFrozen} frozen</span>`:'');
+  /* P37: lands-only mana readout — usable mana + the count of mana SOURCES (lands/ramp the enemy has played), plus an honest next-turn projection. No "/ max" pool cap (mana isn't pre-seeded); the pool is surfaced only under freeze so "usable vs frozen" reads correctly. */
+  {const _src=S.bossLands||0,_ss=_src===1?'':'s',_fz=(S.bossManaFrozen||0)>0;
+   $("manaLine").innerHTML=(S.activeTurn==='vael'
+     ?`Mana: <b>${usableMana()}</b> usable${_fz?` of ${S.bossMana||0}`:''} · ${_src} source${_ss}`
+     :`Mana next turn: <b>${projBossMana()}</b> <span style="color:var(--bone-dim)">(if it plays a held land)</span> · ${_src} source${_ss}`)
+     +(_fz?` · <span class="frz">❄ ${S.bossManaFrozen} frozen</span>`:'');}
   {const bmm=$("bossManaModVal");if(bmm)bmm.textContent=(S.bossManaMod>=0?'+':'')+(S.bossManaMod||0);const bp=$("bossPoolVal");if(bp)bp.textContent=`${S.bossMana||0} / ${S.bossManaMax||0}${(S.bossManaFrozen||0)>0?` ❄${S.bossManaFrozen}`:''}`;const bfv=$("bossFrozenVal");if(bfv)bfv.textContent=S.bossManaFrozen||0;}
   renderCmd();
   if(S.pw){const pw=S.pw;$("pwPanel").style.display="";$("pwName").textContent=pw.name;$("pwTag").textContent="["+(pw.colors||[]).join("/")+"] · loyalty "+pw.loy;$("pwLoy").textContent=pw.loy;$("pwBar").style.width=Math.min(100,pw.loy/(pw.ultThreshold||8)*100)+"%";
