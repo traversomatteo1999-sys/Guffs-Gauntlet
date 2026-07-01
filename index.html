@@ -877,7 +877,7 @@ function enterRoom(i,first){S.roomIndex=i;const room=DUNGEON[i];const baseHp=(ro
   S.enemy={name:room.villain,colors:(room.colors||["R"]).slice(),lore:room.lore||"",isFinal:!!room.isVael};
   S.cmd={id:'cmd',n:room.cmd.n,p:room.cmd.p,t:room.cmd.t,baseP:room.cmd.p,baseT:room.cmd.t,kw:[...room.cmd.kw],color:(room.cmd.colors||room.colors||["R"]).slice(),baseCost:room.cmd.cost,cost:room.cmd.cost,tax:0,deaths:0,inPlay:false,inHand:false,sick:false,tapped:false,plus:0,minus:0,other:[],_cmd:true};/* P29.1: inHand (meaningful only when !inPlay) — command zone (base+tax) vs hand (base only) */
   S.tokens=[];S.rules=[];S.turn=0;S.phase2done=false;S.balanceScale=1;S.emblemsEnemy=[];S.enemyArtifacts=[];S.enemyEnchants=[];S.battles=[];S.plane=null;S.bossManaFrozen=0;S.stackProposal=null;S.enemyCounters={poison:0,energy:0,experience:0,cmdDmg:0};S.enemyResources=[];/* P13.3: clear the enemy artifact/enchant board each room too (no cross-dungeon leak) · P19.1: clean counters per boss · P16.2: clear enemy resource tokens per room */
-  S.pw=room.pw?{name:room.pw.name,loy:room.pw.loy,baseLoy:room.pw.loy,colors:(room.pw.colors||room.colors||[]).slice(),ultThreshold:room.pw.ultThreshold||7,plus:room.pw.plus,minus:room.pw.minus,ult:room.pw.ult}:null;
+  S.enemyWalkers=[];if(room.pw)S.enemyWalkers.push(mkEnemyWalker(room.pw));/* P38.1: room.pw resolves to a real enemy walker permanent (Vael's is folded into his PW-commander in P38.3) */
   S.bossManaMod=0;S.bossLands=0;S.bossLandPlayed=false;S.bossManaMax=0;S.bossMana=0;/* P17.1: lands-only mana — the enemy opens every battle at 0 and grows its pool ONLY by playing land cards from hand (no pre-seed; room.landStart/DIFF.manaBonus retired as mana levers; ramp rocks stay; the 7-card hand + mulligan in P17.2 keeps it playable) */
   S.activeTurn=null;S.phase=0;S.plays=[];S.combat=null;S.paused=false;S.lib=buildDeck(room);S.hand=[];S.gy=[];S.exile=[];dealOpeningHand();/* P17.2: 7-card opening hand + mulligan-to-3-lands (was vaelDraw(4)) */
   if(room.isVael)fieldVaelBattle();/* P7.7: Vael fields a boss-side Siege the player must break */
@@ -1385,7 +1385,7 @@ function renderCombat(){
   predictCombat();
 }
 /* P20.2: a planeswalker can be attackable by at most N creatures. 0/absent = no limit. Stored on the walker; enforced when the enemy assigns attackers to your walkers (combatTarget) + a hard guard at approve. */
-function setWalkerCap(id,n){const w=getMy('walkers',id)||(S.pw&&''+S.pw.id===''+id?S.pw:null);if(!w)return;w.attackableBy=(n>0?n:null);log("you",`✎ ${w.name}: attackable by ${n>0?'at most '+n:'any number of'} creature${n===1?'':'s'}.`);render();}
+function setWalkerCap(id,n){const w=getMy('walkers',id)||enemyWalkerList().find(x=>''+x.id===''+id);if(!w)return;w.attackableBy=(n>0?n:null);log("you",`✎ ${w.name}: attackable by ${n>0?'at most '+n:'any number of'} creature${n===1?'':'s'}.`);render();}
 function walkerAtkCount(tmap,wid){return Object.keys(tmap).filter(k=>''+tmap[k]===''+wid).length;}
 function combatTarget(attId,val){if(!S.combat)return;S.combat.target=S.combat.target||{};
   if(val!=='you'){const w=(S.my.walkers||[]).find(x=>''+x.id===''+val);const cap=(w&&w.attackableBy>0)?w.attackableBy:Infinity;if(cap!==Infinity){const cur=Object.keys(S.combat.target).filter(k=>k!==''+attId&&''+S.combat.target[k]===''+val).length;if(cur>=cap){log("sys",`⚠ ${w.name} can be attacked by at most ${cap} creature${cap===1?'':'s'}.`);renderCombat();return;}}}
@@ -1510,9 +1510,10 @@ function render(){
      +(_fz?` · <span class="frz">❄ ${S.bossManaFrozen} frozen</span>`:'');}
   {const bmm=$("bossManaModVal");if(bmm)bmm.textContent=(S.bossManaMod>=0?'+':'')+(S.bossManaMod||0);const bp=$("bossPoolVal");if(bp)bp.textContent=`${S.bossMana||0} / ${S.bossManaMax||0}${(S.bossManaFrozen||0)>0?` ❄${S.bossManaFrozen}`:''}`;const bfv=$("bossFrozenVal");if(bfv)bfv.textContent=S.bossManaFrozen||0;}
   renderCmd();
-  if(S.pw){const pw=S.pw;$("pwPanel").style.display="";$("pwName").textContent=pw.name;$("pwTag").textContent="["+(pw.colors||[]).join("/")+"] · loyalty "+pw.loy;$("pwLoy").textContent=pw.loy;$("pwBar").style.width=Math.min(100,pw.loy/(pw.ultThreshold||8)*100)+"%";
-    const pa=$("pwAbil");if(pa)pa.innerHTML=[pw.plus,pw.minus,pw.ult].filter(Boolean).map(a=>`<div class="pwrow${a.ult?' ult':''}${a.ult&&pw.loy>=(pw.ultThreshold||99)?' ready':''}"><span class="pwsign">${a.sign>0?'+':''}${a.sign}</span><span><b>${a.n}</b> — ${a.text}${a.ult?` <span class="pwthr">needs ${pw.ultThreshold} loyalty${pw.loy>=(pw.ultThreshold||99)?' — READY':''}</span>`:''}</span></div>`).join("");
-  }else $("pwPanel").style.display="none";
+  {const ews=(S.enemyWalkers||[]).filter(w=>w&&!w.phased);const pw=ews[0];/* P38.1: #pwPanel shows the first deck-cast enemy walker; a walker COMMANDER renders in the commander card */
+   if(pw){$("pwPanel").style.display="";$("pwName").textContent=pw.name+(ews.length>1?` (+${ews.length-1} more)`:'');$("pwTag").textContent="["+(pw.colors||[]).join("/")+"] · loyalty "+pw.loyalty;$("pwLoy").textContent=pw.loyalty;$("pwBar").style.width=Math.min(100,pw.loyalty/(pw.ultThreshold||8)*100)+"%";
+    const pa=$("pwAbil");if(pa)pa.innerHTML=[pw.plus,pw.minus,pw.ult].filter(Boolean).map(a=>`<div class="pwrow${a.ult?' ult':''}${a.ult&&pw.loyalty>=(pw.ultThreshold||99)?' ready':''}"><span class="pwsign">${a.sign>0?'+':''}${a.sign}</span><span><b>${a.n}</b> — ${a.text}${a.ult?` <span class="pwthr">needs ${pw.ultThreshold} loyalty${pw.loyalty>=(pw.ultThreshold||99)?' — READY':''}</span>`:''}</span></div>`).join("");
+   }else $("pwPanel").style.display="none";}
   const cf=$("creaField");cf.innerHTML="";const creaN=S.tokens.length+(S.cmd.inPlay?1:0);$("creaCount").textContent=creaN;$("creaEmpty").style.display=creaN?"none":"block";
   if(S.cmd.inPlay){const el=document.createElement("div");el.className="crea cmdcard"+(S.cmd.sick?" sick":"")+(S.cmd.tapped?" tapped":"");el.innerHTML=cmdFieldCard();cf.appendChild(el);}
   S.tokens.forEach(c=>{const el=document.createElement("div");el.className="crea"+(c.sick?" sick":"")+(c.tapped?" tapped":"");el.innerHTML=enemyCard(c);cf.appendChild(el);});
@@ -1928,7 +1929,7 @@ function boardWipe(){const mode=$("bwMode").value,N=parseInt($("bwN").value,10)|
   const label=mode==='all'?'destroys all creatures':mode==='toughLE'?`destroys toughness ≤ ${N}`:mode==='powGE'?`destroys power ≥ ${N}`:`deals ${N} to all creatures`;
   log("sys",`🌊 Boardwipe — ${label}${skipTok?' (sparing tokens)':''}${skipLeg?' (sparing legendaries)':''}: ${mine} of yours, ${foe} enemy.`);
   checkLose();render();}
-function adjLoy(n){if(!S.pw)return;S.pw.loy+=n;if(S.pw.loy<=0){log("sys",`${S.pw.name} destroyed.`);S.pw=null;}render();}
+function adjLoy(n){const w=(S.enemyWalkers||[])[0];if(!w)return;w.loyalty=(w.loyalty||0)+n;log("you",`${w.name} loyalty ${n>=0?'+':''}${n} → ${w.loyalty}.`);if(w.loyalty<=0)enemyWalkerDies(w);render();}
 /* P5.2 / P26.1: slaying an enemy creature is a DEATH (pays the Pit's Tithe). A token ceases (no zone); a real (non-token) enemy creature asks graveyard or exile — the death-flavoured counterpart to P24.2's clean ✕ (which also offers "none"). The commander uses slayCmdBtn → removeRef (command zone), never this popup. */
 function slay(id){const i=S.tokens.findIndex(c=>c.id===id);if(i<0)return;const c=S.tokens[i];
   if(c.token){log("you",`Slew <b>${cnm(c)}</b>.`);removeRef(c);render();return;}/* a token ceases (death + Tithe), no zone — unchanged */
@@ -1939,7 +1940,7 @@ function slayTo(id,where){const c=S.tokens.find(x=>x.id===id);if(!c){closeOverla
 function destroyRule(id){const i=S.rules.findIndex(r=>r.id===id);if(i<0)return;log("you",`Destroyed <b>${S.rules[i].name}</b>.`);S.rules.splice(i,1);render();}
 function rollRule(id){const r=S.rules.find(x=>x.id===id);if(!r)return;log("sys",`${r.name}: rolled <b>${d(r.die)}</b> on d${r.die}.`);}
 function dmgBoss(){const q=$("bossDmgIn");const v=parseInt(q.value,10);if(isNaN(v)||v<=0){log("sys","Enter direct damage.");return;}S.boss.life-=v;log("you",`Direct damage <b>${v}</b>. (${Math.max(0,S.boss.life)})`);q.value="";if(S.boss.life<=0)bossDown();render();}
-function damagePW(){if(!S.pw)return;const v=parseInt($("pwDmgIn").value,10);if(isNaN(v)||v<=0){log("sys","Enter damage.");return;}S.pw.loy-=v;log("you",`Hit ${S.pw.name} for <b>${v}</b>.`);$("pwDmgIn").value="";if(S.pw.loy<=0){log("you",`<b>${S.pw.name} destroyed.</b>`);S.pw=null;}render();}
+function damagePW(){const w=(S.enemyWalkers||[])[0];if(!w)return;const v=parseInt($("pwDmgIn").value,10);if(isNaN(v)||v<=0){log("sys","Enter damage.");return;}w.loyalty=(w.loyalty||0)-v;log("you",`Hit ${w.name} for <b>${v}</b> (loyalty ${Math.max(0,w.loyalty)}).`);$("pwDmgIn").value="";if(w.loyalty<=0)enemyWalkerDies(w);render();}
 
 /* P21.1: satchel items carry a stable uid so the Use button removes exactly that item, robust to any S.inv change between render and click (loot dropped, another item used, re-order). */
 function newUid(){return 'i'+Date.now().toString(36)+'-'+Math.floor(Math.random()*1e6).toString(36);}
@@ -1989,8 +1990,40 @@ function vaelUpkeep(){S.rules.filter(r=>r.side==="boss"&&r.heal).forEach(r=>{bos
   fireEnemyEmblems('upkeep');if(S.over)return;/* a drain emblem can end the game on the enemy's upkeep — stop the rest of the upkeep */
   firePlayerEmblems('enemyUpkeep');if(S.over||S.paused)return;/* P23.2: a player emblem keyed to the enemy's upkeep fires here · review: also stop if it FELLED the boss (a mini-boss clear sets S.paused, not S.over) */
   tickBossBattles();if(S.over)return;/* P7.7: Vael's Siege heals it each upkeep while it stands */
-  if(S.pw)pwAct();}
-function pwAct(){if(S.over)return;const pw=S.pw;let ab;
+  /* P38.1: enemy walkers no longer auto-fire on upkeep — they activate at SORCERY SPEED in the main phase (enemyWalkersAct in vaelMain). */}
+/* ===== P38: enemy planeswalkers as REAL permanents with SORCERY-SPEED loyalty =====
+   S.enemyWalkers = deck-cast PW permanents; a walker COMMANDER lives on S.cmd (isWalker). Each activates ONE
+   loyalty ability per turn, only in the enemy's MAIN phase with an EMPTY stack — replacing the old S.pw upkeep
+   auto-fire (retired). The ability resolves as a stack play so the player can respond. */
+function mkEnemyWalker(spec,key){const loy=(spec.loy!=null?spec.loy:(spec.loyalty!=null?spec.loyalty:3));const colors=(spec.colors&&spec.colors.slice)?spec.colors.slice():(spec.color?String(spec.color).split('').filter(c=>'WUBRGC'.indexOf(c)>=0):((S.boss&&S.boss.colors)||[]).slice());
+  return {id:S.nextId++,name:spec.name||spec.n||'Planeswalker',loyalty:loy,baseLoy:loy,colors:colors,color:colors.slice(),ultThreshold:spec.ultThreshold||7,plus:spec.plus||null,minus:spec.minus||null,ult:spec.ult||null,phased:false,kw:[],prot:[],other:[],token:false,dies:'graveyard',attackableBy:(spec.attackableBy||null),_actedTurn:-1,key:key||null,isWalker:true};}
+function enemyWalkerList(){const out=(S.enemyWalkers||[]).filter(w=>w&&!w.phased);if(S.cmd&&S.cmd.isWalker&&S.cmd.inPlay&&!S.cmd.phased)out.push(S.cmd);return out;}
+/* P38.5: pick ONE loyalty ability by a real plan — ult at threshold when it's safe/decisive; else a minus to answer
+   a real threat (kept above 0 unless the walker is worth trading); else build loyalty toward the ult / to protect a
+   threatened walker. Difficulty-scaled via enemyLuck(). */
+function pickWalkerAbility(w){const plus=w.plus,minus=w.minus,ult=w.ult,loy=w.loyalty||0,thr=w.ultThreshold||7;
+  const bigThreat=S.my.creatures.some(c=>effP(c)>=4&&!kw(c,'hexproof')&&!kw(c,'shroud')&&!c.phased)||S.my.walkers.some(x=>!x.phased);
+  const canDefend=minus&&(loy+(minus.sign||0))>=1;/* a minus that doesn't self-destruct the walker */
+  const walkerThreatened=playerAttackPotential()>=loy;/* the player could attack it to 0 next turn */
+  if(ult&&loy>=thr)return ult;/* fire the finisher */
+  if(canDefend&&bigThreat&&(enemyLuck()>=0||Math.random()<0.5))return minus;/* answer a real threat */
+  if(plus&&(walkerThreatened||loy<thr))return plus;/* build toward the ult / protect from 0 */
+  if(canDefend)return minus;
+  return plus||minus||null;}
+function enemyWalkerAct(w){if(!w||S.over||w._actedTurn===S.turn)return false;const ab=pickWalkerAbility(w);if(!ab)return false;
+  w.loyalty=(w.loyalty||0)+(ab.sign||0);w._actedTurn=S.turn;
+  const p=mkPlay({n:`${w.name}: ${ab.n} (${ab.sign>0?'+':''}${ab.sign})`,type:'instant',text:ab.text,selfLoss:ab.selfLoss,run:ab.run,target:ab.target,color:ab.color,cost:0});S.plays.push(p);
+  log("dm",`✦ ${w.name} activates <b>${ab.n}</b>${ab.ult?' — ULTIMATE':''} (loyalty ${w.loyalty}).`);
+  if(w.loyalty<=0)enemyWalkerDies(w);/* spent to 0 by its own minus/ult — leaves; the ability still resolves off the stack */
+  return true;}
+/* P38.1/P38.4: activate each enemy walker once, at sorcery speed (main phase, empty stack). Called from vaelMain. */
+function enemyWalkersAct(){if(S.over)return;enemyWalkerList().forEach(w=>{if((S.plays||[]).some(p=>p.status==='pending'))return;/* empty stack between activations */enemyWalkerAct(w);});if((S.plays||[]).some(p=>p.status==='pending'))showPlays();}
+/* P38.1/P38.2: a walker at 0 loyalty leaves — a deck PW to the graveyard (recastable), a walker COMMANDER to the command zone with rising tax + loyalty reset (P29). */
+function enemyWalkerDies(w){if(w===S.cmd){S.cmd.deaths=(S.cmd.deaths||0)+1;const inc=CMD_TAX_DOUBLE?CMD_TAX_BASE*Math.pow(2,S.cmd.deaths-1):CMD_TAX_BASE;S.cmd.tax=(S.cmd.tax||0)+inc;S.cmd.inPlay=false;S.cmd.cost=S.cmd.baseCost+S.cmd.tax;S.cmd.loyalty=S.cmd.baseLoy;log("dm",`♛ ${S.cmd.n} falls to 0 loyalty → command zone. Recast costs <b>${S.cmd.cost}</b> (tax +${S.cmd.tax}).`);return;}
+  const i=(S.enemyWalkers||[]).indexOf(w);if(i>=0){S.enemyWalkers.splice(i,1);if(w.key){S.gy.push({id:S.nextId++,key:w.key,name:w.name,_moved:true,color:(w.color||[]).slice()});log("dm",`✦ <b>${w.name}</b> hits 0 loyalty → ${ENs()}'s graveyard (recastable).`);}else log("dm",`✦ <b>${w.name}</b> hits 0 loyalty and is gone.`);}}
+/* P38: RETIRED (was the S.pw upkeep auto-fire). Neutralised — enemy walkers now act at sorcery speed via enemyWalkersAct(); the unreachable legacy body is kept out of the way and removed in cleanup. */
+function pwAct(){return;/* eslint-disable-line */
+  if(S.over)return;const pw=S.pw;let ab;
   if(pw.loy>=pw.ultThreshold){ab=pw.ult;pw.loy+=ab.sign;}
   else{const bigThreat=S.my.creatures.some(c=>effP(c)>=4&&!kw(c,'hexproof')&&!kw(c,'shroud')&&!c.phased);
     if(pw.minus&&bigThreat&&pw.loy+pw.minus.sign>=1&&Math.random()<0.55+0.1*enemyLuck()){ab=pw.minus;pw.loy+=ab.sign;}/* P6.4: a lucky/brutal walker is likelier to fire its minus (removal) at your threat; easy likelier to just build loyalty */
@@ -2061,6 +2094,7 @@ function enemyLethalReach(){let mana=usableMana(),dmg=0,picks=[];const reach=S.h
 function vaelMain(which){
   let summonedCmd=false;
   if(which===1)playEnemyLand();
+  enemyWalkersAct();/* P38.1/P38.4: enemy walkers activate ONE loyalty ability at sorcery speed (main phase, empty stack, 1/turn/walker) — gated inside; a just-cast walker-commander acts in main2 */
   if(which===1&&!S.cmd.inPlay&&!S.plays.some(p=>p._enemyCmd&&p.status==='pending')&&usableMana()>=cmdCastCost()){const cc=cmdCastCost(),fromHand=S.cmd.inHand;S.bossMana-=cc;S.plays.push({id:S.nextId++,_enemyCmd:true,side:'boss',status:'pending',n:S.cmd.n,type:'creature',cost:cc,color:(S.boss.colors||['R']).join(''),text:`♛ ${ENs()}'s commander — resolves to its battlefield, summoning-sick.`});summonedCmd=true;log("dm",`♛ ${ENs()} casts <b>${S.cmd.n}</b> from ${fromHand?'hand':'its command zone'} (spent ${cc}, ${S.bossMana} left). It's on the stack.`);}/* P29.1: zone-aware cost — hand cast pays base only */
   /* P5.2 AI — LETHAL: when the enemy can deal >= your life in unpreventable burn/drain it can afford, it goes for the throat (prioritised over developing). Runs in main2 too, so post-combat burn closes a chipped player. */
   if(!S.over){const lr=enemyLethalReach();if(lr.picks.length&&lr.dmg>=S.youLife){log("dm",`🎯 <b>${ENs()} sees lethal</b> — ${lr.dmg} unpreventable damage in hand!`);lr.picks.slice().sort((a,b)=>b-a).forEach(pick=>{const card=S.hand[pick],fx=FX[card.key];if(fx&&fx.cost<=usableMana()){S.bossMana-=fx.cost;S.hand.splice(pick,1);const p=mkPlay(fx);p._card=card;S.plays.push(p);log("dm",`Casts <b>${fx.n}</b> — for the throat.`);}});}}
@@ -2232,6 +2266,7 @@ function resolvePlay(i){const p=S.plays[i];if(!p||p.status==="resolved")return;i
   if(p.type==='enchant'||p.type==='artifact'){const run=Array.isArray(p.run)?p.run:null;const simple=!run||run[0]==='rule'||run[0]==='bossrule'||run[0]==='ramp';
     if(simple){if(run&&run[0]==='ramp')applyRun(p.run);/* a mana rock still ramps; its body becomes the permanent */_enemyCardToPerm(p);checkLose();renderPlays();render();return;}/* else (a special-run enchant/artifact like the Pit's Tithe bloodpact) keeps its existing resolution — don't duplicate it as a permanent */}
   if(p.type==='creature'&&!p._copy){resolveEnemyCreature(p);checkLose();renderPlays();render();return;}/* P35.1: enemy creature cards enter as REAL permanents (not spawned tokens); token-making spells + copies fall through */
+  if(p.type==='planeswalker'&&!p._copy){const fx=(p._card&&FX[p._card.key])||p;const w=mkEnemyWalker(fx,(p._card&&p._card.key)||null);S.enemyWalkers.push(w);log("dm",`✦ <b>${w.name}</b> resolves onto ${ENs()}'s battlefield — a planeswalker at loyalty ${w.loyalty}.`);checkLose();renderPlays();render();return;}/* P38.1: an enemy planeswalker CARD resolves to a real walker permanent (AI-activated at sorcery speed) */
   if(p.run)applyRun(p.run);if(p.target){const msg=applyTarget(p.target,(p.color||'').split('').filter(Boolean));if(msg)log("dm",`${p.n}: ${ENs()} ${msg}.`);else log("dm",`${p.n} — no valid target on your tracked board.`);}if(p.selfLoss){S.youLife-=p.selfLoss;log("dm",`${p.n} → you lose <b>${p.selfLoss}</b>. (${S.youLife})`);}else if(!p.target&&!p.run)log("dm",`${p.n} resolves.`);
   if(p._card&&!p._copy&&p.type!=='enchant'){S.gy.push(p._card);if(p.run&&JSON.stringify(p.run).indexOf('"spawn"')>=0)log("dm",`📜 The <b>${p.n}</b> spell card goes to ${ENs()}'s graveyard — the token it created stays on the battlefield.`);}/* P7.2: when a creature/token spell resolves, make the two facts explicit — the token enters (logged in applyRun), and the same-named spell CARD goes to the graveyard */
   checkLose();renderPlays();render();}
@@ -2662,7 +2697,8 @@ function clearSave(){try{if(typeof DB!=='undefined'&&DB){DB.save=null;saveDB();}
 /* "A descent is underway" — true while a saved run exists (cleared on win/lose) OR a live, un-finished game is in memory. The Merchant is closed (no shopping) whenever this is true; room-clear loot still flows into the satchel. */
 function descentInProgress(){return hasSave()||!!(_liveGame&&typeof S!=='undefined'&&S&&!S.over);}
 function migrate(s){if(!s||typeof s!=='object')return s;
-  ['tokens','rules','plays','inv','lib','hand','gy','exile','deckColors','myGy','myExile','battles','emblemsEnemy'].forEach(k=>{if(!Array.isArray(s[k]))s[k]=[];});
+  ['tokens','rules','plays','inv','lib','hand','gy','exile','deckColors','myGy','myExile','battles','emblemsEnemy','enemyWalkers'].forEach(k=>{if(!Array.isArray(s[k]))s[k]=[];});
+  if(s.pw&&typeof s.pw==='object'){s.enemyWalkers.push({id:(s.nextId=(s.nextId||1)+1),name:s.pw.name,loyalty:(s.pw.loy!=null?s.pw.loy:(s.pw.loyalty!=null?s.pw.loyalty:3)),baseLoy:(s.pw.baseLoy!=null?s.pw.baseLoy:(s.pw.loy||3)),colors:(s.pw.colors||[]).slice(),color:(s.pw.colors||[]).slice(),ultThreshold:s.pw.ultThreshold||7,plus:s.pw.plus||null,minus:s.pw.minus||null,ult:s.pw.ult||null,phased:false,kw:[],prot:[],other:[],token:false,dies:'graveyard',attackableBy:s.pw.attackableBy||null,_actedTurn:-1,key:null,isWalker:true});}s.pw=null;/* P38.1: an in-flight old-save S.pw becomes a real enemy walker permanent (loyalty preserved) */
   (s.emblemsEnemy||[]).forEach(e=>{if(e&&!e.kind)e.kind='emblem';if(e&&e.vsYou==null)e.vsYou=!!(e.auto&&e.auto.k==='youLose');if(e&&e.target==null)e.target=e.vsYou?'you':'enemy';/* P23.4: backfill functional target from vsYou (behaviour-preserving — vsYou already tracked the natural side) */if(e&&!e.trigger)e.trigger='upkeep';if(e&&e.static==null)e.static=false;if(e&&e.attachId===undefined)e.attachId=null;});/* enemy persistent-effects gained a kind (artifact/enchantment/emblem) + vsYou flag; P13.2 added trigger window + static + attachId */
   if(!Array.isArray(s.enemyArtifacts))s.enemyArtifacts=[];if(!Array.isArray(s.enemyEnchants))s.enemyEnchants=[];
   /* P13.3: enemy artifacts/enchantments are now first-class permanents — convert old emblemsEnemy artifact/enchant entries into real permanents (carrying their automation); genuine emblems stay in the tracker. Idempotent (no artifact/enchant kinds remain afterward). */
@@ -2675,7 +2711,7 @@ function migrate(s){if(!s||typeof s!=='object')return s;
   /* P17.4: normalize catk.tgt to the {player,walkers,both} enum (was a boolean) on every permanent, both sides. */
   [].concat(s.my.creatures||[],s.my.artifacts||[],s.my.enchants||[],s.my.walkers||[],s.tokens||[],s.enemyArtifacts||[],s.enemyEnchants||[],s.cmd?[s.cmd]:[]).forEach(o=>{if(o&&o.catk&&o.catk.tgt!=='player'&&o.catk.tgt!=='walkers')o.catk.tgt='both';});
   /* P30: every permanent carries prot/kw/other so the universal parity options work + round-trip. */
-  [].concat(s.my.artifacts||[],s.my.enchants||[],s.my.walkers||[],s.enemyArtifacts||[],s.enemyEnchants||[],s.pw?[s.pw]:[]).forEach(o=>{if(o&&typeof o==='object'){if(!Array.isArray(o.prot))o.prot=[];if(!Array.isArray(o.kw))o.kw=[];if(!Array.isArray(o.other))o.other=[];}});
+  [].concat(s.my.artifacts||[],s.my.enchants||[],s.my.walkers||[],s.enemyArtifacts||[],s.enemyEnchants||[],s.enemyWalkers||[]).forEach(o=>{if(o&&typeof o==='object'){if(!Array.isArray(o.prot))o.prot=[];if(!Array.isArray(o.kw))o.kw=[];if(!Array.isArray(o.other))o.other=[];}});
   if(!s.counters||typeof s.counters!=='object')s.counters={};['poison','energy','experience','cmdDmg'].forEach(k=>{if(typeof s.counters[k]!=='number')s.counters[k]=0;});
   if(!s.enemyCounters||typeof s.enemyCounters!=='object')s.enemyCounters={};['poison','energy','experience','cmdDmg'].forEach(k=>{if(typeof s.enemyCounters[k]!=='number')s.enemyCounters[k]=0;});/* P19.1: backfill enemy counters on old saves */
   if(!s.ui||typeof s.ui!=='object')s.ui={tabs:{}};if(!s.ui.tabs)s.ui.tabs={};if(!s.ui.panels||typeof s.ui.panels!=='object')s.ui.panels={};/* P12.1: per-panel collapse state */
