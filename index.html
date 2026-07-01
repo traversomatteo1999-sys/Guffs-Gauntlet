@@ -914,7 +914,7 @@ function deckScryApply(decisions){const n=decisions.length;const top=S.lib.slice
 function deckDiscard(indices){const sorted=indices.slice().filter(i=>S.hand[i]).sort((a,b)=>b-a);const moved=[];sorted.forEach(i=>{moved.push(S.hand[i]);S.hand.splice(i,1);});moved.forEach(c=>S.gy.push(c));if(moved.length)log("you",`${ENs()} discards ${libNames(moved).join(", ")}.`);return moved;}
 function deckDiscardRandom(n){n=Math.max(0,n|0);const pool=S.hand.map((_,i)=>i),idx=[];for(let k=0;k<n&&pool.length;k++)idx.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);return deckDiscard(idx);}
 
-function openDeckTools(){if(S.over)return;_dt={mode:'main',n:3,reveal:null,scry:null,payMana:true,typeFilter:'all'};$("modalBody").innerHTML=deckToolsHTML();$("overlay").classList.add("show");}
+function openDeckTools(){if(S.over)return;_dt={mode:'main',n:3,reveal:null,scry:null,payMana:true,typeFilter:'all',expanded:[],expandAll:false};$("modalBody").innerHTML=deckToolsHTML();$("overlay").classList.add("show");}
 /* ===== P6.5: INSPECT + PLAY an enemy card =====
    Inspect = show a card's cost + colours + full text. Play = put it on the stack via mkPlay (it then resolves
    through the normal enemy-spell path: applyRun / applyTarget / selfLoss), with a spend-vs-free mana choice.
@@ -930,15 +930,54 @@ function dtPlayCard(zone,i){if(S.over)return;const arr=dtPlayZone(zone);if(!arr)
   log("dm",`🎴 ${ENs()} plays <b>${fx.n}</b> from its ${zone==='gy'?'graveyard':zone==='lib'?'library':'hand'}${pay?` (spent ${fx.cost||0}, ${S.bossMana} mana left)`:' — for free'}. It's on the stack.`);
   render();dtRenderIfOpen();showPlays();}
 function dtRender(){$("modalBody").innerHTML=deckToolsHTML();}
+/* P31: expand/collapse a deck-tools card row (transient view state on _dt; not saved). */
+function dtToggleCard(id){if(id==null)return;_dt.expanded=_dt.expanded||[];const i=_dt.expanded.indexOf(id);if(i>=0)_dt.expanded.splice(i,1);else _dt.expanded.push(id);dtRender();}
+function dtExpandAll(){_dt.expandAll=!_dt.expandAll;if(!_dt.expandAll)_dt.expanded=[];dtRender();}
+function dtExpandAllBtn(){return `<button class="tiny" title="expand or collapse every card in this view" onclick="dtExpandAll()">${_dt.expandAll?'⊖ collapse all':'⊕ expand all'}</button>`;}
+/* P31: plain-language mechanical summary from an FX card's run/target — reuses the existing run/target vocabulary. */
+function fxEffectSummary(fx){if(!fx||typeof fx!=='object')return '';const parts=[];
+  const runs=fx.run?(Array.isArray(fx.run[0])?fx.run:[fx.run]):[];
+  runs.forEach(r=>{if(!Array.isArray(r))return;switch(r[0]){
+    case 'spawn':parts.push(`create a ${r[2]}/${r[3]}${(r[4]&&r[4].length)?' '+r[4].join('/'):''}`);break;
+    case 'ramp':parts.push(`ramp +${r[1]||1} mana`);break;
+    case 'anthem':parts.push(`enemy creatures +${r[1]||0}/+${r[2]||0}${(r[3]&&r[3].length)?' & '+r[3].join('/'):''} (EOT)`);break;
+    case 'bloodpact':parts.push(`Pit's Tithe — drain ${r[1]||1} on each death`);break;
+    case 'bossHeal':parts.push(`enemy gains ${r[1]||0} life`);break;
+    case 'cmdBuff':parts.push(`commander +${r[1]||0}/+0`);break;
+    case 'rule':parts.push(`rule — ${r[2]||r[1]||''}`);break;
+    case 'bossrule':parts.push(`enemy rule — ${r[2]||r[1]||''}`);break;
+    default:parts.push(r[0]);
+  }});
+  const TL={destroyMaxPow:'destroy your strongest creature',destroyMinPow:'you sacrifice your weakest creature',destroyTop2:'destroy your two strongest creatures',destroyToughLE2:'destroy your creatures with toughness ≤2',minusAll2:'your creatures −2/−2',wither3:'your strongest creature −3/−3',walkerMinLoy3:'your least-loyal planeswalker −3 loyalty'};
+  if(fx.target)parts.push(TL[fx.target]||(''+fx.target));
+  if(fx.selfLoss)parts.push(`you lose ${fx.selfLoss} life`);
+  return parts.join('; ');
+}
+/* P31: the expandable body — creature P/T + keywords (from the spawn run), type/cost/colours recap, effect summary, oracle text, flavour. */
+function fxExpandBody(fx,c){if(!fx||typeof fx!=='object')return '';const lines=[];
+  const runs=fx.run?(Array.isArray(fx.run[0])?fx.run:[fx.run]):[];
+  const bodies=runs.filter(r=>Array.isArray(r)&&r[0]==='spawn').map(r=>`<b>${r[2]}/${r[3]}</b>${(r[4]&&r[4].length)?' — '+r[4].join(', '):''} <i>${r[1]}</i>`);
+  if(bodies.length)lines.push(`<div class="fxstat">${bodies.length>1?'Bodies':'Body'}: ${bodies.join(' · ')}</div>`);
+  else if(fx.type==='creature'&&(fx.p!=null||fx.t!=null))lines.push(`<div class="fxstat"><b>${fx.p||0}/${fx.t||0}</b>${(fx.kw&&fx.kw.length)?' — '+fx.kw.join(', '):''}</div>`);
+  const cols=(fx.color?String(fx.color).split(''):[]);
+  lines.push(`<div class="fxstat" style="color:var(--bone-dim)">${fx.type||'spell'} · cost ${fx.cost||0} · ${cols.length?cols.join(''):'colourless'}</div>`);
+  const eff=fxEffectSummary(fx);if(eff)lines.push(`<div class="fxstat"><b>Effect:</b> ${eff}</div>`);
+  if(fx.text)lines.push(`<div class="manaline" style="margin-top:2px;color:var(--bone-dim)">${fx.text}</div>`);
+  if(fx.flav)lines.push(`<div class="manaline" style="font-style:italic;color:var(--bone-dim);opacity:.85">${fx.flav}</div>`);
+  return `<div class="fxbody" style="flex:1 0 100%;margin-top:4px;padding-left:4px;border-left:2px solid var(--bone-dim)">${lines.join('')}</div>`;
+}
 function deckToolsHTML(){
   const disc=`<p class="manaline" style="margin:2px 0 8px;line-height:1.5">The dungeon keeps ${ENs()}'s deck as a known, ordered pile (top first). Look, reorder, scry, mill, exile, shuffle, force discards — and now <b>tutor / reanimate</b>: from a 👁 look or 🤚 hand reveal, send a card to hand, library, graveyard, exile, or (for a creature) straight onto the battlefield. Use 🃏 Draw to make ${ENs()} draw.</p>`;
-  const fxItem=(c,actions)=>{const fx=FX[c.key]||{};return `<div class="libitem"><div class="li-h"><span class="li-n">${fx.n||c.name||'card'}</span><span class="cost">${fx.cost||0}</span><span class="typechip ${fx.type||'spell'}">${fx.type||'spell'}</span>${fxColorDots(fx)}</div>${actions?`<div class="li-a">${actions}</div>`:''}${fx.text?`<div class="manaline" style="flex:1 0 100%;margin-top:3px;color:var(--bone-dim)">${fx.text}</div>`:''}</div>`;};
+  /* P31: rows collapse to a one-line summary by default; the ▸ chevron expands the full stats/effect body (tracked on _dt.expanded / _dt.expandAll — transient view state). */
+  const fxItem=(c,actions)=>{const fx=FX[c.key]||{};const rid=(c.id!=null)?c.id:null;const exp=rid!=null&&(_dt.expandAll||(_dt.expanded||[]).indexOf(rid)>=0);
+    const chev=rid!=null?`<button class="tiny pchev" title="${exp?'collapse':'expand — full stats & effect'}" onclick="dtToggleCard(${rid})">${exp?'▾':'▸'}</button>`:'';
+    return `<div class="libitem${exp?' exp':''}"><div class="li-h">${chev}<span class="li-n">${fx.n||c.name||'card'}</span><span class="cost">${fx.cost||0}</span><span class="typechip ${fx.type||'spell'}">${fx.type||'spell'}</span>${fxColorDots(fx)}</div>${actions?`<div class="li-a">${actions}</div>`:''}${exp?fxExpandBody(fx,c):''}</div>`;};
   if(_dt.mode==='play'){const pay=_dt.payMana!==false;
     const playRow=(c,zone,i)=>fxItem(c,`<button class="tiny ember" onclick="dtPlayCard('${zone}',${i})">▸ play</button>`);
     const libTop=S.lib.slice(0,Math.min(S.lib.length,dtN()));
     const sect=(label,rows,emptyMsg)=>`<div class="subh" style="margin-top:12px"><span>${label}</span></div>${rows.length?rows.join(''):`<p class="manaline">${emptyMsg}</p>`}`;
     return `<h2>🎴 Play a card for ${ENs()}</h2>${disc}
-    <div class="btnrow"><span class="lab">mana</span><button class="tiny ${pay?'on gold':''}" onclick="_dt.payMana=true;dtRender()">⛁ spend mana</button><button class="tiny ${pay?'':'on'}" onclick="_dt.payMana=false;dtRender()">free (no cost)</button><span class="manaline">usable <b style="color:var(--gold)">${usableMana()}</b> / pool ${S.bossMana||0}</span></div>
+    <div class="btnrow"><span class="lab">mana</span><button class="tiny ${pay?'on gold':''}" onclick="_dt.payMana=true;dtRender()">⛁ spend mana</button><button class="tiny ${pay?'':'on'}" onclick="_dt.payMana=false;dtRender()">free (no cost)</button><span class="manaline">usable <b style="color:var(--gold)">${usableMana()}</b> / pool ${S.bossMana||0}</span>${dtExpandAllBtn()}</div>
     <p class="manaline" style="margin:6px 0 0">Puts the card on the stack — it resolves like any enemy spell (removal hits your board, burn/drain applies, permanents spawn). Lands instead add a mana source.</p>
     ${sect(`From hand (${S.hand.length})`,S.hand.map((c,i)=>playRow(c,'hand',i)),"Their hand is empty.")}
     ${sect(`From the top of the library (${libTop.length} of ${S.lib.length})`,libTop.map((c,i)=>playRow(c,'lib',i)),"Library is empty.")}
@@ -954,7 +993,7 @@ function deckToolsHTML(){
     const moveActs=(c,i)=>{const t=(FX[c.key]&&FX[c.key].type)||'spell';const canBoard=(t==='creature');return `<button class="tiny ok" onclick="dtBrowseMove(${i},'hand')">✋ hand</button>${canBoard?`<button class="tiny ember" onclick="dtBrowseMove(${i},'battlefield')">▸ board</button>`:''}<button class="tiny" onclick="dtBrowseMove(${i},'graveyard')">⚰ gy</button><button class="tiny" onclick="dtBrowseMove(${i},'exile')">✖ exile</button><button class="tiny" onclick="dtBrowseMove(${i},'libbottom')">⤓ bottom</button>`;};
     return `<h2>📖 Browse ${ENs()}'s library</h2>${disc}
     <p class="manaline">Viewing the whole library reveals hidden info — it <b>shuffles</b> when you leave. Filter by card type:</p>
-    <div class="btnrow" style="flex-wrap:wrap;gap:5px">${filterBtns}</div>
+    <div class="btnrow" style="flex-wrap:wrap;gap:5px">${filterBtns}${dtExpandAllBtn()}</div>
     <div style="margin-top:8px;max-height:46vh;overflow:auto">${rows.length?rows.map(({c,realIdx})=>fxItem(c,moveActs(c,realIdx))).join(''):'<p class="manaline">No cards of that type in the library.</p>'}</div>
     <div class="btnrow" style="margin-top:10px"><button class="tiny" onclick="dtBrowseExit()">🔀 Shuffle &amp; back</button></div>`;}
   if(_dt.mode==='discard'){return `<h2>🗑 Make ${ENs()} discard</h2>${disc}
@@ -1132,7 +1171,7 @@ function killMy(c){/* route a destroyed player permanent: commander→command zo
    killMy/removeRef). Owner-aware: the player's hand & library are PHYSICAL (the card simply leaves the
    app — you hold it); the enemy's hidden zones are modelled, and a board body (which has no FX key) is
    moved carrying its name so the zone chips can still label it. A token that leaves the battlefield ceases. */
-function _movedCard(obj){return {key:obj.key||null,name:obj.name||'card',_moved:true,color:(obj.color||[]).slice()};}
+function _movedCard(obj){return {id:S.nextId++,key:obj.key||null,name:obj.name||'card',_moved:true,color:(obj.color||[]).slice()};}/* P31: give moved card records a stable id so deck-tools rows can track expand state */
 function _detachBoard(obj){let i=S.tokens.indexOf(obj);if(i>=0){S.tokens.splice(i,1);return 'enemy';}let ea=(S.enemyArtifacts||[]).indexOf(obj);if(ea>=0){S.enemyArtifacts.splice(ea,1);return 'enemy';}let ee=(S.enemyEnchants||[]).indexOf(obj);if(ee>=0){S.enemyEnchants.splice(ee,1);return 'enemy';}let cat=null;["creatures","artifacts","enchants","walkers"].forEach(k=>{if(S.my[k].indexOf(obj)>=0)cat=k;});if(cat){obj._cat=cat;S.my[cat].splice(S.my[cat].indexOf(obj),1);return 'player';}return null;}
 function moveBoardCard(obj,to,quiet){if(!obj)return;/* P14.6: quiet suppresses per-card log + render for bulk ops (caller renders + logs a summary once) */
   if(obj.isCmd){sendCmdToZone(obj,false);return;}/* a commander to any zone → command zone (clean) */
