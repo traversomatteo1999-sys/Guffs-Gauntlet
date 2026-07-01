@@ -1132,7 +1132,7 @@ function resolveAttack(attackers,assign){ // assign: {attId:[blockerObjs]}
     let bl=(assign[att.id]||[]).filter(Boolean);
     if(bl.length>0&&bl.length<minBlockers(att))bl=[];/* P18.1: an illegal partial (under-min / menace) block does NOT count — the attacker is unblocked (full face/trample). approveCombat already refuses this state; this keeps the live prediction honest and guarantees a menace attacker never gets "blocked by one" math. */
     const attDS=kw(att,'double strike'),attFSonly=kw(att,'first strike')&&!attDS;
-    const attPow=hasMarker(att,'deals no combat dmg')?0:effP(att);/* P14.2: "deals no combat dmg" → 0 */
+    const attPow=(hasMarker(att,'deals no combat dmg')||(S.combat&&(S.combat.prevented||[]).indexOf(att.id)>=0))?0:effP(att);/* P14.2: persistent "deals no combat dmg" marker → 0 · P32: transient per-combat "prevent this attacker's damage" → 0 (no face/trample/attacker-lifelink; it can still die to blockers) */
     const attTramp=kw(att,'trample'),attDeath=kw(att,'deathtouch'),attIndest=kw(att,'indestructible'),attPrev=hasMarker(att,'prevents combat dmg to it'),attLL=kw(att,'lifelink');
     if(!bl.length){const out=attPow*(attDS?2:1);face+=out;perAtt.push({att,toFace:out});if(attLL)attLifelink+=out;return;}
     /* P18.2: proper two-step (first-strike) combat with simultaneous damage within each step. Fixes blocker-side first/double strike (a first-strike blocker deals before a non-first-strike attacker, so it can kill the attacker before taking damage) and lifelink counting only damage ACTUALLY dealt (not over a protected/damage-prevented blocker). */
@@ -1341,7 +1341,7 @@ function vaelAttackers(){let a=S.tokens.filter(c=>(!c.sick||kw(c,'haste'))&&!c.t
   return cap(a);}
 /* P4.1: resolve every pending item top-down, then CLEAR the resolved/countered items off the stack — WITHOUT advancing the phase. Phase advance is solely Continue ▸ (flowClick→advancePhase), so you can cast → resolve → cast again within one phase (multiple stacks per phase). */
 function resolveStack(){if(S.over)return;S.stackProposal=null;for(let i=S.plays.length-1;i>=0;i--){const p=S.plays[i];if(p&&p.status==='pending')resolvePlay(i);}S.plays=S.plays.filter(p=>p.status==='pending');if(!S.plays.length)hidePlays();render();}
-function openCombat(dir,attackers,pool,assign,target){S.stackProposal=null;/* P4.4: an instant-speed window proposal's window closes when combat begins (avoids a proposal layered over the combat resolver) */S.combat={dir,attackers,pool,assign,target:target||{}};$("combatTitle").textContent=dir==='you'?`Your attack — ${ENs()} proposes blocks. Edit, then approve.`:`${ENs()} attacks — assign your blockers (and check targets), then approve.`;renderCombat();$("resolver").classList.add("show");}
+function openCombat(dir,attackers,pool,assign,target){S.stackProposal=null;/* P4.4: an instant-speed window proposal's window closes when combat begins (avoids a proposal layered over the combat resolver) */S.combat={dir,attackers,pool,assign,target:target||{},prevented:[]};/* P32: transient per-combat "prevent this attacker's damage" ids (cleared with S.combat when combat ends) */$("combatTitle").textContent=dir==='you'?`Your attack — ${ENs()} proposes blocks. Edit, then approve.`:`${ENs()} attacks — assign your blockers (and check targets), then approve.`;renderCombat();$("resolver").classList.add("show");}
 function cancelCombat(){S.combat=null;$("resolver").classList.remove("show");render();}
 function combatUsed(){const set=new Set();Object.values(S.combat.assign).forEach(arr=>arr.forEach(o=>set.add(o)));return set;}
 function renderCombat(){
@@ -1350,12 +1350,14 @@ function renderCombat(){
     const elig=S.combat.pool.filter(b=>!used.has(b)&&legalBlock(a,b));
     const assigned=S.combat.assign[a.id]||[];
     const tgt=(S.combat.target&&S.combat.target[a.id])||'you';
+    const prevented=(S.combat.prevented||[]).indexOf(a.id)>=0;/* P32 */
     const tsel=(vael&&wks.length)?`<div class="btnrow"><span class="lab">target</span><select onchange="combatTarget('${a.id}',this.value)"><option value="you" ${tgt==='you'?'selected':''}>you</option>${wks.map(w=>`<option value="${w.id}" ${''+tgt===''+w.id?'selected':''}>↳ ${w.name} (${w.loyalty})</option>`).join("")}</select></div>`:'';
     const el=document.createElement("div");el.className="blockrow";
-    el.innerHTML=`<div class="ba">${cnm(a)} ${effP(a)}/${effT(a)} ${(a.kw||[]).length?'<span class="manaline">['+a.kw.join(', ')+']</span>':''}${blockLabel(a)}</div>
+    el.innerHTML=`<div class="ba">${cnm(a)} ${effP(a)}/${effT(a)} ${(a.kw||[]).length?'<span class="manaline">['+a.kw.join(', ')+']</span>':''}${blockLabel(a)}${prevented?' <span class="manaline">🛡 dmg prevented</span>':''}</div>
       ${tsel}
       <div class="assigned">${assigned.length?assigned.map((b,bi)=>`<span class="chip">${cnm(b)} ${effP(b)}/${effT(b)}<b onclick="combatDel('${a.id}',${bi})">x</b></span>`).join(""):'<span class="manaline">unblocked</span>'}</div>
-      <div class="btnrow"><select id="cbsel_${a.id}"><option value="">+ blocker...</option>${elig.map((c,ci)=>`<option value="${ci}">${cnm(c)} ${effP(c)}/${effT(c)}</option>`).join("")}</select><button class="tiny azor" onclick="combatAdd('${a.id}')">assign</button></div>`;
+      <div class="btnrow"><select id="cbsel_${a.id}"><option value="">+ blocker...</option>${elig.map((c,ci)=>`<option value="${ci}">${cnm(c)} ${effP(c)}/${effT(c)}</option>`).join("")}</select><button class="tiny azor" onclick="combatAdd('${a.id}')">assign</button></div>
+      <div class="btnrow"><span class="lab">this combat</span><button class="tiny ember" title="negate — remove this attacker from combat" onclick="combatNegate('${a.id}')">🚫 negate</button><button class="tiny ${prevented?'on':''}" title="prevent this attacker's combat damage (it can still die to blockers)" onclick="combatPreventDmg('${a.id}')">🛡 ${prevented?'prevented':'prevent dmg'}</button></div>`;
     box.appendChild(el);
   });
   predictCombat();
@@ -1368,11 +1370,15 @@ function combatTarget(attId,val){if(!S.combat)return;S.combat.target=S.combat.ta
   S.combat.target[attId]=val;renderCombat();}
 function combatAdd(attId){const sel=$("cbsel_"+attId);const ci=parseInt(sel.value,10);if(isNaN(ci))return;const a=S.combat.attackers.find(x=>''+x.id===''+attId);if(!a)return;const cap=maxBlockers(a);if((S.combat.assign[attId]||[]).length>=cap){log("sys",`${a.name} can be blocked by at most ${cap} creature${cap===1?'':'s'}.`);return;}/* P12.2: hard max-blocker cap */const used=combatUsed();const elig=S.combat.pool.filter(b=>!used.has(b)&&legalBlock(a,b));const obj=elig[ci];if(!obj)return;S.combat.assign[attId]=S.combat.assign[attId]||[];S.combat.assign[attId].push(obj);renderCombat();}
 function combatDel(attId,bi){(S.combat.assign[attId]||[]).splice(bi,1);renderCombat();}
+/* P32: per-combat one-shot combat tricks — transient (cleared with S.combat when combat ends). 🚫 negate removes the attacker from THIS combat (deals/takes no combat damage — it simply isn't attacking); 🛡 prevent keeps it in combat (can still be blocked and die) but it deals NO combat damage (a one-shot Fog on that attacker). Both directions; the complement of P14.2's persistent markers. */
+function combatNegate(attId){if(!S.combat)return;const i=S.combat.attackers.findIndex(a=>''+a.id===''+attId);if(i<0)return;const a=S.combat.attackers[i];S.combat.attackers.splice(i,1);delete S.combat.assign[attId];if(S.combat.target)delete S.combat.target[attId];if(S.combat.prevented){const p=S.combat.prevented.indexOf(a.id);if(p>=0)S.combat.prevented.splice(p,1);}log(S.combat.dir==='you'?'you':'dm',`🚫 <b>${cnm(a)}</b>'s attack is negated — out of this combat.`);renderCombat();}
+function combatPreventDmg(attId){if(!S.combat)return;const a=S.combat.attackers.find(x=>''+x.id===''+attId);if(!a)return;S.combat.prevented=S.combat.prevented||[];const i=S.combat.prevented.indexOf(a.id);if(i>=0){S.combat.prevented.splice(i,1);log(S.combat.dir==='you'?'you':'dm',`<b>${cnm(a)}</b>'s combat damage is no longer prevented.`);}else{S.combat.prevented.push(a.id);log(S.combat.dir==='you'?'you':'dm',`🛡 <b>${cnm(a)}</b>'s combat damage is prevented this combat (it can still die to blockers).`);}renderCombat();}
 function predictCombat(){const r=resolveAttack(S.combat.attackers,S.combat.assign);const dead=[...r.deadAtt,...r.deadBlk];let s;
   if(S.combat.dir==='you'){s=`<b>Prediction:</b> ${r.face} damage to ${S.boss.name}'s life.`;}
   else{let toYou=0;const wmap={};r.perAtt.forEach(({att,toFace})=>{const tg=(S.combat.target&&S.combat.target[att.id])||'you';if(tg==='you')toYou+=toFace;else wmap[tg]=(wmap[tg]||0)+toFace;});
     const parts=[`${toYou} to your life`];Object.keys(wmap).forEach(wid=>{const w=S.my.walkers.find(x=>''+x.id===wid);if(w)parts.push(`${wmap[wid]} to ${w.name}`);});s=`<b>Prediction:</b> ${parts.join(", ")}.`;}
   if(dead.length)s+=` Dies: ${dead.map(cnm).join(", ")}.`;
+  {const prev=(S.combat.prevented||[]).map(id=>S.combat.attackers.find(a=>a.id===id)).filter(Boolean);if(prev.length)s+=` 🛡 Damage prevented: ${prev.map(cnm).join(", ")}.`;}/* P32 */
   if(r.attLifelink)s+=` Lifelink ${S.combat.dir==='you'?'you':ENs()} +${r.attLifelink}.`;
   if(r.defLifelink)s+=` Lifelink ${S.combat.dir==='you'?ENs():'you'} +${r.defLifelink}.`;
   /* P12.2: flag illegal partial (under-min / menace) blocks — approveCombat will refuse these, so the prediction above is not what will actually happen. */
