@@ -2151,7 +2151,7 @@ function vaelCombat(){resolveLeftoverPlays();if(S.over)return;const cands=vaelAt
   openCombat('vael',atk,pool,assign,aiTargets(atk));}
 function vaelEnd(){resolveLeftoverPlays();fireEnemyEmblems('endStep');if(S.over)return;if(S.bossManaFrozen){log("dm",`❄ ${ENs()}'s frozen mana thaws (was ${S.bossManaFrozen}).`);S.bossManaFrozen=0;}
   /* P5.2: clear until-end-of-turn anthem buffs (Warren Overrun) — reset temp P/T and strip the granted keywords */
-  [...S.tokens,S.cmd].forEach(c=>{if(c&&(c._tp||c._tt||((c._grantKw||[]).length))){c._tp=0;c._tt=0;(c._grantKw||[]).forEach(k=>{const i=(c.kw||[]).indexOf(k);if(i>=0)c.kw.splice(i,1);});c._grantKw=[];}});
+  clearTempBuffs();/* P40 review-fix: clear until-EOT buffs (anthem/prowess) on BOTH boards at the enemy's end step too — a buff cast on the opponent's turn must still end here */
   clearExpiringTokens();/* P7.1: until-end-of-turn tokens cease at the enemy's end step */
   enemyDiscardToMax();/* P17.3: discard down to 7 (wisely) unless it has "no maximum hand size" */
   log("dm",`${ENs()} ends its turn.`);}
@@ -2180,9 +2180,10 @@ function youUpkeep(){if(S.rules.some(r=>r.side==='you'))log("you",`Your upkeep �
 function youDraw(){log("you",`Draw step — draw your card for the turn.`);}
 function youMain(){/* freeform: use your board tools */}
 function youCombat(){log("you",`Combat — pick attackers in “Your attack,” hit Swing, or Continue to skip.`);enemyInstant("your combat");}
+/* P40.2 (+review-fix): clear EVERY until-end-of-turn buff (anthem / prowess +1/+1 · granted keywords) on BOTH boards — an "until end of turn" effect ends at the current turn's end regardless of which side owns the creature (prowess can be cast at instant speed on the opponent's turn). Called from both youEnd and vaelEnd. */
+function clearTempBuffs(){[...(S.my.creatures||[]),...(S.my.walkers||[]),...(S.tokens||[]),(S.cmd||null)].forEach(c=>{if(c&&(c._tp||c._tt||((c._grantKw||[]).length))){c._tp=0;c._tt=0;(c._grantKw||[]).forEach(k=>{const i=(c.kw||[]).indexOf(k);if(i>=0)c.kw.splice(i,1);});c._grantKw=[];}});}
 function youEnd(){firePlayerEmblems('endStep');if(S.over||S.paused)return;/* P23.2: your auto emblems fire on your end step · review: stop if they felled the boss */enemyInstant("your end step");
-  /* P40.2: clear your until-end-of-turn buffs (prowess +1/+1, any granted kw) at your end step — mirror of vaelEnd for the enemy board */
-  [...(S.my.creatures||[]),...(S.my.walkers||[])].forEach(c=>{if(c&&(c._tp||c._tt||((c._grantKw||[]).length))){c._tp=0;c._tt=0;(c._grantKw||[]).forEach(k=>{const i=(c.kw||[]).indexOf(k);if(i>=0)c.kw.splice(i,1);});c._grantKw=[];}});
+  clearTempBuffs();/* all until-EOT buffs on both boards expire at this turn's end */
   clearExpiringTokens();/* P7.1: until-end-of-turn tokens cease at your end step */log("you",`You end your turn.`);}
 /* P4.4: at instant-speed windows during YOUR turn the enemy MAY (not must) propose an instant — a freedom like a player holding up mana, NOT an every-window event. Reuses the P4.2 visible proposal (context 'window'); the random gate is a placeholder for the P6 when/whether judgment, and the affordable+would-do filter keeps instant-light enemies quiet. Skipped while a combat resolver is open — the mid-combat block-removal hook (kill a blocker AFTER blocks are declared, prune + re-predict combat) is a documented P4.4 follow-up. */
 function enemyInstant(win){if(S.over||S.activeTurn!=='you'||S.stackProposal||S.combat)return;const cands=buildEnemyCandidates(null);/* P6.1: explicit null — a proactive instant-speed window answers no specific spell (the 'counter' value case is dormant) */if(!cands.length)return;
