@@ -1157,7 +1157,7 @@ function resolveAttack(attackers,assign){ // assign: {attId:[blockerObjs]}
 /* P5.2: The Pit's Tithe (bloodpact) — each creature death drains the player by the total bloodpact in play; it lives as a destroyable S.rules entry, so destroying the enchant removes it. */
 function bloodpactAmount(){return (S.rules||[]).reduce((s,r)=>s+(r.bloodpact||0),0);}
 function bloodTithe(){if(S.over)return;const amt=bloodpactAmount();if(amt>0){S.youLife-=amt;bossHealLife(amt);log("dm",`🩸 The Pit's Tithe — a death bleeds you <b>${amt}</b> (you ${S.youLife}, ${ENs()} ${S.boss.life}).`);checkLose();}}
-function removeRef(obj){if(obj===S.cmd){S.cmd.deaths=(S.cmd.deaths||0)+1;const inc=CMD_TAX_DOUBLE?CMD_TAX_BASE*Math.pow(2,S.cmd.deaths-1):CMD_TAX_BASE;S.cmd.tax+=inc;S.cmd.inPlay=false;S.cmd.cost=S.cmd.baseCost+S.cmd.tax;S.cmd.plus=0;S.cmd.minus=0;S.cmd.tapped=false;S.cmd.sick=false;log("dm",`♛ ${S.cmd.n} dies (death #${S.cmd.deaths}) → command zone. Recast now costs <b>${S.cmd.cost}</b> (tax +${S.cmd.tax}).`);bloodTithe();return;}let i=S.tokens.findIndex(c=>c===obj);if(i>=0){S.tokens.splice(i,1);bloodTithe();return;}if(S.my.creatures.indexOf(obj)>=0)killMy(obj);}
+function removeRef(obj){if(obj===S.cmd){S.cmd.deaths=(S.cmd.deaths||0)+1;const inc=CMD_TAX_DOUBLE?CMD_TAX_BASE*Math.pow(2,S.cmd.deaths-1):CMD_TAX_BASE;S.cmd.tax+=inc;S.cmd.inPlay=false;S.cmd.cost=S.cmd.baseCost+S.cmd.tax;S.cmd.plus=0;S.cmd.minus=0;S.cmd.tapped=false;S.cmd.sick=false;log("dm",`♛ ${S.cmd.n} dies (death #${S.cmd.deaths}) → command zone. Recast now costs <b>${S.cmd.cost}</b> (tax +${S.cmd.tax}).`);bloodTithe();return;}let i=S.tokens.findIndex(c=>c===obj);if(i>=0){S.tokens.splice(i,1);bloodTithe();if(!obj.token){const dest=obj.dies==='exile'?'exile':'graveyard';(dest==='exile'?S.exile:S.gy).push(obj._pscope?Object.assign({_moved:true},obj):_movedCard(obj));log("dm",`<b>${obj.name}</b> dies → ${ENs()}'s ${dest} (recurable).`);}/* P35.1: a REAL enemy creature dies to the graveyard as a recurable card; a token still ceases (no zone entry) */return;}if(S.my.creatures.indexOf(obj)>=0)killMy(obj);}
 function killMy(c){/* route a destroyed player permanent: commander→command zone, else graveyard/exile per its setting */
   if(c&&(c.isCmd?c.kind!=='walkers':S.my.creatures.indexOf(c)>=0))bloodTithe();/* P5.2: a creature's death pays the Pit's Tithe */
   if(c.isCmd){sendCmdToZone(c,true);return;}
@@ -2172,12 +2172,29 @@ function _enemyCardToPerm(p){const isEnch=p.type==='enchant';const arr=isEnch?(S
   if(run&&run[0]==='rule'){const m=/lose (\d+) life/i.exec(run[2]||'');if(m){perm.auto={k:'youLose',n:+m[1]};perm.autoOn=true;perm.trigger='yourUpkeep';perm.vsYou=true;}}
   else if(run&&run[0]==='bossrule'&&(run[3]||0)>0){perm.auto={k:'enemyGain',n:run[3]};perm.autoOn=true;perm.trigger='upkeep';}
   arr.push(perm);log("dm",`✦ <b>${perm.name}</b> resolves onto ${ENs()}'s battlefield as a real ${isEnch?'enchantment':'artifact'}${perm.auto?' (⚡ auto)':''}.`);return perm;}
+/* P35.1: an enemy CREATURE card resolves as a REAL, non-token permanent on the enemy board (S.tokens, token:false, carrying its FX key) — it dies to the graveyard as a recurable card, can be bounced/edited, and is the substrate for graveyard play (P35.4). The card's body is the PRIMARY spawn run (or explicit FX p/t); any OTHER runs (extra token spawns, cmdBuff, ramp…) still apply as additional effects, so a "make a 4/3 and two 1/1s" card yields one real 4/3 + two tokens. Token-making SPELLS (sorcery/instant) and ⧉-copies are NOT creature cards and keep spawning tokens. */
+function resolveEnemyCreature(p){
+  const runs=Array.isArray(p.run)?(Array.isArray(p.run[0])?p.run:[p.run]):[];
+  const spawnIdx=runs.findIndex(r=>Array.isArray(r)&&r[0]==='spawn');
+  const key=(p._card&&p._card.key)||null,fx=(key&&FX[key])?FX[key]:null;
+  let body;
+  if(spawnIdx>=0){const r=runs[spawnIdx];body={name:r[1],p:r[2],t:r[3],kw:(r[4]||[]).slice(),color:(r[5]?String(r[5]).split(''):null)};}
+  else body={name:p.n||(fx&&fx.n)||'Creature',p:(fx&&fx.p)||1,t:(fx&&fx.t)||1,kw:(fx&&fx.kw)?fx.kw.slice():[],color:null};
+  const color=(body.color&&body.color.length)?body.color:String(p.color||(fx&&fx.color)||'').split('').filter(c=>'WUBRGC'.indexOf(c)>=0);
+  const sick=!body.kw.map(k=>(''+k).toLowerCase()).includes('haste');
+  const perm={id:S.nextId++,key,name:body.name||p.n||'Creature',p:body.p,t:body.t,baseP:body.p,baseT:body.t,kw:body.kw,color:(color.length?color:((S.boss&&S.boss.colors)||['R']).slice()),sick,tapped:false,plus:0,minus:0,other:[],expires:false,token:false,dies:'graveyard',strength:(fx&&fx.strength)||'mid'};
+  S.tokens.push(perm);
+  log("dm",`🜂 <b>${perm.name}</b> resolves onto ${ENs()}'s battlefield — ${perm.p}/${perm.t}${perm.kw.length?' ('+perm.kw.join(', ')+')':''}${sick?', summoning-sick':''}.`);
+  runs.forEach((r,idx)=>{if(idx!==spawnIdx)applyRun(r);});/* apply the card's OTHER effects (extra token spawns, cmdBuff, ramp…) */
+  if(p.selfLoss){S.youLife-=p.selfLoss;log("dm",`${perm.name} → you lose <b>${p.selfLoss}</b>. (${S.youLife})`);}
+  return perm;}
 function resolvePlay(i){const p=S.plays[i];if(!p||p.status==="resolved")return;if(S.stackProposal&&S.stackProposal.forId===p.id)S.stackProposal=null;p.status="resolved";sfx('resolve');
   if(p._player){if(p._pcmd)resolveCmdToBoard(p);else resolvePlayerItem(p);checkLose();renderPlays();render();return;}
   if(p._enemyCmd){S.cmd.inPlay=true;S.cmd.inHand=false;S.cmd.sick=true;log("dm",`♛ <b>${S.cmd.n}</b> resolves onto ${ENs()}'s battlefield, summoning-sick.`);checkLose();renderPlays();render();return;}/* P29.1: now on the battlefield, not hand/command zone */
   /* P14.3 (supersedes P13.3's player-added _enemyPerm path, now retired with the adder): an enemy ENCHANTMENT/ARTIFACT card resolves to a REAL permanent (P13.3) — destroyable/bounceable, its effect riding on the permanent — instead of the run:['rule']→S.rules shortcut. A mana rock (ramp) still applies its mana AND becomes a permanent body. Each resolve mints a fresh id, so a ⧉-copied card never collides. */
   if(p.type==='enchant'||p.type==='artifact'){const run=Array.isArray(p.run)?p.run:null;const simple=!run||run[0]==='rule'||run[0]==='bossrule'||run[0]==='ramp';
     if(simple){if(run&&run[0]==='ramp')applyRun(p.run);/* a mana rock still ramps; its body becomes the permanent */_enemyCardToPerm(p);checkLose();renderPlays();render();return;}/* else (a special-run enchant/artifact like the Pit's Tithe bloodpact) keeps its existing resolution — don't duplicate it as a permanent */}
+  if(p.type==='creature'&&!p._copy){resolveEnemyCreature(p);checkLose();renderPlays();render();return;}/* P35.1: enemy creature cards enter as REAL permanents (not spawned tokens); token-making spells + copies fall through */
   if(p.run)applyRun(p.run);if(p.target){const msg=applyTarget(p.target,(p.color||'').split('').filter(Boolean));if(msg)log("dm",`${p.n}: ${ENs()} ${msg}.`);else log("dm",`${p.n} — no valid target on your tracked board.`);}if(p.selfLoss){S.youLife-=p.selfLoss;log("dm",`${p.n} → you lose <b>${p.selfLoss}</b>. (${S.youLife})`);}else if(!p.target&&!p.run)log("dm",`${p.n} resolves.`);
   if(p._card&&!p._copy&&p.type!=='enchant'){S.gy.push(p._card);if(p.run&&JSON.stringify(p.run).indexOf('"spawn"')>=0)log("dm",`📜 The <b>${p.n}</b> spell card goes to ${ENs()}'s graveyard — the token it created stays on the battlefield.`);}/* P7.2: when a creature/token spell resolves, make the two facts explicit — the token enters (logged in applyRun), and the same-named spell CARD goes to the graveyard */
   checkLose();renderPlays();render();}
