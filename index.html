@@ -1238,20 +1238,55 @@ function clearExpiringTokens(){
 
 /* ===== YOUR ATTACK → VAEL BLOCKS (AI) ===== */
 function vaelDefenders(){const ds=[...S.tokens.filter(c=>!c.tapped&&!c.phased&&!kw(c,"can't block"))];if(S.cmd.inPlay&&!S.cmd.tapped&&!S.cmd.phased&&!kw(S.cmd,"can't block"))ds.push(S.cmd);return ds;}
+/* P34.2: find a minimal group of available blockers that TOGETHER kill the attacker (combined power ≥ its toughness, or a deathtoucher in the group) — respecting menace min + the attacker's max-blocker cap, capped at 3 bodies to avoid over-committing. Biggest-first so it reaches lethal with the fewest bodies. Returns the group or null. */
+function gangToKill(att,pool){
+  if(kw(att,'indestructible'))return null;
+  const need=minBlockers(att),max=Math.min(maxBlockers(att)===Infinity?99:maxBlockers(att),3);if(need>max)return null;
+  const legal=pool.filter(b=>legalBlock(att,b)&&!b._cmd);if(legal.length<need)return null;
+  const verify=grp=>{const r=resolveAttack([att],{[att.id]:grp});return r.deadAtt.indexOf(att)>=0;};/* P34.2 review-fix: confirm the group ACTUALLY kills it via resolveAttack — correctly accounts for the attacker's first strike / the group's deathtouch / indestructible, unlike a raw power sum (which over-committed into a first-striker) */
+  const cands=[];
+  const dt=legal.filter(b=>kw(b,'deathtouch')).sort((a,b)=>effP(a)-effP(b))[0];/* a deathtoucher (padded to menace-min with the smallest others) */
+  if(dt){const grp=[dt];legal.filter(b=>b!==dt).sort((a,b)=>effP(a)-effP(b)).forEach(b=>{if(grp.length<need)grp.push(b);});if(grp.length>=need&&grp.length<=max)cands.push(grp);}
+  const desc=legal.slice().sort((a,b)=>effP(b)-effP(a));/* biggest-first groups of increasing size (fewest bodies to reach lethal) */
+  for(let n=Math.max(need,1);n<=Math.min(max,desc.length);n++)cands.push(desc.slice(0,n));
+  for(const grp of cands)if(grp.length>=need&&grp.length<=max&&verify(grp))return grp;
+  return null;
+}
 function aiBlocks(attackers){
   const assign={};let avail=vaelDefenders();
   const maxB=parseInt(($("maxBlk")||{}).value,10)||0;let used=0;const room=k=>maxB<=0||(used+k)<=maxB;/* P20.3: global cap on total enemy blockers (Silent Arbiter etc.); 0 = unlimited. A menace attacker that can't reach its min within the remaining cap is left unblocked rather than partially (illegal) blocked. */
+  const smart=enemyLuck()>=0;/* P34.2: standard+ use the gang-block / survival-first / trample-&-first-strike-aware logic; easy stays close to the legacy blocker (luck −1) */
+  const outFace=a=>(hasMarker(a,'deals no combat dmg')?0:effP(a))*(kw(a,'double strike')?2:1);
+  const commit=(att,grp)=>{assign[att.id]=grp;avail=avail.filter(b=>!grp.includes(b));used+=grp.length;};
+  const attFSkillsBlk=(a,b)=>kw(a,'first strike')&&!kw(a,'double strike')&&!(kw(b,'first strike')||kw(b,'double strike'))&&effP(a)>=effT(b)&&!kw(b,'indestructible');/* P34.2: the attacker's first strike kills the blocker before it can deal — so that block doesn't "survive" */
   attackers.slice().sort((a,b)=>threatScore(b)-threatScore(a)).forEach(att=>{
+    if(assign[att.id])return;
     const need=minBlockers(att);const cap=maxBlockers(att);if(need>cap)return;/* P12.2: a creature whose required blockers exceed its max can't be legally blocked at all */let elig=avail.filter(b=>legalBlock(att,b));if(elig.length<need)return;
-    const kills=b=>(effP(b)>=effT(att)||kw(b,'deathtouch'))&&!kw(att,'indestructible');/* P6.3 (folded-in, pre-existing): the enemy can't kill an INDESTRUCTIBLE player attacker by damage or deathtouch — matches resolveAttack — so it won't try a "favorable" block, only chump a big one */const survives=b=>(effT(b)>effP(att)&&!kw(att,'deathtouch'))||kw(b,'indestructible');const ts=combatThreat(att);/* P6.1: block-decision GATES read the legacy-equivalent metric (effP+strength), never the enriched threatScore — so thresholds are byte-identical to pre-P6.1 while the sort above prioritises by full threat */
+    const kills=b=>(effP(b)>=effT(att)||kw(b,'deathtouch'))&&!kw(att,'indestructible');/* P6.3 (folded-in): can't kill an INDESTRUCTIBLE attacker by damage or deathtouch — matches resolveAttack */const survives=b=>(kw(b,'indestructible'))||(effT(b)>effP(att)&&!kw(att,'deathtouch')&&(!smart||!attFSkillsBlk(att,b)));/* P34.2: FS-aware "survives" only at standard+; easy stays legacy */const ts=combatThreat(att);const tramp=kw(att,'trample');const pref=(a,b)=>smart?(threatScore(a)-threatScore(b)):(effP(a)-effP(b));/* standard+ preserves bombs (threatScore asc); easy keeps the legacy effP asc pick */
     if(need===1){
-      let pick=elig.filter(b=>!b._cmd&&kills(b)&&survives(b)).sort((a,b)=>effP(a)-effP(b))[0];
-      if(!pick&&ts>=4)pick=elig.filter(b=>!b._cmd&&kills(b)).sort((a,b)=>effP(a)-effP(b))[0];
-      if(!pick&&ts>=Math.max(5,S.boss.life*0.4))pick=elig.filter(b=>!b._cmd).sort((a,b)=>effP(a)-effP(b))[0];
+      /* prefer the LEAST-valuable blocker that kills AND survives (standard+ preserves bombs) */
+      let pick=elig.filter(b=>!b._cmd&&kills(b)&&survives(b)).sort(pref)[0];
+      if(!pick&&smart&&ts>=4){const grp=gangToKill(att,elig);if(grp&&room(grp.length)){commit(att,grp);return;}}/* P34.2: gang-block to kill a big threat no single blocker can */
+      if(!pick&&ts>=4)pick=elig.filter(b=>!b._cmd&&kills(b)).sort(pref)[0];/* trade up: a killer that dies */
+      if(!pick&&ts>=Math.max(5,S.boss.life*0.4)&&!(smart&&tramp))pick=elig.filter(b=>!b._cmd).sort((a,b)=>effP(a)-effP(b))[0];/* chump a big threat — but P34.2: don't chump a TRAMPLER (it spills over the chump anyway) at standard+ */
       if(!pick){const cb=elig.find(b=>b._cmd&&kills(b)&&survives(b));if(cb)pick=cb;}
-      if(pick&&room(1)){assign[att.id]=[pick];avail=avail.filter(b=>b!==pick);used++;}
-    }else{const grp=elig.filter(b=>!b._cmd).sort((a,b)=>effP(a)-effP(b)).slice(0,need);if(grp.length>=need&&ts>=4&&room(grp.length)){assign[att.id]=grp;avail=avail.filter(b=>!grp.includes(b));used+=grp.length;}}
+      if(pick&&room(1))commit(att,[pick]);
+    }else{const grp=elig.filter(b=>!b._cmd).sort((a,b)=>effP(a)-effP(b)).slice(0,need);if(grp.length>=need&&ts>=4&&room(grp.length))commit(att,grp);}
   });
+  /* P34.2: SURVIVAL-FIRST — if the still-unblocked attackers would kill the boss, block the biggest down below lethal even with unfavourable/chump blocks (gang a trampler so it can't just spill; keep the commander for last). */
+  if(smart){
+    let incoming=attackers.filter(a=>!assign[a.id]).reduce((s,a)=>s+outFace(a),0);
+    if(incoming>=S.boss.life&&S.boss.life>0){
+      attackers.filter(a=>!assign[a.id]).sort((x,y)=>outFace(y)-outFace(x)).forEach(att=>{
+        if(incoming<S.boss.life)return;const need=minBlockers(att),cap=maxBlockers(att);if(need>cap)return;
+        let elig=avail.filter(b=>legalBlock(att,b));if(elig.length<need)return;
+        if(kw(att,'trample')){let chosen=gangToKill(att,elig);if(!(chosen&&room(chosen.length))){const g=elig.slice().sort((a,b)=>effT(b)-effT(a)).slice(0,need);chosen=(g.length>=need&&room(g.length))?g:null;}/* P34.2 review-fix: can't gang-kill it → still CHUMP with the highest-toughness bodies to shrink the trample spill below lethal (a fog-less survival move), rather than taking the full hit */
+          if(chosen){const absorbed=chosen.reduce((s,b)=>s+effT(b),0);const spill=Math.max(0,effP(att)-absorbed)*(kw(att,'double strike')?2:1);commit(att,chosen);incoming-=(outFace(att)-spill);}return;}
+        const grp=elig.sort((a,b)=>((a._cmd?1:0)-(b._cmd?1:0))||effP(a)-effP(b)).slice(0,need);
+        if(grp.length>=need&&room(grp.length)){commit(att,grp);incoming-=outFace(att);}
+      });
+    }
+  }
   /* P12.2: lure — a lured attacker must be blocked by every able free defender (up to its max). Pre-satisfy the approve-time rule so the proposal isn't rejected; only force it when a LEGAL block (>= minBlockers) can actually be formed. */
   attackers.forEach(att=>{if(!kw(att,'lure'))return;const cap=maxBlockers(att),cur=assign[att.id]||[];const free=avail.filter(b=>legalBlock(att,b)&&cur.indexOf(b)<0);const add=[];for(const b of free){if(cur.length+add.length>=cap)break;if(!room(add.length+(cur.length?0:1)))break;/* P20.3: respect the global blocker cap */add.push(b);}if(add.length&&cur.length+add.length>=minBlockers(att)&&room(add.length)){assign[att.id]=cur.concat(add);avail=avail.filter(b=>add.indexOf(b)<0);used+=add.length;}});
   return assign;
@@ -1267,28 +1302,43 @@ function swing(){ // YOUR attack -> Vael proposes blocks
   const etx=enemyAttackTax();if(etx.mana||etx.life){const parts=[];if(etx.mana)parts.push(`${etx.mana} mana`);if(etx.life)parts.push(`${etx.life} life`);log("sys",`⚠ Enemy attack tax: pay <b>${parts.join(' + ')}</b> per attacker to attack ${S.boss.name} (reminder — apply it yourself).`);}/* P17.4: enemy-side Propaganda — reminder-only (you have no mana pool) */
   openCombat('you',attackers,vaelDefenders(),aiBlocks(attackers));
 }
-function vaelAttackers(){let a=S.tokens.filter(c=>(!c.sick||kw(c,'haste'))&&!c.tapped&&!c.phased&&!kw(c,'defender')&&!kw(c,"can't attack"));if(S.cmd.inPlay&&(!S.cmd.sick||kw(S.cmd,'haste'))&&!S.cmd.tapped&&!S.cmd.phased&&!kw(S.cmd,'defender')&&!kw(S.cmd,"can't attack"))a.push(S.cmd);/* P5.2: haste (innate or anthem-granted, e.g. Warren Overrun / War Horn) overrides summoning sickness for attacking — so a hasty creature can attack the turn it arrives */a=a.filter(c=>effP(c)>0||kw(c,'must attack'));
-  /* P6.3: attack only when EV-POSITIVE. Hold a creature back when the player has a PROFITABLE block for it
-     (a blocker that kills it AND either survives or trades up by threatScore) — UNLESS it must attack, it's
-     evasive (a flyer with no flyer/reach blocker), or the enemy is going wide (more ground attackers than the
-     player has blockers, so the excess connects). This stops suicidal lone attacks while keeping aggro's
-     alpha-strikes and evasive damage — and a hasty arrival still swings the turn it lands when that's EV+. */
+/* P34.1: rough estimate of the combat damage a swing lands on the player — evasive fliers (no fly/reach defender) connect; the player blocks its biggest ground attackers with its available bodies (a trampler spills a little); the rest connect. Feeds the enemy's lethal-push + defensive hold-back. */
+function estimateSwingDamage(atts){
+  const bodies=S.my.creatures.filter(c=>!c.tapped&&!c.phased&&!kw(c,"can't block")).map(b=>({t:effT(b),fly:kw(b,'flying')||kw(b,'reach'),used:false}));
+  const out=a=>(hasMarker(a,'deals no combat dmg')?0:effP(a))*(kw(a,'double strike')?2:1);
+  let dmg=0;
+  atts.slice().sort((a,b)=>out(b)-out(a)).forEach(a=>{const o=out(a);if(o<=0)return;const needFly=kw(a,'flying');
+    let cand=null;bodies.forEach(bd=>{if(bd.used||(needFly&&!bd.fly))return;if(!cand||bd.t>cand.t)cand=bd;});/* the player blocks its biggest threats with its best-toughness ELIGIBLE body (a flier needs a flying/reach body); each body blocks once */
+    if(cand){cand.used=true;if(kw(a,'trample'))dmg+=Math.max(0,o-cand.t);}/* blocked → only a trampler spills (out − blocker toughness), matching resolveAttack */
+    else dmg+=o;});/* unblocked → full damage */
+  return dmg;
+}
+/* P34.1: the player's rough next-turn swing at the boss (all non-defender player creatures; summoning sickness clears next turn). */
+function playerAttackPotential(){return (S.my.creatures||[]).filter(c=>!c.phased&&!kw(c,'defender')&&!kw(c,"can't attack")).reduce((s,c)=>s+effP(c),0);}
+function vaelAttackers(){let a=S.tokens.filter(c=>(!c.sick||kw(c,'haste'))&&!c.tapped&&!c.phased&&!kw(c,'defender')&&!kw(c,"can't attack"));if(S.cmd.inPlay&&(!S.cmd.sick||kw(S.cmd,'haste'))&&!S.cmd.tapped&&!S.cmd.phased&&!kw(S.cmd,'defender')&&!kw(S.cmd,"can't attack"))a.push(S.cmd);/* P5.2: haste overrides summoning sickness for attacking */a=a.filter(c=>effP(c)>0||kw(c,'must attack'));
   const blockers=S.my.creatures.filter(c=>!c.tapped&&!c.phased&&!kw(c,"can't block"));
   const flyDef=blockers.filter(b=>kw(b,'flying')||kw(b,'reach')).length;
   const evasive=c=>kw(c,'flying')&&flyDef===0;                                  // a flyer with no flyer/reach blocker
   const need=c=>minBlockers(c);                                                // P12.2: min blockers (menace folds in as 2)
+  /* P6.3: hold a creature the player can PROFITABLY block (a blocker that kills it AND survives or trades up) — unless it must-attack, is evasive, or the enemy goes wide. P34.1: a deathtoucher trades up when blocked, so it's never "profitably blockable" and always swings. */
   const profitableBlock=at=>{
-    const able=blockers.filter(b=>!(kw(at,'flying')&&!(kw(b,'flying')||kw(b,'reach'))));  // blockers that can legally block it
-    if(able.length<need(at))return false;                                      // can't be legally blocked → it connects
-    return able.some(b=>{                                                      // does a single blocker remove it for value? (proxy incl. a menace gang)
-      const kills=((effP(b)>=effT(at))||kw(b,'deathtouch'))&&!kw(at,'indestructible');/* P6.3: neither damage nor deathtouch kills an INDESTRUCTIBLE attacker (matches resolveAttack) — so it's never "profitably blockable" and always attacks */
+    if(kw(at,'deathtouch'))return false;/* P34.1: deathtouch attacker is glad to be blocked — don't hold it back */
+    const able=blockers.filter(b=>!(kw(at,'flying')&&!(kw(b,'flying')||kw(b,'reach'))));
+    if(able.length<need(at))return false;
+    return able.some(b=>{
+      const kills=((effP(b)>=effT(at))||kw(b,'deathtouch'))&&!kw(at,'indestructible');
       const survives=(effT(b)>effP(at)&&!kw(at,'deathtouch'))||kw(b,'indestructible');
       return kills&&(survives||threatScore(b)<threatScore(at));
     });
   };
+  const maxA=parseInt($("maxAtk").value,10)||0;const cap=r=>{r.sort((x,y)=>effP(y)-effP(x));return (maxA>0&&r.length>maxA)?r.slice(0,maxA):r;};
+  /* P34.1: LETHAL PUSH — if swinging with everything ready is (estimated) lethal, alpha-strike regardless of profitable-block holdbacks. A lethal alpha beats "good trades". */
+  if(S.youLife>0&&estimateSwingDamage(a)>=S.youLife)return cap(a.slice());
   const wide=a.filter(c=>!evasive(c)&&!kw(c,'must attack')).length>blockers.length;
   if(!wide)a=a.filter(c=>kw(c,'must attack')||evasive(c)||!profitableBlock(c));
-  a.sort((x,y)=>effP(y)-effP(x));const maxA=parseInt($("maxAtk").value,10)||0;if(maxA>0&&a.length>maxA)a=a.slice(0,maxA);return a;}
+  /* P34.1: DEFENSIVE HOLD-BACK (standard+) — if the player can lethal the boss next turn and we don't have lethal now, don't tap out: attack only with creatures that still defend (vigilance) or connect for free (evasive / deathtouch / must-attack), keeping grounders home to block the crack-back. */
+  if(enemyLuck()>=0&&S.boss.life>0&&playerAttackPotential()>=S.boss.life)a=a.filter(c=>kw(c,'must attack')||evasive(c)||kw(c,'vigilance')||kw(c,'deathtouch'));
+  return cap(a);}
 /* P4.1: resolve every pending item top-down, then CLEAR the resolved/countered items off the stack — WITHOUT advancing the phase. Phase advance is solely Continue ▸ (flowClick→advancePhase), so you can cast → resolve → cast again within one phase (multiple stacks per phase). */
 function resolveStack(){if(S.over)return;S.stackProposal=null;for(let i=S.plays.length-1;i>=0;i--){const p=S.plays[i];if(p&&p.status==='pending')resolvePlay(i);}S.plays=S.plays.filter(p=>p.status==='pending');if(!S.plays.length)hidePlays();render();}
 function openCombat(dir,attackers,pool,assign,target){S.stackProposal=null;/* P4.4: an instant-speed window proposal's window closes when combat begins (avoids a proposal layered over the combat resolver) */S.combat={dir,attackers,pool,assign,target:target||{}};$("combatTitle").textContent=dir==='you'?`Your attack — ${ENs()} proposes blocks. Edit, then approve.`:`${ENs()} attacks — assign your blockers (and check targets), then approve.`;renderCombat();$("resolver").classList.add("show");}
@@ -1336,7 +1386,7 @@ function approveCombat(){
   /* P12.2: enforce block-count restrictions before resolving. A min-N (incl. menace) attacker blocked by 1..N-1 is an illegal partial block — refuse until it's blocked by N+ or by 0. */
   for(const a of attackers){const n=(assign[a.id]||[]).length,mn=minBlockers(a);if(n>0&&n<mn){log("sys",`${cnm(a)} can't be blocked by fewer than ${mn} creatures — block it with ${mn}+ or leave it unblocked.`);return;}}
   /* P12.2: lure — every able, unassigned blocker must block a lure attacker (up to its max). But lure can't force an ILLEGAL block: if there aren't enough total blockers to reach the attacker's min (e.g. lure+menace vs a lone blocker), it simply can't be blocked, so unblocked is the only legal outcome — don't refuse it. */
-  for(const a of attackers){if(!kw(a,'lure'))continue;const cap=maxBlockers(a),mn=minBlockers(a),assigned=assign[a.id]||[];const elsewhere=b=>Object.keys(assign).some(k=>k!=a.id&&(assign[k]||[]).includes(b));const ableFree=S.combat.pool.filter(b=>legalBlock(a,b)&&!assigned.includes(b)&&!elsewhere(b));if(assigned.length+ableFree.length<mn)continue;if(assigned.length<cap&&ableFree.length){log("sys",`${cnm(a)} has lure — every able blocker must block it.`);return;}}
+  for(const a of attackers){if(!kw(a,'lure'))continue;const cap=maxBlockers(a),mn=minBlockers(a),assigned=assign[a.id]||[];if(mn>cap)continue;/* review-fix: a creature whose min>max is genuinely unblockable — lure can't force the impossible */const elsewhere=b=>Object.keys(assign).some(k=>k!=a.id&&(assign[k]||[]).includes(b));const ableFree=S.combat.pool.filter(b=>legalBlock(a,b)&&!assigned.includes(b)&&!elsewhere(b));if(assigned.length+ableFree.length<mn)continue;const _maxB=parseInt(($("maxBlk")||{}).value,10)||0;const _totUsed=Object.values(assign).reduce((s,arr)=>s+(arr||[]).length,0);const _capRoom=_maxB<=0?Infinity:Math.max(0,_maxB-_totUsed);/* review-fix: respect the global blocker cap (P20.3) — don't demand more lure-blocks than the cap allows, else a legal capped proposal (which aiBlocks honors) is wrongly rejected and combat stalls */if(assigned.length<cap&&ableFree.length&&_capRoom>0){log("sys",`${cnm(a)} has lure — every able blocker must block it.`);return;}}
   attackers.forEach(a=>{const bl=assign[a.id]||[];log("cbt",`${dir==='you'?'attack':ENs()}: ${cnm(a)} (${effP(a)}/${effT(a)}) ${bl.length?'blocked by '+bl.map(cnm).join(" & "):'is unblocked'}.`);});
   const r=resolveAttack(attackers,assign);
   if(dir==='you'){
@@ -1589,6 +1639,7 @@ function payAttackTax(cands){const tx=attackTax();if(!tx.mana&&!tx.life)return{k
   S.bossMana-=pm;if(pl){S.boss.life-=pl;}/* P5.1: spend only what was paid; the frozen portion stays in the pool */
   return{kept,skipped,pm,pl,tx};}
 function aiTargets(attackers){const t={};attackers.forEach(a=>t[a.id]='you');const wks=S.my.walkers.filter(w=>!w.phased);if(!wks.length)return t;
+  if(S.youLife>0&&estimateSwingDamage(attackers)>=S.youLife)return t;/* P34.1: the swing is lethal to the face — send everything at the player, don't divert to a walker */
   const target=wks.slice().sort((x,y)=>threatScore(y)-threatScore(x))[0];/* P6.1: attack the highest-THREAT walker (loyalty + ult-proximity + strength), not just the beefiest */const totalP=attackers.reduce((s,a)=>s+effP(a),0);
   if(totalP<target.loyalty)return t; // can't kill it this turn — go for the face
   let need=target.loyalty;attackers.slice().sort((a,b)=>effP(b)-effP(a)).forEach(a=>{if(need>0){t[a.id]=''+target.id;need-=effP(a);}});
