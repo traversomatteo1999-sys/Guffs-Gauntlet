@@ -62,7 +62,7 @@
 | &nbsp;&nbsp;P7.7 Battles + planar die + Vael's Siege | ✅ **DONE** |
 | &nbsp;&nbsp;P7.8 Synthesized WebAudio SFX + persisted mute | ✅ **DONE** |
 | &nbsp;&nbsp;P7.9 Final polish (per-type accents · dead-code · review) | ✅ **DONE** |
-| **Phase 8 — Real MTG card import (Scryfall)** | 🔨 **built & verified** on branch `phase-8-card-import` (search+decklist+launcher rework); live-online smoke + P9.5 doc overhaul pending |
+| **Phase 8 — Real MTG card import (Scryfall)** | ✅ **DONE & merged to `main`** — P8.1–P8.5 all shipped in `index.html` (verified 2026-07-02: `SCRY` IIFE · `sfFetch/Search/Autocomplete` · `openCardSearch` · `inferEffects` · decklist import · ✎ Create-a-card, all present & offline-gated). *Only remaining: a **manual live-online smoke** against the real `api.scryfall.com` — needs a browser + internet (can't be done headless/offline).* |
 | &nbsp;&nbsp;P8.1 Scryfall service layer + descriptive mapper (+DFC faces) | ✅ **built & verified in `index.html`** (`SCRY` IIFE · `sfFetch/Search/Autocomplete/Collection` · offline gating · `sw.js` v43); live online smoke pending (manual) |
 | &nbsp;&nbsp;P8.2 Effect-inference layer (AI bits + on-cast effects) | ✅ **built & verified** (`inferEffects` · `buildImportedCard` · inline review chips in result rows) |
 | &nbsp;&nbsp;P8.3 ✦ Cast a spell = combined launcher (retire ⚡ Quick Cast) | ✅ **done** — all 3 board ✦ Cast buttons → `openCardSearch`; ⚡ Quick Cast retired (functions + buttons deleted) |
@@ -183,6 +183,10 @@
 | **Phase 39 — Attack-target selection: swing at the enemy, its planeswalkers, or its sieges/battles (+ enemy blocks battle attacks)** | ✅ **DONE & merged** — when a boss siege/battle is in play, each of your attackers picks its target (enemy face · planeswalker · siege/battle) via a per-attacker select in the combat resolver (like the enemy-attack target panel); damage routes to the chosen target (face/loyalty/defense counters, breaking a siege at 0); the enemy can choose to block — or not — attacks aimed at its sieges/battles. See Phase 39 below |
 | &nbsp;&nbsp;P39.1 Per-attacker target select on your swing (enemy · walker · siege/battle) + damage routing | ✅ **DONE & merged** (`renderCombat` you-dir select boss/`w:id`/`b:id`; `approveCombat` routes to life/loyalty/def via `perAtt.toFace`; siege break payoff; `predictCombat` split; hidden when only the face; 11-check jsdom, review clean) |
 | &nbsp;&nbsp;P39.2 Enemy can block attacks aimed at its sieges/battles (aiBlocks defends them; chooses to or not) | ✅ **DONE & merged** (`enemyDefendSiege` — value-chosen legal blocker for a worthwhile siege on target-set; standard+ defends, easy lets it through) |
+| **Phase 40 — Deferred keyword backlog: enters-tapped · prowess · flash + rare-evasion/goad recognition** | ✅ **DONE & merged** — clear the coverage-audit deferred backlog: real **enters-tapped** + **prowess**, and import-recognition for **flash** + the rare-evasion family so nothing is silently dropped. See Phase 40 below |
+| &nbsp;&nbsp;P40.1 Enters-tapped (parse "enters tapped" → the permanent enters tapped; player + enemy creatures) | ✅ **DONE & merged** (`inferEffects`→`props.entersTapped`; `resolvePlayerItem`/`resolveEnemyCreature` honour it; 4-check jsdom) |
+| &nbsp;&nbsp;P40.2 Prowess (noncreature spell → controller's prowess creatures +1/+1 EOT; both sides) | ✅ **DONE & merged** (`firePlayerProwess`/`fireEnemyProwess` on noncreature resolve; `youEnd` clears the player's until-EOT buffs like `vaelEnd` does the enemy's) |
+| &nbsp;&nbsp;P40.3 Recognise flash + rare evasion (shadow/horsemanship/skulk/daunt/fear/intimidate) on import | ✅ **DONE & merged** (added to `KW_LIST` (flash/prowess) + `RECOGNISED_KW` (all) so imports round-trip + display; rare evasion is a display-only badge — no block-eligibility engine, a manual note; goad stays the existing `◐` marker; draw/tutor one-shots stay reminders — no player library) |
 
 ---
 
@@ -2650,6 +2654,20 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 
 **ACs:** the enemy can block an attacker aimed at its siege/battle (chosen by value — protect a worthwhile siege, let a doomed/low-value one through); a blocked battle-attacker fights the blocker and only its excess/trample reaches the siege; menace/`maxBlk` rules hold; an unblocked battle-attacker removes defense; difficulty scales the choice.
 **Verify:** jsdom — an attacker targeting the enemy siege can be assigned an enemy blocker by `aiBlocks`; the enemy blocks when the siege is worth saving and declines when not; a blocked battle-attacker's excess still hits the siege; `maxBlk`/menace respected; syntax + id-diff. (Builds on P39.1, P34, P12.2/P20.3.)
+
+
+# PHASE 40 — Deferred keyword backlog: enters-tapped · prowess · flash + rare-evasion recognition ✅ DONE & merged
+
+**Built 2026-07-02.** Clears the P12.2 coverage-audit's remaining deferred items so no card mechanic is silently dropped. Two real mechanics + import recognition for the rest.
+
+## P40.1 — Enters-tapped
+`inferEffects` parses `"enters (the battlefield) tapped"` → `props.entersTapped`. A player creature with the flag resolves `tapped:true` (`resolvePlayerItem`); an enemy creature card resolves tapped if its FX carries `entersTapped` (`resolveEnemyCreature`, forward-compatible). Scoped to creatures (the meaningful case — a tapped creature can't block the turn it arrives). **Verify:** jsdom — parse; a flagged player creature enters tapped, a normal one untapped.
+
+## P40.2 — Prowess
+`prowess` is a real keyword: when a **noncreature spell resolves**, its controller's prowess creatures get **+1/+1 until end of turn** (`firePlayerProwess` on a player noncreature resolve in `resolvePlayerItem`; `fireEnemyProwess` on an enemy noncreature resolve in `resolvePlay` — enchant/artifact, planeswalker, and spell paths). Buffs ride the temp `_tp/_tt` channel; **`youEnd` now clears the player's until-EOT buffs** (mirror of `vaelEnd` for the enemy), so prowess expires correctly. A creature spell does NOT trigger it. **Verify:** jsdom — a noncreature spell buffs a prowess creature +1/+1; a creature spell doesn't; the buff expires at end of turn; both sides.
+
+## P40.3 — Flash + rare-evasion recognition
+Added `flash`/`prowess` to `KW_LIST` (creator toggles) and `flash`/`prowess`/`shadow`/`horsemanship`/`skulk`/`daunt`/`fear`/`intimidate` to the importer's `RECOGNISED_KW`, so imported cards **round-trip and display** these keywords instead of dropping them. **flash** is a cast-at-instant reminder (this sandbox already casts freely); the **rare-evasion family** is a display-only badge — full block-eligibility (which needs creature-subtype tracking) is left as a manual note. **goad** stays the existing manual `◐` status marker; **draw/tutor one-shots** stay reminders (the player has no library to draw from). **Verify:** jsdom — a Scryfall-style import carrying these keywords maps them onto the card.
 
 ---
 
