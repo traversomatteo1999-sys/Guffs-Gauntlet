@@ -102,58 +102,58 @@
 | &nbsp;&nbsp;P15.3 Persist unused satchel items across runs (profile stash) | ✅ **DONE & verified** (`p.stash`; `saveUnusedItems()` in win/lose before `clearSave`; `applyStashItems()` after `applyPendingPurchases` in restart/startNewDescent; separate bucket, no double-count. 7-check jsdom) |
 | &nbsp;&nbsp;P15.4 Difficulty-scaled healing on descend | ✅ **DONE & verified** (`DESCENT_HEAL` table: easy ½ missing <70%, std ⅓ <50%, brutal ¼ <25%; in `advance()` after `enterRoom`, strict `<`, floor, capped; only on room transitions. 9-check jsdom) |
 | **Phase 16 — Token variety (treasure/blood/utility · enemy tokens · enemy uses them) + between-boss life reset to 40** | ✅ **DONE & merged** — enemy can be given tokens (creatures share the player's token library) · resource tokens (Treasure · Blood · Clue · Food) for both sides, with expiry · enemy actively sacrifices Treasure for mana · descending past a boss resettles life >40 back to 40 (spent magic, not damage). See Phase 16 below |
-| &nbsp;&nbsp;P16.1 Deploy tokens to the enemy board (creatures share the player's token library) | ⬜ planned |
-| &nbsp;&nbsp;P16.2 Resource-token types — Treasure · Blood · Clue · Food (both sides, with expiry) | ⬜ planned |
-| &nbsp;&nbsp;P16.3 Enemy actively uses its tokens (sacrifices Treasure for mana; temporary tokens expire) | ⬜ planned |
-| &nbsp;&nbsp;P16.4 Between-boss life reset: life above 40 resettles to 40 on descend (spent magic, not damage) | ⬜ planned |
-| &nbsp;&nbsp;P16.5 Info/instructions for the new token + life-reset rules | ⬜ planned |
+| &nbsp;&nbsp;P16.1 Deploy tokens to the enemy board (creatures share the player's token library) | ✅ **DONE** |
+| &nbsp;&nbsp;P16.2 Resource-token types — Treasure · Blood · Clue · Food (both sides, with expiry) | ✅ **DONE** |
+| &nbsp;&nbsp;P16.3 Enemy actively uses its tokens (sacrifices Treasure for mana; temporary tokens expire) | ✅ **DONE** |
+| &nbsp;&nbsp;P16.4 Between-boss life reset: life above 40 resettles to 40 on descend (spent magic, not damage) | ✅ **DONE** |
+| &nbsp;&nbsp;P16.5 Info/instructions for the new token + life-reset rules | ✅ **DONE** |
 | **Phase 17 — Enemy engine overhaul: lands-only mana · opening hand & mulligan · max-hand discard · attack-tax targeting** | ✅ **DONE & merged** — enemy starts with **0** mana, no scrounge floor, mana only from played lands (finalizes P14.10) · shuffle + draw a **7-card** opening hand, mulligan (reshuffle/redraw) while fewer than 3 lands · max hand size **7**, discard wisely at end of turn unless "no maximum hand size" · attack-tax **target selector** (player / planeswalkers / both) + **enemy-side** attack tax (Propaganda/Ghostly Prison/Oathkeeper the enemy controls). See Phase 17 below |
-| &nbsp;&nbsp;P17.1 Enemy mana strictly from played lands — remove opening pre-seed + scrounge floor (finalizes P14.10) | ⬜ planned |
-| &nbsp;&nbsp;P17.2 Shuffle + 7-card opening hand + mulligan while &lt;3 lands | ⬜ planned |
-| &nbsp;&nbsp;P17.3 Max hand size 7 — discard-to-7 wisely at end of turn (unless "no maximum hand size") | ⬜ planned |
-| &nbsp;&nbsp;P17.4 Attack-tax target selector (player/walkers/both) + enemy-side attack tax | ⬜ planned |
+| &nbsp;&nbsp;P17.1 Enemy mana strictly from played lands — remove opening pre-seed + scrounge floor (finalizes P14.10) | ✅ **DONE** |
+| &nbsp;&nbsp;P17.2 Shuffle + 7-card opening hand + mulligan while &lt;3 lands | ✅ **DONE** |
+| &nbsp;&nbsp;P17.3 Max hand size 7 — discard-to-7 wisely at end of turn (unless "no maximum hand size") | ✅ **DONE** |
+| &nbsp;&nbsp;P17.4 Attack-tax target selector (player/walkers/both) + enemy-side attack tax | ✅ **DONE** |
 | **Phase 18 — Combat correctness: menace enforcement + keyword automation audit** | ✅ **DONE & merged** — **⚠ CONFIRMED BUG: enemy menace creatures are blockable by ONE** (works for player creatures — asymmetry). Fix `minBlockers` short-circuit + enemy-keyword carry, then audit deathtouch · lifelink · trample · first/double strike · vigilance · indestructible · protection so they auto-resolve identically for **player and enemy**, both directions. See Phase 18 below |
-| &nbsp;&nbsp;P18.0 Diagnostic FIRST — pin the exact cause of the enemy-menace bug + capture regression tests (both directions) | ⬜ planned |
-| &nbsp;&nbsp;P18.1 Fix menace: blockable only by 2+, counts as blocked only when ≥2 (enemy + player) — `minBlockers` short-circuit + keyword carry | ⬜ planned |
-| &nbsp;&nbsp;P18.2 Combat keyword automation audit (deathtouch · lifelink · trample · strikes · vigilance · indestructible · protection) | ⬜ planned |
+| &nbsp;&nbsp;P18.0 Diagnostic FIRST — pin the exact cause of the enemy-menace bug + capture regression tests (both directions) | ✅ **DONE** |
+| &nbsp;&nbsp;P18.1 Fix menace: blockable only by 2+, counts as blocked only when ≥2 (enemy + player) — `minBlockers` short-circuit + keyword carry | ✅ **DONE** |
+| &nbsp;&nbsp;P18.2 Combat keyword automation audit (deathtouch · lifelink · trample · strikes · vigilance · indestructible · protection) | ✅ **DONE** |
 | **Phase 19 — Symmetric enemy counters: poison · commander damage · energy · experience** | ✅ **DONE & merged** — the enemy tracks the same counters the player does (today `S.counters` is player-only): poison (10 = enemy dies), commander damage (your commander dealing 21 = enemy dies), energy, experience — with adjusters, render, win-condition wiring, and auto-accrual of your commander's combat damage to the enemy. See Phase 19 below |
-| &nbsp;&nbsp;P19.1 Enemy counter state + Tools-panel UI/adjusters/render (poison/10 · cmd-dmg/21 · energy · exp) | ⬜ planned |
-| &nbsp;&nbsp;P19.2 Win-condition wiring + auto-accrual (enemy poison 10 / your cmd-dmg 21 → boss falls; commander combat dmg accrues) | ⬜ planned |
+| &nbsp;&nbsp;P19.1 Enemy counter state + Tools-panel UI/adjusters/render (poison/10 · cmd-dmg/21 · energy · exp) | ✅ **DONE** |
+| &nbsp;&nbsp;P19.2 Win-condition wiring + auto-accrual (enemy poison 10 / your cmd-dmg 21 → boss falls; commander combat dmg accrues) | ✅ **DONE** |
 | **Phase 20 — Combat-count restrictions: blockable-by-N (creatures, both sides) · attackable-by-N (planeswalkers) · enemy max-blockers box** | ✅ **DONE & merged** — per-creature "blockable only by N" on the unified drawer (player + enemy; the existing `block:{min,max}`, surfaced/confirmed) · per-planeswalker "attackable only by N" cap on how many creatures may attack it · a "max blockers" box in the enemy box, mirroring the existing "max attackers". See Phase 20 below |
-| &nbsp;&nbsp;P20.1 Creatures: "blockable only by N" (min/max) on the unified player+enemy drawer | ⬜ planned |
-| &nbsp;&nbsp;P20.2 Planeswalkers: "attackable only by N" — cap attackers assignable to a walker (player + enemy) | ⬜ planned |
-| &nbsp;&nbsp;P20.3 Enemy "max blockers" box mirroring "max attackers" (global cap on enemy blockers) | ⬜ planned |
+| &nbsp;&nbsp;P20.1 Creatures: "blockable only by N" (min/max) on the unified player+enemy drawer | ✅ **DONE** |
+| &nbsp;&nbsp;P20.2 Planeswalkers: "attackable only by N" — cap attackers assignable to a walker (player + enemy) | ✅ **DONE** |
+| &nbsp;&nbsp;P20.3 Enemy "max blockers" box mirroring "max attackers" (global cap on enemy blockers) | ✅ **DONE** |
 | **Phase 21 — Items reliably expire after use (consumables consumed; no stale-index mis-removal)** | ✅ **DONE & merged** — user reports items not expiring after use. `useBoon` does splice the consumed item, so the prime suspect is a **stale array-index** in the satchel Use handler (removing the wrong/no item). Diagnose, switch to a stable item identity, add a regression test. See Phase 21 below |
-| &nbsp;&nbsp;P21.1 Consumables reliably consumed on use (stable uid instead of array index) | ⬜ planned |
+| &nbsp;&nbsp;P21.1 Consumables reliably consumed on use (stable uid instead of array index) | ✅ **DONE** |
 | **Phase 22 — Editable enemy emblem value (tune the magnitude: +2/+2 vs +1/+1, drain/gain/draw N)** | ✅ **DONE & merged** — each enemy emblem/artifact/enchant carries `auto:{k,n}` but `n` isn't editable in the row. Add a value field so the magnitude can be tuned (anthem/buff +N/+N, drain/gain/draw N), with an optional split power/toughness for buff effects. See Phase 22 below |
-| &nbsp;&nbsp;P22.1 Per-emblem value editor for `auto.n` (all auto sources; optional p/t split) | ⬜ planned |
+| &nbsp;&nbsp;P22.1 Per-emblem value editor for `auto.n` (all auto sources; optional p/t split) | ✅ **DONE** |
 | **Phase 23 — Phase-out for planeswalkers + player emblems as a full system (mirror the enemy's, with target→colour)** | ✅ **DONE & merged** — add the "phase out" toggle to planeswalkers (the engine already honors `w.phased`; only the UI is missing) · give player emblems the same automation the enemy's have (templates · auto/static/trigger · effects), targetable at player or enemy, with a **blue** box when targeting the enemy and **uncoloured** when targeting the player (mirror of the enemy's red-box convention). See Phase 23 below |
-| &nbsp;&nbsp;P23.1 "Phase out" toggle on planeswalkers (player walkers; enemy walker parity) | ⬜ planned |
-| &nbsp;&nbsp;P23.2 Player emblems: full automation system mirroring the enemy's (templates · auto/static/trigger · effect engine · fire hooks) | ⬜ planned |
-| &nbsp;&nbsp;P23.3 Player emblem targeting (player/enemy) + colour coding (enemy = blue box · player = uncoloured) | ⬜ planned |
+| &nbsp;&nbsp;P23.1 "Phase out" toggle on planeswalkers (player walkers; enemy walker parity) | ✅ **DONE** |
+| &nbsp;&nbsp;P23.2 Player emblems: full automation system mirroring the enemy's (templates · auto/static/trigger · effect engine · fire hooks) | ✅ **DONE** |
+| &nbsp;&nbsp;P23.3 Player emblem targeting (player/enemy) + colour coding (enemy = blue box · player = uncoloured) | ✅ **DONE** |
 | &nbsp;&nbsp;P23.4 Enemy emblem **functional** target toggle (redirect which side the effect hits; unify with the cosmetic vsYou flag) | ✅ **DONE & merged** (`emblemTarget` model · target-aware `emblemEffect`/`applyStaticEmblems` · functional `toggleEmblemVsYou`/`setEmblemTarget` · migrate `vsYou`→`target` · boss-death check when retargeted; 14-check jsdom) |
 | **Phase 24 — Player spell-card zone routing: instants/sorceries → graveyard; X-button permanent removal asks graveyard/exile/none** | ✅ **DONE & merged** — a resolved player instant/sorcery goes to the player graveyard (today it vanishes) · removing a player permanent via the ✕ button opens a popup: graveyard · exile · none. See Phase 24 below |
-| &nbsp;&nbsp;P24.1 Player instants/sorceries route to the graveyard on resolve | ⬜ planned |
-| &nbsp;&nbsp;P24.2 ✕-button removal popup for permanents (graveyard / exile / none) | ⬜ planned |
+| &nbsp;&nbsp;P24.1 Player instants/sorceries route to the graveyard on resolve | ✅ **DONE** |
+| &nbsp;&nbsp;P24.2 ✕-button removal popup for permanents (graveyard / exile / none) | ✅ **DONE** |
 | **Phase 25 — Refresh tab/info descriptions + open the "Your attack" box by default** | ✅ **DONE & merged** — P25.1 (Your-attack box opens by default) + P25.2 (tab notes + ⓘ INFO_TEXT + help refreshed to the built feature set). See Phase 25 below |
-| &nbsp;&nbsp;P25.1 "Your attack" box starts open by default | ⬜ planned |
+| &nbsp;&nbsp;P25.1 "Your attack" box starts open by default | ✅ **DONE** |
 | &nbsp;&nbsp;P25.2 Refresh tab notes + ⓘ INFO_TEXT panels (+ instructions) to match current features | ✅ **DONE & merged** (tab notes + all ⓘ popups (action/enemy/player/commander/battles) + help sections (combat/enemy/emblems) refreshed for P16–P39; every infoBtn key resolves; 20-check jsdom) |
 | **Phase 26 — Slay asks graveyard or exile (enemy creature death destination)** | ✅ **DONE & merged** — clicking ✦ Slay on an enemy creature opens a popup: graveyard or exile (still a death → Pit's Tithe fires; tokens cease regardless). Enemy-side, death-flavoured analog of P24.2. See Phase 26 below |
-| &nbsp;&nbsp;P26.1 Slay → graveyard/exile popup (death routing; tokens cease; commander → command zone) | ⬜ planned |
+| &nbsp;&nbsp;P26.1 Slay → graveyard/exile popup (death routing; tokens cease; commander → command zone) | ✅ **DONE** |
 | **Phase 27 — Collapsible Cards & Tokens sections in the Library** | ✅ **DONE & merged** — make the Library's "Cards" and "Tokens" lists expand/collapse (with a count badge when collapsed) to cut noise, reusing the P12.1 collapse idiom. See Phase 27 below |
-| &nbsp;&nbsp;P27.1 Expand/collapse the Library "Cards" and "Tokens" lists (state persisted) | ⬜ planned |
+| &nbsp;&nbsp;P27.1 Expand/collapse the Library "Cards" and "Tokens" lists (state persisted) | ✅ **DONE** |
 | **Phase 28 — Base-life model + heal items (Grand Elixir +25/25g · Tonic of Vigor +10 base/36g legendary) · item automation · gold rebalance** | ✅ **DONE & merged** — a permanent base-life stat (`youMax`) that Tonic of Vigor raises +10 (and the P16.4 reset + P15.4 descent-heal both track it) · Grand Elixir heals +25 (25g) · automate items where possible · rebalance store gold prices. Refines P15.2; pairs with P16.4. See Phase 28 below |
-| &nbsp;&nbsp;P28.1 Base-life model: `adjLife` stops inflating `youMax`; only max-boons raise base; reset + descent-heal track it | ⬜ planned |
-| &nbsp;&nbsp;P28.2 Grand Elixir (+25 life · 25g) · Tonic of Vigor (+10 base · 36g legendary band) · automate items · gold rebalance | ⬜ planned |
+| &nbsp;&nbsp;P28.1 Base-life model: `adjLife` stops inflating `youMax`; only max-boons raise base; reset + descent-heal track it | ✅ **DONE** |
+| &nbsp;&nbsp;P28.2 Grand Elixir (+25 life · 25g) · Tonic of Vigor (+10 base · 36g legendary band) · automate items · gold rebalance | ✅ **DONE** |
 | **Phase 29 — Commander zone distinction: command zone (recast tax) vs hand (base cost)** | ✅ **DONE & merged** — distinguish where the enemy commander sits: from the **command zone** it recasts at base + the +2-per-death tax (current); if it's been returned to **hand** it casts at **base cost, no tax** (standard MTG). Add a ↩-hand affordance + zone-aware cost; player-commander parity. See Phase 29 below |
-| &nbsp;&nbsp;P29.1 Enemy commander hand vs command zone — base cost from hand, base+tax from command zone (+ ↩ hand, player parity) | ⬜ planned |
+| &nbsp;&nbsp;P29.1 Enemy commander hand vs command zone — base cost from hand, base+tax from command zone (+ ↩ hand, player parity) | ✅ **DONE** |
 | **Phase 30 — Permanent option parity: every permanent gets the options for its kind (both sides)** | ✅ **DONE & merged** — ALL permanents (creature · artifact · enchantment · planeswalker, player AND enemy) get the full option set for their kind: protection-from-colour, **hexproof/shroud** (+ indestructible), markers/deal/copy, and **return-to-hand / exile / graveyard** — with protection/hexproof/shroud actually honoured in targeting. See Phase 30 below |
-| &nbsp;&nbsp;P30.1 Protection-from-colour on planeswalkers — drawer toggles + honoured in targeting/removal | ⬜ planned |
-| &nbsp;&nbsp;P30.2 Walker option parity sweep (token · markers/deal/copy · threat · attack-tax targeted · enemy walker) | ⬜ planned |
-| &nbsp;&nbsp;P30.3 Artifact & enchantment drawer parity (protection · hexproof/shroud/indestructible · markers · threat) | ⬜ planned |
-| &nbsp;&nbsp;P30.4 Universal guarantees — every permanent (both sides) can go to hand/exile/graveyard; prot/hexproof/shroud honoured wherever targetable | ⬜ planned |
-| &nbsp;&nbsp;P30.5 Bulk "return all permanents to library" (scope yours/enemy/both · top/bottom/shuffle · tokens cease) | ⬜ planned |
-| &nbsp;&nbsp;P30.6 Counters on ALL permanents (both sides): give +1/+1 (−1/−1 · named) · ⊖ remove · ↺ reset | ⬜ planned |
+| &nbsp;&nbsp;P30.1 Protection-from-colour on planeswalkers — drawer toggles + honoured in targeting/removal | ✅ **DONE** |
+| &nbsp;&nbsp;P30.2 Walker option parity sweep (token · markers/deal/copy · threat · attack-tax targeted · enemy walker) | ✅ **DONE** |
+| &nbsp;&nbsp;P30.3 Artifact & enchantment drawer parity (protection · hexproof/shroud/indestructible · markers · threat) | ✅ **DONE** |
+| &nbsp;&nbsp;P30.4 Universal guarantees — every permanent (both sides) can go to hand/exile/graveyard; prot/hexproof/shroud honoured wherever targetable | ✅ **DONE** |
+| &nbsp;&nbsp;P30.5 Bulk "return all permanents to library" (scope yours/enemy/both · top/bottom/shuffle · tokens cease) | ✅ **DONE** |
+| &nbsp;&nbsp;P30.6 Counters on ALL permanents (both sides): give +1/+1 (−1/−1 · named) · ⊖ remove · ↺ reset | ✅ **DONE** |
 | &nbsp;&nbsp;P30.7 Enemy commander gets ↺ reset + ⧉ copy (the gap; `copyPermanent` must handle the `cmd` scope) | ✅ **DONE** (built within the P30 sweep — `cmdFieldCard` shows ↺ reset + ⧉ copy; `copyPermanent` handles the `cmd` scope → non-commander token copy; verified 2026-07-01) |
 | **Phase 31 — Expandable enemy cards in the deck-tools (full stats + effects)** | ✅ **DONE & merged** — when looking at the enemy's library (and hand/graveyard/exile) in 🂠 Manipulate enemy deck, each card row expands to show its full stats (P/T + keywords for creatures), cost, colours, oracle text, and mechanical effect — collapsed by default to cut noise. See Phase 31 below |
 | &nbsp;&nbsp;P31.1 Expandable card rows in enemy deck-tools — reveal stats/keywords/effect on click | ✅ **DONE & merged** (`fxItem` collapses to a summary; `dtToggleCard`/`_dt.expanded` + `dtExpandAll`; `fxExpandBody`/`fxEffectSummary`; `_movedCard` ids; 15-check jsdom) |
@@ -725,7 +725,7 @@ A **"📋 Paste a decklist"** mode in the launcher / library:
 
 ---
 
-# PHASE 9 — Complete the player's toolbox + instruction overhaul ⬜ PLANNED
+# PHASE 9 — Complete the player's toolbox + instruction overhaul ✅ DONE & merged
 
 > **Goal.** The app is the *bookkeeper for a real Commander game* — so the player must be able to represent
 > **any** board action a physical card produces, not just the subset wired today. Audit the current
@@ -1219,9 +1219,9 @@ Round-trip the field wherever the other per-permanent props go: `cmdObjFromCfg` 
 **STATUS-table rows (already slotted into the table at the top of this doc — kept here for reference):**
 ```
 | **Phase 13 — Full enemy-card editing + deeper persistent-effect automation** | ✅ **DONE & merged** — modify the enemy's spells/cards (keywords·P/T·counters·markers·stack-edit) at full parity with your own toolbox · fuller enemy artifact/enchantment automation |
-| &nbsp;&nbsp;P13.1 Edit enemy permanents & stack spells (owner-agnostic editor) | ⬜ planned |
-| &nbsp;&nbsp;P13.2 Fuller enemy artifact/enchantment automation | ⬜ planned |
-| &nbsp;&nbsp;P13.3 Enemy artifacts/enchantments as first-class board permanents | ⬜ planned |
+| &nbsp;&nbsp;P13.1 Edit enemy permanents & stack spells (owner-agnostic editor) | ✅ **DONE** |
+| &nbsp;&nbsp;P13.2 Fuller enemy artifact/enchantment automation | ✅ **DONE** |
+| &nbsp;&nbsp;P13.3 Enemy artifacts/enchantments as first-class board permanents | ✅ **DONE** |
 ```
 
 ## P13.1 — Modify the enemy's spells & cards (parity with your own toolbox)
@@ -2019,7 +2019,7 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — `removeMyTo` sends a permanent to `myGy`/`myExile`/nowhere per choice without firing `bloodTithe`; commander ✕ → command zone; a token ✕ ceases (no graveyard entry); cancel leaves state unchanged; syntax + id-diff (only the new popup ids).
 
 
-# PHASE 25 — Refresh tab/info descriptions + open the "Your attack" box by default ⬜ P25.1 DONE · P25.2 (docs) pending
+# PHASE 25 — Refresh tab/info descriptions + open the "Your attack" box by default ✅ DONE & merged (P25.1 + P25.2)
 
 **Specced 2026-06-29, NOT built.** Documentation/UX polish: the tab notes and ⓘ info popups predate the recent feature work and under-describe what the game now does, and the "Your attack" box starts collapsed. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
@@ -2308,7 +2308,7 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — `resetCard('cmd',null)` restores `S.cmd` base P/T + clears counters without changing `tax`/`deaths`; `copyPermanent('cmd',S.cmd.id)` pushes a `token:true`, non-`_cmd` copy to `S.tokens`; the buttons render in `cmdFieldCard`; syntax + id-diff. (Completes the P30 permanent-parity set.)
 
 
-# PHASE 31 — Expandable enemy cards in the deck-tools (full stats + effects) ⬜ PLANNED
+# PHASE 31 — Expandable enemy cards in the deck-tools (full stats + effects) ✅ DONE & merged
 
 **Specced 2026-06-29, NOT built.** When inspecting the enemy's library (and other hidden zones) in 🂠 Manipulate enemy deck, each card should expand to reveal its full stats and effect, collapsed by default so a long list isn't a wall of text. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
@@ -2332,7 +2332,7 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — `fxItem` for a creature card renders a collapsed summary, and after `dtToggleCard(id)` the body shows the right P/T + keywords (from the spawn run) + text; a combined-run card lists multiple bodies; a burn card shows its effect summary; toggling re-renders; action buttons present; syntax + id-diff (only the new expand toggle ids). (Refines P14.7 / P9.4.)
 
 
-# PHASE 32 — Per-combat: negate an attacker / prevent its combat damage ⬜ PLANNED
+# PHASE 32 — Per-combat: negate an attacker / prevent its combat damage ✅ DONE & merged
 
 **Specced 2026-06-29, NOT built.** During a combat the player should be able to **negate** an attacking creature (take it out of this combat) or **prevent its combat damage** (a one-shot Fog on that single attacker) — primarily for the enemy's attackers, and symmetrically for yours. This is the **per-combat** counterpart to **P14.2** (which adds *persistent* "deals no combat dmg" / "prevents combat dmg to it" markers): same effect, but a one-time action in the resolver rather than a standing marker. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
@@ -2354,7 +2354,7 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — `combatNegate(id)` drops the attacker from `S.combat.attackers` (resolveAttack ignores it); `combatPreventDmg(id)` → `resolveAttack` gives it `out=0` (no face/trample/lifelink) while a lethal blocker still kills it; `predictCombat` reflects both; `cancelCombat`/resolve clears `prevented`; enemy + player directions; syntax + id-diff. (Complements P14.2; reuses its damage-prevention gate.)
 
 
-# PHASE 33 — Auto-register enemy spawned creatures as tokens (`token:true`) ⬜ PLANNED
+# PHASE 33 — Auto-register enemy spawned creatures as tokens (`token:true`) ✅ DONE & merged
 
 **Specced 2026-06-29, NOT built.** The token mechanics already work (P7.1: a token ceases when it leaves the battlefield — no graveyard); the gap is that **enemy spawned bodies aren't flagged `token:true`**, so those mechanics don't recognise them. Set the flag automatically at creation (and backfill old saves); nothing else needs changing. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
@@ -2374,7 +2374,7 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — `applyRun(["spawn","X",2,2,[],"R"])` yields an `S.tokens` entry with `token===true`; `moveBoardById('token',id,'hand')` ceases it (no `S.hand` push); a `_controlled` non-token on `S.tokens` still moves to hand; migrate backfills spawned bodies only; slay/expiry still cease; syntax + id-diff (one-field change + migrate). (Fixes the P7.1/P9.1 enemy-token gap.)
 
 
-# PHASE 34 — Smarter enemy combat AI: strategic attacking, targeting & blocking ⬜ PLANNED
+# PHASE 34 — Smarter enemy combat AI: strategic attacking, targeting & blocking ✅ DONE & merged
 
 **Specced 2026-06-29, NOT built.** Make the enemy reason about combat like a thinking opponent — when to attack vs hold back, what to attack, and how to block — extending the existing P6.x AI rather than replacing it. **Depends on Phase 18** (correct menace/keyword resolution): the AI's EV math must read a correct `resolveAttack`, so build P34 *after* P18. Difficulty-scaled via the existing knobs. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
@@ -2414,7 +2414,7 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — lethal incoming → blocks reduce damage below `S.boss.life`; a 6/6 attacker with two 3/x blockers → gang-blocked dead; a trampler isn't chumped; a deathtouch blocker is assigned to the biggest attacker; a bomb isn't traded for a 1/1 when not under pressure; P6.x/P12.2/P20.3 regressions pass; easy vs brutal differ; syntax + id-diff.
 
 
-# PHASE 35 — Realistic enemy decks: real permanents · ramp/mana base · faithful card design · graveyard strategies ⬜ PLANNED
+# PHASE 35 — Realistic enemy decks: real permanents · ramp/mana base · faithful card design · graveyard strategies ✅ DONE & merged
 
 **Specced 2026-06-29, NOT built.** Now that the enemy must **build its mana** like a player (P17.1), its decks should play like believable MTG decks — real creature permanents, colour-appropriate ramp, a coherent curve with removal/threats/finishers, spells that use the full option set, and graveyard strategies that give black enemies (Murglax above all) a real identity. **Large creative + balance effort — build it via the multi-agent workflow** (deck-design + adversarial-balance agents), in the task order below. **Depends on:** P17 (lands-only mana), P33 (token flag), P13.3 (real enemy artifacts/enchants), P30 (full permanent options). Grounded in the current `index.html` (re-grep names; line numbers drift). Each task ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
@@ -2494,7 +2494,7 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — a designed enemy creature with hexproof/protection is honoured in targeting; an enemy ETB trigger fires on resolve; enemy removal respects ward/protection both ways; parity matrix (player option ↔ enemy card) asserted; syntax + id-diff. (Leans on P13.x / P30.)
 
 
-# PHASE 36 — Undo resets at each descent (can't undo past a descent) ⬜ PLANNED
+# PHASE 36 — Undo resets at each descent (can't undo past a descent) ✅ DONE & merged
 
 **Specced 2026-06-29, NOT built.** Once you descend to face a new enemy, the undo button should reset to that point — you can't undo back into the previous battle. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
@@ -2512,7 +2512,7 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — build some `_hist` in battle 1, call `advance()`, assert `_hist.length===0` and `_committed` re-anchors at the new room on next settle; an action in battle 2 is undoable but undo never restores battle-1 state; `fresh`/restart still reset; syntax + id-diff (one `histReset()` call).
 
 
-# PHASE 37 — Enemy mana-box UI reflects the lands-only model ⬜ PLANNED
+# PHASE 37 — Enemy mana-box UI reflects the lands-only model ✅ DONE & merged
 
 **Specced 2026-06-29, NOT built.** The enemy now opens at 0 mana and builds it only from played lands/ramp (P17.1, built). The enemy-box mana readout should make that model legible — current usable mana, how many **mana sources** it has, an honest next-turn projection, and frozen — with no copy implying free/pre-seeded mana. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
@@ -2530,7 +2530,7 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom/string-check — `manaLine` includes `S.bossLands` source count and `usableMana()`; your-turn shows `projBossMana()`; frozen note present when `bossManaFrozen>0`; no "free/pre-seed"-implying text; syntax + id-diff. (Pairs with P17.1; forward-compatible with P35.2.)
 
 
-# PHASE 38 — Enemy planeswalkers as cards/permanents; Vael's commander becomes a planeswalker ⬜ PLANNED
+# PHASE 38 — Enemy planeswalkers as cards/permanents; Vael's commander becomes a planeswalker ✅ DONE & merged
 
 **Specced 2026-06-29, NOT built.** Enemy planeswalkers should work like everything else — **cast cards** that resolve to real walker permanents with **activated loyalty abilities at sorcery speed**, not a hardcoded auto-firing `S.pw`. The enemy commander may itself be a planeswalker, and **Vael** is redesigned so his **commander is the planeswalker** whose **ultimate spawns an overpowered Vael's Avatar**. **Depends on:** P35.1 (real enemy creatures — the spawned Avatar is a real permanent), P29 (command-zone/tax — a walker commander uses it), P30.2 (walker options), and mirrors the **player walker** model (the template). Grounded in the current `index.html` (re-grep names; line numbers drift). Large rework — build carefully (workflow-friendly); each task ships behind the standard per-task workflow.
 
@@ -2615,7 +2615,7 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 **Verify:** jsdom — given a threatened walker the AI builds loyalty (or kills the attacker) rather than greedily spending to a killable state; ults at threshold when safe; the render lists all abilities in a red box; 0 loyalty → graveyard (card) / command zone (commander); easy vs brutal differ; syntax + id-diff. (Builds on P38.1/P38.2, P39.2, P34.)
 
 
-# PHASE 39 — Attack-target selection: swing at the enemy, its planeswalkers, or its sieges/battles ⬜ PLANNED
+# PHASE 39 — Attack-target selection: swing at the enemy, its planeswalkers, or its sieges/battles ✅ DONE & merged
 
 **Specced 2026-06-29, NOT built.** When a boss siege/battle is on the field, the player should be able to send each attacker at the **enemy**, an **enemy planeswalker**, or a **siege/battle** — chosen per-attacker in the combat resolver, like the panel the enemy uses to target your walkers — and the enemy should be able to **block (or not) attacks aimed at its sieges/battles**. Grounded in the current `index.html` (re-grep names; line numbers drift). Ships behind the standard per-task workflow (syntax gate → id-diff → jsdom driver → adversarial review).
 
