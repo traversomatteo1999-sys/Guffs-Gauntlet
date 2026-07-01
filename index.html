@@ -914,7 +914,7 @@ function deckScryApply(decisions){const n=decisions.length;const top=S.lib.slice
 function deckDiscard(indices){const sorted=indices.slice().filter(i=>S.hand[i]).sort((a,b)=>b-a);const moved=[];sorted.forEach(i=>{moved.push(S.hand[i]);S.hand.splice(i,1);});moved.forEach(c=>S.gy.push(c));if(moved.length)log("you",`${ENs()} discards ${libNames(moved).join(", ")}.`);return moved;}
 function deckDiscardRandom(n){n=Math.max(0,n|0);const pool=S.hand.map((_,i)=>i),idx=[];for(let k=0;k<n&&pool.length;k++)idx.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);return deckDiscard(idx);}
 
-function openDeckTools(){if(S.over)return;_dt={mode:'main',n:3,reveal:null,scry:null,payMana:true,typeFilter:'all'};$("modalBody").innerHTML=deckToolsHTML();$("overlay").classList.add("show");}
+function openDeckTools(){if(S.over)return;_dt={mode:'main',n:3,reveal:null,scry:null,payMana:true,typeFilter:'all',expanded:[],expandAll:false};$("modalBody").innerHTML=deckToolsHTML();$("overlay").classList.add("show");}
 /* ===== P6.5: INSPECT + PLAY an enemy card =====
    Inspect = show a card's cost + colours + full text. Play = put it on the stack via mkPlay (it then resolves
    through the normal enemy-spell path: applyRun / applyTarget / selfLoss), with a spend-vs-free mana choice.
@@ -930,15 +930,54 @@ function dtPlayCard(zone,i){if(S.over)return;const arr=dtPlayZone(zone);if(!arr)
   log("dm",`🎴 ${ENs()} plays <b>${fx.n}</b> from its ${zone==='gy'?'graveyard':zone==='lib'?'library':'hand'}${pay?` (spent ${fx.cost||0}, ${S.bossMana} mana left)`:' — for free'}. It's on the stack.`);
   render();dtRenderIfOpen();showPlays();}
 function dtRender(){$("modalBody").innerHTML=deckToolsHTML();}
+/* P31: expand/collapse a deck-tools card row (transient view state on _dt; not saved). */
+function dtToggleCard(id){if(id==null)return;_dt.expanded=_dt.expanded||[];const i=_dt.expanded.indexOf(id);if(i>=0)_dt.expanded.splice(i,1);else _dt.expanded.push(id);dtRender();}
+function dtExpandAll(){_dt.expandAll=!_dt.expandAll;if(!_dt.expandAll)_dt.expanded=[];dtRender();}
+function dtExpandAllBtn(){return `<button class="tiny" title="expand or collapse every card in this view" onclick="dtExpandAll()">${_dt.expandAll?'⊖ collapse all':'⊕ expand all'}</button>`;}
+/* P31: plain-language mechanical summary from an FX card's run/target — reuses the existing run/target vocabulary. */
+function fxEffectSummary(fx){if(!fx||typeof fx!=='object')return '';const parts=[];
+  const runs=fx.run?(Array.isArray(fx.run[0])?fx.run:[fx.run]):[];
+  runs.forEach(r=>{if(!Array.isArray(r))return;switch(r[0]){
+    case 'spawn':parts.push(`create a ${r[2]}/${r[3]}${(r[4]&&r[4].length)?' '+r[4].join('/'):''}`);break;
+    case 'ramp':parts.push(`ramp +${r[1]||1} mana`);break;
+    case 'anthem':parts.push(`enemy creatures +${r[1]||0}/+${r[2]||0}${(r[3]&&r[3].length)?' & '+r[3].join('/'):''} (EOT)`);break;
+    case 'bloodpact':parts.push(`Pit's Tithe — drain ${r[1]||1} on each death`);break;
+    case 'bossHeal':parts.push(`enemy gains ${r[1]||0} life`);break;
+    case 'cmdBuff':parts.push(`commander +${r[1]||0}/+0`);break;
+    case 'rule':parts.push(`rule — ${r[2]||r[1]||''}`);break;
+    case 'bossrule':parts.push(`enemy rule — ${r[2]||r[1]||''}`);break;
+    default:parts.push(r[0]);
+  }});
+  const TL={destroyMaxPow:'destroy your strongest creature',destroyMinPow:'you sacrifice your weakest creature',destroyTop2:'destroy your two strongest creatures',destroyToughLE2:'destroy your creatures with toughness ≤2',minusAll2:'your creatures −2/−2',wither3:'your strongest creature −3/−3',walkerMinLoy3:'your least-loyal planeswalker −3 loyalty'};
+  if(fx.target)parts.push(TL[fx.target]||(''+fx.target));
+  if(fx.selfLoss)parts.push(`you lose ${fx.selfLoss} life`);
+  return parts.join('; ');
+}
+/* P31: the expandable body — creature P/T + keywords (from the spawn run), type/cost/colours recap, effect summary, oracle text, flavour. */
+function fxExpandBody(fx,c){if(!fx||typeof fx!=='object')return '';const lines=[];
+  const runs=fx.run?(Array.isArray(fx.run[0])?fx.run:[fx.run]):[];
+  const bodies=runs.filter(r=>Array.isArray(r)&&r[0]==='spawn').map(r=>`<b>${r[2]}/${r[3]}</b>${(r[4]&&r[4].length)?' — '+r[4].join(', '):''} <i>${r[1]}</i>`);
+  if(bodies.length)lines.push(`<div class="fxstat">${bodies.length>1?'Bodies':'Body'}: ${bodies.join(' · ')}</div>`);
+  else if(fx.type==='creature'&&(fx.p!=null||fx.t!=null))lines.push(`<div class="fxstat"><b>${fx.p||0}/${fx.t||0}</b>${(fx.kw&&fx.kw.length)?' — '+fx.kw.join(', '):''}</div>`);
+  const cols=(fx.color?String(fx.color).split(''):[]);
+  lines.push(`<div class="fxstat" style="color:var(--bone-dim)">${fx.type||'spell'} · cost ${fx.cost||0} · ${cols.length?cols.join(''):'colourless'}</div>`);
+  const eff=fxEffectSummary(fx);if(eff)lines.push(`<div class="fxstat"><b>Effect:</b> ${eff}</div>`);
+  if(fx.text)lines.push(`<div class="manaline" style="margin-top:2px;color:var(--bone-dim)">${fx.text}</div>`);
+  if(fx.flav)lines.push(`<div class="manaline" style="font-style:italic;color:var(--bone-dim);opacity:.85">${fx.flav}</div>`);
+  return `<div class="fxbody" style="flex:1 0 100%;margin-top:4px;padding-left:4px;border-left:2px solid var(--bone-dim)">${lines.join('')}</div>`;
+}
 function deckToolsHTML(){
   const disc=`<p class="manaline" style="margin:2px 0 8px;line-height:1.5">The dungeon keeps ${ENs()}'s deck as a known, ordered pile (top first). Look, reorder, scry, mill, exile, shuffle, force discards — and now <b>tutor / reanimate</b>: from a 👁 look or 🤚 hand reveal, send a card to hand, library, graveyard, exile, or (for a creature) straight onto the battlefield. Use 🃏 Draw to make ${ENs()} draw.</p>`;
-  const fxItem=(c,actions)=>{const fx=FX[c.key]||{};return `<div class="libitem"><div class="li-h"><span class="li-n">${fx.n||c.name||'card'}</span><span class="cost">${fx.cost||0}</span><span class="typechip ${fx.type||'spell'}">${fx.type||'spell'}</span>${fxColorDots(fx)}</div>${actions?`<div class="li-a">${actions}</div>`:''}${fx.text?`<div class="manaline" style="flex:1 0 100%;margin-top:3px;color:var(--bone-dim)">${fx.text}</div>`:''}</div>`;};
+  /* P31: rows collapse to a one-line summary by default; the ▸ chevron expands the full stats/effect body (tracked on _dt.expanded / _dt.expandAll — transient view state). */
+  const fxItem=(c,actions)=>{const fx=FX[c.key]||{};const rid=(c.id!=null)?c.id:null;const exp=rid!=null&&(_dt.expandAll||(_dt.expanded||[]).indexOf(rid)>=0);
+    const chev=rid!=null?`<button class="tiny pchev" title="${exp?'collapse':'expand — full stats & effect'}" onclick="dtToggleCard(${rid})">${exp?'▾':'▸'}</button>`:'';
+    return `<div class="libitem${exp?' exp':''}"><div class="li-h">${chev}<span class="li-n">${fx.n||c.name||'card'}</span><span class="cost">${fx.cost||0}</span><span class="typechip ${fx.type||'spell'}">${fx.type||'spell'}</span>${fxColorDots(fx)}</div>${actions?`<div class="li-a">${actions}</div>`:''}${exp?fxExpandBody(fx,c):''}</div>`;};
   if(_dt.mode==='play'){const pay=_dt.payMana!==false;
     const playRow=(c,zone,i)=>fxItem(c,`<button class="tiny ember" onclick="dtPlayCard('${zone}',${i})">▸ play</button>`);
     const libTop=S.lib.slice(0,Math.min(S.lib.length,dtN()));
     const sect=(label,rows,emptyMsg)=>`<div class="subh" style="margin-top:12px"><span>${label}</span></div>${rows.length?rows.join(''):`<p class="manaline">${emptyMsg}</p>`}`;
     return `<h2>🎴 Play a card for ${ENs()}</h2>${disc}
-    <div class="btnrow"><span class="lab">mana</span><button class="tiny ${pay?'on gold':''}" onclick="_dt.payMana=true;dtRender()">⛁ spend mana</button><button class="tiny ${pay?'':'on'}" onclick="_dt.payMana=false;dtRender()">free (no cost)</button><span class="manaline">usable <b style="color:var(--gold)">${usableMana()}</b> / pool ${S.bossMana||0}</span></div>
+    <div class="btnrow"><span class="lab">mana</span><button class="tiny ${pay?'on gold':''}" onclick="_dt.payMana=true;dtRender()">⛁ spend mana</button><button class="tiny ${pay?'':'on'}" onclick="_dt.payMana=false;dtRender()">free (no cost)</button><span class="manaline">usable <b style="color:var(--gold)">${usableMana()}</b> / pool ${S.bossMana||0}</span>${dtExpandAllBtn()}</div>
     <p class="manaline" style="margin:6px 0 0">Puts the card on the stack — it resolves like any enemy spell (removal hits your board, burn/drain applies, permanents spawn). Lands instead add a mana source.</p>
     ${sect(`From hand (${S.hand.length})`,S.hand.map((c,i)=>playRow(c,'hand',i)),"Their hand is empty.")}
     ${sect(`From the top of the library (${libTop.length} of ${S.lib.length})`,libTop.map((c,i)=>playRow(c,'lib',i)),"Library is empty.")}
@@ -954,7 +993,7 @@ function deckToolsHTML(){
     const moveActs=(c,i)=>{const t=(FX[c.key]&&FX[c.key].type)||'spell';const canBoard=(t==='creature');return `<button class="tiny ok" onclick="dtBrowseMove(${i},'hand')">✋ hand</button>${canBoard?`<button class="tiny ember" onclick="dtBrowseMove(${i},'battlefield')">▸ board</button>`:''}<button class="tiny" onclick="dtBrowseMove(${i},'graveyard')">⚰ gy</button><button class="tiny" onclick="dtBrowseMove(${i},'exile')">✖ exile</button><button class="tiny" onclick="dtBrowseMove(${i},'libbottom')">⤓ bottom</button>`;};
     return `<h2>📖 Browse ${ENs()}'s library</h2>${disc}
     <p class="manaline">Viewing the whole library reveals hidden info — it <b>shuffles</b> when you leave. Filter by card type:</p>
-    <div class="btnrow" style="flex-wrap:wrap;gap:5px">${filterBtns}</div>
+    <div class="btnrow" style="flex-wrap:wrap;gap:5px">${filterBtns}${dtExpandAllBtn()}</div>
     <div style="margin-top:8px;max-height:46vh;overflow:auto">${rows.length?rows.map(({c,realIdx})=>fxItem(c,moveActs(c,realIdx))).join(''):'<p class="manaline">No cards of that type in the library.</p>'}</div>
     <div class="btnrow" style="margin-top:10px"><button class="tiny" onclick="dtBrowseExit()">🔀 Shuffle &amp; back</button></div>`;}
   if(_dt.mode==='discard'){return `<h2>🗑 Make ${ENs()} discard</h2>${disc}
@@ -1054,7 +1093,7 @@ function threatScore(o){
   let body=0;if(o.auto&&typeof o.auto.n==='number')body=Math.min(o.auto.n,6)*0.5;
   return THREAT_TIER.spell+body+s;}
 function applyRun(run){if(!run)return;if(Array.isArray(run[0])){run.forEach(applyRun);return;}switch(run[0]){
-  case "spawn":{const _tk={id:S.nextId++,name:run[1],p:run[2],t:run[3],baseP:run[2],baseT:run[3],kw:[...run[4]],color:(run[5]?String(run[5]).split(''):((S.boss&&S.boss.colors)?S.boss.colors.slice():[])),sick:!run[4].includes("haste"),tapped:false,plus:0,minus:0,other:[],expires:false};S.tokens.push(_tk);log("dm",`🜂 A <b>${run[1]}</b> token enters ${ENs()}'s board — ${run[2]}/${run[3]}${run[4]&&run[4].length?' ('+run[4].join(', ')+')':''}${_tk.sick?', summoning-sick':''}.`);break;}/* P7.2: log the token entering — distinguishes the spawned token from the spell card that made it */
+  case "spawn":{const _tk={id:S.nextId++,name:run[1],p:run[2],t:run[3],baseP:run[2],baseT:run[3],kw:[...run[4]],color:(run[5]?String(run[5]).split(''):((S.boss&&S.boss.colors)?S.boss.colors.slice():[])),sick:!run[4].includes("haste"),tapped:false,plus:0,minus:0,other:[],expires:false,token:true};/* P33: flag enemy spawned bodies as tokens so the P7.1 cease-on-leave / P9.1 moveBoardCard token branch recognise them (bounce/exile/gy → cease, not a stray zone entry). Every spawn path — cards, Resurgence, reanimation, phase-2 — flows through here. */S.tokens.push(_tk);log("dm",`🜂 A <b>${run[1]}</b> token enters ${ENs()}'s board — ${run[2]}/${run[3]}${run[4]&&run[4].length?' ('+run[4].join(', ')+')':''}${_tk.sick?', summoning-sick':''}.`);break;}/* P7.2: log the token entering — distinguishes the spawned token from the spell card that made it */
   case "ramp":S.bossLands=(S.bossLands||0)+(run[1]||1);S.bossMana+=(run[1]||1);S.bossManaMax+=(run[1]||1);log("dm",`${ENs()} taps a new source — +${run[1]||1} mana (${S.bossLands} total).`);break;
   case "anthem":{const ap=run[1]||0,at=run[2]||0,akw=run[3]||[];const buff=c=>{if(!c)return;c._tp=(c._tp||0)+ap;c._tt=(c._tt||0)+at;c.kw=c.kw||[];c._grantKw=c._grantKw||[];akw.forEach(k=>{if(!c.kw.map(x=>(''+x).toLowerCase()).includes((''+k).toLowerCase())){c.kw.push(k);c._grantKw.push(k);}});};S.tokens.forEach(buff);if(S.cmd&&S.cmd.inPlay)buff(S.cmd);log("dm",`🔥 <b>OVERRUN!</b> Every enemy creature gets +${ap}/+${at}${akw.length?' and gains '+akw.join(', '):''} until end of turn.`);break;}
   case "bloodpact":{const amt=run[1]||1;const ex=S.rules.find(r=>r.bloodpact);if(ex)ex.bloodpact+=amt;else S.rules.push({id:S.nextId++,name:"The Pit's Tithe",text:`Each creature's death: you lose ${amt}, ${ENs()} gains ${amt}.`,side:"boss",bloodpact:amt});log("dm",`🩸 <b>The Pit's Tithe</b> binds — every death now pays ${ENs()} in blood.`);break;}
@@ -1132,7 +1171,7 @@ function killMy(c){/* route a destroyed player permanent: commander→command zo
    killMy/removeRef). Owner-aware: the player's hand & library are PHYSICAL (the card simply leaves the
    app — you hold it); the enemy's hidden zones are modelled, and a board body (which has no FX key) is
    moved carrying its name so the zone chips can still label it. A token that leaves the battlefield ceases. */
-function _movedCard(obj){return {key:obj.key||null,name:obj.name||'card',_moved:true,color:(obj.color||[]).slice()};}
+function _movedCard(obj){return {id:S.nextId++,key:obj.key||null,name:obj.name||'card',_moved:true,color:(obj.color||[]).slice()};}/* P31: give moved card records a stable id so deck-tools rows can track expand state */
 function _detachBoard(obj){let i=S.tokens.indexOf(obj);if(i>=0){S.tokens.splice(i,1);return 'enemy';}let ea=(S.enemyArtifacts||[]).indexOf(obj);if(ea>=0){S.enemyArtifacts.splice(ea,1);return 'enemy';}let ee=(S.enemyEnchants||[]).indexOf(obj);if(ee>=0){S.enemyEnchants.splice(ee,1);return 'enemy';}let cat=null;["creatures","artifacts","enchants","walkers"].forEach(k=>{if(S.my[k].indexOf(obj)>=0)cat=k;});if(cat){obj._cat=cat;S.my[cat].splice(S.my[cat].indexOf(obj),1);return 'player';}return null;}
 function moveBoardCard(obj,to,quiet){if(!obj)return;/* P14.6: quiet suppresses per-card log + render for bulk ops (caller renders + logs a summary once) */
   if(obj.isCmd){sendCmdToZone(obj,false);return;}/* a commander to any zone → command zone (clean) */
@@ -1385,7 +1424,12 @@ function render(){
   const bt=$("bossTag");if(bt)bt.textContent=S.boss.isVael?"FINAL BOSS · fights via commander":"enemy general · fights via commander";
   ["enemyName1","enemyName2","turnEnemyName"].forEach(id=>{const e=$(id);if(e)e.textContent=ENs();});
   const manaShow=S.activeTurn==='vael'?usableMana():projBossMana();const pips=$("manaPips");pips.innerHTML="";for(let i=0;i<Math.max(manaShow,3);i++){const el=document.createElement("span");el.className="pip"+(i<manaShow?"":" off");pips.appendChild(el);}
-  $("manaLine").innerHTML=(S.activeTurn==='vael'?`Mana remaining: <b>${usableMana()}</b> / ${S.bossManaMax}`:`Mana next turn: <b>${projBossMana()}</b>`)+((S.bossManaFrozen||0)>0?` · <span class="frz">❄ ${S.bossManaFrozen} frozen</span>`:'');
+  /* P37: lands-only mana readout — usable mana + the count of mana SOURCES (lands/ramp the enemy has played), plus an honest next-turn projection. No "/ max" pool cap (mana isn't pre-seeded); the pool is surfaced only under freeze so "usable vs frozen" reads correctly. */
+  {const _src=S.bossLands||0,_ss=_src===1?'':'s',_fz=(S.bossManaFrozen||0)>0;
+   $("manaLine").innerHTML=(S.activeTurn==='vael'
+     ?`Mana: <b>${usableMana()}</b> usable${_fz?` of ${S.bossMana||0}`:''} · ${_src} source${_ss}`
+     :`Mana next turn: <b>${projBossMana()}</b> <span style="color:var(--bone-dim)">(if it plays a held land)</span> · ${_src} source${_ss}`)
+     +(_fz?` · <span class="frz">❄ ${S.bossManaFrozen} frozen</span>`:'');}
   {const bmm=$("bossManaModVal");if(bmm)bmm.textContent=(S.bossManaMod>=0?'+':'')+(S.bossManaMod||0);const bp=$("bossPoolVal");if(bp)bp.textContent=`${S.bossMana||0} / ${S.bossManaMax||0}${(S.bossManaFrozen||0)>0?` ❄${S.bossManaFrozen}`:''}`;const bfv=$("bossFrozenVal");if(bfv)bfv.textContent=S.bossManaFrozen||0;}
   renderCmd();
   if(S.pw){const pw=S.pw;$("pwPanel").style.display="";$("pwName").textContent=pw.name;$("pwTag").textContent="["+(pw.colors||[]).join("/")+"] · loyalty "+pw.loy;$("pwLoy").textContent=pw.loy;$("pwBar").style.width=Math.min(100,pw.loy/(pw.ultThreshold||8)*100)+"%";
@@ -1652,17 +1696,18 @@ function fillEmblemTemplates(){const sel=$('embTemplate');if(sel&&!sel.options.l
 /* P14.8: the adder makes EMBLEMS only (addable by either side). Enemy artifacts/enchantments are CARDS the enemy casts from its deck (P14.3 routes them to S.enemyArtifacts/S.enemyEnchants as real permanents) — never player-added tracker rows. */
 function addEnemyEmblem(){const sel=$('embTemplate');const i=sel?parseInt(sel.value,10):ENEMY_EMBLEMS.length-1;const t=ENEMY_EMBLEMS[i]||ENEMY_EMBLEMS[ENEMY_EMBLEMS.length-1];
   const vsYou=!!(t.auto&&(t.auto.k==='youLose'||t.auto.k==='debuffYou'));
-  S.emblemsEnemy.push({id:S.nextId++,name:t.n,note:t.note,auto:t.auto?Object.assign({},t.auto):null,autoOn:!!t.auto,kind:'emblem',vsYou,static:!!t.static,trigger:t.trigger||'upkeep',attachId:null});
+  S.emblemsEnemy.push({id:S.nextId++,name:t.n,note:t.note,auto:t.auto?Object.assign({},t.auto):null,autoOn:!!t.auto,kind:'emblem',vsYou,target:vsYou?'you':'enemy',static:!!t.static,trigger:t.trigger||'upkeep',attachId:null});/* P23.4: seed the functional target from the kind's natural side */
   log("dm",`✶ ${ENs()} gains an emblem: <b>${t.n}</b>${t.auto?(t.static?' (⟳ static)':' (⚡ auto)'):' (reminder)'}.`);render();}
 function setEnemyEmblem(id,f,v){const em=findEnemyFx(id);if(em){em[f]=v;render();}}
 function toggleEmblemAuto(id){const em=findEnemyFx(id);if(em&&em.auto){em.autoOn=!em.autoOn;log("dm",`✦ <b>${em.name}</b>: automation ${em.autoOn?'on':'off'}.`);render();}}
 function rmEnemyEmblem(id){const em=findEnemyFx(id);if(!em)return;const arr=_enemyFxArr(em);if(!arr)return;const nm=em.name,kind=em.kind||'emblem';arr.splice(arr.indexOf(em),1);log("dm",`✦ ${ENs()} loses the ${kind} <b>${nm}</b>.`);render();}
-function emblemEffect(em){if(!em||!em.auto)return;const a=em.auto,n=a.n||0;
-  if(a.k==='enemyGain'){bossHealLife(n);log("dm",`✦ ${em.name}: ${ENs()} gains ${n} life. (${S.boss.life})`);}
-  else if(a.k==='youLose'){S.youLife-=n;log("dm",`✦ ${em.name}: you lose ${n} life. (${S.youLife})`);}
-  else if(a.k==='enemyDraw'){vaelDraw(n);log("dm",`✦ ${em.name}: ${ENs()} draws ${n}. (hand ${S.hand.length})`);}
+function emblemTarget(em){if(!em)return 'enemy';if(em.target==='you'||em.target==='enemy')return em.target;if(em.vsYou)return 'you';return (em.auto&&(em.auto.k==='youLose'||em.auto.k==='debuffYou'))?'you':'enemy';}/* P23.4: the effective side an enemy emblem's effect touches — explicit target, else the legacy vsYou flag, else the kind's natural side (behaviour-preserving default) */
+function emblemEffect(em){if(!em||!em.auto)return;const a=em.auto,n=a.n||0,tgt=emblemTarget(em);/* P23.4: tgt ∈ {you,enemy} redirects WHICH side the kind acts on */
+  if(a.k==='enemyGain'){if(tgt==='you'){S.youLife+=n;log("dm",`✦ ${em.name}: you gain ${n} life. (${S.youLife})`);}else{bossHealLife(n);log("dm",`✦ ${em.name}: ${ENs()} gains ${n} life. (${S.boss.life})`);}}
+  else if(a.k==='youLose'){if(tgt==='enemy'){S.boss.life-=n;log("dm",`✦ ${em.name}: ${ENs()} loses ${n} life. (${Math.max(0,S.boss.life)})`);}else{S.youLife-=n;log("dm",`✦ ${em.name}: you lose ${n} life. (${S.youLife})`);}}
+  else if(a.k==='enemyDraw'){if(tgt==='you'){log("dm",`✦ ${em.name}: (reminder) you may draw ${n}.`);}else{vaelDraw(n);log("dm",`✦ ${em.name}: ${ENs()} draws ${n}. (hand ${S.hand.length})`);}}
   else if(a.k==='enemyMana'){log("dm",`✦ ${em.name}: (retired) — mana is lands-only now; this grants no mana.`);}/* P17.1: the enemyMana template is removed; this handler stays only so an old save's emblem is an inert reminder rather than free mana. */
-  else if(a.k==='buffEnemyCreatures'){let c=0;S.tokens.forEach(t=>{t.plus=(t.plus||0)+n;c++;});if(S.cmd&&S.cmd.inPlay){S.cmd.plus=(S.cmd.plus||0)+n;c++;}log("dm",`✦ ${em.name}: +${n}/+${n} on ${c} enemy creature${c===1?'':'s'}.`);}
+  else if(a.k==='buffEnemyCreatures'){if(tgt==='you'){const mine=(S.my&&S.my.creatures)||[];let c=0;mine.forEach(t=>{t.plus=(t.plus||0)+n;c++;});log("dm",`✦ ${em.name}: +${n}/+${n} on ${c} of your creature${c===1?'':'s'}.`);}else{let c=0;S.tokens.forEach(t=>{t.plus=(t.plus||0)+n;c++;});if(S.cmd&&S.cmd.inPlay){S.cmd.plus=(S.cmd.plus||0)+n;c++;}log("dm",`✦ ${em.name}: +${n}/+${n} on ${c} enemy creature${c===1?'':'s'}.`);}}
   else if(a.k==='spawnToken'){const tn=a.tn||'Servant',tp=a.tp||1,tt=a.tt||1,cnt=Math.max(1,n||1);for(let q=0;q<cnt;q++)S.tokens.push({id:S.nextId++,name:tn,p:tp,t:tt,baseP:tp,baseT:tt,kw:[],color:(S.boss&&S.boss.colors||['R']).slice(),plus:0,minus:0,other:[],tapped:false,sick:true,phased:false,token:true,dies:'graveyard'});log("dm",`✦ ${em.name}: ${ENs()} creates ${cnt} <b>${tn}</b> ${tp}/${tt} token${cnt===1?'':'s'}.`);}
   else if(a.k==='enemyScry'){log("dm",`✦ ${em.name}: ${ENs()} scries ${n} (looks at the top ${n} of its library).`);}}
 /* P13.3: enemy artifacts/enchants are real permanents (S.enemyArtifacts/S.enemyEnchants); true emblems stay in S.emblemsEnemy. Any of them may carry automation, so the auto engine iterates all three. */
@@ -1670,12 +1715,13 @@ function enemyAutoSources(){return [...(S.emblemsEnemy||[]),...(S.enemyArtifacts
 function findEnemyFx(id){return enemyAutoSources().find(e=>e.id===id)||null;}
 function _enemyFxArr(em){if((S.emblemsEnemy||[]).indexOf(em)>=0)return S.emblemsEnemy;if((S.enemyArtifacts||[]).indexOf(em)>=0)return S.enemyArtifacts;if((S.enemyEnchants||[]).indexOf(em)>=0)return S.enemyEnchants;return null;}
 /* P13.2: fire auto emblems for a given trigger window (default the enemy's upkeep). Static emblems are NOT fired here — they apply continuously via applyStaticEmblems each render. */
-function fireEnemyEmblems(window){window=window||'upkeep';const list=enemyAutoSources().filter(em=>em.auto&&em.autoOn!==false&&!em.static&&(em.trigger||'upkeep')===window);if(!list.length)return;list.forEach(emblemEffect);checkLose();}
+function fireEnemyEmblems(window){window=window||'upkeep';const list=enemyAutoSources().filter(em=>em.auto&&em.autoOn!==false&&!em.static&&(em.trigger||'upkeep')===window);if(!list.length)return;list.forEach(emblemEffect);if(S.boss&&S.boss.life<=0&&!S.over){bossDown();return;}checkEnemyOut();checkLose();}/* P23.4: an emblem retargeted to damage the enemy can fell the boss — check it (mirror of firePlayerEmblems) */
 /* P13.2: continuous (static) enemy emblems — recomputed from scratch each render onto _stp/_stt (a separate channel from the until-EOT _tp/_tt). An emblem with an attachId buffs only that enemy creature and falls off (logged once) when it leaves. */
 function applyStaticEmblems(){if(typeof S==='undefined'||!S)return;const foes=[...(S.tokens||[]),(S.cmd&&S.cmd.inPlay?S.cmd:null)].filter(Boolean);const mine=(S.my&&S.my.creatures)||[];
   [...foes,...mine].forEach(c=>{c._stp=0;c._stt=0;});
-  enemyAutoSources().forEach(em=>{if(!em.static||!em.auto||em.autoOn===false)return;const n=em.auto.n||0,k=em.auto.k;
-    if(k==='debuffYou'){mine.forEach(c=>{c._stp-=n;});return;}/* a "your creatures −X" static always hits the player board, board-wide — never an enemy-creature aura */
+  enemyAutoSources().forEach(em=>{if(!em.static||!em.auto||em.autoOn===false)return;const n=em.auto.n||0,k=em.auto.k,side=emblemTarget(em);/* P23.4: a static effect follows the emblem's target side */
+    if(k==='debuffYou'){(side==='enemy'?foes:mine).forEach(c=>{c._stp-=n;});return;}/* a "−X" static debuffs the TARGETED side's creatures, board-wide (default = your board) */
+    if(side==='you'&&(k==='anthemEnemy'||k==='buffEnemyCreatures')){mine.forEach(c=>{c._stp+=n;c._stt+=n;});return;}/* P23.4: a +N/+N static retargeted to YOUR creatures — board-wide (cross-board attach not supported) */
     if(em.attachId!=null){const tgt=foes.find(c=>c.id===em.attachId);if(!tgt){const _ll=_lastLog;log("dm",`✦ <b>${em.name}</b> falls off — the creature it was attached to has left the battlefield; it goes inert.`);_lastLog=_ll;/* don't clobber the killing action's undo label; go INERT (not board-wide) when the host dies */em.autoOn=false;return;}if(k==='anthemEnemy'||k==='buffEnemyCreatures'){tgt._stp+=n;tgt._stt+=n;}return;}
     if(k==='anthemEnemy'||k==='buffEnemyCreatures'){foes.forEach(c=>{c._stp+=n;c._stt+=n;});}});
   /* P23.2: player static emblems — anthemYou/buffYourCreatures buff YOUR creatures, debuffEnemyCreatures debuffs the enemy's; same _stp/_stt channel, recomputed each render, attach-aware. */
@@ -1683,10 +1729,11 @@ function applyStaticEmblems(){if(typeof S==='undefined'||!S)return;const foes=[.
     if(k==='debuffEnemyCreatures'){foes.forEach(c=>{c._stp-=n;});return;}
     if(em.attachId!=null){const tgt=mine.find(c=>c.id===em.attachId);if(!tgt){const _ll=_lastLog;log("you",`✦ <b>${em.name}</b> falls off — the creature it was attached to has left the battlefield; it goes inert.`);_lastLog=_ll;em.autoOn=false;return;}if(k==='anthemYou'||k==='buffYourCreatures'){tgt._stp+=n;tgt._stt+=n;}return;}
     if(k==='anthemYou'||k==='buffYourCreatures'){mine.forEach(c=>{c._stp+=n;c._stt+=n;});}});}
-function fireOneEmblem(id){if(S.over)return;const em=findEnemyFx(id);if(em&&em.auto){emblemEffect(em);checkLose();render();}}
+function fireOneEmblem(id){if(S.over)return;const em=findEnemyFx(id);if(em&&em.auto){emblemEffect(em);if(S.boss&&S.boss.life<=0&&!S.over){bossDown();render();return;}checkEnemyOut();checkLose();render();}}/* P23.4: a manually-fired retargeted emblem can fell the boss */
 /* enemy persistent-effect kinds, in board order; each row renders under its group, red-boxed when it hits you */
 const ENEMY_FX_KINDS=[{k:'artifact',label:'⚙ Artifacts'},{k:'enchantment',label:'🪶 Enchantments'},{k:'emblem',label:'✶ Emblems'}];
-function toggleEmblemVsYou(id){const em=findEnemyFx(id);if(em){em.vsYou=!em.vsYou;log("dm",`✦ <b>${em.name}</b>${em.vsYou?' now flagged as affecting you (red).':' no longer flagged against you.'}`);render();}}
+function setEmblemTarget(id,side){const em=findEnemyFx(id);if(!em)return;em.target=(side==='you')?'you':'enemy';em.vsYou=(em.target==='you');log("dm",`✦ <b>${em.name}</b> now affects ${em.target==='you'?'YOU (red box)':ENs()+' (uncoloured)'} — its effect is redirected.`);render();}
+function toggleEmblemVsYou(id){const em=findEnemyFx(id);if(!em)return;setEmblemTarget(id,emblemTarget(em)==='you'?'enemy':'you');}/* P23.4: the ⚠ toggle is now FUNCTIONAL — it redirects which side the effect hits (and syncs the red box), not just a cosmetic flag */
 /* P13.2: which step a non-static auto emblem fires on. */
 function emblemTriggerSel(em){const opts=[['upkeep','its upkeep'],['endStep','its end step'],['yourUpkeep','your upkeep']];return `<select title="when this auto-fires" onchange="setEnemyEmblem(${em.id},'trigger',this.value)">${opts.map(([v,l])=>`<option value="${v}" ${(em.trigger||'upkeep')===v?'selected':''}>⏱ ${l}</option>`).join('')}</select>`;}
 /* P22.1: tune an auto emblem's magnitude (auto.n). Kind-aware label so the row reads truthfully even though the template name has a fixed "+1/+1" string. */
@@ -1726,7 +1773,7 @@ function renderEnemyEmblems(){fillEmblemTemplates();const box=$('enemyEmbList');
       else if(em.auto)ctrl=`<button class="tiny ${em.autoOn?'gold on':''}" title="automation fires on the chosen step — click to toggle" onclick="toggleEmblemAuto(${em.id})">⚡ ${em.autoOn?'auto':'off'}</button>${emblemValueInput(em)}${emblemTriggerSel(em)}<button class="tiny" title="fire this now" onclick="fireOneEmblem(${em.id})">▸ fire</button>`;
       else ctrl='<span class="badge" title="not auto-modeled — apply its effect yourself">⚠ apply manually</span>';
       const tools=group.perm?`<button class="tiny" title="bounce to ${ENs()}'s hand" onclick="moveBoardById('${group.scope}',${em.id},'hand')">↩</button><button class="tiny ember" title="destroy → ${ENs()}'s ${em.dies==='exile'?'exile':'graveyard'}" onclick="moveBoardById('${group.scope}',${em.id},'${em.dies==='exile'?'exile':'graveyard'}')">✖</button><button class="tiny" title="exile" onclick="moveBoardById('${group.scope}',${em.id},'exile')">⊘</button><button class="tiny" title="copy (token)" onclick="copyPermanent('${group.scope}',${em.id})">⧉</button><button class="tiny" title="take control — it joins your board" onclick="takeControlPerm('${group.scope}',${em.id})">⇄</button><button class="tiny ${em._drawer?'on':''}" title="edit" onclick="toggleDrawer('${group.scope}',${em.id})">✎</button>`:'';
-      el.innerHTML=`<span class="kindchip">${em.kind||'emblem'}</span><input type="text" value="${embEsc(em.name)}" style="width:118px" onchange="setEnemyEmblem(${em.id},'name',this.value)"><input type="text" placeholder="effect" value="${embEsc(em.note)}" style="width:150px" onchange="setEnemyEmblem(${em.id},'note',this.value)">${ctrl}${tools}<button class="tiny ${em.vsYou?'ember on':''}" title="mark this as affecting YOU — shows a red box" onclick="toggleEmblemVsYou(${em.id})">⚠ vs you</button><button class="tiny ember" title="remove entirely" onclick="rmEnemyEmblem(${em.id})">✕</button>`;
+      el.innerHTML=`<span class="kindchip">${em.kind||'emblem'}</span><input type="text" value="${embEsc(em.name)}" style="width:118px" onchange="setEnemyEmblem(${em.id},'name',this.value)"><input type="text" placeholder="effect" value="${embEsc(em.note)}" style="width:150px" onchange="setEnemyEmblem(${em.id},'note',this.value)">${ctrl}${tools}<button class="tiny ${em.vsYou?'ember on':''}" title="redirect this effect — toggle whether it affects YOU (red box) or ${ENs()}" onclick="toggleEmblemVsYou(${em.id})">⚠ vs you</button><button class="tiny ember" title="remove entirely" onclick="rmEnemyEmblem(${em.id})">✕</button>`;
       box.appendChild(el);
       if(group.perm&&em._drawer){const dd=document.createElement('div');dd.innerHTML=enemyPermDrawer(group.scope,em);box.appendChild(dd.firstElementChild);}
     });});}
@@ -1827,7 +1874,7 @@ function advance(){const next=S.roomIndex+1;closeCutscene();S._spoils="";freshGa
   if(S.youLife>S.youMax){const was=S.youLife;S.youLife=S.youMax;log("sys",`✨ Temporary vigor fades — your life settles to <b>${S.youMax}</b> between battles (was ${was}).`);}
   /* P15.4: difficulty-scaled recovery between bosses — only when below the threshold; adjLife/floor never overheal. (P16.4 will reset >40 life FIRST, then this heals against the post-cap value.) */
   {const dh=DESCENT_HEAL[S.diff]||DESCENT_HEAL.standard;if(S.youMax>0&&(S.youLife/S.youMax)<dh.thr){const heal=Math.floor((S.youMax-S.youLife)*dh.frac);if(heal>0){S.youLife=Math.min(S.youMax,S.youLife+heal);log("you",`🌿 You recover <b>${heal}</b> between descents (${S.youLife}/${S.youMax}).`);}}}
-  log("sys",`A fresh board awaits in <b>${DUNGEON[next].name}</b> — empty battlefield, but your life (${S.youLife}) and loot carry over.`);render();const nr=DUNGEON[next];showCutscene(nr.intro,nr.villain,`${nr.name} · descending`,nr.isVael?"Face the Tyrant ▸":"Descend ▸",villainCutOpts(nr));}
+  log("sys",`A fresh board awaits in <b>${DUNGEON[next].name}</b> — empty battlefield, but your life (${S.youLife}) and loot carry over.`);histReset();/* P36: clear the undo history at the descent — you can't undo back into the previous (now-wiped) battle. settleHistory() re-anchors _committed at the new room on the next settled action. */render();const nr=DUNGEON[next];showCutscene(nr.intro,nr.villain,`${nr.name} · descending`,nr.isVael?"Face the Tyrant ▸":"Descend ▸",villainCutOpts(nr));}
 
 /* ===== TURN / PHASE ENGINE ===== */
 function flowClick(){if(S.over||S.paused||S.combat)return;if(S.plays.some(p=>p.status==='pending'&&p._player)){log("sys","Resolve the spells on your stack first.");showPlays();return;}if(S.activeTurn===null){beginVaelTurn();return;}advancePhase();}
@@ -2505,7 +2552,7 @@ function clearSave(){try{if(typeof DB!=='undefined'&&DB){DB.save=null;saveDB();}
 function descentInProgress(){return hasSave()||!!(_liveGame&&typeof S!=='undefined'&&S&&!S.over);}
 function migrate(s){if(!s||typeof s!=='object')return s;
   ['tokens','rules','plays','inv','lib','hand','gy','exile','deckColors','myGy','myExile','battles','emblemsEnemy'].forEach(k=>{if(!Array.isArray(s[k]))s[k]=[];});
-  (s.emblemsEnemy||[]).forEach(e=>{if(e&&!e.kind)e.kind='emblem';if(e&&e.vsYou==null)e.vsYou=!!(e.auto&&e.auto.k==='youLose');if(e&&!e.trigger)e.trigger='upkeep';if(e&&e.static==null)e.static=false;if(e&&e.attachId===undefined)e.attachId=null;});/* enemy persistent-effects gained a kind (artifact/enchantment/emblem) + vsYou flag; P13.2 added trigger window + static + attachId */
+  (s.emblemsEnemy||[]).forEach(e=>{if(e&&!e.kind)e.kind='emblem';if(e&&e.vsYou==null)e.vsYou=!!(e.auto&&e.auto.k==='youLose');if(e&&e.target==null)e.target=e.vsYou?'you':'enemy';/* P23.4: backfill functional target from vsYou (behaviour-preserving — vsYou already tracked the natural side) */if(e&&!e.trigger)e.trigger='upkeep';if(e&&e.static==null)e.static=false;if(e&&e.attachId===undefined)e.attachId=null;});/* enemy persistent-effects gained a kind (artifact/enchantment/emblem) + vsYou flag; P13.2 added trigger window + static + attachId */
   if(!Array.isArray(s.enemyArtifacts))s.enemyArtifacts=[];if(!Array.isArray(s.enemyEnchants))s.enemyEnchants=[];
   /* P13.3: enemy artifacts/enchantments are now first-class permanents — convert old emblemsEnemy artifact/enchant entries into real permanents (carrying their automation); genuine emblems stay in the tracker. Idempotent (no artifact/enchant kinds remain afterward). */
   if(Array.isArray(s.emblemsEnemy)){const keep=[];s.emblemsEnemy.forEach(e=>{if(e&&(e.kind==='artifact'||e.kind==='enchantment')){const perm=Object.assign({color:[],token:false,dies:'graveyard',legendary:false},e,{_pscope:e.kind==='artifact'?'eart':'eench'});(e.kind==='artifact'?s.enemyArtifacts:s.enemyEnchants).push(perm);}else keep.push(e);});s.emblemsEnemy=keep;}
@@ -2528,7 +2575,7 @@ function migrate(s){if(!s||typeof s!=='object')return s;
   (s.inv||[]).forEach(it=>{if(it){it.descents=1;if(!it.uid)it.uid=newUid();}});/* P14.5: 1-descent items · P21.1: backfill a stable uid on old saves */
   if(typeof s.nextId!=='number')s.nextId=1;if(typeof s.phase!=='number')s.phase=0;if(typeof s.turn!=='number')s.turn=0;
   const bp=c=>{if(!c)return;if(c.p!=null&&c.baseP==null)c.baseP=c.p;if(c.t!=null&&c.baseT==null)c.baseT=c.t;if(c.loyalty!=null&&c.baseLoy==null)c.baseLoy=c.loyalty;if(c.token&&c.expires==null)c.expires=false;};
-  (s.my.creatures||[]).forEach(bp);(s.my.walkers||[]).forEach(bp);(s.tokens||[]).forEach(t=>{bp(t);if(t.expires==null)t.expires=false;});if(s.cmd)bp(s.cmd);if(s.pcmd)bp(s.pcmd);
+  (s.my.creatures||[]).forEach(bp);(s.my.walkers||[]).forEach(bp);(s.tokens||[]).forEach(t=>{bp(t);if(t.expires==null)t.expires=false;if(t.token==null&&!t.key&&!t._controlled)t.token=true;/* P33: backfill token:true on spawned enemy bodies (no FX key, not a donated real creature) so old saves cease them correctly; a _controlled donated non-token keeps its own flag */});if(s.cmd)bp(s.cmd);if(s.pcmd)bp(s.pcmd);
   (s.my.walkers||[]).forEach(w=>{if(w)w.legendary=true;});if(s.pcmd&&s.pcmd.kind==='walkers')s.pcmd.legendary=true; // P2.7: planeswalkers are always legendary
   ['creatures','artifacts','enchants','walkers'].forEach(k=>(s.my[k]||[]).forEach(o=>{if(o&&!o.strength)o.strength='mid';})); // P6.1: backfill strength so the generalized threat hierarchy can read it on old saves (behavior-neutral — strengthOf() already defaults to 'mid')
   // defensive scalar backfills so a partial/corrupt save never throws in render()
