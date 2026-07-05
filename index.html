@@ -871,7 +871,7 @@ function spinWheel(roll,base){roll=roll||(1+Math.floor(Math.random()*100));base=
   log("loot",`🎡 The Fortune Wheel lands on <b>${desc}</b> — account ${getGold()}.`);render();return {slice:k,roll,desc};}
 
 let S;
-function fresh(){histReset();S={diff:"standard",youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],stackProposal:null,phasesFired:[],nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,bossManaFrozen:0,bossLands:0,bossLandPlayed:false,emblemsEnemy:[],enemyArtifacts:[],enemyEnchants:[],battles:[],plane:null,ui:{tabs:{},panels:{}},my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",_spoils:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
+function fresh(){histReset();S={diff:"standard",mode:"campaign",levelIdx:0,youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],stackProposal:null,phasesFired:[],nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,bossManaFrozen:0,bossLands:0,bossLandPlayed:false,emblemsEnemy:[],enemyArtifacts:[],enemyEnchants:[],battles:[],plane:null,ui:{tabs:{},panels:{}},my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",_spoils:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
 function enterRoom(i,first){S.roomIndex=i;const room=DUNGEON[i];const baseHp=(room.hp&&room.hp[S.diff])||room.life;let life=Math.max(1,Math.round(baseHp*(S.balanceScale||1)));/* P10: explicit per-difficulty HP (room.hp); balanceScale still scales it for in-run effects. */if(S.weakenNext){const _maps=Math.max(1,(S.inv||[]).filter(x=>x&&x.id==='map').length);life=Math.max(1,life-4*_maps);S.weakenNext=false;S.inv=(S.inv||[]).filter(x=>!(x&&x.id==='map'));log("loot",`🗺 The Sapper's Map is spent${_maps>1?` (×${_maps}, −${4*_maps} life)`:''}.`);}/* P42.2: consume the map row(s) the moment the −4 fires — looted maps stack, no dead rows left behind */
   S.boss={name:room.villain,life,max:life,isVael:!!room.isVael,colors:(room.colors||["R"]).slice()};
   S.enemy={name:room.villain,colors:(room.colors||["R"]).slice(),lore:room.lore||"",isFinal:!!room.isVael};
@@ -2532,7 +2532,7 @@ function setDiff(df){S.diff=df;$("diffNote").textContent=DIFF[df].note;[...$("di
    are spent. fresh() wipes S.inv, so capture the carry-over BEFORE it and re-inject after enterRoom. */
 function carryInvForward(){return [];}/* P14.5: every passive/reminder lasts exactly 1 descent — nothing carries forward (kept as a no-op so restart()/startNewDescent() are unchanged). */
 /* Merchant purchases are stowed on the PROFILE (p.pending), never in the live/saved S.inv — so quitting mid-run, buying, and continuing can't smuggle items into that run (Continue restores S.inv verbatim). They're poured into the satchel only when a NEW descent begins (restart / startNewDescent), then the pack is emptied. Sapper's Map applies its −4 to the first villain of this descent. */
-function applyPendingPurchases(){const p=prof();if(!p)return;if(!Array.isArray(p.pending))p.pending=[];const pend=p.pending;if(!pend.length)return;let n=0;pend.forEach(it=>{if(!it||!it.id||!BOONS[it.id])return;if(it.id==='map'){/* P42.2: a purchased map is consumed on the descent's first villain — apply −4 now, never stow a dead row */if(S.boss){S.boss.max=Math.max(1,(S.boss.max||S.boss.life||1)-4);if(S.boss.life>S.boss.max)S.boss.life=S.boss.max;}else{S.weakenNext=true;}log("loot","🗺 A Sapper's Map is spent — the villain enters with 4 less life.");return;}S.inv.push({id:it.id,uid:newUid()});/* P14.5: 1 descent (structural) · P21.1: uid · P42.1: descents dropped */n++;});p.pending=[];saveDB();if(n)log("loot",`🛒 ${n} Merchant purchase${n===1?'':'s'} join your 🎒 satchel for this descent.`);}
+function applyPendingPurchases(){const b=bucket();if(!b)return;if(!Array.isArray(b.pending))b.pending=[];const pend=b.pending;if(!pend.length)return;let n=0;pend.forEach(it=>{if(!it||!it.id||!BOONS[it.id])return;if(it.id==='map'){/* P42.2: a purchased map is consumed on the descent's first villain — apply −4 now, never stow a dead row */if(S.boss){S.boss.max=Math.max(1,(S.boss.max||S.boss.life||1)-4);if(S.boss.life>S.boss.max)S.boss.life=S.boss.max;}else{S.weakenNext=true;}log("loot","🗺 A Sapper's Map is spent — the villain enters with 4 less life.");return;}S.inv.push({id:it.id,uid:newUid()});/* P14.5: 1 descent (structural) · P21.1: uid · P42.1: descents dropped */n++;});b.pending=[];saveDB();if(n)log("loot",`🛒 ${n} Merchant purchase${n===1?'':'s'} join your 🎒 satchel for this descent.`);}
 function restart(){const df=S.diff,carry=carryInvForward();closeCutscene();["plays","resolver"].forEach(id=>{const e=$(id);if(e)e.classList.remove("show");});$("log").innerHTML="";fresh();S.diff=df;enterRoom(0,true);S.inv=carry;applyPendingPurchases();applyStashItems();setDiff(df);_liveGame=true;render();doAutosave();log("sys",`New descent · ${df.toUpperCase()}.`);if(carry.length)log("loot",`🎒 ${carry.length} lasting relic${carry.length===1?'':'s'} carry into this descent.`);chooseCommander();/* P3.1: re-ask the commander each new descent (fresh() clears it); proceedAfterCommander shows the gate intro */}
 $("diffSeg").addEventListener("click",e=>{if(!e.target.dataset.d)return;if(S.turn===0&&S.roomIndex===0&&!S.inv.length){const df=e.target.dataset.d;fresh();S.diff=df;enterRoom(0,true);setDiff(df);render();}else log("sys","Restart to change difficulty.");});
 $("resetBtn").addEventListener("click",restart);
@@ -2720,11 +2720,24 @@ const SKEY='guffsGauntlet.v1';
 let DB={profiles:{},active:null};
 function storageGet(){try{if(typeof localStorage==='undefined')return null;const r=localStorage.getItem(SKEY);return r?JSON.parse(r):null;}catch(e){return null;}}
 function storageSet(o){try{if(typeof localStorage==='undefined')return false;localStorage.setItem(SKEY,JSON.stringify(o));return true;}catch(e){return false;}}
-function blankProfile(name){return {name,wins:0,losses:0,gold:0,library:[],tokens:[],pending:[],stash:[],created:Date.now()};}
+function blankProfile(name){return {name,wins:0,losses:0,library:[],tokens:[],created:Date.now(),
+  camp:{gold:0,pending:[],stash:[],cleared:{},level:0,run:null},
+  sand:{gold:0,pending:[],stash:[],save:null,stats:{}}};}
+/* P43.1: per-mode economy buckets. Campaign (⚔) and Sandbox (🏟) each keep their OWN gold, pending purchases, and stash so the two purses never mix. `camp.cleared` is the flat per-enemy unlock ledger (P43.6), `camp.level` the highest unlocked level, `camp.run`/`sand.save` the per-mode autosave slots. library/tokens stay profile-global (shared by both modes). */
+function migrateProfiles(){if(!DB||!DB.profiles)return;
+  Object.keys(DB.profiles).forEach(name=>{const p=DB.profiles[name];if(!p||typeof p!=='object')return;
+    if(!p.camp||typeof p.camp!=='object')p.camp={gold:(typeof p.gold==='number'?p.gold:0),pending:Array.isArray(p.pending)?p.pending:[],stash:Array.isArray(p.stash)?p.stash:[],cleared:{},level:0,run:null};/* legacy flat gold/pending/stash fold into the campaign bucket */
+    else{if(typeof p.camp.gold!=='number')p.camp.gold=0;['pending','stash'].forEach(k=>{if(!Array.isArray(p.camp[k]))p.camp[k]=[];});if(!p.camp.cleared||typeof p.camp.cleared!=='object')p.camp.cleared={};if(typeof p.camp.level!=='number')p.camp.level=0;if(p.camp.run===undefined)p.camp.run=null;}
+    if(!p.sand||typeof p.sand!=='object')p.sand={gold:0,pending:[],stash:[],save:null,stats:{}};
+    else{if(typeof p.sand.gold!=='number')p.sand.gold=0;['pending','stash'].forEach(k=>{if(!Array.isArray(p.sand[k]))p.sand[k]=[];});if(p.sand.save===undefined)p.sand.save=null;if(!p.sand.stats||typeof p.sand.stats!=='object')p.sand.stats={};}
+    delete p.gold;delete p.pending;delete p.stash;/* the flat fields now live in camp — drop them so no stale read survives */});
+  /* legacy single global autosave → its OWNING profile's campaign run slot (fixes the cross-profile Continue bug: profile A could resume profile B's DB.save). Unrecoverable if the owner is gone — dropped either way. */
+  if(DB.save&&DB.save.S){const owner=DB.save.profile;if(owner&&DB.profiles[owner]&&DB.profiles[owner].camp)DB.profiles[owner].camp.run=DB.save;}
+  DB.save=null;}
 /* P15.3: unused satchel items aren't lost at run end — they go to a profile stash and return next descent (separate bucket from p.pending; carryInvForward is retired so no double-count). */
-function saveUnusedItems(){const p=prof();if(!p)return;if(!Array.isArray(p.stash))p.stash=[];const keep=(S.inv||[]).filter(it=>it&&it.id&&BOONS[it.id]&&BOONS[it.id].kind==="consumable");/* P42.1: ONLY unused consumables persist across runs — passives/reminders truly expire with the run (fixes the immortal-passives stash loop) */if(keep.length){p.stash.push(...keep.map(it=>({id:it.id,uid:it.uid||newUid()})));try{saveDB();}catch(e){}}}
-function applyStashItems(){const p=prof();if(!p)return;if(!Array.isArray(p.stash))p.stash=[];if(!p.stash.length)return;let n=0;p.stash.forEach(it=>{if(it&&it.id&&BOONS[it.id]&&BOONS[it.id].kind==="consumable"){S.inv.push({id:it.id,uid:it.uid||newUid()});n++;}});/* P42.1: defensive — a stash polluted by the old bug self-cleans (non-consumables silently dropped) */p.stash=[];try{saveDB();}catch(e){}if(n)log("loot",`🎒 ${n} stowed item${n===1?'':'s'} return from your last run.`);}
-function loadDB(){const d=storageGet();DB=(d&&d.profiles)?d:{profiles:{},active:null};if(!DB.active||!DB.profiles[DB.active]){const names=Object.keys(DB.profiles);if(names.length)DB.active=names[0];else{DB.profiles['Adventurer']=blankProfile('Adventurer');DB.active='Adventurer';}}saveDB();}
+function saveUnusedItems(){const b=bucket();if(!b)return;if(!Array.isArray(b.stash))b.stash=[];const keep=(S.inv||[]).filter(it=>it&&it.id&&BOONS[it.id]&&BOONS[it.id].kind==="consumable");/* P42.1: ONLY unused consumables persist across runs — passives/reminders truly expire with the run (fixes the immortal-passives stash loop) · P43.1: into the ACTIVE mode's stash so camp/sand inventories never mix */if(keep.length){b.stash.push(...keep.map(it=>({id:it.id,uid:it.uid||newUid()})));try{saveDB();}catch(e){}}}
+function applyStashItems(){const b=bucket();if(!b)return;if(!Array.isArray(b.stash))b.stash=[];if(!b.stash.length)return;let n=0;b.stash.forEach(it=>{if(it&&it.id&&BOONS[it.id]&&BOONS[it.id].kind==="consumable"){S.inv.push({id:it.id,uid:it.uid||newUid()});n++;}});/* P42.1: defensive — a stash polluted by the old bug self-cleans (non-consumables silently dropped) */b.stash=[];try{saveDB();}catch(e){}if(n)log("loot",`🎒 ${n} stowed item${n===1?'':'s'} return from your last run.`);}
+function loadDB(){const d=storageGet();DB=(d&&d.profiles)?d:{profiles:{},active:null};if(!DB.active||!DB.profiles[DB.active]){const names=Object.keys(DB.profiles);if(names.length)DB.active=names[0];else{DB.profiles['Adventurer']=blankProfile('Adventurer');DB.active='Adventurer';}}migrateProfiles();saveDB();}
 function saveDB(){storageSet(DB);}
 function prof(){return DB.profiles[DB.active]||null;}
 /* ===== SAVE SYSTEM — continuous autosave + exact resume (P0.2, D1) =====
@@ -2733,13 +2746,17 @@ function prof(){return DB.profiles[DB.active]||null;}
    once a game is actually live (so the menu/initial render never clobber a real
    save), and never while S.over (a defeat/victory keeps the last good save).
    migrate() backfills fields missing on older saves so they never throw. */
-const SAVE_V=40;/* P7: satchel `descents`, functional `expires`/`battles`/`plane`; migrate backfills them so older saves never throw */
+const SAVE_V=43;/* P7: satchel `descents`, functional `expires`/`battles`/`plane`; migrate backfills them so older saves never throw · P43.1: save objects now carry mode+levelIdx and live in a per-mode slot (camp.run / sand.save) */
 let _liveGame=false,_autosaveT=null;
 function scheduleAutosave(){if(_autosaveT)return;try{_autosaveT=setTimeout(()=>{_autosaveT=null;doAutosave();},600);}catch(e){_autosaveT=null;doAutosave();}}
-function doAutosave(){try{if(!_liveGame||typeof S==='undefined'||!S||S.over)return;DB.save={v:SAVE_V,ts:Date.now(),profile:DB.active,room:S.roomIndex,turn:S.turn,S:JSON.parse(JSON.stringify(S))};saveDB();}catch(e){}}
-function hasSave(){return !!(DB.save&&DB.save.S&&!DB.save.S.over);}
+/* P43.1: saves are per-profile AND per-mode — a campaign run lives on p.camp.run, a sandbox battle on p.sand.save. The save object carries mode+levelIdx (already on S) so Continue restores the right level/mode. S.mode selects the slot; defaults to campaign at the menu (pre-fresh). */
+function saveSlotName(){return (typeof S!=='undefined'&&S&&S.mode==='sandbox')?'sand':'camp';}
+function getSave(){const p=prof();if(!p)return null;return saveSlotName()==='sand'?(p.sand&&p.sand.save):(p.camp&&p.camp.run);}
+function setSave(sv){const p=prof();if(!p)return;if(saveSlotName()==='sand'){if(!p.sand)p.sand={gold:0,pending:[],stash:[],save:null,stats:{}};p.sand.save=sv;}else{if(!p.camp)p.camp={gold:0,pending:[],stash:[],cleared:{},level:0,run:null};p.camp.run=sv;}saveDB();}
+function doAutosave(){try{if(!_liveGame||typeof S==='undefined'||!S||S.over)return;setSave({v:SAVE_V,ts:Date.now(),profile:DB.active,mode:S.mode,levelIdx:S.levelIdx,room:S.roomIndex,turn:S.turn,S:JSON.parse(JSON.stringify(S))});}catch(e){}}
+function hasSave(){const sv=getSave();return !!(sv&&sv.S&&!sv.S.over);}
 /* A finished descent (win/lose) has nothing to continue — drop the autosave so hasSave()/descentInProgress() read true ONLY while a run is genuinely underway, and so a death can't be undone via "Continue last game". */
-function clearSave(){try{if(typeof DB!=='undefined'&&DB){DB.save=null;saveDB();}}catch(e){}}
+function clearSave(){try{setSave(null);}catch(e){}}
 /* "A descent is underway" — true while a saved run exists (cleared on win/lose) OR a live, un-finished game is in memory. The Merchant is closed (no shopping) whenever this is true; room-clear loot still flows into the satchel. */
 function descentInProgress(){return hasSave()||!!(_liveGame&&typeof S!=='undefined'&&S&&!S.over);}
 function migrate(s){if(!s||typeof s!=='object')return s;
@@ -2775,11 +2792,12 @@ function migrate(s){if(!s||typeof s!=='object')return s;
   ['creatures','artifacts','enchants','walkers'].forEach(k=>(s.my[k]||[]).forEach(o=>{if(o&&!o.strength)o.strength='mid';})); // P6.1: backfill strength so the generalized threat hierarchy can read it on old saves (behavior-neutral — strengthOf() already defaults to 'mid')
   // defensive scalar backfills so a partial/corrupt save never throws in render()
   if(typeof s.youLife!=='number')s.youLife=40;if(typeof s.youMax!=='number')s.youMax=Math.max(40,s.youLife||40);
+  if(s.mode!=='sandbox'&&s.mode!=='campaign')s.mode='campaign';if(typeof s.levelIdx!=='number')s.levelIdx=0;/* P43.1: two-mode + multi-level fields (levelIdx clamp against LEVELS lands in P43.2) */
   if(typeof s.roomIndex!=='number'||!DUNGEON[s.roomIndex])s.roomIndex=0;if(typeof s.diff!=='string'||!DIFF[s.diff])s.diff='standard';
   if(typeof s.notes!=='string')s.notes='';if(typeof s._spoils!=='string')s._spoils='';if(typeof s.bossMana!=='number')s.bossMana=0;if(typeof s.bossManaMax!=='number')s.bossManaMax=0;
   s.combat=null;return s;}
-function continueLastGame(){const sv=DB.save;if(!sv||!sv.S){log("sys","No saved game to continue.");return;}
-  S=migrate(JSON.parse(JSON.stringify(sv.S)));if(!DUNGEON[S.roomIndex])S.roomIndex=0;S._introShown=true;_liveGame=true;histReset();
+function continueLastGame(sv){sv=sv||getSave();if(!sv||!sv.S){log("sys","No saved game to continue.");return;}
+  S=migrate(JSON.parse(JSON.stringify(sv.S)));if(typeof setLevel==='function')setLevel(S.levelIdx||0);/* P43.2: re-point DUNGEON/art to the saved level before any DUNGEON read */if(!DUNGEON[S.roomIndex])S.roomIndex=0;S._introShown=true;_liveGame=true;histReset();
   ['plays','resolver','overlay','library','store','cutscene','menu'].forEach(id=>{const e=$(id);if(e)e.classList.remove("show");});
   setDiff(S.diff||'standard');setWarrenArt();render();
   log("sys",`▶ Resumed your descent — <b>${DUNGEON[S.roomIndex].name}</b>, Turn ${S.turn}.`);
@@ -2789,10 +2807,12 @@ function newProfile(name){name=(name||'').trim();if(!name)return;if(!DB.profiles
 function switchProfile(name){if(DB.profiles[name]){DB.active=name;saveDB();renderMenu();}}
 function deleteProfile(name){if(!name||!DB.profiles[name])return;if(!confirm('Delete profile "'+name+'" and its library?'))return;delete DB.profiles[name];const names=Object.keys(DB.profiles);DB.active=names[0]||null;if(!DB.active){DB.profiles['Adventurer']=blankProfile('Adventurer');DB.active='Adventurer';}saveDB();renderMenu();}
 function recordResult(won){const p=prof();if(!p)return;if(won)p.wins=(p.wins||0)+1;else p.losses=(p.losses||0)+1;saveDB();renderMenu();}
-/* ===== Gold lives on the account (profile), accumulating across runs and sessions. ===== */
-function getGold(){const p=prof();return p?(p.gold||0):0;}
-function addGold(n){const p=prof();if(!p)return;p.gold=(p.gold||0)+n;saveDB();}
-function spendGold(n){const p=prof();if(!p||(p.gold||0)<n)return false;p.gold=(p.gold||0)-n;saveDB();return true;}
+/* ===== Gold lives on the account (profile), accumulating across runs and sessions — now split into a Campaign purse and a Sandbox purse (P43.1). ===== */
+/* The active mode's economy bucket. S.mode ('campaign'|'sandbox') selects camp/sand; defaults to camp at the menu / before fresh(). */
+function bucket(){const p=prof();if(!p)return null;const b=(typeof S!=='undefined'&&S&&S.mode==='sandbox')?p.sand:p.camp;return b||p.camp||null;}
+function getGold(){const b=bucket();return b?(b.gold||0):0;}
+function addGold(n){const b=bucket();if(!b)return;b.gold=(b.gold||0)+n;saveDB();}
+function spendGold(n){const b=bucket();if(!b||(b.gold||0)<n)return false;b.gold=(b.gold||0)-n;saveDB();return true;}
 
 function showMenu(){renderMenu();$("menu").classList.add("show");}
 function beginIntro(){ /* P1.4: first-boot cinematic — fire burns away the dark to reveal the warren art, then the menu drops in */
@@ -2863,7 +2883,7 @@ function runBurn(){
 /* Descend from the menu. A continuable save (incl. the autosave of a run already in progress) confirms first; otherwise begin a brand-new descent straight away. (Bugfix: a run in progress used to early-return on _introShown, so Descend was a no-op until a page refresh.) */
 function startGame(){if(hasSave()){confirmNewDescent();return;}startNewDescent();}
 /* Guard: Descend with a continuable save would silently overwrite it — confirm first. */
-function confirmNewDescent(){const sv=DB.save||{};const rn=(DUNGEON[sv.room!=null?sv.room:((sv.S&&sv.S.roomIndex)||0)]||{}).name||'your descent';const tn=sv.turn!=null?sv.turn:((sv.S&&sv.S.turn)||0);
+function confirmNewDescent(){const sv=getSave()||{};const rn=(DUNGEON[sv.room!=null?sv.room:((sv.S&&sv.S.roomIndex)||0)]||{}).name||'your descent';const tn=sv.turn!=null?sv.turn:((sv.S&&sv.S.turn)||0);
   showCutscene([`You have a descent already underway — <b>${rn}</b>, Turn ${tn}.`,`Starting a new descent will <b>abandon</b> it — once the new run begins, your saved game is overwritten.`],"Start a new descent?","⚠ A descent is already saved",null,
     {eyebrowAcc:'var(--ember)',buttons:[{label:"▶ Continue saved descent",on:continueLastGame,cls:"big azor"},{label:"✦ Start new — abandon save",on:startNewDescent,cls:"big ok"},{label:"Cancel",on:closeCutscene,cls:"big"}]});}
 /* Begin a brand-new descent from a clean board — works from first boot AND from a run already in progress (the latter requires the fresh() reset, which the old version omitted). Mirrors restart() but also dismisses the menu and any open overlays. */
@@ -2871,10 +2891,10 @@ function startNewDescent(){const df=S.diff,carry=carryInvForward();closeCutscene
 function menuSetDiff(df){setDiff(df);renderMenu();}
 function renderMenu(){
   const p=prof();const sel=$("menuProfileSel");if(sel){const names=Object.keys(DB.profiles);sel.innerHTML=names.map(n=>`<option value="${n}" ${n===DB.active?'selected':''}>${n}</option>`).join("");}
-  const rec=$("menuRecord");if(rec)rec.innerHTML=p?`<b>${p.name}</b> — <span style="color:var(--ok)">${p.wins||0} W</span> · <span style="color:var(--ember)">${p.losses||0} L</span> · <span style="color:var(--gold)">💰 ${p.gold||0}</span><br><span class="manaline">${(p.library||[]).length} saved card${(p.library||[]).length===1?'':'s'} · ${(p.tokens||[]).length} token${(p.tokens||[]).length===1?'':'s'}</span>`:'no profile';
+  const rec=$("menuRecord");if(rec)rec.innerHTML=p?`<b>${p.name}</b> — <span style="color:var(--ok)">${p.wins||0} W</span> · <span style="color:var(--ember)">${p.losses||0} L</span> · <span style="color:var(--gold)">💰 ⚔ ${(p.camp&&p.camp.gold)||0} · 🏟 ${(p.sand&&p.sand.gold)||0}</span><br><span class="manaline">${(p.library||[]).length} saved card${(p.library||[]).length===1?'':'s'} · ${(p.tokens||[]).length} token${(p.tokens||[]).length===1?'':'s'}</span>`:'no profile';/* P43.1: two purses — Campaign / Sandbox */
   const ds=$("menuDiff");if(ds)[...ds.children].forEach(b=>b.classList.toggle("on",b.dataset.d===S.diff));
   const mg=$("menuGold");if(mg)mg.textContent=`💰 ${getGold()} gold`;
-  const cb=$("continueBtn");if(cb){if(hasSave()){const sv=DB.save;const rn=(DUNGEON[sv.room!=null?sv.room:(sv.S&&sv.S.roomIndex)||0]||{}).name||'your descent';cb.style.display="";cb.innerHTML=`▶ Continue last game <span style="font-weight:400;opacity:.7">${rn} · T${sv.turn!=null?sv.turn:(sv.S&&sv.S.turn)||0}</span>`;}else cb.style.display="none";}
+  const cb=$("continueBtn");if(cb){const sv=getSave();if(sv&&sv.S&&!sv.S.over){const rn=(DUNGEON[sv.room!=null?sv.room:(sv.S&&sv.S.roomIndex)||0]||{}).name||'your descent';cb.style.display="";cb.innerHTML=`▶ Continue last game <span style="font-weight:400;opacity:.7">${rn} · T${sv.turn!=null?sv.turn:(sv.S&&sv.S.turn)||0}</span>`;}else cb.style.display="none";}
 }
 
 /* ----- read the cast form into a reusable card config ----- */
@@ -2890,14 +2910,16 @@ function openLibrary(){renderLibrary();$("library").classList.add("show");}
 function closeLibrary(){$("library").classList.remove("show");}
 function openStore(){renderStore();$("store").classList.add("show");}
 function closeStore(){$("store").classList.remove("show");}
-function renderStore(){const g=$("storeGold");if(g)g.textContent=getGold();const box=$("storeList");if(!box)return;const p=prof();if(p&&!Array.isArray(p.pending))p.pending=[];const pend=(p&&p.pending)||[];const locked=descentInProgress();
+function renderStore(){const g=$("storeGold");if(g)g.textContent=getGold();const box=$("storeList");if(!box)return;const bk=bucket();if(bk&&!Array.isArray(bk.pending))bk.pending=[];const pend=(bk&&bk.pending)||[];const locked=descentInProgress();
+  /* P43.1: pin which purse pays / which pending receives — the store is opened hard-keyed to a mode screen's bucket. */
+  const modeLine=`<div class="manaline" style="opacity:.85;margin:0 0 8px">Buying for: <b>${S&&S.mode==='sandbox'?'🏟 Sandbox':'⚔ Campaign'}</b> — this purse and pack are separate from the other mode.</div>`;
   let banner='';
   if(locked)banner=`<div class="manaline" style="color:var(--ember);border:1px solid var(--ember);border-radius:10px;padding:9px 12px;margin:0 0 12px;line-height:1.5">\uD83D\uDD12 <b>The Merchant is closed while you're in the dungeon.</b> It trades only <b>between descents</b> and reopens once your current run ends (win or lose). Clearing a room still drops loot into your \uD83C\uDF92 satchel as you descend.</div>`;
   else if(pend.length)banner=`<div class="manaline" style="color:var(--ok);border:1px solid rgba(123,178,116,.4);border-radius:10px;padding:9px 12px;margin:0 0 12px;line-height:1.5">\uD83C\uDF92 Stowed in your pack for the next descent: <b>${pend.map(it=>(BOONS[it.id]&&BOONS[it.id].n)||it.id).join(', ')}</b>.</div>`;
   const cats=[];STORE.forEach(s=>{if(!cats.includes(s.cat))cats.push(s.cat);});
-  box.innerHTML=banner+cats.map(cat=>{const items=STORE.filter(s=>s.cat===cat);return `<div class="storecat">${cat}</div><div class="storegrid">${items.map(s=>{const b=BOONS[s.id];const aff=getGold()>=s.cost;const can=aff&&!locked;return `<div class="storeitem ${b.r}"><div class="si-ic">${s.icon||'\uD83E\uDDEA'}</div><div class="si-body"><div class="si-n">${b.n}<span class="si-r">${b.r}</span></div><div class="si-t">${b.t}</div><div class="si-foot"><span class="cost">\uD83D\uDCB0 ${s.cost}</span><button class="tiny ${can?'ok':''}" ${can?'':'disabled style="opacity:.45;cursor:not-allowed"'} onclick="buyStore('${s.id}')">${locked?'\uD83D\uDD12 Locked':(aff?'Buy':'Need gold')}</button></div></div></div>`;}).join('')}</div>`;}).join('');}
+  box.innerHTML=modeLine+banner+cats.map(cat=>{const items=STORE.filter(s=>s.cat===cat);return `<div class="storecat">${cat}</div><div class="storegrid">${items.map(s=>{const b=BOONS[s.id];const aff=getGold()>=s.cost;const can=aff&&!locked;return `<div class="storeitem ${b.r}"><div class="si-ic">${s.icon||'\uD83E\uDDEA'}</div><div class="si-body"><div class="si-n">${b.n}<span class="si-r">${b.r}</span></div><div class="si-t">${b.t}</div><div class="si-foot"><span class="cost">\uD83D\uDCB0 ${s.cost}</span><button class="tiny ${can?'ok':''}" ${can?'':'disabled style="opacity:.45;cursor:not-allowed"'} onclick="buyStore('${s.id}')">${locked?'\uD83D\uDD12 Locked':(aff?'Buy':'Need gold')}</button></div></div></div>`;}).join('')}</div>`;}).join('');}
 /* Buying never touches the live/saved run — the item is stowed on the profile (p.pending) and joins the satchel only when the next descent starts (applyPendingPurchases). Blocked outright while a descent is underway. */
-function buyStore(id){if(descentInProgress()){log("sys","The Merchant is closed while you're in the dungeon — finish or abandon your descent first.");renderStore();return;}const item=STORE.find(s=>s.id===id);if(!item)return;if(!spendGold(item.cost)){log("sys","Not enough gold for that.");renderStore();return;}const p=prof();if(p){if(!Array.isArray(p.pending))p.pending=[];p.pending.push({id});saveDB();}/* P42.1: descents dropped — duration is structural (any residual field on an old pending clears when applyPendingPurchases pushes without copying it) */log("loot",`🛒 Bought <b>${BOONS[id].n}</b> for ${item.cost} gold — stowed for your next descent (account ${getGold()}).`);renderStore();renderMenu();}
+function buyStore(id){if(descentInProgress()){log("sys","The Merchant is closed while you're in the dungeon — finish or abandon your descent first.");renderStore();return;}const item=STORE.find(s=>s.id===id);if(!item)return;if(!spendGold(item.cost)){log("sys","Not enough gold for that.");renderStore();return;}const bk=bucket();if(bk){if(!Array.isArray(bk.pending))bk.pending=[];bk.pending.push({id});saveDB();}/* P42.1: descents dropped — duration is structural · P43.1: into the ACTIVE mode's pending */log("loot",`🛒 Bought <b>${BOONS[id].n}</b> for ${item.cost} gold — stowed for your next descent (account ${getGold()}).`);renderStore();renderMenu();}
 function saveCardToLibrary(){const p=prof();if(!p){alert('Open the Menu and create a profile first.');return;}const cfg=readCastForm();cfg.lid='L'+Date.now()+Math.floor(Math.random()*1000);p.library.push(cfg);saveDB();log("loot",`★ Saved <b>${cfg.name}</b> to your library.`);renderLibrary();}
 function editLibrary(i){const p=prof();if(!p)return;const c=p.library[i];if(!c)return;if(!c.lid)c.lid=lidStamp();_editLid=c.lid;$("modalBody").innerHTML=castFormHTML();$("overlay").classList.add("show");loadCastFromLibrary(i);}
 function saveCardEdits(){const p=prof();if(!p){alert('Open the Menu and create a profile first.');return;}const cfg=readCastForm();const idx=p.library.findIndex(c=>c.lid===_editLid);if(idx>=0){cfg.lid=_editLid;p.library[idx]=cfg;log("loot",`✎ Updated <b>${cfg.name}</b> in your library.`);}else{cfg.lid=lidStamp();p.library.push(cfg);log("loot",`★ Saved <b>${cfg.name}</b> to your library.`);}saveDB();_editLid=null;$("overlay").classList.remove("show");renderLibrary();}
