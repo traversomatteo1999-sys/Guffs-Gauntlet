@@ -1998,7 +1998,11 @@ function useBoon(ref){const i=(typeof ref==='number')?ref:S.inv.findIndex(x=>x&&
 function grantBoon(id){const b=BOONS[id];if(!b)return;if(b.kind==="instant"){if(id==="spark"){S.youMax+=5;S.youLife+=5;}log("loot",`Gained <b>${b.n}</b>.`);return;}if(id==="map")S.weakenNext=true;S.inv.push({id,uid:newUid()});/* P7.4: 1-descent (structural) · P21.1: stable uid · P42.1: dead descents field dropped */log("loot",`Looted <b>${b.n}</b> (${b.r}).`);}
 function lootRoll(){const luck=Math.max(0,(DIFF[S.diff]&&DIFF[S.diff].luck)||0);/* P10: difficulty luck now nudges loot — but ONLY upward (brutal +1); easy/std are never penalized, so newer players keep full jackpot odds. */const raw=d(20);const roll=Math.min(20,raw+luck);let id="heal5";for(const[a,z,bid]of LOOT_D20){if(roll>=a&&roll<=z){id=bid;break;}}if(id==="map"&&!DUNGEON[S.roomIndex+1])id="heal10";/* P10: 'map' weakens the NEXT villain; on the final Vael win there is none, so a heal instead of a dead drop. */let names=[];if(id==="jackpot"){grantBoon("phoenix");grantBoon("elixir");names=["Phoenix Charm","Grand Elixir"];}else{grantBoon(id);names=[BOONS[id].n];}const label=raw===roll?`${roll}/20`:`${raw} (+${roll-raw} brutal luck) → ${roll}/20`;return{roll,raw,names,label};}
 
-function bossDown(){if(S.over)return;if(S.boss.isVael&&!S.phase2done){S.phase2done=true;const _vr=DUNGEON[S.roomIndex];S.boss.life=Math.max(1,(_vr.reborn&&_vr.reborn[S.diff])||Math.round(S.boss.max*0.25));applyRun(["spawn","Pyre Revenant",4,3,["trample","haste"],"RB"]);/* P10: Vael revives once at an explicit per-difficulty HP (room.reborn = 10/15/20 easy/std/brutal); the 0.25*max fallback matches those values. */log("dm",`🔥🔥 <b>UNDYING EMBERS!</b> Vael rises ENRAGED at ${S.boss.life} life and calls a Pyre Revenant.`);render();return;}if(S.boss.isVael){win();return;}S.paused=true;sfx('victory');const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);log("sys",`🏳 <b>${S.boss.name} falls!</b>`);log("loot",`💰 You collect <b>${gold} gold</b> (account balance ${getGold()}). Spend it at the 🛒 Merchant between descents.`);S._spoils=`🎲 Loot roll ${lr.label} → ${lr.names.join(" + ")}!  ·  💰 +${gold} gold (account ${getGold()})`;render();showEncounterClear();}
+function bossDown(){if(S.over)return;if(S.boss.isVael&&!S.phase2done){S.phase2done=true;const _vr=DUNGEON[S.roomIndex];S.boss.life=Math.max(1,(_vr.reborn&&_vr.reborn[S.diff])||Math.round(S.boss.max*0.25));applyRun(["spawn","Pyre Revenant",4,3,["trample","haste"],"RB"]);/* P10: Vael revives once at an explicit per-difficulty HP (room.reborn = 10/15/20 easy/std/brutal); the 0.25*max fallback matches those values. */log("dm",`🔥🔥 <b>UNDYING EMBERS!</b> Vael rises ENRAGED at ${S.boss.life} life and calls a Pyre Revenant.`);render();return;}
+  if(S.mode==='sandbox'){endSandboxBattle(true);return;}/* P43.5: a sandbox battle ends here — no dungeon walk, no story */
+  if(S.roomIndex>=DUNGEON.length-1){/* P43.4: the level's finale has fallen */if(S.levelIdx>=LEVELS.length-1){win();return;}/* the FINAL level → campaign complete (today's escape/Guff/epilogue win) */levelClearTransition();return;/* more levels remain → the between-level super-advance */}
+  /* a mid-level boss (a room before the finale) → loot + encounter-clear, then advance() walks to the next room within the level */
+  S.paused=true;sfx('victory');const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);log("sys",`🏳 <b>${S.boss.name} falls!</b>`);log("loot",`💰 You collect <b>${gold} gold</b> (account balance ${getGold()}). Spend it at the 🛒 Merchant between descents.`);S._spoils=`🎲 Loot roll ${lr.label} → ${lr.names.join(" + ")}!  ·  💰 +${gold} gold (account ${getGold()})`;render();showEncounterClear();}
 function advance(){const next=S.roomIndex+1;closeCutscene();S._spoils="";freshGameForDungeon();enterRoom(next);S.paused=false;
   /* P16.4: between-boss life reset — trim excess TEMPORARY life down to the permanent base (youMax). Spent magic fading, distinct from damage; never raises life, never touches life ≤ base, never lowers youMax. Runs BEFORE the P15.4 descent-heal so "missing HP" is measured from the post-cap value. After a Tonic of Vigor (+10 base) the cap tracks the new base automatically (Phase 28). */
   if(S.youLife>S.youMax){const was=S.youLife;S.youLife=S.youMax;log("sys",`✨ Temporary vigor fades — your life settles to <b>${S.youMax}</b> between battles (was ${was}).`);}
@@ -2520,10 +2524,10 @@ function win(){if(S.over)return;S.over=true;saveUnusedItems();clearSave();sfx('v
   openWheel(lr);}
 /* P15.1: Fortune-Wheel overlay shown on the final clear; on Claim it applies the reward then proceeds to the victory cutscene. */
 let _wheelCtx=null;
-function openWheel(lr){const roll=1+Math.floor(Math.random()*100);_wheelCtx={roll,lr};$("modalBody").innerHTML=wheelHTML(wheelSliceFor(roll));$("overlay").classList.add("show");}
+function openWheel(lr,onDone){const roll=1+Math.floor(Math.random()*100);_wheelCtx={roll,lr,onDone};$("modalBody").innerHTML=wheelHTML(wheelSliceFor(roll));$("overlay").classList.add("show");}
 function wheelHTML(landed){const base=wheelBase();const slices=WHEEL.map(s=>{const on=s===landed;const pct=s[2]==='g50'?`${Math.round(base*0.5)}g`:s[2]==='g100'?`${base}g`:s[2]==='g150'?`${Math.round(base*1.5)}g`:s[2]==='g2x'?`${base*2}g`:(s[2]==='rare'?'rare item':'legendary item');return `<div class="wslice${on?' on':''}">${on?'▸ ':''}${s[3]} <span class="manaline">${pct}</span></div>`;}).join('');
   return `<h2>🎡 Fortune Wheel</h2><p style="color:var(--bone-dim);font-style:italic">The Tyrant's hoard spills out — the wheel decides your share of the spoils.</p><div class="wheel">${slices}</div><div class="btnrow" style="margin-top:12px"><button class="big ok inline" onclick="claimWheel()">🎡 Claim ▸</button></div>`;}
-function claimWheel(){const ctx=_wheelCtx;if(!ctx)return;_wheelCtx=null;const res=spinWheel(ctx.roll);$("overlay").classList.remove("show");winCutscene(ctx.lr,res.desc);}
+function claimWheel(){const ctx=_wheelCtx;if(!ctx)return;_wheelCtx=null;const res=spinWheel(ctx.roll);$("overlay").classList.remove("show");if(typeof ctx.onDone==='function')ctx.onDone(ctx.lr,res.desc);else winCutscene(ctx.lr,res.desc);}/* P43.4: the wheel spins at EVERY level clear — win() (campaign end) → winCutscene; a mid-campaign level clear → levelClearCutscene */
 function winCutscene(lr,wheelDesc){const v=DUNGEON[DUNGEON.length-1];/* P43.2: the ACTIVE level's finale room (Level I → Vael) — its vaelEscape/guffFreed/epilogue beats */
   /* BEAT 1 — Vael escapes (his death-line becomes an escape curse) */
   showCutscene(v.vaelEscape,"The Ember Keeps Its Own","The Tyrant slips the leash","Find Guff ▸",{
@@ -2546,7 +2550,36 @@ function winCutscene(lr,wheelDesc){const v=DUNGEON[DUNGEON.length-1];/* P43.2: t
     }]
   });
 }
-function lose(){if(S.over)return;S.over=true;saveUnusedItems();clearSave();sfx('defeat');/* P15.3: stash unused items before the save is wiped */recordResult(false);log("sys",`☠ <b>You have fallen.</b>`);render();const room=DUNGEON[S.roomIndex]||DUNGEON[0];showCutscene(["The enemy holds the field. The Warren keeps what it takes — but the gate opens again for those mad enough to return."],"The Warren Consumes You",`${room.name} · defeat`,null,{sigil:room.sigil||'☠',speaker:room.villain,quote:room.quote||'',accent:villainAccent(room),buttons:[{label:"↻ Try again",on:restart,cls:"big ember"},{label:"Quit to Menu",on:quitToMenu,cls:"big"}]});}
+/* ===== P43.4: between-LEVELS transition (the campaign super-advance). Fires only when a level's finale falls AND a further level is registered — Level I is the final level, so this is dormant infrastructure today. The Fortune Wheel spins at every level clear; recordResult(true) logs it; the next level unlocks. Life, max life, gold and unused consumables all carry (gold/stash live on p.camp; S.inv rides along; passives already expire per P42.1). saveUnusedItems()/clearSave() do NOT fire here — that is campaign-end only. ===== */
+function bumpLevelUnlock(li){const p=prof();if(!p||!p.camp)return;if((p.camp.level||0)<li+1){p.camp.level=li+1;saveDB();}}
+function levelClearTransition(){S.paused=true;sfx('victory');recordResult(true);bumpLevelUnlock(S.levelIdx);/* the next level unlocks on the campaign screen */
+  const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);
+  log("sys",`🏳 <b>${DUNGEON[S.roomIndex].villain} falls — ${curLevel().name} is broken!</b>`);
+  S._spoils=`🎲 Loot ${lr.label} → ${lr.names.join(" + ")}  ·  💰 +${gold} (account ${getGold()})`;render();
+  openWheel(lr,levelClearCutscene);}
+function levelClearCutscene(lr,wheelDesc){const nextL=LEVELS[S.levelIdx+1];const done=DUNGEON[DUNGEON.length-1];
+  showCutscene((done&&done.epilogue)||[`${curLevel().name} lies broken behind you. The way down stands open.`],
+    `${curLevel().name} — Cleared`,`${curLevel().subtitle} complete · the road deeper`,null,
+    {sigil:'✦',accent:'var(--gold)',eyebrowAcc:'var(--gold)',
+     spoils:`🎲 ${lr.names.join(" + ")}  ·  🎡 ${wheelDesc}  ·  account ${getGold()}g · life ${S.youLife}/${S.youMax}`,
+     buttons:[{label:`Descend to ${nextL?('Level '+nextL.levelNo+' — '+nextL.name):'the deep'} ▸`,cls:"big ok",on:function(){descendToNextLevel(false);}},
+              {label:"Return to the surface (save & park)",cls:"big",on:function(){descendToNextLevel(true);}}]});}
+/* The super-advance: a fresh board on the next level's Room 0 with life/max/gold/consumables carried. Autosaves the run there. park=true returns to the menu (Continue resumes here); park=false shows the new level's intro and plays on. */
+function descendToNextLevel(park){closeCutscene();S._spoils="";
+  freshGameForDungeon();setLevel((S.levelIdx||0)+1);enterRoom(0);S.paused=false;
+  if(S.youLife>S.youMax){const was=S.youLife;S.youLife=S.youMax;log("sys",`✨ Temporary vigor fades — your life settles to <b>${S.youMax}</b> between levels (was ${was}).`);}
+  {const dh=DESCENT_HEAL[S.diff]||DESCENT_HEAL.standard;if(S.youMax>0&&(S.youLife/S.youMax)<dh.thr){const heal=Math.floor((S.youMax-S.youLife)*dh.frac);if(heal>0){S.youLife=Math.min(S.youMax,S.youLife+heal);log("you",`🌿 You recover <b>${heal}</b> descending to the next level (${S.youLife}/${S.youMax}).`);}}}
+  histReset();render();doAutosave();/* park the run at Level N+1 Room 0 */
+  if(park){showMenu();return;}
+  const nr=DUNGEON[0];log("sys",`— You descend into <b>${curLevel().name}</b>. Your life (${S.youLife}) and loot carry over. —`);
+  showCutscene(nr.intro,nr.villain,`${nr.name} · ${curLevel().subtitle}`,nr.isVael?"Face the Tyrant ▸":"Descend ▸",villainCutOpts(nr));}
+/* P43.5 (minimal here so bossDown/lose stay coherent; fully built in P43.5): a sandbox battle ends with no dungeon walk and no story — a straight victory/defeat popup back to the grid. */
+function endSandboxBattle(won){if(S.over)return;S.over=true;_liveGame=false;clearSave();sfx(won?'victory':'defeat');recordResult(won);
+  const room=DUNGEON[S.roomIndex]||DUNGEON[0];render();
+  showCutscene([won?`${room.villain} is defeated.`:`${room.villain} bests you.`],won?"Sandbox Victory":"Sandbox Defeat",`🏟 ${room.name}`,null,
+    {sigil:room.sigil||'⚔',accent:villainAccent(room),quote:won?(room.deathQuote||''):(room.quote||''),speaker:room.villain,
+     buttons:[{label:"↩ Back to Sandbox ▸",cls:won?"big ok":"big ember",on:function(){closeCutscene();showMenu();openSandbox();}}]});}
+function lose(){if(S.over)return;if(S.mode==='sandbox'){endSandboxBattle(false);return;}/* P43.5: a sandbox loss returns to the grid */S.over=true;saveUnusedItems();clearSave();sfx('defeat');/* P15.3: stash unused items before the save is wiped */recordResult(false);log("sys",`☠ <b>You have fallen.</b>`);render();const room=DUNGEON[S.roomIndex]||DUNGEON[0];showCutscene(["The enemy holds the field. The Warren keeps what it takes — but the gate opens again for those mad enough to return."],"The Warren Consumes You",`${room.name} · defeat`,null,{sigil:room.sigil||'☠',speaker:room.villain,quote:room.quote||'',accent:villainAccent(room),buttons:[{label:"↻ Try again",on:restart,cls:"big ember"},{label:"Quit to Menu",on:quitToMenu,cls:"big"}]});}
 function noAbilT(scope,id){const c=getCre(scope,id);if(c){c.noAbil=!c.noAbil;render();}}
 function sickMy(id){const c=S.my.creatures.find(x=>x.id===id);if(c){c.sick=!c.sick;render();}}
 function renderCounters(){if(!S.counters)return;const m={cPoison:'poison',cCmd:'cmdDmg',cEnergy:'energy',cExp:'experience'};for(const k in m){const el=$(k);if(el)el.textContent=S.counters[m[k]];}
