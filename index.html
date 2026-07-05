@@ -3100,6 +3100,7 @@ function newCommander(){_cmdCreating=true;openCast();}
 function castAsCommander(){const cfg=readCastForm();if(setStartCommander(cfg)){if(_cmdChooseActive)proceedAfterCommander();else closeOverlay();}}
 function skipCommander(){proceedAfterCommander();}
 function proceedAfterCommander(){_cmdChooseActive=false;_cmdCreating=false;$("overlay").classList.remove("show");
+  if(S.mode==='sandbox'){/* P43.5: a sandbox battle skips the campaign arrival/gate story — straight to the CHOSEN foe's own intro (room 0's gate would be the wrong room for a room-2 sandbox fight) */const room=DUNGEON[S.roomIndex]||DUNGEON[0];S._introShown=true;if(room&&room.intro)showCutscene(room.intro,room.villain,`🏟 ${room.name} · ${curLevel().subtitle}`,room.isVael?"Face the Tyrant ▸":"Fight ▸",villainCutOpts(room));return;}
   if(!S._introShown){S._introShown=true;
     showCutscene(ARRIVAL_LINES,"Nothing to Gain","Arrival · Ashveil","Descend into the Warren ▸",{
       sigil:'✦',accent:'var(--gold)',speaker:"the Conclave's plea",
