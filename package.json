@@ -1,0 +1,12 @@
+{
+  "name": "guffs-gauntlet",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Guff's Gauntlet — a single-file installable MTG-sandbox PWA. The game ships as static files (index.html + sw.js + manifest + icons); this package is DEV-ONLY: `npm test` is the offline jsdom regression suite.",
+  "scripts": {
+    "test": "node tests/run.js"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1"
+  }
+}
