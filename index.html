@@ -1199,6 +1199,7 @@ function applyTarget(t,sc,forceId){sc=(sc&&sc.length)?sc:((S.boss&&S.boss.colors
 /* ===== P44.2: dual-mode burn — an enemy burn spell (burn:N) resolves as EITHER N to your face OR lethal to one of your creatures (toughness ≤ N), whichever is worth more; the creature route honours protection-from-colour / hexproof / shroud / indestructible / ward. This colour-agnostic creature-targeting route is library infra — green's `fight` (P44.4) rides it. ===== */
 function burnKillables(o){const n=o.burn||0;const col=o.color;const sc=col?String(col).split('').filter(Boolean):((S.boss&&S.boss.colors)||[]);const scc=sc.length?sc:((S.boss&&S.boss.colors)||[]);const safe=c=>!kw(c,'hexproof')&&!kw(c,'shroud')&&!c.phased&&!(c.prot||[]).some(x=>scc.indexOf(x)>=0);return (S.my.creatures||[]).filter(safe).filter(c=>!kw(c,'indestructible')&&effT(c)<=n).sort((a,b)=>threatScore(b)-threatScore(a));}
 function burnValue(fx){const n=fx.burn||0;if(n<=0)return 0;const best=burnKillables(fx)[0];return Math.max(n,best?threatScore(best):0);}/* worth the greater of face damage or the scariest creature it can kill */
+function reactiveBurnValue(fx){if(!fx||!(fx.burn>0))return 0;const k=burnKillables(fx)[0];return k?threatScore(k):0;}/* P44 fix: the REACTIVE (creature-kill) worth only — a pure face-burn has no reactive value, so it is jammed at sorcery speed rather than held up / spent as a combat trick */
 function resolveBurn(p){const n=p.burn||0;if(n<=0)return;
   if(!p._forceFace){for(const c of burnKillables(p)){if(!p._forceCreature&&threatScore(c)<=n)break;/* normal: go face if the body isn't worth more · _forceCreature (mid-combat trick): take any killable body to change combat */const pr=payWard(c);if(pr!==null){killMy(c);log("dm",`🔥 <b>${p.n}</b> — ${ENs()} burns your <b>${c.name}</b> (${effP(c)}/${effT(c)}) for ${n}; it dies${pr}.`);return;}/* warded & the enemy can't pay → try a lesser body, else face */}}
   S.youLife-=n;log("dm",`🔥 <b>${p.n}</b> → <b>${n}</b> to your face. (${S.youLife})`);}
@@ -1458,7 +1459,7 @@ function renderCombat(){
 function enemyCombatTrick(){if(!S.combat||S.over)return false;S.combat._trickDone=true;/* one window per combat, whatever the outcome */
   if(enemyLuck()<0)return false;/* easy: no tricks */
   const cands=S.hand.map(c=>({c,fx:FX[c.key]})).filter(o=>o.fx&&o.fx.type==='instant'&&o.fx.cost<=usableMana()&&(o.fx.burn>0||o.fx.target)&&o.fx.target!=='counter'&&enemyInstantWouldDo(o.fx))
-    .map(o=>({key:o.c.key,n:o.fx.n,cost:o.fx.cost,target:!!o.fx.target,value:castValue(o.fx,{phase:'combat'})}))
+    .map(o=>({key:o.c.key,n:o.fx.n,cost:o.fx.cost,target:!!o.fx.target,value:(o.fx.burn>0)?reactiveBurnValue(o.fx):castValue(o.fx,{phase:'combat'})}))/* P44 fix: a burn trick is valued ONLY by the combatant it kills — never offered to chip face (honours the "never chips face" contract) */
     .filter(o=>o.value>=enemyActThreshold());
   if(!cands.length)return false;
   cands.sort((a,b)=>(b.value-a.value)||(a.cost-b.cost));
@@ -1792,9 +1793,12 @@ function aiTargets(attackers){const t={};attackers.forEach(a=>t[a.id]='you');con
   /* P44.3: blocker-aware SPLIT — the player will block the biggest attackers aimed at the walker with their untapped bodies, so divert the FEWEST (smallest-first, keeping big hitters on the face) whose damage still kills the walker AFTER those blocks. If it can't be pushed through, go all-face. */
   const blockers=S.my.creatures.filter(c=>!c.tapped&&!c.phased&&!kw(c,"can't block")).length;
   const through=set=>{const ds=set.slice().sort((x,y)=>effP(y)-effP(x));return ds.slice(blockers).reduce((s,c)=>s+effP(c),0);};/* damage past `blockers` blocks (player blocks the biggest diverted) */
-  const asc=attackers.slice().sort((a,b)=>effP(a)-effP(b));const diverted=[];
+  const asc=attackers.slice().sort((a,b)=>effP(a)-effP(b));let diverted=[];
   for(const a of asc){if(through(diverted)>=target.loyalty)break;diverted.push(a);}
   if(through(diverted)<target.loyalty)return t;/* even diverting all can't push loyalty past their blocks — go for the face */
+  /* P44.3 fix: PRUNE the biggest redundant attackers back to the face — the greedy adds smallest-first, but a lone big attacker can make earlier smalls unnecessary. Keep only the minimal set; the freed big hitters swing at the face. */
+  diverted.sort((a,b)=>effP(b)-effP(a));
+  for(let k=0;k<diverted.length;){const trial=diverted.slice(0,k).concat(diverted.slice(k+1));if(through(trial)>=target.loyalty)diverted=trial;else k++;}
   diverted.forEach(a=>t[a.id]=''+target.id);
   return t;}
 function renderDeckColors(){const box=$("deckColorRow");if(!box)return;box.innerHTML=["W","U","B","R","G"].map(col=>`<button class="manapip ${S.deckColors.indexOf(col)>=0?'on':''}" style="--mc:${COLOR_HEX[col]}" onclick="toggleDeckColor('${col}')">${col}</button>`).join("");}
@@ -2236,7 +2240,7 @@ function castValue(fx,ctx){
 /* P5.2 AI: max unpreventable direct damage (burn/drain selfLoss) the enemy can afford this turn + which hand cards deliver it. */
 function enemyLethalReach(){let mana=usableMana(),dmg=0,picks=[];const face=o=>(o.fx.selfLoss||0)||(o.fx.burn||0);/* P44.2: burn counts as unpreventable face damage (it can always go face) */const reach=S.hand.map((c,i)=>({i,fx:FX[c.key]})).filter(o=>o.fx&&o.fx.type!=='land'&&!o.fx.target&&!o.fx.dieLoss&&face(o)>0);/* exclude variable die-roll burn (e.g. Gate-Meteor) — only count deterministic unpreventable damage as lethal */reach.sort((a,b)=>(face(b)/(b.fx.cost||1))-(face(a)/(a.fx.cost||1)));reach.forEach(o=>{if(o.fx.cost<=mana){mana-=o.fx.cost;dmg+=face(o);picks.push(o.i);}});return{dmg:dmg,picks:picks};}
 /* P44.1: the mana to reserve for interaction — the cost of the best affordable instant worth holding; 0 if racing for lethal or on easy. A counter has no main-time target, so value it at the bar (P44.4 hold-up special-case). */
-function holdUpValue(fx){if(!fx||fx.type!=='instant')return 0;if(fx.target==='counter')return enemyActThreshold();return castValue(fx,{phase:'main1'});}
+function holdUpValue(fx){if(!fx||fx.type!=='instant')return 0;if(fx.target==='counter')return enemyActThreshold();if(fx.burn>0)return reactiveBurnValue(fx);/* P44 fix: only hold a burn for a real creature kill — a face-burn is cast at sorcery speed */return castValue(fx,{phase:'main1'});}
 function enemyHoldUpReserve(){if(enemyLuck()<0)return 0;/* easy stays tap-happy */
   if(enemyLethalReach().dmg>=S.youLife)return 0;/* racing for lethal — spend it all */
   const holds=S.hand.map(c=>FX[c.key]).filter(fx=>fx&&fx.type==='instant'&&fx.cost<=usableMana()&&(fx.burn>0||fx.target||(fx.selfLoss||0)>0)).map(fx=>({fx,val:holdUpValue(fx)})).filter(o=>o.val>=enemyActThreshold()).sort((a,b)=>b.val-a.val);
@@ -2428,7 +2432,11 @@ function resolveEnemyCreature(p){
 /* P40.2: prowess — when a NONCREATURE spell resolves, each of the caster's prowess creatures gets +1/+1 until end of turn (the temp _tp/_tt channel, cleared at that side's end step). */
 function firePlayerProwess(){let n=0;(S.my.creatures||[]).forEach(c=>{if(kw(c,'prowess')&&!c.phased){c._tp=(c._tp||0)+1;c._tt=(c._tt||0)+1;n++;}});if(n)log("you",`⚡ Prowess — ${n} of your creature${n===1?'':'s'} get +1/+1 until end of turn.`);}
 function fireEnemyProwess(){let n=0;(S.tokens||[]).forEach(c=>{if(kw(c,'prowess')&&!c.phased){c._tp=(c._tp||0)+1;c._tt=(c._tt||0)+1;n++;}});if(S.cmd&&S.cmd.inPlay&&!S.cmd.isWalker&&kw(S.cmd,'prowess')){S.cmd._tp=(S.cmd._tp||0)+1;S.cmd._tt=(S.cmd._tt||0)+1;n++;}if(n)log("dm",`⚡ Prowess — ${n} of ${ENs()}'s creature${n===1?'':'s'} get +1/+1 until end of turn.`);}
-function resolvePlay(i){const p=S.plays[i];if(!p||p.status==="resolved")return;if(S.stackProposal&&S.stackProposal.forId===p.id)S.stackProposal=null;p.status="resolved";sfx('resolve');
+function resolvePlay(i){let p=S.plays[i];if(!p||p.status==="resolved")return;
+  if(p._awaitPunisher)return;/* P44 fix: a spell held aside for its punisher-counter choice never resolves via the loop — the modal resolves/counters it */
+  /* P44 fix (LIFO): a player spell with a pending responder (a counterspell) must let the responder resolve FIRST, even if the player clicks this spell's own Resolve out of order — else the counter would find no target and fizzle. */
+  if(p._player){const resp=S.plays.find(x=>x&&x.status==='pending'&&x!==p&&x._respondingTo===p.id);if(resp){resolvePlay(S.plays.indexOf(resp));if(!S.plays.includes(p)||p.status!=='pending'||p._awaitPunisher)return;/* p was countered or is now awaiting the punisher choice */i=S.plays.indexOf(p);}}
+  if(S.stackProposal&&S.stackProposal.forId===p.id)S.stackProposal=null;p.status="resolved";sfx('resolve');
   const _noncreature=(p.type&&p.type!=='creature'&&p.type!=='land'&&!p._enemyCmd);/* P40.2: an enemy noncreature spell triggers enemy prowess (fired at the end of this resolve) */
   if(p._player){if(p._pcmd)resolveCmdToBoard(p);else resolvePlayerItem(p);checkLose();renderPlays();render();return;}
   if(p._enemyCmd){S.cmd.inPlay=true;S.cmd.inHand=false;S.cmd.sick=true;if(S.cmd.isWalker){S.cmd.loyalty=S.cmd.baseLoy;/* review-fix: do NOT reset _actedTurn — the persistent S.cmd keeps its acted-this-turn memory, so a same-turn recast can't grant a second loyalty activation */log("dm",`♛✦ <b>${S.cmd.n}</b> resolves onto ${ENs()}'s battlefield — a planeswalker at loyalty ${S.cmd.loyalty}.`);}else log("dm",`♛ <b>${S.cmd.n}</b> resolves onto ${ENs()}'s battlefield, summoning-sick.`);checkLose();renderPlays();render();return;}/* P29.1: now on the battlefield · P38.2: a walker commander enters at base loyalty, ready to activate */
@@ -2626,18 +2634,17 @@ function resolveCounter(p){const tp=_pendingPlayerTarget(p);
   if(tp.cantCounter){log("dm",`⚡ <b>${p.n}</b> can't counter <b>${tp.name||tp.n}</b> — it can't be countered.`);return;}
   const c=p.counter||{};
   if(c.mode==='hard'){counterPlayerSpell(tp);return;}
-  /* punisher: pull the target OFF the stack so the resolving loop won't touch it while YOU decide */
-  const i=S.plays.indexOf(tp);if(i>=0)S.plays.splice(i,1);tp.status='pending';
-  openCounterChoice(p,tp);}
+  /* punisher: KEEP the target ON the stack (flagged) so an autosave/reload mid-decision never loses it — the resolving loop skips a _awaitPunisher item, and the modal resolves or counters it. */
+  tp._awaitPunisher=true;openCounterChoice(p,tp);}
 let _counterChoice=null;
 function openCounterChoice(p,tp){_counterChoice={counter:p,target:tp};const c=p.counter||{};const price=c.life?`pay <b>${c.life} life</b>`:`take <b>${c.dmg||0} damage</b>`;
   showCutscene([`${ENs()} answers your <b>${tp.name||tp.n}</b> with <b>${p.n}</b>.`,`Your spell is countered <b>unless</b> you ${price}. Your call.`],"Pay the price?",`⚡ ${p.n} — punisher counter`,null,
     {sigil:'⚡',accent:'var(--ember)',eyebrowAcc:'var(--ember)',buttons:[
       {label:c.life?`Pay ${c.life} life — resolve my spell`:`Take ${c.dmg||0} — resolve my spell`,cls:'big ok',on:counterChoicePay},
       {label:"Let it be countered",cls:'big ember',on:counterChoiceDecline}]});}
-function counterChoicePay(){const cc=_counterChoice;if(!cc)return;_counterChoice=null;const c=cc.counter.counter||{};const n=c.life||c.dmg||0;S.youLife-=n;log("you",`You ${c.life?`pay ${n} life`:`take ${n}`} — your <b>${cc.target.name||cc.target.n}</b> resolves.`);closeCutscene();
-  /* resolve the held-aside target now (it was pulled off the stack) */if(cc.target._pcmd)resolveCmdToBoard(cc.target);else resolvePlayerItem(cc.target);checkLose();render();}
-function counterChoiceDecline(){const cc=_counterChoice;if(!cc)return;_counterChoice=null;closeCutscene();if(cc.target._pcmd){const c=cc.target._pcmdObj;if(c)S.pcmd=c;log("you",`You let <b>${cc.target.name||cc.target.n}</b> be countered → command zone.`);}else log("you",`You let <b>${cc.target.name||cc.target.n}</b> be countered.`);render();}
+function counterChoicePay(){const cc=_counterChoice;if(!cc)return;_counterChoice=null;const tp=cc.target,c=cc.counter.counter||{},n=c.life||c.dmg||0;S.youLife-=n;log("you",`You ${c.life?`pay ${n} life`:`take ${n}`} — your <b>${tp.name||tp.n}</b> resolves.`);closeCutscene();
+  delete tp._awaitPunisher;const i=S.plays.indexOf(tp);if(i>=0)S.plays.splice(i,1);/* off the stack, then resolve it */if(tp._pcmd)resolveCmdToBoard(tp);else resolvePlayerItem(tp);checkLose();render();}
+function counterChoiceDecline(){const cc=_counterChoice;if(!cc)return;_counterChoice=null;closeCutscene();delete cc.target._awaitPunisher;counterPlayerSpell(cc.target);/* countered → off the stack, commander back to zone (counterPlayerSpell handles _pcmd) */log("you",`You let <b>${cc.target.name||cc.target.n}</b> be countered.`);render();}
 
 /* P19.2: the enemy can lose to its own counters (10 poison / 21 commander damage), mirroring checkLose — routed through bossDown so Vael's phase-2 + loot/clear fire exactly like a life-based death. No Phoenix-style save on the enemy side. */
 function checkEnemyOut(){if(S.over)return;const ec=S.enemyCounters||{},poison=ec.poison||0,cmdd=ec.cmdDmg||0;if(poison>=10||cmdd>=21){if(poison>=10)log("dm",`☠ 10 poison — ${S.boss.name} falls.`);if(cmdd>=21)log("dm",`☠ 21 commander damage — ${S.boss.name} falls.`);bossDown();}}
@@ -2967,6 +2974,7 @@ function clearSave(){try{setSave(null);}catch(e){}}
 function descentInProgress(mode){mode=mode||(typeof S!=='undefined'&&S&&S.mode)||'campaign';return hasSave(mode)||!!(_liveGame&&typeof S!=='undefined'&&S&&!S.over&&S.mode===mode);}
 function migrate(s){if(!s||typeof s!=='object')return s;
   ['tokens','rules','plays','inv','lib','hand','gy','exile','deckColors','myGy','myExile','battles','emblemsEnemy','enemyWalkers'].forEach(k=>{if(!Array.isArray(s[k]))s[k]=[];});
+  (s.plays||[]).forEach(p=>{if(p)delete p._awaitPunisher;});/* P44 fix: a spell saved mid-punisher-choice is recoverable — clear the stale flag so it resolves normally on resume (the counter is forgiven), rather than being stuck/lost */
   if(typeof s.nextId!=='number')s.nextId=1;/* ensure a numeric id counter before minting (review-fix: avoid an id collision) */
   if(s.pw&&typeof s.pw==='object'){s.enemyWalkers.push({id:s.nextId++,name:s.pw.name,loyalty:(s.pw.loy!=null?s.pw.loy:(s.pw.loyalty!=null?s.pw.loyalty:3)),baseLoy:(s.pw.baseLoy!=null?s.pw.baseLoy:(s.pw.loy||3)),colors:(s.pw.colors||[]).slice(),color:(s.pw.colors||[]).slice(),ultThreshold:s.pw.ultThreshold||7,wplus:s.pw.plus||null,wminus:s.pw.minus||null,wult:s.pw.ult||null,phased:false,kw:[],prot:[],other:[],token:false,dies:'graveyard',attackableBy:s.pw.attackableBy||null,_actedTurn:-1,key:null,isWalker:true});}s.pw=null;/* P38.1: an in-flight old-save S.pw becomes a real enemy walker permanent (loyalty preserved) */
   (s.emblemsEnemy||[]).forEach(e=>{if(e&&!e.kind)e.kind='emblem';if(e&&e.vsYou==null)e.vsYou=!!(e.auto&&e.auto.k==='youLose');if(e&&e.target==null)e.target=e.vsYou?'you':'enemy';/* P23.4: backfill functional target from vsYou (behaviour-preserving — vsYou already tracked the natural side) */if(e&&!e.trigger)e.trigger='upkeep';if(e&&e.static==null)e.static=false;if(e&&e.attachId===undefined)e.attachId=null;});/* enemy persistent-effects gained a kind (artifact/enchantment/emblem) + vsYou flag; P13.2 added trigger window + static + attachId */
