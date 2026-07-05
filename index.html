@@ -3002,6 +3002,7 @@ function renderCampaign(){const p=prof();const g=$("campGold");if(g)g.textConten
 /* Begin/New run — a campaign always starts at Level I Room 0 (forward-only); confirm-to-abandon if a run is already live. */
 function campaignStart(){const p=prof();const run=p&&p.camp&&p.camp.run;if(typeof S!=='undefined'&&S)S.mode='campaign';if(run&&run.S&&!run.S.over)confirmNewDescent();else startBattle({mode:'campaign',levelIdx:0,roomIdx:0,diff:(S&&S.diff)||'standard'});}
 function continueCampaign(){const p=prof();if(typeof S!=='undefined'&&S)S.mode='campaign';continueLastGame(p&&p.camp&&p.camp.run);}
+function continueSandbox(){const p=prof();if(typeof S!=='undefined'&&S)S.mode='sandbox';continueLastGame(p&&p.sand&&p.sand.save);}
 let _sandDiff='standard';
 /* Every battle across every level, in descent order — the sandbox grid; locked until beaten in the campaign. */
 function allBattles(){const out=[];LEVELS.forEach((L,li)=>{(L.rooms||[]).forEach((r,ri)=>{out.push({li,ri,room:r,id:battleId(li,r)});});});return out;}
@@ -3013,12 +3014,14 @@ function renderSandbox(){const p=prof();const g=$("sandGold");if(g)g.textContent
   const seg=$("sandDiff");if(seg)[...seg.children].forEach(b=>b.classList.toggle("on",b.dataset.d===_sandDiff));
   const box=$("sandGrid");if(!box)return;const cleared=(p&&p.camp&&p.camp.cleared)||{};const stats=(p&&p.sand&&p.sand.stats)||{};
   const bs=allBattles();const anyUnlocked=bs.some(b=>cleared[b.id]);
+  const run=p&&p.sand&&p.sand.save;const parked=!!(run&&run.S&&!run.S.over);/* P43.3/5: the sandbox grid continues p.sand.save */
+  const contBanner=parked?`<div class="manaline" style="border:1px solid var(--azor);border-radius:10px;padding:9px 12px;margin:0 0 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">▶ You have a parked sandbox battle — <b>${((DUNGEON[run.S&&run.S.roomIndex!=null?run.S.roomIndex:0]||{}).villain)||'a foe'} · T${run.turn!=null?run.turn:((run.S&&run.S.turn)||0)}</b>.<button class="tiny azor" onclick="continueSandbox()">▶ Continue battle</button></div>`:'';
   const rows=bs.map(b=>{const unlocked=!!cleared[b.id];const artKey=LEVELS[b.li].art&&LEVELS[b.li].art[b.ri];const cover=(unlocked&&artKey&&typeof ART!=='undefined'&&ART[artKey])?`<img src="${ART[artKey]}" alt="${b.room.villain}">`:`<span>🔒</span>`;const st=stats[b.id];const rec=st?`<span class="lorenow" style="color:var(--gold)">${st.w||0}W · ${st.l||0}L</span>`:'';
     const title=unlocked?b.room.villain:'??? — locked';const sub=unlocked?`${LEVELS[b.li].subtitle} · ${b.room.name}`:'Beat this warden in the Campaign to unlock free play.';
     const btn=unlocked?`<button class="tiny ok" onclick="sandboxFight(${b.li},${b.ri})">⚔ Fight (${_sandDiff})</button>`:`<button class="tiny" disabled style="opacity:.45;cursor:not-allowed">🔒 Locked</button>`;
     return `<div class="loreent has-art"><div class="loreframe ${unlocked?'':'locked'}" style="--acc:${villainAccent(b.room)}">${cover}</div><div class="lorebody"><div class="loretitle">${title} ${rec}</div><div class="loretext">${sub}</div><div class="btnrow" style="margin-top:7px">${btn}</div></div></div>`;
   }).join('');
-  box.innerHTML=(anyUnlocked?'':`<p class="manaline" style="margin:0 0 10px;color:var(--ember)">🔒 Beat a warden in the ⚔ Campaign to unlock it here for free play.</p>`)+rows;}
+  box.innerHTML=contBanner+(anyUnlocked?'':`<p class="manaline" style="margin:0 0 10px;color:var(--ember)">🔒 Beat a warden in the ⚔ Campaign to unlock it here for free play.</p>`)+rows;}
 
 /* ----- read the cast form into a reusable card config ----- */
 function _int(v,d){const n=parseInt(v,10);return isNaN(n)?d:n;}
