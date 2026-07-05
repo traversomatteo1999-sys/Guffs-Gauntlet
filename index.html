@@ -522,6 +522,7 @@
     <div class="resolvermodal">
       <h3 id="combatTitle">Combat</h3>
       <div id="combatBox"></div>
+      <div id="combatTrick" class="stackproposal"></div>
       <div class="incoming" id="combatPred"></div>
       <div class="btnrow"><button class="big ember inline" onclick="approveCombat()">Approve &amp; apply</button><button class="mini" onclick="cancelCombat()">Cancel</button></div>
     </div>
@@ -1192,7 +1193,7 @@ function applyTarget(t,sc,forceId){sc=(sc&&sc.length)?sc:((S.boss&&S.boss.colors
 function burnKillables(o){const n=o.burn||0;const col=o.color;const sc=col?String(col).split('').filter(Boolean):((S.boss&&S.boss.colors)||[]);const scc=sc.length?sc:((S.boss&&S.boss.colors)||[]);const safe=c=>!kw(c,'hexproof')&&!kw(c,'shroud')&&!c.phased&&!(c.prot||[]).some(x=>scc.indexOf(x)>=0);return (S.my.creatures||[]).filter(safe).filter(c=>!kw(c,'indestructible')&&effT(c)<=n).sort((a,b)=>threatScore(b)-threatScore(a));}
 function burnValue(fx){const n=fx.burn||0;if(n<=0)return 0;const best=burnKillables(fx)[0];return Math.max(n,best?threatScore(best):0);}/* worth the greater of face damage or the scariest creature it can kill */
 function resolveBurn(p){const n=p.burn||0;if(n<=0)return;
-  if(!p._forceFace){for(const c of burnKillables(p)){if(threatScore(c)<=n)break;/* a creature not worth more than face → go face instead */const pr=payWard(c);if(pr!==null){killMy(c);log("dm",`🔥 <b>${p.n}</b> — ${ENs()} burns your <b>${c.name}</b> (${effP(c)}/${effT(c)}) for ${n}; it dies${pr}.`);return;}/* warded & the enemy can't pay → try a lesser body, else face */}}
+  if(!p._forceFace){for(const c of burnKillables(p)){if(!p._forceCreature&&threatScore(c)<=n)break;/* normal: go face if the body isn't worth more · _forceCreature (mid-combat trick): take any killable body to change combat */const pr=payWard(c);if(pr!==null){killMy(c);log("dm",`🔥 <b>${p.n}</b> — ${ENs()} burns your <b>${c.name}</b> (${effP(c)}/${effT(c)}) for ${n}; it dies${pr}.`);return;}/* warded & the enemy can't pay → try a lesser body, else face */}}
   S.youLife-=n;log("dm",`🔥 <b>${p.n}</b> → <b>${n}</b> to your face. (${S.youLife})`);}
 
 /* ===== COMBAT ENGINE ===== */
@@ -1444,8 +1445,38 @@ function renderCombat(){
       <div class="btnrow"><span class="lab">this combat</span><button class="tiny ember" title="negate — remove this attacker from combat" onclick="combatNegate('${a.id}')">🚫 negate</button><button class="tiny ${prevented?'on':''}" title="prevent this attacker's combat damage (it can still die to blockers)" onclick="combatPreventDmg('${a.id}')">🛡 ${prevented?'prevented':'prevent dmg'}</button></div>`;
     box.appendChild(el);
   });
-  predictCombat();
+  predictCombat();renderCombatTrick();
 }
+/* ===== P44.1: the mid-combat trick window — after blocks are set, before damage, the enemy gets ONE instant proposal (burn/removal against a combatant). On approval it resolves immediately, prunes dead combatants, and re-predicts. Difficulty-gated; easy never tricks. ===== */
+function enemyCombatTrick(){if(!S.combat||S.over)return false;S.combat._trickDone=true;/* one window per combat, whatever the outcome */
+  if(enemyLuck()<0)return false;/* easy: no tricks */
+  const cands=S.hand.map(c=>({c,fx:FX[c.key]})).filter(o=>o.fx&&o.fx.type==='instant'&&o.fx.cost<=usableMana()&&(o.fx.burn>0||o.fx.target)&&o.fx.target!=='counter'&&enemyInstantWouldDo(o.fx))
+    .map(o=>({key:o.c.key,n:o.fx.n,cost:o.fx.cost,target:!!o.fx.target,value:castValue(o.fx,{phase:'combat'})}))
+    .filter(o=>o.value>=enemyActThreshold());
+  if(!cands.length)return false;
+  cands.sort((a,b)=>(b.value-a.value)||(a.cost-b.cost));
+  S.stackProposal={context:'combat',forName:'a mid-combat trick',win:'combat',candidates:cands,choice:cands[0].key};
+  log("dm",`⚡ ${ENs()} readies an instant mid-combat…`);renderCombat();render();return true;}
+function _combatPrune(){if(!S.combat)return;const alive=c=>(S.my.creatures||[]).indexOf(c)>=0||(S.tokens||[]).indexOf(c)>=0||(c===S.cmd&&S.cmd.inPlay)||(S.my.walkers||[]).indexOf(c)>=0||(S.enemyWalkers||[]).indexOf(c)>=0;
+  S.combat.attackers=(S.combat.attackers||[]).filter(alive);
+  Object.keys(S.combat.assign||{}).forEach(k=>{S.combat.assign[k]=(S.combat.assign[k]||[]).filter(alive);if(!S.combat.attackers.some(a=>''+a.id===k))delete S.combat.assign[k];});
+  S.combat.pool=(S.combat.pool||[]).filter(alive);}
+function renderCombatTrick(){const box=$("combatTrick");if(!box)return;const pr=S.stackProposal;
+  if(!S.combat||!pr||pr.context!=='combat'||!Array.isArray(pr.candidates)||!pr.candidates.length){box.className="stackproposal";box.innerHTML="";return;}
+  if(!pr.candidates.some(c=>c.key===pr.choice))pr.choice=pr.candidates[0].key;
+  box.className="stackproposal show";
+  const opts=pr.candidates.map(c=>`<option value="${c.key}" ${c.key===pr.choice?'selected':''}>${c.n} — ${c.cost}◇${c.target?' · targets a creature':''}</option>`).join("");
+  box.innerHTML=`<div class="pphead">⚡ ${ENs()} readies a mid-combat instant</div>
+    <div class="btnrow"><span class="lab">play</span><select onchange="setProposalChoice(this.value)">${opts}</select></div>
+    <div class="ppacts"><button class="mini ember" onclick="approveCombatTrick()">⚡ ${ENs()} casts it ▸</button><button class="mini" onclick="passCombatTrick()">▸ ${ENs()} holds</button></div>
+    <div class="manaline" style="margin-top:5px">${ENs()} has <b>${usableMana()}</b> mana. You approve the enemy's play — pick a different instant, or have it hold.</div>`;}
+function passCombatTrick(){if(S.stackProposal&&S.stackProposal.context==='combat'){log("dm",`⚡ ${ENs()} holds its instant.`);S.stackProposal=null;}renderCombat();render();}
+function approveCombatTrick(){const pr=S.stackProposal;if(!pr||pr.context!=='combat'){renderCombat();return;}const key=pr.choice;const idx=S.hand.findIndex(c=>c.key===key);const fx=idx>=0?FX[S.hand[idx].key]:null;S.stackProposal=null;
+  if(!fx||fx.cost>usableMana()){log("dm",`⚡ ${ENs()} can't pay for its trick — it holds.`);renderCombat();render();return;}
+  S.bossMana-=fx.cost;const card=S.hand.splice(idx,1)[0];const p=mkPlay(fx);p._card=card;p._forceCreature=true;/* P44.1: a mid-combat trick burn hits a combatant (to change combat), never chips face */
+  if(p.burn>0)resolveBurn(p);if(p.target){const msg=applyTarget(p.target,(p.color||'').split('').filter(Boolean));if(msg)log("dm",`⚡ ${p.n}: ${ENs()} ${msg}.`);}if(p.run)applyRun(p.run);if(p.selfLoss)S.youLife-=p.selfLoss;S.gy.push(card);
+  log("dm",`⚡ ${ENs()} casts <b>${fx.n}</b> mid-combat (${S.bossMana} mana left).`);
+  if(S.combat)_combatPrune();checkLose();if(S.combat)renderCombat();render();}
 /* P20.2: a planeswalker can be attackable by at most N creatures. 0/absent = no limit. Stored on the walker; enforced when the enemy assigns attackers to your walkers (combatTarget) + a hard guard at approve. */
 function setWalkerCap(id,n){const w=getMy('walkers',id)||enemyWalkerList().find(x=>''+x.id===''+id);if(!w)return;w.attackableBy=(n>0?n:null);log("you",`✎ ${w.name||w.n}: attackable by ${n>0?'at most '+n:'any number of'} creature${n===1?'':'s'}.`);render();}
 function walkerAtkCount(tmap,wid){return Object.keys(tmap).filter(k=>''+tmap[k]===''+wid).length;}
@@ -1483,7 +1514,9 @@ function predictCombat(){const r=resolveAttack(S.combat.attackers,S.combat.assig
   if(S.combat.dir==='vael'){const tmap=S.combat.target||{};const over=(S.my.walkers||[]).filter(w=>w.attackableBy>0&&walkerAtkCount(tmap,w.id)>w.attackableBy);if(over.length)s+=` <span style="color:var(--ember)">⚠ ${over.map(w=>w.name).join(', ')} attacked by too many (max ${over.map(w=>w.attackableBy).join('/')}) — Approve will reject this.</span>`;}
   $("combatPred").innerHTML=s;}
 function approveCombat(){
-  if(!S.combat)return;const dir=S.combat.dir,attackers=S.combat.attackers,assign=S.combat.assign;
+  if(!S.combat)return;
+  if(!S.combat._trickDone&&enemyCombatTrick())return;/* P44.1: the enemy gets ONE mid-combat instant window before damage — approve again to resolve combat */
+  const dir=S.combat.dir,attackers=S.combat.attackers,assign=S.combat.assign;
   /* P12.2: enforce block-count restrictions before resolving. A min-N (incl. menace) attacker blocked by 1..N-1 is an illegal partial block — refuse until it's blocked by N+ or by 0. */
   for(const a of attackers){const n=(assign[a.id]||[]).length,mn=minBlockers(a);if(n>0&&n<mn){log("sys",`${cnm(a)} can't be blocked by fewer than ${mn} creatures — block it with ${mn}+ or leave it unblocked.`);return;}}
   /* P12.2: lure — every able, unassigned blocker must block a lure attacker (up to its max). But lure can't force an ILLEGAL block: if there aren't enough total blockers to reach the attacker's min (e.g. lure+menace vs a lone blocker), it simply can't be blocked, so unblocked is the only legal outcome — don't refuse it. */
@@ -2181,6 +2214,12 @@ function castValue(fx,ctx){
 }
 /* P5.2 AI: max unpreventable direct damage (burn/drain selfLoss) the enemy can afford this turn + which hand cards deliver it. */
 function enemyLethalReach(){let mana=usableMana(),dmg=0,picks=[];const face=o=>(o.fx.selfLoss||0)||(o.fx.burn||0);/* P44.2: burn counts as unpreventable face damage (it can always go face) */const reach=S.hand.map((c,i)=>({i,fx:FX[c.key]})).filter(o=>o.fx&&o.fx.type!=='land'&&!o.fx.target&&!o.fx.dieLoss&&face(o)>0);/* exclude variable die-roll burn (e.g. Gate-Meteor) — only count deterministic unpreventable damage as lethal */reach.sort((a,b)=>(face(b)/(b.fx.cost||1))-(face(a)/(a.fx.cost||1)));reach.forEach(o=>{if(o.fx.cost<=mana){mana-=o.fx.cost;dmg+=face(o);picks.push(o.i);}});return{dmg:dmg,picks:picks};}
+/* P44.1: the mana to reserve for interaction — the cost of the best affordable instant worth holding; 0 if racing for lethal or on easy. A counter has no main-time target, so value it at the bar (P44.4 hold-up special-case). */
+function holdUpValue(fx){if(!fx||fx.type!=='instant')return 0;if(fx.target==='counter')return enemyActThreshold();return castValue(fx,{phase:'main1'});}
+function enemyHoldUpReserve(){if(enemyLuck()<0)return 0;/* easy stays tap-happy */
+  if(enemyLethalReach().dmg>=S.youLife)return 0;/* racing for lethal — spend it all */
+  const holds=S.hand.map(c=>FX[c.key]).filter(fx=>fx&&fx.type==='instant'&&fx.cost<=usableMana()&&(fx.burn>0||fx.target||(fx.selfLoss||0)>0)).map(fx=>({fx,val:holdUpValue(fx)})).filter(o=>o.val>=enemyActThreshold()).sort((a,b)=>b.val-a.val);
+  return holds.length?holds[0].fx.cost:0;}
 function vaelMain(which){
   let summonedCmd=false;
   if(which===1)playEnemyLand();
@@ -2192,11 +2231,13 @@ function vaelMain(which){
      hold premium removal for a real target (the removal floor mirrors the instant windows). Develops with the best
      body when nothing better; tie-break favours the cheaper card (mana left for a second play), then a true tie. */
   let cast=0,guard=24;const phase=(which===2)?'main2':'main1';
+  /* P44.1: HOLD-UP — reserve mana for the best instant worth holding (a real player keeps up interaction), UNLESS racing for lethal. Difficulty-gated: easy stays tap-happy. The reserved mana persists into your turn (no untap until the enemy's next turn), so its instant windows can spend it. */
+  const reserve=enemyHoldUpReserve();
   while(guard-->0){
     /* P16.3: if a desirable card is just out of mana range but the enemy holds Treasure, crack enough to afford the best reachable play before the affordability filter below would drop it. */
     {const treas=(S.enemyResources||[]).filter(r=>r.kind==='treasure').length;if(treas>0){const want=S.hand.map((c,i)=>({i,fx:FX[c.key]})).filter(o=>o.fx&&o.fx.type!=='land'&&wouldDoSomething(o.fx)&&o.fx.cost>usableMana()&&o.fx.cost<=usableMana()+treas).map(o=>({fx:o.fx,val:castValue(o.fx,{phase})})).filter(o=>o.fx.target?(o.val>=enemyActThreshold()):(o.val>0)).sort((a,b)=>b.val-a.val)[0];if(want)enemySacForMana(want.fx.cost);}}
     const opts=S.hand.map((c,i)=>({i,fx:FX[c.key]}))
-      .filter(o=>o.fx&&o.fx.type!=='land'&&o.fx.cost<=usableMana()&&wouldDoSomething(o.fx))
+      .filter(o=>o.fx&&o.fx.type!=='land'&&!(reserve>0&&o.fx.type==='instant')&&o.fx.cost<=usableMana()-reserve&&wouldDoSomething(o.fx))/* P44.1: when holding up, keep `reserve` mana unspent AND hold instants for the instant-speed windows (they don't develop at sorcery speed) */
       .map(o=>({i:o.i,fx:o.fx,val:castValue(o.fx,{phase})}))
       .filter(o=>o.fx.target?(o.val>=enemyActThreshold()):(o.val>0));/* removal: hold unless a real target; develop: any positive value */
     if(!opts.length)break;
