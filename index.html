@@ -130,7 +130,7 @@
   /* P45.5/6: ≥1100px Moxfield desktop — three rails over the SAME panels (no JS re-home; the @media flips block↔grid live). Below 1100px nothing changes. */
   @media(min-width:1100px){
     .wrap{max-width:min(1580px,97vw)}
-    #battlefield{display:grid;grid-template-columns:minmax(292px,1fr) minmax(470px,1.7fr) minmax(322px,1fr);grid-template-rows:auto auto;gap:14px;align-items:start;margin-top:14px}
+    #battlefield{display:grid;grid-template-columns:minmax(262px,1fr) minmax(428px,1.7fr) minmax(298px,1fr);grid-template-rows:auto auto;gap:14px;align-items:start;margin-top:14px}/* P45.5 review-fix: column mins (262+428+298 + 2×14 = 1016) fit inside .wrap at a 1100px viewport (~1044px content) — no horizontal scrollbar in the 1100–1167px band */
     #battlefield>.tab{margin-top:0}
     #tab-info{grid-column:1;grid-row:1/3}
     #tab-enemy{grid-column:2;grid-row:1}
@@ -377,7 +377,7 @@
   .panel.collapsed .pchev{transform:rotate(-90deg)}
   /* P45.3: tiered reduced-motion — kill DECORATIVE motion (near-instant) but keep functional feedback: damage/heal numbers fade in place (no travel) and the life bar still flashes. */
   @media(prefers-reduced-motion:reduce){
-    *{animation-duration:.001ms!important;animation-delay:0ms!important;transition-duration:.001ms!important}
+    *{animation-duration:.001ms!important;animation-delay:0ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}/* P45.3 review-fix: iteration-count:1 truly halts infinite decorative loops (e.g. .cutsigil sigilPulse) instead of flickering them at 0.001ms */
     .fxnum{animation:fxfade .9s ease forwards!important} .bar.barflash{animation:barflash .45s ease!important}
   }
 </style>
@@ -563,7 +563,7 @@
     </div>
   </div>
 
-  <div class="log" id="logBox"><h2 style="font-family:'Grenze Gotisch'"><span>📜 Dungeon Log</span><button class="logtoggle" id="logToggle" onclick="toggleLog()" aria-label="Expand or collapse the log">⤢</button></h2><div id="log"></div></div>
+  <div class="log" id="logBox"><h2 style="font-family:'Grenze Gotisch'"><span>📜 Dungeon Log</span><button class="logtoggle" id="logToggle" onclick="toggleLog()" aria-label="Expand or collapse the log">⤢</button></h2><div id="log" aria-live="polite" aria-atomic="false"></div></div>
 
   <!-- P1.10: the Stack — a docked, auto-surfacing popup that doesn't block the board, openable on demand via the launcher -->
   <div class="resolver" id="resolver" role="dialog" aria-label="Attack resolution">
@@ -1664,7 +1664,7 @@ function closeTransientUI(){const rz=$("resolver");if(rz)rz.classList.remove("sh
 /* P45.3: FX overlay helpers. fxFloat spawns a self-removing floating number at an anchor element; fxFlash pulses a life bar; fxLife does both for a life-total change. All no-op safely when the anchor is missing/hidden/headless (zero-size rect) and never intercept a tap. render() never touches #fx. _bornIds keys the .crea spawn animation to genuinely-new permanents. */
 let _bornIds=new Set();
 function fxFloat(anchor,text,cls){try{const fx=document.getElementById('fx');if(!fx||!anchor||!anchor.getBoundingClientRect)return;const r=anchor.getBoundingClientRect();if(!r||(!r.width&&!r.height))return;/* hidden / headless → skip so no stray corner numbers */const n=document.createElement('div');n.className='fxnum '+(cls||'');n.textContent=text;n.style.left=(r.left+r.width/2)+'px';n.style.top=(r.top+r.height*0.35)+'px';fx.appendChild(n);const kill=function(){if(n.parentNode)n.parentNode.removeChild(n);};n.addEventListener('animationend',kill);setTimeout(kill,1500);}catch(e){}}
-function fxFlash(bar){try{if(!bar||!bar.classList)return;bar.classList.remove('barflash');void bar.offsetWidth;bar.classList.add('barflash');setTimeout(function(){if(bar&&bar.classList)bar.classList.remove('barflash');},650);}catch(e){}}
+function fxFlash(bar){try{if(!bar||!bar.classList)return;if(bar.closest)bar=bar.closest('.bar')||bar;/* P45.3 review-fix: the CSS rule is .bar.barflash, but youBar/bossBar are the classless <i> fills — flash the .bar track so the pulse actually matches */if(!bar||!bar.classList)return;bar.classList.remove('barflash');void bar.offsetWidth;bar.classList.add('barflash');setTimeout(function(){if(bar&&bar.classList)bar.classList.remove('barflash');},650);}catch(e){}}
 function fxLife(who,n){if(!n)return;const isYou=who==='you';fxFloat(document.getElementById(isYou?'youLife':'bossLife'),(n>0?'+':'−')+Math.abs(n),n>0?'heal':(isYou?'dmg':'boss'));fxFlash(document.getElementById(isYou?'youBar':'bossBar'));}
 function render(){
   scheduleSettle();
@@ -2162,8 +2162,8 @@ function firePhase(ph){
 /* P4.3: ◂ step back one phase within the current turn — purely navigational. The effects already fired this turn (tracked in S.phasesFired), so going back then forward is a no-op for one-time effects. Blocked mid-combat and at the turn's first phase. */
 function backPhase(){if(S.over||S.paused||S.combat||S.activeTurn===null)return;if(S.plays.some(p=>p.status==='pending'&&p._player)){log("sys","Resolve the spells on your stack first.");showPlays();return;}if(S.phase<=0){log("sys","◂ Already at the start of the turn — can't step back further.");return;}S.phase--;S.stackProposal=null;log("sys",`◂ Stepped back to ${PHASE_LABEL[PHASES[S.phase]]} — its effects already happened this turn and won't repeat.`);render();}
 function resolveLeftoverPlays(){S.plays.forEach((p,i)=>{if(p.status==='pending'&&!p._player)resolvePlay(i);});}
-function showPlays(){renderPlays();renderStackProposal();$("plays").classList.add("show");renderStackFab();}
-function hidePlays(){$("plays").classList.remove("show");renderStackFab();}
+function showPlays(){renderPlays();renderStackProposal();$("plays").classList.remove("expanded");$("plays").classList.add("show");renderStackFab();}/* P45.6 review-fix: always surface DOCKED — never reopen a stale full-screen .expanded that would re-cover the board */
+function hidePlays(){$("plays").classList.remove("show");$("plays").classList.remove("expanded");renderStackFab();}
 function toggleStackExpand(){const pl=$("plays");if(pl)pl.classList.toggle('expanded');}/* P45.6: dock ↔ full-screen the mobile stack sheet */
 function toggleStack(){const pl=$("plays");if(pl&&pl.classList.contains("show"))hidePlays();else showPlays();}
 /* P8.4: ⚡ Quick Cast retired — the 📥 "Add real cards" launcher (openCardSearch) is now the fast cast
