@@ -8,8 +8,8 @@
 
 ## STATUS (update as you go)
 
-- **Branch:** `main` (== `origin/main`; latest built `025fe9d`). *(Active feature branch: `satchel-lock-commander-scryfall`, also at `025fe9d`.)* **Build sweep (2026-06-29→30): Phases 12–24, 26–30 + P25.1 + P28 BUILT, reviewed & merged to `origin/main` (jsdom-verified each, regression green). **🎉 ALL PLANNED SPEC WORK BUILT (2026-07-01).** Nothing remaining. Phase A (P33·P36·P37·P23.4·P31 @ `77c8446`) · Phase B (P34 @ `5de047a`) · Phase C (P32 @ `4332774`) · Phase D (P35.1–5 @ `555896e`) · Phase E (P38.1–5 @ `7c2e1ca`) · Phase F (P39.1–2 @ `7cbcebb`) · Phase G (P25.2 @ `994e758`) — all merged & pushed to `origin/main`; P30.7 was already built in the P30 sweep. Each phase: per-task jsdom driver + syntax gate + id-diff + adversarial review (workflow for the big/risky ones), full regression green at every merge.**
-- **Canonical file:** `index.html` (the deployed PWA build; line 456 is a ~1.3 MB base64 `ART` blob — never open that line; real JS is 457→end). `guffs-gauntlet-level1.html` is a stale pre-embed copy — ignore it.
+- **Branch:** `main` (== `origin/main` == `0af2bb0`, 2026-07-02 — the Phase 40 merge; the old `satchel-lock-commander-scryfall` feature branch no longer exists). **Phases 0–40 ALL BUILT, merged & pushed** (each: per-task jsdom driver + syntax gate + id-diff + adversarial review, full regression green at every merge). **NEW (specced 2026-07-04, NOT built): Phases 41–46 — the full-game rework:** Guff red-beard lore fix (41) · item duration & economy coherence, incl. the immortal-passives root-cause fix (42) · **Campaign & Sandbox two-mode + multi-level infrastructure** (43) · enemy realism & balance pass 2 (44) · UI/animation/sound overhaul (45) · completeness & hardening + the final clean-up/validation gate (46). Platform decision **D4 (stay web/PWA — no engine port)** and app-strategy decision **D5 (one responsive app)** adopted in §3.
+- **Canonical file:** `index.html` (the deployed PWA build). ⚠ **Line 614 is a ~1.6 MB single-line base64 `ART` blob — never Read/print any range spanning line 614** (it drifted from the old line 456; re-check with `grep -n 'const ART='` before trusting this number). The one `<script>` block runs ~613→3247 (real JS from ~615); CSS ~18–336; HTML body ~337–612. `guffs-gauntlet-level1.html` was deleted 2026-06-27 — `index.html` only.
 - **Verification harness:** headless engine smoke test (Node + DOM shim) drives boot→turn-cycle→undo→save; syntax gate via `node -e` + `vm.Script` over the `<script>` body; **id-set diff** (`grep -oE 'id="[^"]+"'` before/after) after any DOM restructure — nothing may be removed. For visual phases, review live at `http://localhost:8000/` (`python -m http.server 8000` from the repo; incognito to dodge a cached service worker).
 
 | Phase | State |
@@ -187,6 +187,42 @@
 | &nbsp;&nbsp;P40.1 Enters-tapped (parse "enters tapped" → the permanent enters tapped; player + enemy creatures) | ✅ **DONE & merged** (`inferEffects`→`props.entersTapped`; `resolvePlayerItem`/`resolveEnemyCreature` honour it; 4-check jsdom) |
 | &nbsp;&nbsp;P40.2 Prowess (noncreature spell → controller's prowess creatures +1/+1 EOT; both sides) | ✅ **DONE & merged** (`firePlayerProwess`/`fireEnemyProwess` on noncreature resolve; `youEnd` clears the player's until-EOT buffs like `vaelEnd` does the enemy's) |
 | &nbsp;&nbsp;P40.3 Recognise flash + rare evasion (shadow/horsemanship/skulk/daunt/fear/intimidate) on import | ✅ **DONE & merged** (added to `KW_LIST` (flash/prowess) + `RECOGNISED_KW` (all) so imports round-trip + display; rare evasion is a display-only badge — no block-eligibility engine, a manual note; goad stays the existing `◐` marker; draw/tutor one-shots stay reminders — no player library) |
+| **Phase 41 — Lore fix: Guff is red-bearded (MTG canon)** | ⬜ **PLANNED** (specced 2026-07-04; one string + spec echo + STORY.md canon note) |
+| **Phase 42 — Item duration & economy coherence** | ⬜ **PLANNED** (specced 2026-07-04) — passives REALLY last 1 descent (stash-loop root cause) · Sapper's-Map row consumption · Scholar/Tome price-invert · heal/damage price curves (user anchor: Healing Draught 7g) |
+| &nbsp;&nbsp;P42.1 Passives really expire — `saveUnusedItems` stashes consumables only (+ drop dead `descents` field) | ⬜ PLANNED |
+| &nbsp;&nbsp;P42.2 Sapper's Map row consumed when the −4 fires | ⬜ PLANNED |
+| &nbsp;&nbsp;P42.3 Scholar's Token ↔ Arcane Tome price-invert (premium engine vs cheap burst) | ⬜ PLANNED |
+| &nbsp;&nbsp;P42.4 Price-curve rebalance (heals bulk-discount · damage premium-per-point · wheel label · Ember Sigil hook · wording) | ⬜ PLANNED |
+| **Phase 43 — Campaign & Sandbox: two game modes + multi-level infrastructure** | ⬜ **PLANNED** (specced 2026-07-04) — mode select · per-profile per-mode buckets (gold/items/saves) · LEVELS registry with `DUNGEON` alias · campaign carry-over + forward-only runs · sandbox per-enemy battle select · persistent lore progress |
+| &nbsp;&nbsp;P43.1 Data model & migration: per-profile `camp`/`sand` buckets + per-mode save slots (fixes the cross-profile Continue bug) | ⬜ PLANNED |
+| &nbsp;&nbsp;P43.2 `LEVELS[]` registry; `DUNGEON`/`ROOM_ART` become aliases via `setLevel()`; stable per-battle ids | ⬜ PLANNED |
+| &nbsp;&nbsp;P43.3 Menu rework: mode choice (⚔ Campaign / 🏟 Sandbox) + campaign screen + sandbox battle grid | ⬜ PLANNED |
+| &nbsp;&nbsp;P43.4 Campaign rules: sequential level unlock · HP/gold/items carry between levels · forward-only · new run erases old | ⬜ PLANNED |
+| &nbsp;&nbsp;P43.5 Sandbox rules: per-enemy unlock (flat) · single battles, no dungeon walk · HP refresh · own gold+inventory | ⬜ PLANNED |
+| &nbsp;&nbsp;P43.6 Persistent progress & lore: `cleared` ledger feeds sandbox unlocks + a lore panel that no longer re-locks | ⬜ PLANNED |
+| **Phase 44 — Enemy realism & balance pass 2** | ⬜ **PLANNED** (specced 2026-07-04) — mana hold-up · mid-combat trick window · dual-mode burn · walker defense/ult safety · counterspells & card advantage · deck discipline · Gate-Meteor fix · dead knobs |
+| &nbsp;&nbsp;P44.1 Instant-speed realism: mana hold-up budget + the deferred P4.4 mid-combat trick window | ⬜ PLANNED |
+| &nbsp;&nbsp;P44.2 Burn & removal realism: dual-mode burn (face OR creature) + threat-based removal selectors | ⬜ PLANNED |
+| &nbsp;&nbsp;P44.3 Planeswalker play: defensive minus, ult safety gate, blocker-aware split attack targeting | ⬜ PLANNED |
+| &nbsp;&nbsp;P44.4 Interaction & card advantage: counterspells (dormant `counter` case) + `draw` run-op + multi-kill valuation | ⬜ PLANNED |
+| &nbsp;&nbsp;P44.5 Deck discipline: Murglax 103→99 · Grakk manabase/removal · curve audit · mulligan v2 (flood-aware, per-difficulty) · deeper difficulty swaps | ⬜ PLANNED |
+| &nbsp;&nbsp;P44.6 Bugs & dead knobs: Gate-Meteor +2 rider · delete `DIFF.manaBonus`/`room.landStart`/`deckCopies` · bloodpact-as-permanent (optional) | ⬜ PLANNED |
+| **Phase 45 — UI, animation & sound overhaul** (Moxfield-inspired desktop · card art · FX layer · fuller soundscape) | ⬜ **PLANNED** (specced 2026-07-04; governed by D5 — one responsive app) |
+| &nbsp;&nbsp;P45.1 Foundation: token expansion · self-hosted fonts (offline PWA typography) · desktop legibility pass | ⬜ PLANNED |
+| &nbsp;&nbsp;P45.2 Card art on board/stack/library tiles (Scryfall images already stored per card) | ⬜ PLANNED |
+| &nbsp;&nbsp;P45.3 Animation/FX layer decoupled from the innerHTML-rebuild render (damage numbers · life flash · tap/move motion) | ⬜ PLANNED |
+| &nbsp;&nbsp;P45.4 Sound design: wire the orphan `heal` cue + ~12 missing cues · volume slider · optional ambient pad (off by default) | ⬜ PLANNED |
+| &nbsp;&nbsp;P45.5 Moxfield-style ≥1100px desktop layout (multi-pane battlefield + side rail) over the same panels | ⬜ PLANNED |
+| &nbsp;&nbsp;P45.6 Stack popup stops occluding the board (dockable) + log legibility rework | ⬜ PLANNED |
+| **Phase 46 — Completeness & hardening + FINAL CLEAN-UP & VALIDATION** | ⬜ **PLANNED** (specced 2026-07-04; runs LAST — the validation gate for the whole 41–45 rework) |
+| &nbsp;&nbsp;P46.1 Checked-in regression suite (`package.json` + `tests/` jsdom drivers + full-descent driver; `npm test`) | ⬜ PLANNED |
+| &nbsp;&nbsp;P46.2 Error reporting: `window.onerror`/`unhandledrejection` → player-visible toast + downloadable debug dump | ⬜ PLANNED |
+| &nbsp;&nbsp;P46.3 ⚙ Settings panel (volume · text size · animation level · mute; consolidates exports) | ⬜ PLANNED |
+| &nbsp;&nbsp;P46.4 Accessibility: `aria-live` log · dialog focus management · contrast/touch audit | ⬜ PLANNED |
+| &nbsp;&nbsp;P46.5 First-run onboarding (auto-offer the tutorial once per profile) | ⬜ PLANNED |
+| &nbsp;&nbsp;P46.6 Deploy pipeline: `netlify.toml` + GitHub continuous deploy + SW-bump checklist (retire manual drag-drop) | ⬜ PLANNED |
+| &nbsp;&nbsp;P46.7 Code clean-up: dead `pwAct` body · legacy `S.pw` field · any 41–45 leftovers | ⬜ PLANNED |
+| &nbsp;&nbsp;P46.8 FINAL VALIDATION: full regression + live browser smoke + multi-agent adversarial review + balance playtest checklist + PWA/offline/deploy verification | ⬜ PLANNED |
 
 ---
 
@@ -227,6 +263,8 @@
 - **D2 — Enemy mana = keep the turn-ramp, layer on colours + freeze + player-effects.** `bossMana()` stays baseline; surface `S.boss.colors`; add **freeze** (`S.bossManaFrozen`); route "search a land" → small temporary `+N` via `bossManaMod`.
 - **D3 — Battles & plane = player helpers + enemy battles for Vael only.** Battle tracker + neutral plane die; Vael can field a Battle the AI defends/attacks with priority. Murglax battles / deeper Planechase deferred (P7.7-opt).
 - **Lighter defaults:** sounds = synthesized WebAudio SFX + mute (no assets); easy/brutal = a luck % on the enemy's rolls (not just stats); enemy emblems = template dropdown + optional automation; phase enforcement = **soft** (gates/warns, never hard-blocks) + a "◂ back a phase" button; the Grakk "Whelp → graveyard" item — fix the **logging**, not the behaviour.
+- **D4 — Platform: stay web (single-file PWA); no game-engine port (decided 2026-07-04, before the Phase 41–46 rework).** The facts: game state `S` is already a pure JSON object (`fresh()` ~874; save AND undo both `JSON.stringify` it), and the rules/AI layer is ~465 KB of working, regression-hardened JS (~576 top-level functions). A Godot/Unity port would rewrite ALL of that plus the entire UI (~81 KB HTML/CSS, ~395 inline handlers across ~215 distinct global functions, a dozen overlay dialogs), the WebAudio SFX, and the Scryfall REST client — reusing only the art, the data tables (`DUNGEON`/`FX`/`BOONS`/`STORE`) and the copy. That is months of rework for zero gameplay gain; the "real game" look/feel/sound the port would buy is achievable in place (Phase 45). **App stores stay reachable via Capacitor** wrapping this folder nearly as-is (needs a Node scaffold — none exists — plus self-hosted fonts; see P45.1/P46.6). Revisit ONLY if a future feature genuinely needs an engine (3D, heavy particle counts, controller-first play) — if so, extract the `S`-mutating logic first (its three DOM tendrils: `log()` writes, `sfx()` calls, `$()` form reads).
+- **D5 — One responsive app, not separate PC/phone apps (decided 2026-07-04).** Today every screen is a single codepath (single-column flow; `.wrap` max-width 1140px; the only splits are the ≥780/680/640px duo grids, the ≤560/480/380px phone reflows, + the `pointer:coarse` touch-target block). Phase 45 adds a ≥~1100px Moxfield-style multi-pane desktop layer **over the same panel nodes** (the `buildTabs()` node-relocation pattern is the in-repo precedent for re-homing live panels without touching handlers). Two separate apps would double every future phase's build+QA for no user gain.
 
 ---
 
@@ -385,7 +423,7 @@ Visual-hierarchy convention (primary/secondary/tertiary), subtle per-surface bac
   - **Part 3c — ♛ VAEL deck. ✅ DONE** (`d1fdf79`). The final boss, built reuse-heavy from the red+black pool with **no new engine effect**: 6 new R/B cards (Cinder Wraith, Rakdos Fiend, Ashwing Terror, Emberglut, The Avatar Reborn) + the finisher **Embers Choose a New Shape** (6/6 trample-haste avatar + a 3-drain) + 2 dual lands + 40 reused red/black keys = 46 singleton + 34 lands (~80). Multi-angle finish (Embers + Warren Overrun anthem + Maw drain + The Pit's Tithe). First **two-colour tokens** (`"RB"` → `["R","B"]` via the engine's `split`). 17-assertion driver + review. *(Workflow design failed the structured-output cap; hand-authored from the now-large R+B pool instead.)*
   - **Part 3d — DECK-OUT + full ~99 expansion. ✅ DONE** (`8a93d8d`, `ea20675`, `12c0494`). **Deck-out:** `vaelDraw` no longer reshuffles the graveyard — if the enemy must draw from an empty library it loses (via `bossDown`, so Vael's 2nd phase still triggers); milling the enemy out (`deckMill`) is now a real win path. **~99 expansion** (user reconsidered the earlier "tight 80": a well-built singleton Commander deck keeps its identity, and deck-out makes size a real resource): all three decks → **62 singleton spells + 37 lands = 99**. Grakk +17 new red (cheap haste goblins/token-makers + a War-Horn mini-anthem; curve stays low), Murglax +18 new black (removal/drain instants, DT/LL bodies, 2 upkeep taxes, a 7/7 Undying Glut), Vael +16 reused R/B keys. 35 new cards designed+verified via workflows. Drivers updated to 99 (every card resolves, builds to exactly 99 on every difficulty, combined-effect cards apply both halves); 312+ assertions green.
   - **All three decks done at full ~99.**
-  - **Part 3e — AI polish. 🔨 in progress** (`a073856`, `ec184b3`). **Pass 1 — cast-guard** (`enemyCastUseless` in `vaelMain`): the enemy HOLDS removal until you present a valid target (was wasting it on an empty board), and only fires an anthem with a board to buff + in main1 (where it can swing), not main2. **Pass 2 — lethal awareness** (`enemyLethalReach`): when affordable unpreventable burn/drain ≥ your life it goes for the throat, casting those spells first (and in main2, so post-combat burn finishes a chipped player). Found that the enemy's **combat was already smart** — `aiBlocks` makes favorable trades / chumps only when threatened / spares the commander; `aiTargets` kills a planeswalker when it can else goes face — so no combat changes. **Pass-review fixes** (`91a75e8`): `enemyLethalReach` now excludes variable `dieLoss` burn (Gate-Meteor's d6) so lethal is only declared on deterministic damage; `enemyCastUseless` delegates removal-target validity to the precise `enemyInstantWouldDo` (hexproof/indestructible/protection-aware) so it won't cast into a fizzle. 29-assertion AI driver + regressions green. **Remaining ⬜ = BALANCE, which genuinely needs playtest** (difficulty life/mana, card/finisher costs — can't be tuned blind). Sequencing is low-value (enemy casts resolve on the stack later, so same-turn order barely matters); instant-window gate (`Math.random()>0.4`) is the P6 placeholder. **AI LOGIC pass is functionally complete; balance is a playtest-driven follow-up.**
+  - **Part 3e — AI polish. ✅ done** (`a073856`, `ec184b3`). **Pass 1 — cast-guard** (`enemyCastUseless` in `vaelMain`): the enemy HOLDS removal until you present a valid target (was wasting it on an empty board), and only fires an anthem with a board to buff + in main1 (where it can swing), not main2. **Pass 2 — lethal awareness** (`enemyLethalReach`): when affordable unpreventable burn/drain ≥ your life it goes for the throat, casting those spells first (and in main2, so post-combat burn finishes a chipped player). Found that the enemy's **combat was already smart** — `aiBlocks` makes favorable trades / chumps only when threatened / spares the commander; `aiTargets` kills a planeswalker when it can else goes face — so no combat changes. **Pass-review fixes** (`91a75e8`): `enemyLethalReach` now excludes variable `dieLoss` burn (Gate-Meteor's d6) so lethal is only declared on deterministic damage; `enemyCastUseless` delegates removal-target validity to the precise `enemyInstantWouldDo` (hexproof/indestructible/protection-aware) so it won't cast into a fizzle. 29-assertion AI driver + regressions green. **Remaining ⬜ = BALANCE, which genuinely needs playtest** (difficulty life/mana, card/finisher costs — can't be tuned blind). Sequencing is low-value (enemy casts resolve on the stack later, so same-turn order barely matters); instant-window gate (`Math.random()>0.4`) is the P6 placeholder. **AI LOGIC pass is functionally complete; balance is a playtest-driven follow-up.**
   - **Part 3f — blind balance pass. ✅ DONE** (`19fc819`, via a 3-analyst balance-analysis workflow → synthesis). Only the two consensus changes applied: **Vael phase-2 revival `0.34→0.30`** (trims the run's sharpest spike — 2nd health bar at lowest carried-over life; std P2 12→11, brutal 16→14, easy unchanged; base 36 kept) and **Grakk `landStart 0→1`** (fixes a dead lever — `max(0,landStart+manaBonus)` floored easy's −1 to 0, so easy/std opened identically; now a clean 1/2/3 easy/std/brutal + an on-curve aggro start). Rejected as non-consensus: player-life 40→45 (keeps the gauntlet's core tension), Murglax life, Nyx-ult nerfs, brutal hpMult. 11-assertion balance driver. **These are estimates — validate in playtest.** **P5.2 functionally COMPLETE; only playtest-driven balance validation remains.**
 
 ---
@@ -443,7 +481,7 @@ Visual-hierarchy convention (primary/secondary/tertiary), subtle per-surface bac
 
 ---
 
-# PHASE 8 — Real MTG card import (Scryfall) ⬜ PLANNED
+# PHASE 8 — Real MTG card import (Scryfall) ✅ DONE & merged + live-verified
 
 > **Goal.** Let the player play from *real Magic cards* instead of hand-typing every one — and in doing
 > so **collapse the casting UX**. `✦ Cast a spell` becomes one **combined search** over your library +
@@ -2669,6 +2707,284 @@ Player creatures keep `.name`; the fallback is a no-op for them.
 ## P40.3 — Flash + rare-evasion recognition
 Added `flash`/`prowess` to `KW_LIST` (creator toggles) and `flash`/`prowess`/`shadow`/`horsemanship`/`skulk`/`daunt`/`fear`/`intimidate` to the importer's `RECOGNISED_KW`, so imported cards **round-trip and display** these keywords instead of dropping them. **flash** is a cast-at-instant reminder (this sandbox already casts freely); the **rare-evasion family** is a display-only badge — full block-eligibility (which needs creature-subtype tracking) is left as a manual note. **goad** stays the existing manual `◐` status marker; **draw/tutor one-shots** stay reminders (the player has no library to draw from). **Verify:** jsdom — a Scryfall-style import carrying these keywords maps them onto the card.
 
+
+---
+
+# THE PHASE 41–46 REWORK (specced 2026-07-04 — all ⬜ PLANNED, none built)
+
+> **Scope.** The user's full-game rework request: fix Guff's lore colour; make item durations real and the economy coherent; build **Campaign & Sandbox** as two proper game modes on a multi-level foundation; push enemy decks/AI to a second realism pass; overhaul UI/animation/sound (Moxfield-inspired on desktop); and close everything a *complete* game still lacks — ending in a **final clean-up & validation gate**.
+> **Platform decided first (per the user):** D4 — stay web/PWA, no engine port; D5 — one responsive app (see §3). The rework happens **in place**.
+> **Build order = phase order** (41 trivial → 42 small-but-load-bearing → 43 the big infrastructure → 44 gameplay → 45 presentation → 46 hardening + the validation gate over everything).
+> **Grounding.** Every symbol/line below is from a 6-agent research sweep of the CURRENT `index.html` (2026-07-04, HEAD `0af2bb0`). Line numbers drift — **re-grep the symbol before building**; never Read a range spanning the `ART` blob line (~614).
+
+# PHASE 41 — Lore fix: Guff is red-bearded (MTG canon) ⬜ PLANNED
+
+> **Goal.** The Guff-freed cutscene calls Guff "grey-bearded". Canon Commodore Guff (Invasion-era novels; Commander Masters #706 art) has **reddish hair and beard** — the MTG Wiki: *"a raft of reddish-blond hair, an aggressive beard … perfectly matching his hair and beard."* One-string recolour + doc echo.
+
+**Grounded findings.** Exactly ONE colour-bearing appearance string exists in the whole project: `DUNGEON[2].guffFreed[0]` (index.html ~807, inside `const DUNGEON` ~778): *"…In a cage of ember-iron a broad-shouldered man waits: **grey-bearded**, seamed with old scars, and in all this dark he has not knelt."* The identical sentence is echoed in this spec's P11 section (~1034 — grep `grey-bearded`). STORY.md contains **no** physical description of Guff — its grey/gray hits (~40/59/166) are moral "grayness" and must NOT be touched. The game's broad-shouldered, scarred-founder Guff is an intentional reimagining of the comical monocled librarian of canon — recolour ONLY; do not import the monocle/waistcoat look.
+
+**How:**
+1. index.html ~807: `grey-bearded` → **`red-bearded`** (rest of the sentence intact).
+2. This spec, P11 section ~1034: the quoted copy gets the same swap so the tracker matches the shipped string.
+3. STORY.md §5 (Guff's character sheet, ~85–86): ADD one canon-appearance line — *"Appearance: red — a raft of reddish hair and an aggressive red beard (canon); in Ashveil, broad-shouldered and scarred by the war."* — so future copy stays red.
+
+**ACs:** the cutscene reads "red-bearded"; `grey-bearded` appears nowhere in index.html, and in SPEC.md survives ONLY inside this Phase-41 section's own prose (the P11 quoted copy at ~1034 is swapped); STORY.md's moral-grayness lines are untouched and §5 carries the appearance note.
+**Verify:** grep — index.html has 0 `grey-bearded`/`gray-bearded` hits outside the ART blob; SPEC.md's only remaining hits sit inside this section; jsdom boot + `winCutscene` beat-2 renders the new line; syntax gate.
+
+
+# PHASE 42 — Item duration & economy coherence ⬜ PLANNED
+
+> **Goal.** Passives/reminders REALLY last exactly 1 descent (today they are immortal); Sapper's Map stops leaving dead rows; Scholar's Token / Arcane Tome stop duplicating each other; prices follow coherent curves — **user anchor: Healing Draught = 7g / heal 5** alongside Greater Draught 12g / heal 10.
+
+**Grounded findings (re-grep before building).** The satchel promises "Passives & reminders last exactly one descent" (~3211) and P14.5 made duration *structural* (`fresh()` wipes `S.inv`; `carryInvForward()` ≡ `[]` ~2533) — but the **P15.3 stash loop defeats it**: `win()` (~2485) and `lose()` (~2520) call `saveUnusedItems()` (~2725), which stashes EVERY surviving `S.inv` item with **no kind filter**. Passives/reminders can never be "used" (`useBoon` ~1968 hard-rejects `kind!=="consumable"`), so every Ward Stone / Aegis / Buckler / Phoenix / Scholar / Sigil bought once returns via `applyStashItems()` (~2726) at every descent start, **forever** (only escape: a Phoenix that actually fires is consumed — `checkLose` ~2484). The soak relics are priced sanely ONLY at true 1-descent life (buckler 8g/1 · ward 18g/2 · aegis 34g/4; stack read at ~1459) — at lifetime duration, a one-time 60g buys 7 soak per assault every run and Phoenix 40g = a free life every run. **Sapper's Map:** `grantBoon` sets `S.weakenNext` AND pushes a row (~1969); `enterRoom` consumes the flag but never the row (~875); a stash-returned map never re-sets the flag → a dead row recycles forever (`applyPendingPurchases`' map special-case ~2535 applies the −4 for mid-run purchases; `lootRoll`'s final-room map→heal10 guard ~1970). **Scholar's Token** (common, 8g, "extra card each turn", also loot d20 9–11) **strictly dominates Arcane Tome** (uncommon, 14g, "extra card on each of your first two turns") — a worse effect at a higher price AND rarity. **Damage g/dmg zig-zags:** acid 7g/3 = 2.33 · bomb 12g/4 = 3.00 · pyre 20g/8 = 2.50 · comet 38g/12 = 3.17 (the uncommon pyre beats the uncommon bomb on value AND burst). The `descents` field is written in six places (grantBoon ~1969 · applyPendingPurchases ~2535 · buyStore ~2899 · saveUnusedItems/applyStashItems ~2725–2726 · migrate ~2769) and **read nowhere** — dead data. The Fortune Wheel's "rare/legendary **relic**" labels (~860) can pay a consumable via `pickByRarity` (~863). `advance()`'s heal log says "between descents" (~1977) but fires between rooms *within* one descent.
+
+## P42.1 — Passives really expire: filter the stash to consumables
+1. `saveUnusedItems()` (~2725): the keep-filter gains `&& BOONS[it.id].kind==="consumable"` — passives/reminders die with the run; unused consumables still persist (the P15.3 intent).
+2. `applyStashItems()` (~2726): add the same defensive filter so profiles with already-polluted stashes self-clean on next apply (equivalently a one-time `migrate` sweep of `p.stash` — pick one, comment which).
+3. Delete the dead `descents` field from the six write sites + the migrate backfill (~2769) — duration is structural (P14.5); the field is noise. (`uid` STAYS — P21.1 consumption depends on it.)
+**ACs:** win/lose with an unused Ward Stone + a Healing Draught → the next descent starts with ONLY the draught back; polluted old stashes are cleaned; no inv/pending/stash item carries `descents`; the satchel text (~3211) is finally true.
+**Verify:** jsdom — passive+consumable at `win()` → stash holds only the consumable; `applyStashItems` restores it and drops a polluted passive; the fired-Phoenix path unchanged; migrate old-save; syntax + id-diff.
+
+## P42.2 — Sapper's Map: the row is consumed when the −4 fires
+1. `enterRoom` (~875): when `S.weakenNext` is spent, also remove the map row from `S.inv` (by id) + log "🗺 The Sapper's Map is spent."
+2. Mirror the row-consumption in `applyPendingPurchases`' map special-case (~2535).
+3. With P42.1, a spent/unspent map can no longer stash-return dead. (`lootRoll`'s map→heal10 final-room guard unchanged.)
+**ACs:** a bought/looted map weakens exactly the next villain and its satchel row disappears at that moment; no dead map rows ever.
+**Verify:** jsdom — map → next `enterRoom` boss −4 + row gone; pending-purchase path same; two maps stack (−8) or the second is refused (state which at build); syntax + id-diff.
+
+## P42.3 — Scholar's Token ↔ Arcane Tome: price-invert into clear roles
+1. **Scholar's Token = the premium engine:** keep "Draw an extra card each turn (apply yourself)"; move to **uncommon · 18g** (BOONS ~823, STORE ~843).
+2. **Arcane Tome = the cheap burst:** keep "an extra card on each of your first two turns"; move to **common · 7g** (BOONS ~827, STORE ~845).
+3. Loot d20 9–11 keeps granting `scholar` (loot may be generous). Optional cosmetic: identical reminder rows merge in the satchel with a ×N badge.
+**ACs:** the two items have visibly distinct roles and coherent price/rarity (always-on > 2-turn burst); store + satchel render the new rarities.
+**Verify:** jsdom — table assert over BOONS/STORE; store + satchel render; syntax + id-diff.
+
+## P42.4 — Price-curve rebalance (user anchor: Healing Draught 7g)
+1. **Heals — bulk-discount curve (g/hp falls as size rises):** Healing Draught **7g / heal 5** (1.4 — user-specified) · Greater Draught **12g / heal 10** (1.2, unchanged) · Grand Elixir **25g / heal 25** (1.0 — the P28.2 anchor, unchanged) · Tonic of Vigor 36g legendary unchanged. Cleansing Antidote 8g → **6g** (situational).
+2. **Damage — premium-per-point curve (g/dmg RISES with burst size):** Acid Flask **7g / 3** (2.33) · Cinder Bomb **11g / 4** (2.75) · Pyre Charge **24g / 8** (3.0) · Falling Comet **42g / 12** (3.5) — fixes pyre-beats-bomb; big one-shots cost more per point.
+3. **Wheel label honesty:** relabel the item slices "a rare/legendary **treasure**" (~860) — cheaper than restricting `pickByRarity` (~863).
+4. **Ember Sigil gets real (or goes):** wire "+1 direct damage to the boss" into the `dmgBoss` apply path (the freeform direct-damage input, ~392) so the 6g common does something mechanical; if not wired at build, CUT it — no dead items (§1 principle 6).
+5. **Wording:** `advance()`'s heal log (~1977) "between descents" → **"between battles"** (a *descent* = the whole run, per TUTORIAL_HTML ~2675).
+6. Store-only items (acid/antidote/bomb/whet/buckler/tome) stay store exclusives — deliberate; say so in the store ⓘ.
+**ACs:** every price matches the tables above; both curves are monotone in the stated direction; the wheel never announces "relic" for a consumable; Ember Sigil is functional or absent; log wording fixed.
+**Verify:** jsdom — table-driven assert over BOONS/STORE prices+effects; a `dmgBoss` hit with ember in inv deals +1 (or ember absent); wheel slice text; syntax + id-diff.
+
+
+# PHASE 43 — Campaign & Sandbox: two game modes + multi-level infrastructure ⬜ PLANNED
+
+> **Goal.** A **mode choice** after profile select: **⚔ Campaign** — the story. Levels unlock in order; a run walks each level's dungeon; **life/max-life, gold and unused (unexpired) items carry BETWEEN levels**; the run is **forward-only** (no replaying a cleared level inside a run); **one campaign run at a time — starting a new one erases the old**; the story unfolds and is tracked on the 📖 Lore panel. **🏟 Sandbox** — replay freely. Every **battle (enemy)** beaten in Campaign unlocks **individually** (a flat per-enemy ledger — NOT grouped/stored by level); pick any unlocked enemy + difficulty and fight a single battle with **no dungeon walk**; **HP refreshes every battle**; Sandbox keeps its **own gold and inventory**, fully separate from Campaign's. Both live inside the existing profiles, so profiles stay the save-file layer with a campaign and a sandbox inside each.
+> **Relation to prior plans:** this SUPERSEDES the old level-II memory sketch (CAMPAIGNS[]-alias). Its key move survives — the registry + `DUNGEON`-alias — but carry-over rules changed (HP/gold/items now carry between levels) and the whole two-mode layer is new. Level II content itself is still out of scope until its content spec (decks/wardens/lore) exists; this phase builds the INFRASTRUCTURE with Level I as the only entry.
+
+**Grounded findings (re-grep before building).** Persistence is one localStorage key (`SKEY` ~2719) holding `DB={profiles,active,save}`; a profile = `{name,wins,losses,gold,library,tokens,pending,stash,created}` (`blankProfile` ~2723). **`DB.save` is a single GLOBAL autosave slot** (`doAutosave` ~2739, `SAVE_V=40` ~2736) and `continueLastGame()` (~2780) **never checks `sv.profile`** — switching profiles and pressing Continue resumes another profile's run (latent bug this phase fixes structurally). Gold lives ONLY on the profile through exactly 3 accessors (`getGold/addGold/spendGold` ~2792–2794) + ONE stray direct read (`renderMenu` ~2873). The menu (~551–574) hardcodes `h1` "Level I — The Warren of Embers" (~554); Descend → `startGame` (~2863) → `confirmNewDescent` (~2865) / `startNewDescent` (~2869); `restart()` (~2536) duplicates the same `fresh()→enterRoom(0,true)→applyPendingPurchases()→applyStashItems()` chain. Progression is the hardcoded 3-room `DUNGEON` (~778) walked by `advance()` (~1973, with `DESCENT_HEAL` ~617) and ended by `bossDown/win/lose` (~1972/2485/2520); `winCutscene` (~2498) **hardcodes `DUNGEON[2]`** and the beat-2 eyebrow "The Cage Breaks · Level I" (~2504); `showEncounterClear` (~2669) reads `DUNGEON[S.roomIndex+1]`. `enterRoom(i)`/`buildDeck` (~875/~886) are already self-contained per room — a Sandbox battle is essentially `enterRoom(i)` without `advance()`. **No persistent progress record exists**: `openLore` (~2624) computes `seen=i<=S.roomIndex` from the LIVE run, so lore re-locks every new descent; the only lasting traces are `p.wins/p.losses` (`recordResult` ~2790). `descentInProgress()` (~2744) gates the Merchant off the one global slot; `saveUnusedItems`/`applyStashItems`/`applyPendingPurchases` (~2725/2726/2535) run unconditionally at every run end/start — with two modes these buckets would leak across modes unless keyed. NO multi-level/mode scaffolding exists (grep CAMPAIGNS/setCampaign/levelSelect/LEVELS/currentLevel = 0 hits). `fresh()` (~874) hardcodes `youLife:40,youMax:40` and carries no mode/level field. TUTORIAL_HTML hardcodes "One descent is three encounters" (~2675).
+
+## P43.1 — Data model & migration: per-mode buckets + per-profile per-mode saves
+**The shape (initialise in `blankProfile`, backfill in a profile-level migrate):**
+- `p.camp = { gold, pending:[], stash:[], cleared:{}, level:0, run:null }` — `cleared` = the flat battle ledger (P43.6); `level` = highest unlocked level index; `run` = the campaign autosave slot (was `DB.save`).
+- `p.sand = { gold, pending:[], stash:[], save:null, stats:{} }` — its own purse/inventory; `stats` optional per-battle W/L.
+- **Migration:** move `p.gold→p.camp.gold`, `p.pending→p.camp.pending`, `p.stash→p.camp.stash`; a legacy `DB.save` moves into `DB.profiles[sv.profile].camp.run` (fixing the cross-profile Continue bug); bump `SAVE_V`; `S` gains `mode:'campaign'|'sandbox'` + `levelIdx` (init in `fresh()`, backfill in `migrate()` → `{mode:'campaign',levelIdx:0}`).
+- **Accessor re-point:** `getGold/addGold/spendGold` (~2792–2794) read the ACTIVE MODE's bucket (a tiny `bucket()` helper off `S.mode`; from the menu the store is only reachable INSIDE a mode screen — P43.3 item 5 — which hard-keys it, so no ambient "menu mode" fallback exists); fix the one direct `p.gold` read (~2873). `applyPendingPurchases/applyStashItems/saveUnusedItems/descentInProgress/buyStore/renderStore` all go mode-keyed the same way.
+**ACs:** a fresh profile has both buckets; an old profile migrates losslessly (gold/pending/stash land in `camp`; an in-flight `DB.save` becomes that profile's `camp.run`); campaign and sandbox purchases/stashes/purses never mix; Continue on profile A can no longer resume profile B's run.
+**Verify:** jsdom — migrate matrix (old profile ± old DB.save); gold accessor round-trip per mode; buyStore in each mode lands in the right pending; cross-profile continue blocked; syntax + id-diff.
+
+## P43.2 — `LEVELS[]` registry: `DUNGEON`/`ROOM_ART` become aliases; stable battle ids
+1. `const LEVELS=[ {id:'warren', levelNo:1, name:'The Warren of Embers', subtitle, unlock:null, teaser, rooms:<the existing 3 DUNGEON rooms verbatim>, art:['grakk','murglax','vael']} ]` — room shape (name/villain/colors/hp/cmd/pool/lands/swaps/lore/intro/isVael/…) is UNTOUCHED so deck-building/AI/combat never notice.
+2. `const DUNGEON` → `let DUNGEON`; `let ROOM_ART`; `setLevel(idx)` re-points both from `LEVELS[idx].rooms/.art` and sets `S.levelIdx`. Every existing engine reference keeps working. `migrate()` validates `levelIdx` the way it clamps `roomIndex` (~2777). ⚠ **`const ROOM_ART=` is declared ON the ART-blob line (~614)** — NEVER Read that line; convert it with a blind surgical Edit on the unique substring `const ROOM_ART=[` → `let ROOM_ART=[` (or leave line 614 untouched and declare the alias elsewhere, re-pointing its one non-blob consumer, `openLore` ~2627).
+3. **Stable battle ids** for the ledger: `battleId(level,room)` = `` `${LEVELS[level].id}:${room.villain}` `` (e.g. `warren:Grakk the Gatewarden`) — flat keys, deliberately NOT nested under levels (per the user: sandbox unlocks are per-enemy, not per-level).
+4. De-hardcode the level-finale plumbing: `winCutscene` (~2498) takes the active level's final room instead of `DUNGEON[2]`; its "· Level I" eyebrow (~2504) reads `LEVELS[S.levelIdx]`; `showEncounterClear`'s next-room read is already alias-safe.
+**ACs:** with only Level I registered the game behaves byte-identically; `setLevel(0)` is a no-op alias; battle ids are stable strings; nothing reads the old const directly at parse time before `setLevel` runs.
+**Verify:** jsdom — full 3-room descent green post-alias; winCutscene fires from the alias; battleId table; syntax + id-diff (no id changes expected).
+
+## P43.3 — Menu rework: mode choice + campaign screen + sandbox battle grid
+1. Menu `h1` (~554) → **"Guff's Gauntlet"** (the game's name; the level name moves into the campaign screen + the in-game header, which already shows it). Replace the single "Descend ▸" (~574) with **⚔ Campaign ▸** and **🏟 Sandbox ▸**; Continue (~573) becomes mode-aware (labels which mode's save it resumes).
+2. **Campaign screen** (a `.cutbox`-family overlay, like the existing confirm dialogs): one card per `LEVELS[]` entry — cover art, "Level N — name", state ✓ cleared / ▶ current (Continue run / New run) / 🔒 locked (`unlock` gate: previous level cleared). "New run" routes through the EXISTING abandon-save confirm (`confirmNewDescent` ~2865 — "erases the old run" for free). With one level it's a one-card screen — cheap, and Level II drops in as data.
+3. **Sandbox screen:** a battle grid — one tile per battle in `p.camp.cleared` order across all levels (portrait via the level's `art` key when earned, 🔒 + "???" silhouette when not; villain names hidden until earned, matching the lore page's convention) + a difficulty seg per launch (`S.diff` is per-run state already — `menuSetDiff` pattern ~2870).
+4. Both screens converge on a parametrized starter: `startBattle({mode, levelIdx, roomIdx, diff})` wrapping the `fresh()→setLevel→enterRoom→apply*` chain (today duplicated in `restart`/`startNewDescent` — collapse them onto it).
+5. **The Merchant moves off the main menu** (today a main-menu button, ~572) into BOTH mode screens — the campaign screen and the sandbox grid — each opening the store hard-keyed to that screen's bucket, with a "Buying for: ⚔ Campaign / 🏟 Sandbox" line in the store header. This pins which purse pays and which `pending` receives; there is no mode-less store entry. The mode-aware Continue reads the same context: the campaign screen continues `p.camp.run`, the sandbox grid continues `p.sand.save`.
+**ACs:** the menu offers both modes; campaign cards gate on the previous level; sandbox tiles gate on the per-enemy ledger; a new campaign run still triple-confirms over a live save; the retired "Level I" `h1` text lives on the campaign card + in-game header only.
+**Verify:** jsdom — menu renders both buttons; locked/unlocked states from a seeded profile; `startBattle` boots each mode; abandon-confirm still fires; syntax + id-diff (new ids expected — record them).
+
+## P43.4 — Campaign rules: carry-over, forward-only, story flow
+1. **Within a level:** exactly today's behaviour (advance/DESCENT_HEAL/loot/merchant-lock).
+2. **Between levels (new):** clearing a level's finale offers **"Descend to Level N+1 ▸"** (when a next level exists) alongside "Return to the surface": the level transition is a SUPER-`advance()` — `setLevel(n+1); enterRoom(0)` with `freshGameForDungeon()` semantics — **life, max life, gold and unexpired unused items all carry** (satisfied structurally: gold/stash live on `p.camp`; `S.inv` consumables ride along; P42.1 already killed passive carry). The Fortune Wheel (P15.1) spins at EACH level clear (it is "end-of-level"); `recordResult(true)` fires per level clear. **Run-end bookkeeping is scoped:** `saveUnusedItems()` + `clearSave()` fire ONLY at campaign end (the FINAL level's win) or `lose()` — a mid-campaign level clear instead `doAutosave()`s the run at Level N+1 Room 0, with items riding in `S.inv` (never the stash — no duplication at the next `applyStashItems`). "Return to the surface" at a level boundary **PARKS** the run at that autosave (Continue resumes Level N+1 Room 0); it does not end the run or stash items.
+3. **Forward-only:** no UI path re-enters a cleared level during a run (`p.camp.run` stores `levelIdx+roomIndex`; the campaign screen's cleared cards offer no "replay" — that's Sandbox's job). New run = wipe `p.camp.run`, start at Level 1 Room 0 (ledger/`level` unlocks are NOT wiped).
+4. **Story:** each level's intro/win cutscenes fire in sequence; the final level's finale runs the full escape/Guff/epilogue chain. With only Level I, "campaign complete" = today's `win()`.
+**ACs:** finishing Level I with a next level registered offers the onward descent carrying HP/gold/items; without one it ends the campaign as today; a new run never resurrects the old run's position but keeps unlocks; no path replays a cleared level inside a run.
+**Verify:** jsdom — two-level fixture (a tiny test level II): carry-over of life/max/gold/consumables across the boundary; forward-only; new-run wipe semantics; single-level regression byte-green; syntax + id-diff.
+
+## P43.5 — Sandbox rules: single battles, own economy, HP refresh
+1. `startBattle({mode:'sandbox', levelIdx, roomIdx, diff})`: `fresh()` (HP always 40/40 base — max-life boons used IN a sandbox battle last that battle only), `setLevel`, `enterRoom(roomIdx,true)`, sandbox `pending`/`stash` applied (its own inventory per the user), merchant reachable BETWEEN battles only (`descentInProgress` mode-keyed per P43.1).
+2. **End of battle:** a mode-aware wrapper around `bossDown/win/lose` — victory pays `goldReward(roomIdx)` + `lootRoll()` into the **sandbox** purse/satchel, records `p.sand.stats[battleId]`, then returns to the sandbox grid. **No** `advance()`, **no** story cutscenes (straight victory/defeat popup), **no** Fortune Wheel, and Vael's second-life reborn phase STAYS (it's part of his battle). Unused consumables stash to `p.sand.stash`.
+3. Boss-specific plumbing that assumes the walk (`showEncounterClear`'s next-room read, the map→heal10 loot guard, `winCutscene`) must all take the mode branch.
+4. Tutorial/ⓘ copy: "One descent is three encounters" (~2675) gains the two-mode explanation.
+**ACs:** any unlocked enemy is playable at any difficulty; each battle starts 40/40 regardless of the previous battle; sandbox gold/items never touch campaign's; winning/losing returns to the grid with the ledgerless campaign state untouched; Vael in sandbox still runs both lives + his Siege.
+**Verify:** jsdom — sandbox Grakk win pays the sandbox purse only; HP resets between two consecutive battles; campaign run in progress is untouched by a sandbox detour (and vice versa — merchant lock per mode); Vael sandbox both-lives; syntax + id-diff.
+
+## P43.6 — Persistent progress & lore: the `cleared` ledger + a lore panel that stops re-locking
+1. **Write the ledger:** `bossDown()` (mid-level bosses) and the level-finale path both set `p.camp.cleared[battleId(S.levelIdx,room)]=true` + bump `p.camp.level` on a finale — the SINGLE source for sandbox unlocks AND lore.
+2. **`openLore` (~2624):** `seen = cleared-in-ledger OR i<=S.roomIndex-in-a-live-campaign` — lore earned once stays earned (from the menu too, after runs end); the per-level sections render from `LEVELS[]` so Level II lore slots in as data; keep the ??? convention for the unseen.
+3. The lore panel becomes the **story track** the user asked for: per level, show beaten wardens + that level's story beats unlocked so far (the existing fixed entries — Merchant/Ember/Guff — stay).
+**ACs:** beating Grakk once (campaign) permanently unlocks his lore entry and his sandbox tile, across sessions and after the run ends; sandbox wins do NOT write the ledger (unlocks come from campaign only, per the user); the lore page works from the menu with no live game.
+**Verify:** jsdom — ledger write on bossDown/finale; openLore from menu with a seeded ledger; sandbox win writes stats but not `cleared`; persistence round-trip through saveDB/loadDB; syntax + id-diff.
+
+
+# PHASE 44 — Enemy realism & balance pass 2 ⬜ PLANNED
+
+> **Goal.** Beyond the built P34/P35/P38/P17: the enemy should FEEL like a real opponent — holding up instants, tricking during your combat, using burn on creatures, defending its planeswalker, playing counterspells and card advantage — and the decks/difficulty should be disciplined, with the known bugs and dead knobs cleared.
+
+**Grounded findings (re-grep before building).** `vaelMain`'s cast loop (~2128) is **greedy — taps out every turn**; the instant windows (`enemyInstant` ~2189, `enemyRespondToCast` ~2429) can only spend leftovers, so interaction on your turn is accidental. The **mid-combat trick window is still the documented deferred P4.4 follow-up** (comment ~2188; `openCombat` ~1367 closes every proposal; `youCombat` ~2182 fires before attackers are even picked). `dealOpeningHand` (~895) guards screw ONLY and at the 10-attempt cap keeps the hand with the MOST lands (~901–902) — the inverse of real mulligan logic; `playEnemyLand` (~2007) plays the first land found. `pickWalkerAbility` (~2028) **ults unconditionally at threshold** and only minuses offensively vs a ≥5-power bomb (~2031) — no defensive line despite the P38.5 comment (~2024). `aiTargets` (~1694) is all-or-nothing on walkers (raw power ≥ loyalty, blocker-blind). **Zero counterspells** — `bestTargetThreat`'s `case 'counter'` (~2458) is dormant; the only draw effect is `cullharvest`; `destroyTop2`-style valuation scores only the best victim (`top()` ~2452). **All red burn is face-only `selfLoss`** (e.g. `FX.bolt` ~635) — Grakk has ONE removal card in 99 (`pyro` ~639) and no instant-speed removal; black removal is fixed heuristic selectors (power-based, not threat-based). **Gate-Meteor bug (live):** `FX.meteor` (~683) has `selfLoss:2` + `die:6/dieLoss:true` but `mkPlay` (~2239) overwrites `selfLoss` with the roll — the +2 never happens (documented at SPEC ~446 — the P6.2 "deferred to P5.2 balance" bullet; never fixed). **Dead knobs (confirmed):** `DIFF.manaBonus` (~615) and `room.landStart` (~779/785/791) are defined, read nowhere (retirement comment ~882); `deckCopies` (~622) only serves legacy array pools — all three rooms use maps. **Decks:** Grakk 99 (37 lands on a 2.35 curve — flood-heavy; ~33% is aggro-typical), Murglax **103** and Vael **100** (both over the 99 norm; avg cost 3.05 / 3.41); per-difficulty swaps are 1–3 cards. Special-run enchants like `bloodpact` still resolve into `S.rules`, not a destroyable permanent (~2307–2308). Phase 5's balance line still says "pending playtest".
+
+## P44.1 — Instant-speed realism: mana hold-up + the mid-combat trick window
+1. **Hold-up budget:** in `vaelMain` (~2117), before the greedy loop — if the hand holds an instant whose projected `castValue` ≥ `enemyActThreshold()` and the board is not in a lethal race (`enemyLethalReach` ~2116 says no), reserve its cost: stop casting when `usableMana()` would dip below the reserve. Difficulty-gated (`enemyLuck()>=0`; easy stays tap-happy).
+2. **The P4.4 mid-combat window (finally):** after blocks are set but before `resolveAttack` — one instant proposal (reuse `buildEnemyCandidates`/the `S.stackProposal` flow) whose value clears the bar (kill a blocker/attacker, pump, burn); on resolution, prune dead combatants + re-run `predictCombat`. One window per combat; easy skips it.
+**ACs:** the enemy visibly holds mana on turns where it has a live instant (log hint optional); a trick can fire after your blocks with combat re-predicted; no proposal deadlock with the existing P4.2/P4.4 windows; easy unchanged.
+**Verify:** jsdom — hold-up leaves ≥cost unspent when a candidate exists (and doesn't when racing); mid-combat proposal fires once, prunes a killed blocker, re-predicts; regression on the P4.2 cast-response flow; syntax + id-diff.
+
+## P44.2 — Burn & removal realism: dual-mode burn + threat-based selectors
+1. **Dual-mode burn:** a `burn:N` FX shape — resolves as EITHER face damage OR lethal-to-a-creature, chosen by value: `castValue` scores `max(face value, best killable creature's threatScore)`; resolution routes through the existing target machinery (honouring hexproof/shroud/protection). Convert the bolt-family (`bolt/twinbolt/crackle/emberblast`…) where flavour fits — Grakk & Vael gain real removal AND instant-speed interaction in one move.
+2. **Threat-based selectors:** the `destroyMaxPow`-family picks victims by `threatScore` (already exists) instead of raw power, so removal snipes the most DANGEROUS creature.
+**ACs:** a bolt kills your 2-toughness bomb instead of going face when that's worth more; selectors take the scarier of two equal-power creatures; player-side protections still respected; Grakk's effective removal count rises without new cards.
+**Verify:** jsdom — burn chooses face vs creature per constructed boards; hexproof/protection fizzle-guards; selector picks by threat; syntax + id-diff.
+
+## P44.3 — Planeswalker play: defense + ult safety + split attack targeting
+1. `pickWalkerAbility` (~2028): fold in `estimateSwingDamage`/`playerAttackPotential` — prefer the MINUS defensively when incoming damage threatens the walker's loyalty or `S.boss.life`; gate the ULT on surviving the crack-back (don't fire at threshold if it leaves a lethal board unanswered); keep the bomb-snipe.
+2. `aiTargets` (~1694): split pressure — divert only enough expected (blocker-discounted) damage to kill the walker's target, send the rest at the face; account for your untapped blockers instead of raw `effP` sums.
+**ACs:** Vael minuses your lethal attacker instead of blindly plussing; the ult waits a turn when firing would lose the game; walker attacks no longer over/under-commit vs blockers; easy keeps the simple lines.
+**Verify:** jsdom — defensive-minus scenario; unsafe-ult deferral; split-targeting expected-damage math; syntax + id-diff.
+
+## P44.4 — Interaction & card advantage: counterspells + draw + multi-kill valuation
+1. **Counterspells:** a `counter` FX effect wired through the dormant `bestTargetThreat` case (~2458) + the P4.2 response flow (the enemy proposes countering your cast when its value clears the bar); 1–2 cards in Murglax + Vael pools (black/Rakdos flavour: "Dark Refusal"-style); respects "can't be countered" (P13.1). **Hold-up interplay:** a counterspell has no stack target at the enemy's main time, so `castValue` would project ~0 — special-case its hold-up value to `enemyActThreshold()` (difficulty-scaled; 0 on easy) whenever the player holds ≥1 card, so P44.1's single reserve check sees it (the reserve logic stays defined ONCE, in P44.1).
+2. **Draw:** a `run:['draw',N]` op + 1–2 draw spells per deck; `castValue` values it by hand-size need.
+3. **Multi-kill valuation:** `destroyTop2`/board-sweep effects value as the SUM of victims (`top()` ~2452 → a sum), so 2-for-1s are preferred like a real player would.
+**ACs:** the enemy can counter a high-value player cast via the visible proposal (approvable/editable as ever); it draws with its new spells; a sweep is preferred over a single kill when it nets more threat; hold-up (P44.1) reserves for counters too.
+**Verify:** jsdom — counter proposal on a fat cast + fizzle on can't-be-countered; draw resolves; sum-valuation ordering; syntax + id-diff.
+
+## P44.5 — Deck discipline: sizes, manabases, curves, mulligan v2, deeper difficulty
+1. **Normalize:** Murglax 103 → **99** and Vael 100 → **99** (trim the flabbiest by castValue-at-curve audit); Grakk stays 99 while its land share drops 37 → **~33**, the freed slots becoming interaction/gas (the P44.2 burn conversions may satisfy this); audit each deck's avg cost vs land count (Vael's 3.41 curve may justify keeping 36–37 lands *within* his 99).
+2. **Mulligan v2 (`dealOpeningHand` ~895):** keep-window = 2–5 lands (reject flood, not just screw); tie-break by curve fit (a 1–2 drop present), NOT max-lands; per-difficulty quality — brutal keeps only 3–4-land hands with an early play — a REAL lever replacing the dead `manaBonus`. *(Deliberately SUPERSEDES the P17.2 open-question default of "no flood mulligan" — flag for the user's nod at build.)*
+3. **Deeper difficulty swaps:** beyond the current 1–3 cards — easy cuts the top-end finishers; brutal swaps clunkers for gas (± the interaction package) so difficulties play differently, not just tankier (room.swaps ~781/787/797).
+4. **Land-drop choice:** `playEnemyLand` (~2007) prefers the level's flavored duals/utility land when meaningful (cosmetic today, future-proofs colored mana if ever adopted).
+**ACs:** all three decks are 99 ± stated exceptions with audited curves; the enemy mulligans a 6-land hand; brutal feels sharper by DESIGN (hands+swaps), not just stats; no deck-out regressions.
+**Verify:** jsdom — deck-size/land-count table per room per difficulty; mulligan matrix (screw/flood/curve hands); swap application; full-descent regression per difficulty; syntax + id-diff.
+
+## P44.6 — Bugs & dead knobs
+1. **Gate-Meteor:** `mkPlay` (~2239) → `p.selfLoss = p.roll + (fx.selfLoss||0)` when both present; bump `castValue`'s die branch to `(die+1)/2 + selfLoss`. (`lash` — die-only, in Grakk's & Vael's pools — unaffected.)
+2. **Delete dead knobs:** `DIFF.manaBonus` (~615), `room.landStart` (all three rooms), `deckCopies` (~622) + their retirement comments — principle 6.
+3. **Optional (build if cheap): bloodpact as a permanent** — resolve The Pit's Tithe into a real `S.enemyEnchants` permanent whose rider fires from the permanent (the resolver currently skips special-runs, ~2307–2308), so destroying it is board-visible like everything else post-P13.3.
+**ACs:** Gate-Meteor deals roll+2; greps for the three dead knobs return nothing; (if built) the Tithe sits on the enemy board and destroying it stops the drain.
+**Verify:** jsdom — meteor damage math; knob greps; (opt) tithe permanent lifecycle; syntax + id-diff.
+
+
+# PHASE 45 — UI, animation & sound overhaul (Moxfield-inspired desktop · one responsive app per D5) ⬜ PLANNED
+
+> **Goal.** Make the game LOOK and SOUND like a game: card art on the board, real motion feedback (damage, taps, movement), a fuller soundscape with audible cues for every meaningful action, desktop screens that use their width (Moxfield-style multi-pane), and legible type everywhere — all in the one responsive app (D5), keeping the CSS-first/reduced-motion and default-quiet conventions.
+
+**Grounded findings (re-grep before building).** CSS = one ~45 KB inline block (~18–336) on a 13-token `:root` (~19); 4 Google-hosted font families (~17) that are NOT in sw.js's shell cache → **the installed PWA loses all typography offline**. Breakpoints: ≥780/680/640 duo grids; ≤560/480/380 phone reflows; one `pointer:coarse` touch block (~265–278); `prefers-reduced-motion` is a nuclear all-off (~335). **`render()` (~1515) is a wholesale innerHTML rebuild** (104 `.innerHTML` sites; `creaField` wiped each call ~1538) — the `.crea` spawn animation re-fires on every tile every action, and per-element motion (damage numbers, tap rotation, movement) is impossible without keyed DOM or an overlay FX layer; `log()` (~1057) is the only append-only renderer. **Art:** the `ART` blob (line ~614) holds exactly 5 jpegs (warren bg + 3 warden portraits + merchant); board tiles are text-only — yet **Scryfall imports already store `image_uris.normal` per card** (`SCRY.faceObj` ~3058), rendered today only as 34px thumbnails in search rows (~3143, ~2948). **Sound:** 10 synth cues with 10 call sites; `heal` is defined-but-never-called (~3228); silent: store purchase, loot, satchel use, token deploy, draw, phase/turn change, descend, wheel spin, cutscenes, enemy casts, loyalty, counters. **Legibility:** `.badge` = .52rem (~73), `.tiny` = .6rem (~52) on desktop; the log is a fixed 114px window (~120); the stack popup is a full-screen `inset:0` overlay (~89) that hides the board while you respond; every icon is an emoji in a button label; ~395 inline `onclick=` sites (129 in the static HTML; ~215 distinct global handler functions) pin functions global. Layout is single-column everywhere (`.wrap` max 1140px ~24); `buildTabs()` (~3180) relocation is the precedent for re-homing panels.
+
+## P45.1 — Foundation: tokens, self-hosted fonts, legibility
+1. Extend `:root` with spacing + font-size + font-family tokens; sweep hardcoded sizes onto them.
+2. **Self-host the 4 typefaces** as woff2 (subset), add to sw.js's SHELL — offline PWA keeps its face; drop the Google CDN link (the last non-Scryfall external dependency).
+3. **Desktop legibility pass:** `.badge` .52→≥.66rem, `.tiny` .6→≥.7rem, fixed 110px name inputs → minmax, contrast check vs --bone-dim; touch targets already conform via `pointer:coarse` — keep new controls in that block (§1 principle 7).
+**ACs:** offline (SW-served) load renders the correct typefaces; no external font requests; smallest interactive text ≥.7rem desktop; token sweep leaves zero hardcoded font sizes in new code.
+**Verify:** id-diff; offline jsdom/SW cache-list assert; CSS grep for orphan px font sizes; visual pass at 380/768/1280px.
+
+## P45.2 — Card art on the board, stack, and library
+1. Imported cards render their stored `image` as tile art (a `background-image` art strip or corner thumb on `.crea`/`.brow`/`.playcard`/library rows — pick ONE consistent treatment); homebrew cards get a per-type accent frame fallback (the P7.9 accents already exist).
+2. Lazy-load + cache-aware: art is network-fetched (Scryfall passthrough in sw.js) — degrade to the text tile offline; never block render on images.
+3. The 3 warden portraits already in `ART` join the boss panel header (they exist and are shown ONLY in the lore page today).
+**ACs:** a Scryfall-imported creature is visually identifiable on the board; offline shows clean text tiles; no layout shift when art arrives; boss panel carries its portrait.
+**Verify:** jsdom — tile markup carries the img/style when `image` present, absent otherwise; offline fallback; id-diff.
+
+## P45.3 — The FX layer: motion decoupled from the innerHTML rebuild
+1. **A body-level `#fx` overlay** (position:fixed, pointer-events:none): floating damage/heal numbers, life-change flashes on the You/Boss bars, attack "lunge" lines, card-travel ghosts (board→graveyard etc.) — spawned imperatively by the mutation sites (`adjLife`, `resolveAttack`, `moveBoardCard`…), animated by CSS, self-removing; render() rebuilds never touch it.
+2. **Stop the spawn-replay:** key the `.crea` spawn animation to genuinely-new permanents (an `data-uid` diff or a `_born` flag) instead of every rebuild.
+3. **Tiered reduced-motion:** the OS query keeps killing decorative motion, but functional feedback (life-bar width, damage numbers static-fade) survives via a `.motion-soft` class — replacing today's all-or-nothing nuke (~335) — plus a P46.3 settings override.
+**ACs:** damage to either life total shows a floating number + bar flash; tiles no longer re-fade on unrelated actions; reduced-motion still communicates damage (statically); no FX element ever intercepts a tap; FPS stays healthy on a phone-sized DOM.
+**Verify:** jsdom — fx nodes spawn on adjLife/combat + self-clean; spawn-anim fires once per new uid; reduced-motion class matrix; id-diff (+`#fx`).
+
+## P45.4 — Sound design: complete the cue map
+1. Wire the orphan **`heal`** (~3228) into `adjLife('you', n>0)` / heal items.
+2. New cues (same `_tone` synth palette, default-quiet ≤0.10): **purchase/coin-spend** (buyStore), **loot** (grantBoon/lootRoll), **item use** (useBoon), **token/creature deploy**, **draw**, **phase tick** (soft, once per phase — NOT per render), **descend** (advance), **wheel spin + land**, **cutscene sting**, **enemy cast** (a darker `cast` variant), **loyalty click**, **counter placed**. Every cue behind `sfx()` + mute as today.
+3. **Volume slider** (0–100 → the master gain) persisted next to `DB.muted` (surfaced in P46.3's settings).
+4. **Optional ambient pad** (OFF by default; a slow synth drone per level, WebAudio-generated, no assets — respects mute/volume; decide at build whether it earns its battery cost on phones).
+**ACs:** every listed action has an audible, distinct, quiet cue; nothing fires on mere re-renders; mute/volume govern everything incl. the pad; headless runs stay silent-safe (existing null-context guards).
+**Verify:** jsdom — mock AudioContext counts oscillators per action path (the P7.8 test pattern); volume/mute persistence; no cue on a pure render(); syntax + id-diff.
+
+## P45.5 — Moxfield-style desktop layout (≥~1100px)
+1. A new `@media(min-width:1100px)` layer: **left rail** (You/Foe panels + log), **center battlefield** (enemy board above, player board below — both boards VISIBLE at once, the Moxfield/Arena mental model), **right rail** (turn flow, attack, tools, stack dock). **Prefer CSS grid over the existing tab containers** (no JS — the media query handles live 1100px boundary crossings from resize/rotation for free); fall back to a `buildDesktop()` node re-homer (sibling of `buildTabs()` ~3180) ONLY if grid can't express it — and then it MUST pair with a `matchMedia('(min-width:1100px)')` change listener that re-homes panels in BOTH directions (`buildTabs` runs once at boot today; a bare re-homer strands panels on resize). Handlers untouched, per D5.
+2. Below 1100px NOTHING changes (the tab system stays the phone/tablet UI).
+3. The in-game header shows level + room (per P43.3's h1 move).
+**ACs:** at 1280×800 both battlefields, the log, and the turn controls are simultaneously visible without scrolling for common board states; phone layout is pixel-unchanged; every existing id survives (id-diff clean); tab state still persists.
+**Verify:** id-diff; jsdom at two viewport widths (panel parentage matrix) + a live resize crossing of the 1100px boundary both ways (no stranded panels); the full-descent driver green in both layouts; live browser pass at 1280/1440.
+
+## P45.6 — Stack dock + log rework
+1. **The stack stops occluding the board:** ≤1100px it becomes a bottom-docked sheet (~40vh, board visible above; full modal only via expand); ≥1100px it lives in the right rail (P45.5). Approve/pass controls stay one tap away (the P4.2 proposal flow must remain obvious).
+2. **Log:** entries get channel icons + tighter type hierarchy; height presets (compact/half/full — extending `S.ui.logExpanded` ~A5); `aria-live="polite"` (with P46.4).
+**ACs:** you can see your battlefield while responding to an enemy proposal on every form factor; the log reads comfortably at 380px; no resolver/stack z-fights (the ladder at ~151 holds).
+**Verify:** jsdom — dock/expanded state matrix + proposal approve path; z-order asserts; id-diff.
+
+
+# PHASE 46 — Completeness & hardening + FINAL CLEAN-UP & VALIDATION ⬜ PLANNED (runs LAST)
+
+> **Goal.** Everything a *complete* game still lacks that isn't gameplay: a PERMANENT regression suite (every phase's tests to date were throwaway), error visibility, a settings screen, accessibility, first-run onboarding, an automated deploy pipeline — then the code clean-up and the **final validation gate** the user asked for, run across the whole 41–45 rework.
+
+**Grounded findings (verified absences, 2026-07-04).** The repo tracks 11 files — game + spec + story + README + sw.js(v48) + manifest + 5 icons. **NO package.json, NO tests/, NO CI, NO netlify.toml, NO .gitignore, NO LICENSE**; the SPEC's jsdom harnesses were never committed. **Zero error reporting** (`window.onerror`/`unhandledrejection`: 0 matches — a crashed run tells nobody anything). **No settings surface** beyond mute (`toggleMute` ~3236) + difficulty + save/library export-import. **A11y:** 9 `aria-` attributes / 6 `role=` total; no `aria-live` on the log; no focus management on the overlay dialogs (positives: reduced-motion honored ~335/~2799; `infoBtn` is keyboard-accessible ~2563). **Onboarding:** the tutorial is opt-in only (`openTutorial` ~2547; 2 call sites — no first-run trigger). **No music** (SFX only — P45.4 addresses). **No telemetry/balance data** despite "balance needs playtest". **Deploy** = manual Netlify drag-drop (README; GitHub CD described but never configured). **Dead code:** `pwAct()`'s unreachable legacy body (~2048–2055) whose own comment (~2047) promised removal; `fresh()` still carries the retired `pw:null` schema field (~874, kept for migrate). The stale spec-header facts (ART-blob line, branch, Phase-8 header, P5 "in progress") were fixed in THIS spec commit — not repeated here.
+
+## P46.1 — Checked-in regression suite (the permanence fix)
+1. `package.json` (private; `jsdom` devDependency) + `tests/`: **the full-descent driver** (boot → 3 rooms → Vael both lives → win, zero console errors — the P7.9 pattern, finally committed), per-system drivers seeded from the 41–45 phase verifies (items/modes/enemy/UI-state), a **syntax gate** (vm.Script over the extracted `<script>`), and the **id-set diff** helper. `npm test` runs all.
+2. A tiny `tests/README` documenting the extract-script-from-index.html pattern so future phases ADD drivers instead of rebuilding them.
+3. `.gitignore` (node_modules) + LICENSE (user's choice — default: no license file, private).
+**ACs:** a fresh clone + `npm i` + `npm test` passes green with no network; every 41–45 phase lands with its driver COMMITTED under `tests/`.
+**Verify:** run it — that's the point. CI proves it in P46.6.
+
+## P46.2 — Error reporting: nothing fails silently
+1. `window.onerror` + `unhandledrejection` handlers: log to the dungeon log (`sys` channel), show a small non-blocking toast ("Something broke — your save is safe; ⬇ debug report"), and buffer the last N errors.
+2. **⬇ Debug report:** a button (settings + the toast) downloading `{version, ts, errors[], stripped save snapshot}` as JSON — the "attach this file" support path for playtesters.
+3. Autosave is already debounced/guarded — assert the handler never autosaves a corrupted `S` (guard on a throw inside render → skip the settle).
+**ACs:** a thrown error in any handler surfaces the toast + log line instead of vanishing; the report downloads valid JSON; a render-crash doesn't poison the autosave.
+**Verify:** jsdom — synthetic throw in a handler → toast + buffer + report content; save integrity after an induced render error.
+
+## P46.3 — ⚙ Settings panel
+One overlay (the `#overlay` modal family): **SFX volume slider + mute** (P45.4), **text size** (S/M/L → root font-size), **animation level** (full / soft / off — the P45.3 tiers, overriding the OS query in both directions), and the existing **export/import save + library** buttons consolidated; persisted on `DB.settings` (backfilled). Reachable from the menu + the in-game controls bar.
+**ACs:** every setting applies live + persists across reload; text-size never breaks the 380px layout; animation-off still shows static damage feedback.
+**Verify:** jsdom — set/reload/assert matrix; layout smoke at 380px per size; id-diff.
+
+## P46.4 — Accessibility pass
+1. `#log` gets `aria-live="polite"` `aria-relevant="additions"` (append-only already — ~1057).
+2. **Dialog focus management:** overlays trap focus while open + restore it on close; **Esc closes them all EXCEPT the combat resolver** (satchel/stack/store/library/cutscene get Esc; the resolver keeps A6's no-accidental-dismiss rule — Approve/Cancel only).
+3. Contrast audit of --bone-dim on --ink surfaces (≥4.5:1 for body text); label-only-emoji buttons gain `aria-label`s.
+**ACs:** a screen reader announces log entries; Tab cycles inside an open dialog and returns on close; Esc closes non-combat overlays; contrast documented.
+**Verify:** jsdom — focus-trap matrix + aria attributes; axe-style contrast spot-checks recorded in the test.
+
+## P46.5 — First-run onboarding
+On a profile's FIRST game ever (fresh `blankProfile` flag `seenTutorial:false`): after the arrival cutscene, offer — not force — the tutorial ("📖 Learn the ropes / ▶ Just play"); either choice sets the flag. The existing 2 opt-in entry points stay.
+**ACs:** exactly one offer per profile, never during a continued run; declining never re-prompts; the flag migrates.
+**Verify:** jsdom — first-run offer, second-run silence, migrate backfill.
+
+## P46.6 — Deploy pipeline (retire the manual drag-drop)
+1. `netlify.toml` (publish root, no build command) + the README rewrite are buildable in-repo; **the CD connection itself is a ONE-TIME user action** in their Netlify dashboard (Build & deploy → Continuous deployment → link this GitHub repo, empty build command, publish `/`) — hand the user that exact checklist; until they flip it, this phase's AC and P46.8 step 6 are **blocked-on-user** and drag-drop stays the fallback. Once connected: **push to main = deploy**.
+2. **SW-bump checklist** codified: any shipped change bumps `gg-cache-v*` (sw.js ~5) + the README line — add a `tests/` assert that README's version matches sw.js (cheap drift guard).
+3. README rewritten for the pipeline (drag-drop demoted to fallback).
+**ACs:** a push to main reaches the live site with no manual step; version drift fails `npm test`; the user's installed PWA picks up a deploy on next online relaunch (network-first nav + bumped cache — the established model).
+**Verify:** one real push → live-site check (the user's Netlify); the drift test.
+
+## P46.7 — Code clean-up
+1. Delete `pwAct()`'s dead body (~2048–2055) — the retire-comment (~2047) promised it.
+2. Retire `fresh()`'s legacy `pw:null` field (~874) with a `migrate()` note (old saves carrying `pw` still load).
+3. Sweep any 41–45 leftovers: orphaned functions/ids (id-diff history), retired comments, dead CSS — one pass, grep-verified.
+**ACs:** greps for the removed symbols return comments-at-most; migrate still loads a v40 save; no console errors.
+**Verify:** jsdom regression + old-save migrate + grep list in the test log.
+
+## P46.8 — FINAL VALIDATION (the gate — nothing ships un-validated)
+Run, in order, across the WHOLE rework:
+1. **Full regression:** `npm test` green (every 41–46 driver + full-descent, all difficulties, both modes).
+2. **Syntax + id-diff:** the standing gates over the final diff.
+3. **Live browser smoke:** serve locally → real Chromium: boot cinematic → campaign Level I full clear (cutscenes, wheel, carry-over) → sandbox battle → Scryfall import online → offline reload (fonts/art fallbacks) → 380px viewport pass.
+4. **Multi-agent adversarial review** of the final state (the established 3–5-lens workflow; every finding repro'd as a jsdom test before it counts).
+5. **Balance playtest checklist** handed to the user (per difficulty: clear rate, gold pressure, item usage — the data P44 can't tune blind; note answers in the spec).
+6. **Deploy + PWA verification:** push → CD → live site → installed-PWA refresh confirmed (SW bump).
+**ACs:** all six steps recorded in this spec's STATUS with dates; zero known-open defects at ship; the user has the playtest checklist.
+**Verify:** this section IS the verification; its output is the STATUS update + a dated validation note here.
+
 ---
 
 ## Open questions (non-blocking — assume the stated default unless overridden)
@@ -2682,5 +2998,11 @@ Added `flash`/`prowess` to `KW_LIST` (creator toggles) and `flash`/`prowess`/`sh
 - **Life-reset baseline (P16.4):** ~~literal 40 vs. the player's starting/max life?~~ **DECIDED by the user (Phase 28)** — the baseline is the player's **dynamic base** (`youMax`), which starts at 40 and rises permanently with max-life boons (Tonic of Vigor +10). The between-boss reset always trims to the current base.
 - **Enemy resource-token automation depth (P16.3):** how much beyond Treasure-for-mana to auto-model? *Default:* Treasure-for-mana is must-have; Food/Clue auto where clean, Blood + anything unclear as a manual reminder (nothing silently dropped).
 - **Lands-only mana balance (P14.10 / P17.1):** ~~removing the opening mana + scrounge floor is a significant difficulty swing — confirm before building?~~ **DECIDED by the user (Phase 17)** — zero opening mana, no scrounge floor, mana strictly from played lands; the 7-card hand + mulligan (P17.2) and difficulty levers move onto HP/luck/land-density instead of free mana.
-- **Mulligan land threshold (P17.2):** keep mulligan-while-`<3` lands, or also mulligan a land-flooded hand (e.g. `>5`)? *Default:* low-end only (`<3` lands) per the user; no flood mulligan, card-count penalty optional (see P17.2).
+- **Mulligan land threshold (P17.2):** ~~keep mulligan-while-`<3` lands, or also mulligan a land-flooded hand (e.g. `>5`)? *Default:* low-end only (`<3` lands) per the user; no flood mulligan.~~ **SUPERSEDED by P44.5 (mulligan v2)** — flood hands are rejected too and keep-quality becomes a per-difficulty lever; confirm with the user at build.
 - **Enemy discard AI (P17.3):** how "wise" should the discard-to-7 pick be? *Default:* reuse the existing cast-value/threat scale — discard the lowest-value, most-redundant card (excess land beyond what it needs, then lowest `castValue`); never discard its last/needed land.
+- **Campaign gold across campaign runs (P43.4):** does starting a NEW campaign run reset the campaign purse/stash, or only the run position? *Default:* only the run is erased — gold + stashed consumables persist on `p.camp` (matches today's account-gold model); a "hard reset" stays a per-profile delete.
+- **Sandbox base life (P43.5):** 40/40 every battle, or carry a profile-permanent base? *Default:* 40/40 every battle; max-life boons used in a sandbox battle last that battle only.
+- **Sandbox rewards (P43.5):** loot/gold on a sandbox win? *Default:* yes — `goldReward(roomIdx)` + `lootRoll()` into the sandbox purse/satchel; NO Fortune Wheel (that's a campaign level-clear ceremony).
+- **Ambient music (P45.4):** ship the synth pad? *Default:* build it OFF by default with a settings toggle; drop it if it costs noticeable phone battery.
+- **Enemy colored mana (P44):** adopt real colored costs? *Default:* NO — costs stay generic numbers; colors remain identity/flavour (a full pip system would ripple through every FX entry + castValue for little play value in a solo sandbox).
+- **License (P46.1):** add one? *Default:* none (private repo, all-rights-reserved) until the user says otherwise.
