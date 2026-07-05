@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Guff's Gauntlet — Level I: The Warren of Embers</title>
+<title>Guff's Gauntlet</title>
 <meta name="description" content="A solo Magic: the Gathering Commander dungeon-crawl — descend the Warren of Embers and topple its three wardens.">
 <meta name="theme-color" content="#0b0c10">
 <meta name="mobile-web-app-capable" content="yes">
@@ -550,8 +550,8 @@
 
   <div class="overlay menu" id="menu">
     <div class="menubox">
-      <div class="eyebrow">Guff's Gauntlet · Solo Commander RPG · Engine v40</div>
-      <h1 style="margin:.08em 0 .18em"><span class="lvl">Level I</span> — The Warren of Embers</h1>
+      <div class="eyebrow">Solo Commander RPG · Engine v43</div>
+      <h1 style="margin:.08em 0 .18em">Guff's Gauntlet</h1>
       <p class="subtitle">A solo Commander dungeon-crawl. You are an off-plane planeswalker, pulled to the plane of Ashveil by the Conclave's last cry — their founder, Commodore Guff, lies caged in the Warren of Embers, the downward maze of the tyrant Vael, who reigns by a deathless flame of his own forging. Build a library of your own cards, choose your difficulty, and descend to break Guff out. Three wardens hold the dark between you and his cage, and you learn each one's name only by beating it out of them.</p>
       <div class="menugrid">
         <div class="menucard">
@@ -569,10 +569,28 @@
           <p class="manaline" style="margin:6px 0 0;font-size:.62rem">Full save = everything (profiles, gold, in-progress game). Library = only your cards &amp; tokens, to share between profiles.</p>
         </div>
       </div>
-      <div class="btnrow" style="margin-top:14px;flex-wrap:wrap"><button class="mini gold" onclick="openLibrary()">🃏 Card Library</button><button class="mini gold" onclick="openStore()">🛒 Store</button><span class="goldpill" id="menuGold" style="align-self:center">💰 0 gold</span><button class="mini" onclick="openTutorial()">❓ How to play</button><button class="mini" onclick="openLore()">📖 Lore</button><button class="mini" id="menuMuteBtn" onclick="toggleMute()" title="Toggle sound">🔊 Sound</button></div>
-      <button class="big azor" id="continueBtn" style="margin-top:16px;display:none" onclick="continueLastGame()">▶ Continue last game</button>
-      <button class="big ok" style="margin-top:10px" onclick="startGame()">Descend ▸</button>
+      <div class="btnrow" style="margin-top:14px;flex-wrap:wrap"><button class="mini gold" onclick="openLibrary()">🃏 Card Library</button><button class="mini" onclick="openTutorial()">❓ How to play</button><button class="mini" onclick="openLore()">📖 Lore</button><button class="mini" id="menuMuteBtn" onclick="toggleMute()" title="Toggle sound">🔊 Sound</button></div>
+      <button class="big azor" id="continueBtn" style="margin-top:16px;display:none" onclick="continueLatest()">▶ Continue last game</button>
+      <div class="btnrow" style="margin-top:12px;justify-content:center;gap:12px;flex-wrap:wrap"><button class="big ok" style="min-width:200px" onclick="openCampaign()">⚔ Campaign ▸</button><button class="big azor" style="min-width:200px" onclick="openSandbox()">🏟 Sandbox ▸</button></div>
       <p class="manaline" style="text-align:center;margin:8px 0 0;font-size:.6rem;opacity:.6">⟳ Autosaves as you play — close any time and pick up where you left off.</p>
+    </div>
+  </div>
+
+  <div class="overlay" id="campaign" onclick="if(event.target===this)closeCampaign()">
+    <div class="modal libmodal"><button class="modalx" onclick="closeCampaign()">✕</button>
+      <h2 class="loreh">⚔ Campaign <span class="lorecol">— the descent into the Warren</span></h2>
+      <p style="color:var(--bone-dim);font-style:italic">Descend the dungeon level by level to free Commodore Guff. Your <b>life, gold and unused items carry between levels</b>; the run is forward-only, and starting a new run <b>erases</b> the old one — one campaign at a time. Wardens you beat here unlock for free play in the 🏟 Sandbox.</p>
+      <div class="btnrow" style="margin:6px 0 10px;align-items:center"><span class="goldpill" id="campGold">💰 0 gold</span><button class="tiny gold" onclick="openStore('campaign')">🛒 Merchant</button><span class="manaline" style="opacity:.7">Buys stow for your next descent · Merchant closes once you descend</span></div>
+      <div id="campList" class="liblist"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="sandbox" onclick="if(event.target===this)closeSandbox()">
+    <div class="modal libmodal"><button class="modalx" onclick="closeSandbox()">✕</button>
+      <h2 class="loreh">🏟 Sandbox <span class="lorecol">— free play</span></h2>
+      <p style="color:var(--bone-dim);font-style:italic">Replay any warden you've beaten in the ⚔ Campaign — pick a foe and a difficulty and fight a single battle, no dungeon walk. Every battle starts fresh at <b>40 life</b>. The Sandbox keeps its <b>own gold and inventory</b>, fully separate from the Campaign.</p>
+      <div class="btnrow" style="margin:6px 0 10px;align-items:center;flex-wrap:wrap"><span class="goldpill" id="sandGold">💰 0 gold</span><button class="tiny gold" onclick="openStore('sandbox')">🛒 Merchant</button><span style="flex:1;min-width:8px"></span><span class="manaline">Difficulty</span><span class="seg" id="sandDiff"><button data-d="easy" onclick="sandSetDiff('easy')">Easy</button><button data-d="standard" onclick="sandSetDiff('standard')">Standard</button><button data-d="brutal" onclick="sandSetDiff('brutal')">Brutal</button></span></div>
+      <div id="sandGrid" class="liblist"></div>
     </div>
   </div>
 
@@ -775,7 +793,7 @@ const FX={
   vilewing:{n:"Vilewing Reaper",cost:5,type:"creature",color:"B",text:"Create a 4/4 with flying, deathtouch and lifelink.",run:["spawn","Vilewing Reaper",4,4,["flying","deathtouch","lifelink"],"B"],flav:"It harvests from above, and every life it cuts, it carries home."},
   undying:{n:"The Undying Glut",cost:6,type:"creature",color:"B",text:"FINISHER: Create a 7/7 with trample, deathtouch and lifelink.",run:["spawn","The Undying Glut",7,7,["trample","deathtouch","lifelink"],"B"],flav:"Everything the Pit ever swallowed, risen at once, and still hungry."},
 };
-const DUNGEON=[
+let DUNGEON=[
   {name:"Ember Gate",villain:"Grakk the Gatewarden",colors:["R"],life:30,hp:{easy:20,standard:30,brutal:40},landStart:1,/* P5.2 balance: landStart 0→1 — restores a clean easy/std/brutal 1/2/3 opening (was a dead lever: max(0,landStart-1) floored easy to 0) + an on-curve aggro start */
    cmd:{n:"Ashmaw",p:3,t:3,kw:["haste"],cost:3,colors:["R"]},
    pool:{whelp:1,raider:1,sparkling:1,emberpup:1,torchbearer:1,prowler:1,firstwave:1,matchstick:1,effigy:1,jab:1,bolt:1,warband:1,brute:1,drake:1,twinwhelp:1,sapper:1,scorchwing:1,firefist:1,wallbreaker:1,rabble:1,warcry:1,chant:1,lash:1,twinbolt:1,aura:1,warbanner:1,ogre:1,nightmare:1,chieftain:1,rocket:1,firebrand:1,firetide:1,pyro:1,emberblast:1,meteor:1,furnace:1,hellrider:1,warboss:1,mob:1,conflag:1,storm:1,colossus:1,inferno:1,firestorm:1,overrun:1,kindle:1,sparkpup:1,screech:1,sicem:1,hothead:1,singe:1,emberkin:1,tagalong:1,dartfire:1,batling:1,packlead:1,crackle:1,kindlemob:1,gobhorde:1,warhorn:1,warpack:1,fuse:1},lands:{mtn:35,gatemaw:1,emberpit:1},swaps:{easy:{cut:["firestorm","conflag"],add:{mtn:2}},brutal:{cut:["firstwave"],add:{mtn:1}}},
@@ -814,6 +832,17 @@ const DUNGEON=[
     "Far below, in the cold halls of the <b>Drowned Conclave</b>, the remnant still holds \u2014 and its scattered generals wait to be found. Guff turns toward the deep water, and for the first time in an age the grief eases out of his face \u2014 something like hope settles there instead."
    ]},
 ];
+/* ===== P43.2: LEVELS registry — DUNGEON and the room-art keys become aliases the (future) level-select re-points. With only Level I registered, setLevel(0) is a no-op and the game behaves identically. Adding a level is PURE DATA: each room carries its own colors/hp/cmd/pool/lands/lore, so deck-building/AI/combat never notice. Enemies of other colours (W/U/G) slot in as data once the P44 mechanics library exists. ===== */
+const LEVELS=[
+  {id:'warren',levelNo:1,name:'The Warren of Embers',subtitle:'Level I',unlock:null,
+   teaser:"The downward maze of the tyrant Vael — three wardens hold the dark between you and the caged Commodore Guff.",
+   rooms:DUNGEON,art:ROOM_ART}
+];
+let _levelArt=ROOM_ART;/* mutable alias for the active level's art keys; re-pointed by setLevel so the const ROOM_ART on the ART-blob line (614) is never touched */
+function curLevel(){return LEVELS[(typeof S!=='undefined'&&S&&S.levelIdx)||0]||LEVELS[0];}
+function setLevel(idx){idx=Math.max(0,Math.min(LEVELS.length-1,idx|0));const L=LEVELS[idx];if(L){DUNGEON=L.rooms;_levelArt=L.art;}if(typeof S!=='undefined'&&S)S.levelIdx=idx;return idx;}
+/* Stable FLAT battle id for the unlock ledger (P43.6) — keyed by villain, deliberately not nested under levels (sandbox unlocks are per-enemy). */
+function battleId(level,room){const L=LEVELS[level];const v=(room&&room.villain)||'';return `${L?L.id:('lvl'+level)}:${v}`;}
 const ARRIVAL_LINES=[
  "Your spark wakes between worlds and will not be argued with. A plea catches it — thin, far, the way water finds a crack — and drags you down through dark after dark to a plane you have never walked. <em>Ashveil</em>, where you have nothing to win and no reason to stay.",
  "The air reeks of old smoke. Beneath your boots the rock splits into a downward maze of goblin-fire and grave-cold, and at its heart a flame is burning that will not die. They call it the <em>Ember</em>; they call its maker Vael; and Vael has already won the war.",
@@ -871,7 +900,7 @@ function spinWheel(roll,base){roll=roll||(1+Math.floor(Math.random()*100));base=
   log("loot",`🎡 The Fortune Wheel lands on <b>${desc}</b> — account ${getGold()}.`);render();return {slice:k,roll,desc};}
 
 let S;
-function fresh(){histReset();S={diff:"standard",youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],stackProposal:null,phasesFired:[],nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,bossManaFrozen:0,bossLands:0,bossLandPlayed:false,emblemsEnemy:[],enemyArtifacts:[],enemyEnchants:[],battles:[],plane:null,ui:{tabs:{},panels:{}},my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",_spoils:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
+function fresh(){histReset();S={diff:"standard",mode:"campaign",levelIdx:0,youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],stackProposal:null,phasesFired:[],nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,bossManaFrozen:0,bossLands:0,bossLandPlayed:false,emblemsEnemy:[],enemyArtifacts:[],enemyEnchants:[],battles:[],plane:null,ui:{tabs:{},panels:{}},my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",_spoils:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
 function enterRoom(i,first){S.roomIndex=i;const room=DUNGEON[i];const baseHp=(room.hp&&room.hp[S.diff])||room.life;let life=Math.max(1,Math.round(baseHp*(S.balanceScale||1)));/* P10: explicit per-difficulty HP (room.hp); balanceScale still scales it for in-run effects. */if(S.weakenNext){const _maps=Math.max(1,(S.inv||[]).filter(x=>x&&x.id==='map').length);life=Math.max(1,life-4*_maps);S.weakenNext=false;S.inv=(S.inv||[]).filter(x=>!(x&&x.id==='map'));log("loot",`🗺 The Sapper's Map is spent${_maps>1?` (×${_maps}, −${4*_maps} life)`:''}.`);}/* P42.2: consume the map row(s) the moment the −4 fires — looted maps stack, no dead rows left behind */
   S.boss={name:room.villain,life,max:life,isVael:!!room.isVael,colors:(room.colors||["R"]).slice()};
   S.enemy={name:room.villain,colors:(room.colors||["R"]).slice(),lore:room.lore||"",isFinal:!!room.isVael};
@@ -1967,9 +1996,14 @@ function damagePW(){const w=(S.enemyWalkers||[])[0];if(!w)return;const v=parseIn
 function newUid(){return 'i'+Date.now().toString(36)+'-'+Math.floor(Math.random()*1e6).toString(36);}
 function useBoon(ref){const i=(typeof ref==='number')?ref:S.inv.findIndex(x=>x&&x.uid===ref);if(i<0)return;const it=S.inv[i];if(!it)return;const b=BOONS[it.id];if(!b||b.kind!=="consumable")return;if(it.id==="heal5")adjLife('you',5);if(it.id==="heal10")adjLife('you',10);if(it.id==="elixir")adjLife('you',25);if(it.id==="tonic"){S.youMax+=10;adjLife('you',15);log("you",`🍵 Tonic of Vigor — maximum life is now <b>${S.youMax}</b>.`);}/* P28.2: Grand Elixir heals 25; Tonic of Vigor raises the BASE +10 (and heals 15) — the only ordinary-store item that moves youMax, per P28.1 */if(it.id==="antidote"){S.counters.poison=0;renderCounters&&renderCounters();}if(it.id==="bomb"){S.boss.life-=4;log("you",`💣 Cinder Bomb hits ${S.boss.name} for <b>4</b>. (${Math.max(0,S.boss.life)})`);}if(it.id==="acid"){S.boss.life-=3;log("you",`🧫 Acid Flask burns ${S.boss.name} for <b>3</b>. (${Math.max(0,S.boss.life)})`);}if(it.id==="pyre"){S.boss.life-=8;log("you",`🔥 Pyre Charge sears ${S.boss.name} for <b>8</b>. (${Math.max(0,S.boss.life)})`);}if(it.id==="comet"){S.boss.life-=12;log("you",`☄️ Falling Comet smashes ${S.boss.name} for <b>12</b>. (${Math.max(0,S.boss.life)})`);}log("loot",`Used <b>${b.n}</b>.`);S.inv.splice(i,1);if((it.id==="bomb"||it.id==="pyre"||it.id==="acid"||it.id==="comet")&&S.boss.life<=0)bossDown();render();}
 function grantBoon(id){const b=BOONS[id];if(!b)return;if(b.kind==="instant"){if(id==="spark"){S.youMax+=5;S.youLife+=5;}log("loot",`Gained <b>${b.n}</b>.`);return;}if(id==="map")S.weakenNext=true;S.inv.push({id,uid:newUid()});/* P7.4: 1-descent (structural) · P21.1: stable uid · P42.1: dead descents field dropped */log("loot",`Looted <b>${b.n}</b> (${b.r}).`);}
-function lootRoll(){const luck=Math.max(0,(DIFF[S.diff]&&DIFF[S.diff].luck)||0);/* P10: difficulty luck now nudges loot — but ONLY upward (brutal +1); easy/std are never penalized, so newer players keep full jackpot odds. */const raw=d(20);const roll=Math.min(20,raw+luck);let id="heal5";for(const[a,z,bid]of LOOT_D20){if(roll>=a&&roll<=z){id=bid;break;}}if(id==="map"&&!DUNGEON[S.roomIndex+1])id="heal10";/* P10: 'map' weakens the NEXT villain; on the final Vael win there is none, so a heal instead of a dead drop. */let names=[];if(id==="jackpot"){grantBoon("phoenix");grantBoon("elixir");names=["Phoenix Charm","Grand Elixir"];}else{grantBoon(id);names=[BOONS[id].n];}const label=raw===roll?`${roll}/20`:`${raw} (+${roll-raw} brutal luck) → ${roll}/20`;return{roll,raw,names,label};}
+function lootRoll(){const luck=Math.max(0,(DIFF[S.diff]&&DIFF[S.diff].luck)||0);/* P10: difficulty luck now nudges loot — but ONLY upward (brutal +1); easy/std are never penalized, so newer players keep full jackpot odds. */const raw=d(20);const roll=Math.min(20,raw+luck);let id="heal5";for(const[a,z,bid]of LOOT_D20){if(roll>=a&&roll<=z){id=bid;break;}}if(id==="map"&&(S.mode==='sandbox'||!DUNGEON[S.roomIndex+1]))id="heal10";/* P10: 'map' weakens the NEXT villain; on the final Vael win there is none — and in a Sandbox single battle there is no next villain either — so a heal instead of a dead drop (P43.5). */let names=[];if(id==="jackpot"){grantBoon("phoenix");grantBoon("elixir");names=["Phoenix Charm","Grand Elixir"];}else{grantBoon(id);names=[BOONS[id].n];}const label=raw===roll?`${roll}/20`:`${raw} (+${roll-raw} brutal luck) → ${roll}/20`;return{roll,raw,names,label};}
 
-function bossDown(){if(S.over)return;if(S.boss.isVael&&!S.phase2done){S.phase2done=true;const _vr=DUNGEON[S.roomIndex];S.boss.life=Math.max(1,(_vr.reborn&&_vr.reborn[S.diff])||Math.round(S.boss.max*0.25));applyRun(["spawn","Pyre Revenant",4,3,["trample","haste"],"RB"]);/* P10: Vael revives once at an explicit per-difficulty HP (room.reborn = 10/15/20 easy/std/brutal); the 0.25*max fallback matches those values. */log("dm",`🔥🔥 <b>UNDYING EMBERS!</b> Vael rises ENRAGED at ${S.boss.life} life and calls a Pyre Revenant.`);render();return;}if(S.boss.isVael){win();return;}S.paused=true;sfx('victory');const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);log("sys",`🏳 <b>${S.boss.name} falls!</b>`);log("loot",`💰 You collect <b>${gold} gold</b> (account balance ${getGold()}). Spend it at the 🛒 Merchant between descents.`);S._spoils=`🎲 Loot roll ${lr.label} → ${lr.names.join(" + ")}!  ·  💰 +${gold} gold (account ${getGold()})`;render();showEncounterClear();}
+function bossDown(){if(S.over)return;if(S.boss.isVael&&!S.phase2done){S.phase2done=true;const _vr=DUNGEON[S.roomIndex];S.boss.life=Math.max(1,(_vr.reborn&&_vr.reborn[S.diff])||Math.round(S.boss.max*0.25));applyRun(["spawn","Pyre Revenant",4,3,["trample","haste"],"RB"]);/* P10: Vael revives once at an explicit per-difficulty HP (room.reborn = 10/15/20 easy/std/brutal); the 0.25*max fallback matches those values. */log("dm",`🔥🔥 <b>UNDYING EMBERS!</b> Vael rises ENRAGED at ${S.boss.life} life and calls a Pyre Revenant.`);render();return;}
+  if(S.mode==='sandbox'){endSandboxBattle(true);return;}/* P43.5: a sandbox battle ends here — no dungeon walk, no story */
+  if(S.roomIndex>=DUNGEON.length-1){/* P43.4: the level's finale has fallen */if(S.levelIdx>=LEVELS.length-1){win();return;}/* the FINAL level → campaign complete (today's escape/Guff/epilogue win) */levelClearTransition();return;/* more levels remain → the between-level super-advance */}
+  /* a mid-level boss (a room before the finale) → loot + encounter-clear, then advance() walks to the next room within the level */
+  recordCleared(S.levelIdx,DUNGEON[S.roomIndex]);/* P43.6: this warden is now beaten — unlocks its lore + sandbox tile */
+  S.paused=true;sfx('victory');const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);log("sys",`🏳 <b>${S.boss.name} falls!</b>`);log("loot",`💰 You collect <b>${gold} gold</b> (account balance ${getGold()}). Spend it at the 🛒 Merchant between descents.`);S._spoils=`🎲 Loot roll ${lr.label} → ${lr.names.join(" + ")}!  ·  💰 +${gold} gold (account ${getGold()})`;render();showEncounterClear();}
 function advance(){const next=S.roomIndex+1;closeCutscene();S._spoils="";freshGameForDungeon();enterRoom(next);S.paused=false;
   /* P16.4: between-boss life reset — trim excess TEMPORARY life down to the permanent base (youMax). Spent magic fading, distinct from damage; never raises life, never touches life ≤ base, never lowers youMax. Runs BEFORE the P15.4 descent-heal so "missing HP" is measured from the post-cap value. After a Tonic of Vigor (+10 base) the cap tracks the new base automatically (Phase 28). */
   if(S.youLife>S.youMax){const was=S.youLife;S.youLife=S.youMax;log("sys",`✨ Temporary vigor fades — your life settles to <b>${S.youMax}</b> between battles (was ${was}).`);}
@@ -2483,7 +2517,7 @@ function undoPlay(i){const p=S.plays[i];p.status="pending";if(p._card){const gi=
 function checkEnemyOut(){if(S.over)return;const ec=S.enemyCounters||{},poison=ec.poison||0,cmdd=ec.cmdDmg||0;if(poison>=10||cmdd>=21){if(poison>=10)log("dm",`☠ 10 poison — ${S.boss.name} falls.`);if(cmdd>=21)log("dm",`☠ 21 commander damage — ${S.boss.name} falls.`);bossDown();}}
 function checkLose(){if(S.over)return;const poison=(S.counters&&S.counters.poison)||0,cmdd=(S.counters&&S.counters.cmdDmg)||0;if(S.youLife<=0||poison>=10||cmdd>=21){if(S.youLife<=0&&S.inv.some(it=>it.id==="phoenix")&&!S.phoenixUsed){S.phoenixUsed=true;S.inv=S.inv.filter(it=>it.id!=="phoenix");S.youLife=1;log("loot",`🔥 <b>Phoenix Charm</b> catches you at <b>1</b>!`);render();return;}if(poison>=10)log("sys","☠ 10 poison counters - you fall.");if(cmdd>=21)log("sys","☠ 21 commander damage - you fall.");lose();}}
 function win(){if(S.over)return;S.over=true;saveUnusedItems();clearSave();sfx('victory');/* P15.3: stash unused items before the save is wiped */
-  recordResult(true);S.boss.life=0;
+  recordResult(true);recordCleared(S.levelIdx,DUNGEON[DUNGEON.length-1]);bumpLevelUnlock(S.levelIdx);/* P43.6: the campaign finale into the ledger + mark the level complete */S.boss.life=0;
   const lr=lootRoll();
   log("sys",`🏆 <b>THE WARREN BREAKS — VAEL FLEES.</b> You could not kill the deathless thing; the Ember relit him beyond your reach. You broke his hold here — and freed the prisoner.`);
   render();
@@ -2491,22 +2525,22 @@ function win(){if(S.over)return;S.over=true;saveUnusedItems();clearSave();sfx('v
   openWheel(lr);}
 /* P15.1: Fortune-Wheel overlay shown on the final clear; on Claim it applies the reward then proceeds to the victory cutscene. */
 let _wheelCtx=null;
-function openWheel(lr){const roll=1+Math.floor(Math.random()*100);_wheelCtx={roll,lr};$("modalBody").innerHTML=wheelHTML(wheelSliceFor(roll));$("overlay").classList.add("show");}
+function openWheel(lr,onDone){const roll=1+Math.floor(Math.random()*100);_wheelCtx={roll,lr,onDone};$("modalBody").innerHTML=wheelHTML(wheelSliceFor(roll));$("overlay").classList.add("show");}
 function wheelHTML(landed){const base=wheelBase();const slices=WHEEL.map(s=>{const on=s===landed;const pct=s[2]==='g50'?`${Math.round(base*0.5)}g`:s[2]==='g100'?`${base}g`:s[2]==='g150'?`${Math.round(base*1.5)}g`:s[2]==='g2x'?`${base*2}g`:(s[2]==='rare'?'rare item':'legendary item');return `<div class="wslice${on?' on':''}">${on?'▸ ':''}${s[3]} <span class="manaline">${pct}</span></div>`;}).join('');
   return `<h2>🎡 Fortune Wheel</h2><p style="color:var(--bone-dim);font-style:italic">The Tyrant's hoard spills out — the wheel decides your share of the spoils.</p><div class="wheel">${slices}</div><div class="btnrow" style="margin-top:12px"><button class="big ok inline" onclick="claimWheel()">🎡 Claim ▸</button></div>`;}
-function claimWheel(){const ctx=_wheelCtx;if(!ctx)return;_wheelCtx=null;const res=spinWheel(ctx.roll);$("overlay").classList.remove("show");winCutscene(ctx.lr,res.desc);}
-function winCutscene(lr,wheelDesc){const v=DUNGEON[2];
+function claimWheel(){const ctx=_wheelCtx;if(!ctx)return;_wheelCtx=null;const res=spinWheel(ctx.roll);$("overlay").classList.remove("show");if(typeof ctx.onDone==='function')ctx.onDone(ctx.lr,res.desc);else winCutscene(ctx.lr,res.desc);}/* P43.4: the wheel spins at EVERY level clear — win() (campaign end) → winCutscene; a mid-campaign level clear → levelClearCutscene */
+function winCutscene(lr,wheelDesc){const v=DUNGEON[DUNGEON.length-1];/* P43.2: the ACTIVE level's finale room (Level I → Vael) — its vaelEscape/guffFreed/epilogue beats */
   /* BEAT 1 — Vael escapes (his death-line becomes an escape curse) */
   showCutscene(v.vaelEscape,"The Ember Keeps Its Own","The Tyrant slips the leash","Find Guff ▸",{
     sigil:'🔥',accent:'var(--ember)',speaker:'Vael',quote:"Embers... do not... choose... twice...",
     buttons:[{label:"Find Guff ▸",cls:"big ember",on:()=>
       /* BEAT 2 — Guff freed */
-      showCutscene(v.guffFreed,"The Commodore Rises","The Cage Breaks · Level I","Climb out of the dark ▸",{
+      showCutscene(v.guffFreed,"The Commodore Rises",`The Cage Breaks · ${curLevel().subtitle}`,"Climb out of the dark ▸",{
         sigil:'✦',accent:'var(--azor)',eyebrowAcc:'var(--gold)',speaker:'Commodore Guff',
         quote:"I did not call for a weapon. I called into the dark — and a friend answered. I will not forget which you chose to be.",
         buttons:[{label:"Climb out of the dark ▸",cls:"big ok",on:()=>
           /* BEAT 3 — L2 bridge (carries the spoils banner + restart/quit) */
-          showCutscene(v.epilogue,"The Long Way Back","Level I complete · The road ahead",null,{
+          showCutscene(v.epilogue,"The Long Way Back",`${curLevel().subtitle} complete · The road ahead`,null,{
             sigil:'✦',accent:'var(--gold)',eyebrowAcc:'var(--gold)',speaker:'Commodore Guff',
             quote:"The Conclave is not dead while one of us still stands. Walk with me.",
             spoils:`🎲 Spoils: ${lr.names.join(" + ")}!  ·  🎡 ${wheelDesc}  ·  account ${getGold()}g`,
@@ -2517,7 +2551,41 @@ function winCutscene(lr,wheelDesc){const v=DUNGEON[2];
     }]
   });
 }
-function lose(){if(S.over)return;S.over=true;saveUnusedItems();clearSave();sfx('defeat');/* P15.3: stash unused items before the save is wiped */recordResult(false);log("sys",`☠ <b>You have fallen.</b>`);render();const room=DUNGEON[S.roomIndex]||DUNGEON[0];showCutscene(["The enemy holds the field. The Warren keeps what it takes — but the gate opens again for those mad enough to return."],"The Warren Consumes You",`${room.name} · defeat`,null,{sigil:room.sigil||'☠',speaker:room.villain,quote:room.quote||'',accent:villainAccent(room),buttons:[{label:"↻ Try again",on:restart,cls:"big ember"},{label:"Quit to Menu",on:quitToMenu,cls:"big"}]});}
+/* ===== P43.4: between-LEVELS transition (the campaign super-advance). Fires only when a level's finale falls AND a further level is registered — Level I is the final level, so this is dormant infrastructure today. The Fortune Wheel spins at every level clear; recordResult(true) logs it; the next level unlocks. Life, max life, gold and unused consumables all carry (gold/stash live on p.camp; S.inv rides along; passives already expire per P42.1). saveUnusedItems()/clearSave() do NOT fire here — that is campaign-end only. ===== */
+function bumpLevelUnlock(li){const p=prof();if(!p||!p.camp)return;if((p.camp.level||0)<li+1){p.camp.level=li+1;saveDB();}}
+/* P43.6: the cleared ledger — the SINGLE source of sandbox unlocks AND lore. Only a CAMPAIGN clear writes it (sandbox never unlocks). Flat, per-battle keys so a beaten warden unlocks individually. */
+function recordCleared(li,room){if(!(typeof S!=='undefined'&&S&&S.mode==='campaign'))return;const p=prof();if(!p||!p.camp)return;if(!p.camp.cleared||typeof p.camp.cleared!=='object')p.camp.cleared={};const id=battleId(li,room);if(!p.camp.cleared[id]){p.camp.cleared[id]=true;saveDB();}}
+function levelClearTransition(){S.paused=true;sfx('victory');recordResult(true);recordCleared(S.levelIdx,DUNGEON[S.roomIndex]);/* P43.6: the finale warden into the ledger */bumpLevelUnlock(S.levelIdx);/* the next level unlocks on the campaign screen */
+  const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);
+  log("sys",`🏳 <b>${DUNGEON[S.roomIndex].villain} falls — ${curLevel().name} is broken!</b>`);
+  S._spoils=`🎲 Loot ${lr.label} → ${lr.names.join(" + ")}  ·  💰 +${gold} (account ${getGold()})`;render();
+  openWheel(lr,levelClearCutscene);}
+function levelClearCutscene(lr,wheelDesc){const nextL=LEVELS[S.levelIdx+1];const done=DUNGEON[DUNGEON.length-1];
+  showCutscene((done&&done.epilogue)||[`${curLevel().name} lies broken behind you. The way down stands open.`],
+    `${curLevel().name} — Cleared`,`${curLevel().subtitle} complete · the road deeper`,null,
+    {sigil:'✦',accent:'var(--gold)',eyebrowAcc:'var(--gold)',
+     spoils:`🎲 ${lr.names.join(" + ")}  ·  🎡 ${wheelDesc}  ·  account ${getGold()}g · life ${S.youLife}/${S.youMax}`,
+     buttons:[{label:`Descend to ${nextL?('Level '+nextL.levelNo+' — '+nextL.name):'the deep'} ▸`,cls:"big ok",on:function(){descendToNextLevel(false);}},
+              {label:"Return to the surface (save & park)",cls:"big",on:function(){descendToNextLevel(true);}}]});}
+/* The super-advance: a fresh board on the next level's Room 0 with life/max/gold/consumables carried. Autosaves the run there. park=true returns to the menu (Continue resumes here); park=false shows the new level's intro and plays on. */
+function descendToNextLevel(park){closeCutscene();S._spoils="";
+  freshGameForDungeon();setLevel((S.levelIdx||0)+1);enterRoom(0);S.paused=false;
+  if(S.youLife>S.youMax){const was=S.youLife;S.youLife=S.youMax;log("sys",`✨ Temporary vigor fades — your life settles to <b>${S.youMax}</b> between levels (was ${was}).`);}
+  {const dh=DESCENT_HEAL[S.diff]||DESCENT_HEAL.standard;if(S.youMax>0&&(S.youLife/S.youMax)<dh.thr){const heal=Math.floor((S.youMax-S.youLife)*dh.frac);if(heal>0){S.youLife=Math.min(S.youMax,S.youLife+heal);log("you",`🌿 You recover <b>${heal}</b> descending to the next level (${S.youLife}/${S.youMax}).`);}}}
+  histReset();render();doAutosave();/* park the run at Level N+1 Room 0 */
+  if(park){showMenu();return;}
+  const nr=DUNGEON[0];log("sys",`— You descend into <b>${curLevel().name}</b>. Your life (${S.youLife}) and loot carry over. —`);
+  showCutscene(nr.intro,nr.villain,`${nr.name} · ${curLevel().subtitle}`,nr.isVael?"Face the Tyrant ▸":"Descend ▸",villainCutOpts(nr));}
+/* ===== P43.5: a sandbox battle ends here — no dungeon walk, no story cutscene, no Fortune Wheel. A win pays goldReward + a loot roll into the SANDBOX purse/satchel and logs a W to p.sand.stats; a loss logs an L. Unused consumables stash to the sandbox stash for the next battle. Vael's reborn 2nd life is untouched (bossDown's reborn branch fires before this guard). Does NOT touch the campaign W/L record or the cleared ledger (sandbox never writes unlocks). ===== */
+function recordSandStat(bid,won){const p=prof();if(!p||!p.sand)return;if(!p.sand.stats||typeof p.sand.stats!=='object')p.sand.stats={};const st=p.sand.stats[bid]||{w:0,l:0};if(won)st.w=(st.w||0)+1;else st.l=(st.l||0)+1;p.sand.stats[bid]=st;saveDB();}
+function endSandboxBattle(won){if(S.over)return;S.over=true;const room=DUNGEON[S.roomIndex]||DUNGEON[0];const bid=battleId(S.levelIdx,room);S._spoils="";
+  if(won){const gold=goldReward(S.roomIndex);addGold(gold);const lr=lootRoll();S._spoils=`🎲 Loot ${lr.label} → ${lr.names.join(" + ")}  ·  💰 +${gold} (sandbox ${getGold()})`;log("loot",`🏟 ${room.villain} falls. ${S._spoils}`);}
+  saveUnusedItems();/* unused consumables → the sandbox stash, ready next battle */
+  recordSandStat(bid,won);clearSave();/* the single sandbox save is spent */_liveGame=false;sfx(won?'victory':'defeat');render();
+  showCutscene([won?`${room.villain} is defeated — a clean sandbox win.`:`${room.villain} bests you. In the sandbox nothing is truly lost — line up another bout.`],won?"Sandbox Victory":"Sandbox Defeat",`🏟 ${room.name} · ${curLevel().subtitle}`,null,
+    {sigil:room.sigil||'⚔',accent:villainAccent(room),quote:won?(room.deathQuote||''):(room.quote||''),speaker:room.villain,spoils:won?S._spoils:'',
+     buttons:[{label:"↩ Back to Sandbox ▸",cls:won?"big ok":"big ember",on:function(){closeCutscene();showMenu();openSandbox();}},{label:"Quit to Menu",cls:"big",on:function(){closeCutscene();showMenu();}}]});}
+function lose(){if(S.over)return;if(S.mode==='sandbox'){endSandboxBattle(false);return;}/* P43.5: a sandbox loss returns to the grid */S.over=true;saveUnusedItems();clearSave();sfx('defeat');/* P15.3: stash unused items before the save is wiped */recordResult(false);log("sys",`☠ <b>You have fallen.</b>`);render();const room=DUNGEON[S.roomIndex]||DUNGEON[0];showCutscene(["The enemy holds the field. The Warren keeps what it takes — but the gate opens again for those mad enough to return."],"The Warren Consumes You",`${room.name} · defeat`,null,{sigil:room.sigil||'☠',speaker:room.villain,quote:room.quote||'',accent:villainAccent(room),buttons:[{label:"↻ Try again",on:restart,cls:"big ember"},{label:"Quit to Menu",on:quitToMenu,cls:"big"}]});}
 function noAbilT(scope,id){const c=getCre(scope,id);if(c){c.noAbil=!c.noAbil;render();}}
 function sickMy(id){const c=S.my.creatures.find(x=>x.id===id);if(c){c.sick=!c.sick;render();}}
 function renderCounters(){if(!S.counters)return;const m={cPoison:'poison',cCmd:'cmdDmg',cEnergy:'energy',cExp:'experience'};for(const k in m){const el=$(k);if(el)el.textContent=S.counters[m[k]];}
@@ -2532,8 +2600,15 @@ function setDiff(df){S.diff=df;$("diffNote").textContent=DIFF[df].note;[...$("di
    are spent. fresh() wipes S.inv, so capture the carry-over BEFORE it and re-inject after enterRoom. */
 function carryInvForward(){return [];}/* P14.5: every passive/reminder lasts exactly 1 descent — nothing carries forward (kept as a no-op so restart()/startNewDescent() are unchanged). */
 /* Merchant purchases are stowed on the PROFILE (p.pending), never in the live/saved S.inv — so quitting mid-run, buying, and continuing can't smuggle items into that run (Continue restores S.inv verbatim). They're poured into the satchel only when a NEW descent begins (restart / startNewDescent), then the pack is emptied. Sapper's Map applies its −4 to the first villain of this descent. */
-function applyPendingPurchases(){const p=prof();if(!p)return;if(!Array.isArray(p.pending))p.pending=[];const pend=p.pending;if(!pend.length)return;let n=0;pend.forEach(it=>{if(!it||!it.id||!BOONS[it.id])return;if(it.id==='map'){/* P42.2: a purchased map is consumed on the descent's first villain — apply −4 now, never stow a dead row */if(S.boss){S.boss.max=Math.max(1,(S.boss.max||S.boss.life||1)-4);if(S.boss.life>S.boss.max)S.boss.life=S.boss.max;}else{S.weakenNext=true;}log("loot","🗺 A Sapper's Map is spent — the villain enters with 4 less life.");return;}S.inv.push({id:it.id,uid:newUid()});/* P14.5: 1 descent (structural) · P21.1: uid · P42.1: descents dropped */n++;});p.pending=[];saveDB();if(n)log("loot",`🛒 ${n} Merchant purchase${n===1?'':'s'} join your 🎒 satchel for this descent.`);}
-function restart(){const df=S.diff,carry=carryInvForward();closeCutscene();["plays","resolver"].forEach(id=>{const e=$(id);if(e)e.classList.remove("show");});$("log").innerHTML="";fresh();S.diff=df;enterRoom(0,true);S.inv=carry;applyPendingPurchases();applyStashItems();setDiff(df);_liveGame=true;render();doAutosave();log("sys",`New descent · ${df.toUpperCase()}.`);if(carry.length)log("loot",`🎒 ${carry.length} lasting relic${carry.length===1?'':'s'} carry into this descent.`);chooseCommander();/* P3.1: re-ask the commander each new descent (fresh() clears it); proceedAfterCommander shows the gate intro */}
+function applyPendingPurchases(){const b=bucket();if(!b)return;if(!Array.isArray(b.pending))b.pending=[];const pend=b.pending;if(!pend.length)return;let n=0;pend.forEach(it=>{if(!it||!it.id||!BOONS[it.id])return;if(it.id==='map'){/* P42.2: a purchased map is consumed on the descent's first villain — apply −4 now, never stow a dead row */if(S.boss){S.boss.max=Math.max(1,(S.boss.max||S.boss.life||1)-4);if(S.boss.life>S.boss.max)S.boss.life=S.boss.max;}else{S.weakenNext=true;}log("loot","🗺 A Sapper's Map is spent — the villain enters with 4 less life.");return;}S.inv.push({id:it.id,uid:newUid()});/* P14.5: 1 descent (structural) · P21.1: uid · P42.1: descents dropped */n++;});b.pending=[];saveDB();if(n)log("loot",`🛒 ${n} Merchant purchase${n===1?'':'s'} join your 🎒 satchel for this descent.`);}
+/* P43.3: the single parametrized battle starter — the campaign screen and the sandbox grid both route through it, collapsing the old restart/startNewDescent duplication. Always begins a FRESH board at 40/40 (the between-level HP/gold/item carry-over is the separate super-advance in P43.4). Applies the ACTIVE mode's pending+stash so campaign and sandbox inventories never mix. */
+function startBattle(opts){opts=opts||{};const mode=(opts.mode==='sandbox')?'sandbox':'campaign';const levelIdx=opts.levelIdx||0;const roomIdx=opts.roomIdx||0;const df=opts.diff||(typeof S!=='undefined'&&S&&S.diff)||'standard';
+  closeCutscene();['menu','campaign','sandbox','plays','resolver','overlay','library','store'].forEach(id=>{const e=$(id);if(e){e.classList.remove("show");e.classList.remove("bootdrop");}});
+  const lg=$("log");if(lg)lg.innerHTML="";
+  fresh();S.mode=mode;_uiMode=mode;S.diff=df;setLevel(levelIdx);enterRoom(roomIdx,true);
+  applyPendingPurchases();applyStashItems();setDiff(df);_liveGame=true;render();doAutosave();chooseCommander();/* P3.1: re-ask the commander each new battle (fresh() clears it); proceedAfterCommander shows the intro */}
+/* Restart the current mode: campaign → a new run from Level I Room 0 (forward-only); sandbox → re-fight the same battle. */
+function restart(){const mode=(typeof S!=='undefined'&&S&&S.mode==='sandbox')?'sandbox':'campaign';if(mode==='sandbox')startBattle({mode:'sandbox',levelIdx:(S&&S.levelIdx)||0,roomIdx:(S&&S.roomIndex)||0,diff:S.diff});else startBattle({mode:'campaign',levelIdx:0,roomIdx:0,diff:(S&&S.diff)||'standard'});}
 $("diffSeg").addEventListener("click",e=>{if(!e.target.dataset.d)return;if(S.turn===0&&S.roomIndex===0&&!S.inv.length){const df=e.target.dataset.d;fresh();S.diff=df;enterRoom(0,true);setDiff(df);render();}else log("sys","Restart to change difficulty.");});
 $("resetBtn").addEventListener("click",restart);
 $("bossDmgIn")&&$("bossDmgIn").addEventListener("keydown",e=>{if(e.key==="Enter")dmgBoss();});
@@ -2624,7 +2699,9 @@ function showEnemyAbilities(){if(typeof S==='undefined'||!S||!S.boss)return;$("i
 function openLore(){const who=(prof()&&prof().name)||'Adventurer';let h=`<h2 class="loreh">📖 The Warren of Embers</h2>
   <p style="color:var(--bone-dim);font-style:italic">You are <b>${who}</b> — a planeswalker from off this plane, with nothing to win on Ashveil and no reason to stay. But grief travels between worlds, and this one's had a name: <b>Commodore Guff</b>, founder of the Conclave — his war lost, his city drowned, himself caged alive beneath the throne of the tyrant who beat him. Ashveil belongs to <b>Vael</b> now, and he keeps it by fire, by fear, and by an ember that will not let him die. You crossed the Multiverse to break one good man out of the worst place on this plane. The only road to him runs down — into the Warren of Embers.</p>
   <p class="manaline" style="margin:-2px 0 10px">Three wardens hold the dark between you and Guff's cage, each set there to make the next step down cost more than the last. Their names are not given freely — the Warren surrenders a name only to the one who beats it out of its keeper. The wardens of the descent:</p>`;
-  DUNGEON.forEach((room,i)=>{const seen=i<=S.roomIndex,cur=i===S.roomIndex;const key=ROOM_ART[i];const acc=villainAccent(room);
+  /* P43.6: a warden's lore is SEEN once it is in the cleared ledger (stays earned forever, even from the menu with no live game) OR it is at/behind the current room of a live campaign run. Only a live campaign shows the "you are here" marker. */
+  const _liveCamp=(typeof _liveGame!=='undefined'&&_liveGame&&S&&!S.over&&S.mode==='campaign');const _led=(prof()&&prof().camp&&prof().camp.cleared)||{};const _lvI=(S&&S.levelIdx)||0;
+  DUNGEON.forEach((room,i)=>{const seen=!!_led[battleId(_lvI,room)]||(_liveCamp&&i<=S.roomIndex),cur=_liveCamp&&i===S.roomIndex;const key=_levelArt[i];const acc=villainAccent(room);
     const frame=(seen&&key&&typeof ART!=='undefined'&&ART[key])?`<div class="loreframe" style="--acc:${acc}" onclick="openArt('${key}','${(room.villain||'').replace(/'/g,"")}')" title="Open ${room.villain} — full art in a new window"><img src="${ART[key]}" alt="${room.villain}"><span class="lf-hint">⤢ view</span></div>`:`<div class="loreframe locked"><span>?</span></div>`;
     h+=`<div class="loreent has-art${cur?' cur':''}">${frame}<div class="lorebody"><div class="loretitle">${seen?room.villain:'???'} <span class="lorecol">[${seen?(room.colors||[]).join("/"):'??'}]</span>${cur?'<span class="lorenow">— you are here</span>':''}</div><div class="loredom">${room.name}${room.isVael?' · final boss':''}</div><div class="loretext">${seen?room.lore:'A foe you have not yet faced. Descend to learn its name and its nature.'}</div></div></div>`;});
   h+=`<div class="loreent has-art">${(typeof ART!=='undefined'&&ART.merchant)?`<div class="loreframe" style="--acc:var(--gold)" onclick="openArt('merchant','The Wandering Merchant')" title="Open The Wandering Merchant — full art in a new window"><img src="${ART.merchant}" alt="The Wandering Merchant"><span class="lf-hint">⤢ view</span></div>`:`<div class="loreframe locked"><span>?</span></div>`}<div class="lorebody"><div class="loretitle">The Wandering Merchant <span class="lorecol">[?]</span></div><div class="loredom">Between the gates</div><div class="loretext">No one sells torches to people walking into a fire — unless the torches are the point. The Merchant keeps no name and is always one step further down than you last saw them, trading the gold of the dead back to the living. Spend it freely: gold is the one thing the Warren cannot take back from you.</div></div></div>`;
@@ -2661,7 +2738,7 @@ function renderCutButtons(buttons){_cutActs=buttons.map(b=>b.on);
 function cutAct(i){const fn=_cutActs[i];if(typeof fn==='function')fn();}
 function closeCutscene(){$("cutscene").classList.remove("show");}
 /* P1.5 \u2014 end-state popups reuse the cutbox. */
-function quitToMenu(){try{doAutosave();}catch(e){}closeCutscene();showMenu();}
+function quitToMenu(){try{doAutosave();}catch(e){}/* P43 review-fix: park = no longer LIVE. Clear _liveGame + cancel the debounced autosave timer so a menu-screen mode switch can't (a) re-lock the other mode's Merchant via the old mode-blind _liveGame clause, or (b) fire a late autosave into the wrong slot. Continue re-arms _liveGame. */if(_autosaveT){try{clearTimeout(_autosaveT);}catch(e){}_autosaveT=null;}_liveGame=false;closeCutscene();showMenu();}
 function showEncounterClear(){const room=DUNGEON[S.roomIndex]||DUNGEON[0];const nx=DUNGEON[S.roomIndex+1];
   showCutscene([`${room.villain} is defeated.${nx?` Your next encounter in <b>${nx.name}</b> begins with an empty battlefield, but your life and loot carry over.`:''}`],
     "Encounter Cleared",`\u269C ${room.name} cleared`,null,
@@ -2671,8 +2748,10 @@ const TUTORIAL_HTML=`
 <h2>❓ How Guff's Gauntlet works</h2>
 <p style="color:var(--bone-dim);font-style:italic">You play a <b>real Commander game</b> — in your head, on the table, or just in your imagination. This app is your <b>opponent and your bookkeeper</b>: it runs the enemy general, holds the shared board, and does the math — but it never hides that math and never changes your side without showing you. Think of it as a very patient playgroup of one. <b>Role-play it</b> however you like; the engine trusts your inputs and you can always nudge any number by hand. For anything it doesn't auto-resolve, the board tools now let you represent <b>any</b> action — move a card to any zone, bounce a permanent to hand, steal a creature, copy it, flip a double-faced card, or deal direct damage.</p>
 
+<h3>🜂 Two ways to play</h3>
+<p>From the menu you pick a mode. <b>⚔ Campaign</b> is the story: descend the dungeon level by level to free <b>Commodore Guff</b>. Levels unlock in order, the run is forward-only, and your <b>life, max life, gold and unused items carry between levels</b> — one campaign run at a time, and starting a new one erases the old. <b>🏟 Sandbox</b> is free play: replay any warden you've <b>already beaten in the Campaign</b>, at any difficulty, as a single battle with no dungeon walk. In Sandbox your <b>HP refreshes every battle</b> and your <b>gold and inventory are kept separate</b> from the Campaign's. Beating a warden in the Campaign is what unlocks it for the Sandbox.</p>
 <h3>🜂 The loop</h3>
-<p>One <b>descent</b> is three encounters, each a fresh game against a different enemy general — a fire-wild aggro warlord, a patient attrition tyrant, and a red-black final boss. You descend to free <b>Commodore Guff</b>, founder of the Conclave, caged at the Warren's heart. <b>You learn each warden's name only by beating it.</b> Between rooms the battlefield, the enemy, and your counters reset, but your <b>life, loot, and gold carry over</b> — life is the through-line that makes the crawl a campaign. Clear all three to free Guff and win Level I — the final boss is driven off, not slain, for the Ember he forged will not let him die. You earn <b>loot</b> by clearing rooms and restock at the <b>🛒 Merchant between descents</b> — once you descend, the Merchant is closed until the level ends.</p>
+<p>One Campaign <b>descent</b> is three encounters, each a fresh game against a different enemy general — a fire-wild aggro warlord, a patient attrition tyrant, and a red-black final boss. <b>You learn each warden's name only by beating it.</b> Between rooms the battlefield, the enemy, and your counters reset, but your <b>life, loot, and gold carry over</b> — life is the through-line that makes the crawl a campaign. Clear all three to free Guff and win Level I — the final boss is driven off, not slain, for the Ember he forged will not let him die. You earn <b>loot</b> by clearing rooms and restock at the <b>🛒 Merchant between descents</b> — once you descend, the Merchant is closed until the level ends.</p>
 
 <h3>♛ Set up: commander, colours, board</h3>
 <p>When you <b>Descend</b> you first <b>choose a commander</b> — pick a saved card, <b>search all of Magic</b> (Scryfall) for any creature or planeswalker, or build one on the spot. It waits in your <b>command zone</b>; deploy it when you cast it, and if it dies it returns there with a rising recast tax (2 → 6 → 14, reset each new game). Then:</p>
@@ -2720,11 +2799,24 @@ const SKEY='guffsGauntlet.v1';
 let DB={profiles:{},active:null};
 function storageGet(){try{if(typeof localStorage==='undefined')return null;const r=localStorage.getItem(SKEY);return r?JSON.parse(r):null;}catch(e){return null;}}
 function storageSet(o){try{if(typeof localStorage==='undefined')return false;localStorage.setItem(SKEY,JSON.stringify(o));return true;}catch(e){return false;}}
-function blankProfile(name){return {name,wins:0,losses:0,gold:0,library:[],tokens:[],pending:[],stash:[],created:Date.now()};}
+function blankProfile(name){return {name,wins:0,losses:0,library:[],tokens:[],created:Date.now(),
+  camp:{gold:0,pending:[],stash:[],cleared:{},level:0,run:null},
+  sand:{gold:0,pending:[],stash:[],save:null,stats:{}}};}
+/* P43.1: per-mode economy buckets. Campaign (⚔) and Sandbox (🏟) each keep their OWN gold, pending purchases, and stash so the two purses never mix. `camp.cleared` is the flat per-enemy unlock ledger (P43.6), `camp.level` the highest unlocked level, `camp.run`/`sand.save` the per-mode autosave slots. library/tokens stay profile-global (shared by both modes). */
+function migrateProfiles(){if(!DB||!DB.profiles)return;
+  Object.keys(DB.profiles).forEach(name=>{const p=DB.profiles[name];if(!p||typeof p!=='object')return;
+    if(!p.camp||typeof p.camp!=='object')p.camp={gold:(typeof p.gold==='number'?p.gold:0),pending:Array.isArray(p.pending)?p.pending:[],stash:Array.isArray(p.stash)?p.stash:[],cleared:{},level:0,run:null};/* legacy flat gold/pending/stash fold into the campaign bucket */
+    else{if(typeof p.camp.gold!=='number')p.camp.gold=0;['pending','stash'].forEach(k=>{if(!Array.isArray(p.camp[k]))p.camp[k]=[];});if(!p.camp.cleared||typeof p.camp.cleared!=='object')p.camp.cleared={};if(typeof p.camp.level!=='number')p.camp.level=0;if(p.camp.run===undefined)p.camp.run=null;}
+    if(!p.sand||typeof p.sand!=='object')p.sand={gold:0,pending:[],stash:[],save:null,stats:{}};
+    else{if(typeof p.sand.gold!=='number')p.sand.gold=0;['pending','stash'].forEach(k=>{if(!Array.isArray(p.sand[k]))p.sand[k]=[];});if(p.sand.save===undefined)p.sand.save=null;if(!p.sand.stats||typeof p.sand.stats!=='object')p.sand.stats={};}
+    delete p.gold;delete p.pending;delete p.stash;/* the flat fields now live in camp — drop them so no stale read survives */});
+  /* legacy single global autosave → its OWNING profile's campaign run slot (fixes the cross-profile Continue bug: profile A could resume profile B's DB.save). Unrecoverable if the owner is gone — dropped either way. */
+  if(DB.save&&DB.save.S){const owner=DB.save.profile;if(owner&&DB.profiles[owner]&&DB.profiles[owner].camp)DB.profiles[owner].camp.run=DB.save;}
+  DB.save=null;}
 /* P15.3: unused satchel items aren't lost at run end — they go to a profile stash and return next descent (separate bucket from p.pending; carryInvForward is retired so no double-count). */
-function saveUnusedItems(){const p=prof();if(!p)return;if(!Array.isArray(p.stash))p.stash=[];const keep=(S.inv||[]).filter(it=>it&&it.id&&BOONS[it.id]&&BOONS[it.id].kind==="consumable");/* P42.1: ONLY unused consumables persist across runs — passives/reminders truly expire with the run (fixes the immortal-passives stash loop) */if(keep.length){p.stash.push(...keep.map(it=>({id:it.id,uid:it.uid||newUid()})));try{saveDB();}catch(e){}}}
-function applyStashItems(){const p=prof();if(!p)return;if(!Array.isArray(p.stash))p.stash=[];if(!p.stash.length)return;let n=0;p.stash.forEach(it=>{if(it&&it.id&&BOONS[it.id]&&BOONS[it.id].kind==="consumable"){S.inv.push({id:it.id,uid:it.uid||newUid()});n++;}});/* P42.1: defensive — a stash polluted by the old bug self-cleans (non-consumables silently dropped) */p.stash=[];try{saveDB();}catch(e){}if(n)log("loot",`🎒 ${n} stowed item${n===1?'':'s'} return from your last run.`);}
-function loadDB(){const d=storageGet();DB=(d&&d.profiles)?d:{profiles:{},active:null};if(!DB.active||!DB.profiles[DB.active]){const names=Object.keys(DB.profiles);if(names.length)DB.active=names[0];else{DB.profiles['Adventurer']=blankProfile('Adventurer');DB.active='Adventurer';}}saveDB();}
+function saveUnusedItems(){const b=bucket();if(!b)return;if(!Array.isArray(b.stash))b.stash=[];const keep=(S.inv||[]).filter(it=>it&&it.id&&BOONS[it.id]&&BOONS[it.id].kind==="consumable");/* P42.1: ONLY unused consumables persist across runs — passives/reminders truly expire with the run (fixes the immortal-passives stash loop) · P43.1: into the ACTIVE mode's stash so camp/sand inventories never mix */if(keep.length){b.stash.push(...keep.map(it=>({id:it.id,uid:it.uid||newUid()})));try{saveDB();}catch(e){}}}
+function applyStashItems(){const b=bucket();if(!b)return;if(!Array.isArray(b.stash))b.stash=[];if(!b.stash.length)return;let n=0;b.stash.forEach(it=>{if(it&&it.id&&BOONS[it.id]&&BOONS[it.id].kind==="consumable"){S.inv.push({id:it.id,uid:it.uid||newUid()});n++;}});/* P42.1: defensive — a stash polluted by the old bug self-cleans (non-consumables silently dropped) */b.stash=[];try{saveDB();}catch(e){}if(n)log("loot",`🎒 ${n} stowed item${n===1?'':'s'} return from your last run.`);}
+function loadDB(){const d=storageGet();DB=(d&&d.profiles)?d:{profiles:{},active:null};if(!DB.active||!DB.profiles[DB.active]){const names=Object.keys(DB.profiles);if(names.length)DB.active=names[0];else{DB.profiles['Adventurer']=blankProfile('Adventurer');DB.active='Adventurer';}}migrateProfiles();saveDB();}
 function saveDB(){storageSet(DB);}
 function prof(){return DB.profiles[DB.active]||null;}
 /* ===== SAVE SYSTEM — continuous autosave + exact resume (P0.2, D1) =====
@@ -2733,15 +2825,20 @@ function prof(){return DB.profiles[DB.active]||null;}
    once a game is actually live (so the menu/initial render never clobber a real
    save), and never while S.over (a defeat/victory keeps the last good save).
    migrate() backfills fields missing on older saves so they never throw. */
-const SAVE_V=40;/* P7: satchel `descents`, functional `expires`/`battles`/`plane`; migrate backfills them so older saves never throw */
+const SAVE_V=43;/* P7: satchel `descents`, functional `expires`/`battles`/`plane`; migrate backfills them so older saves never throw · P43.1: save objects now carry mode+levelIdx and live in a per-mode slot (camp.run / sand.save) */
 let _liveGame=false,_autosaveT=null;
 function scheduleAutosave(){if(_autosaveT)return;try{_autosaveT=setTimeout(()=>{_autosaveT=null;doAutosave();},600);}catch(e){_autosaveT=null;doAutosave();}}
-function doAutosave(){try{if(!_liveGame||typeof S==='undefined'||!S||S.over)return;DB.save={v:SAVE_V,ts:Date.now(),profile:DB.active,room:S.roomIndex,turn:S.turn,S:JSON.parse(JSON.stringify(S))};saveDB();}catch(e){}}
-function hasSave(){return !!(DB.save&&DB.save.S&&!DB.save.S.over);}
+/* P43.1/43.3: saves + economy are per-profile AND per-mode. A campaign run lives on p.camp.run, a sandbox battle on p.sand.save. Battle-context calls default to the LIVE game's S.mode; menu/store-context calls pass the browsed _uiMode explicitly — so opening a mode screen NEVER has to mutate (and thus corrupt) a parked live game's S.mode. */
+let _uiMode='campaign';/* which mode the menu/store is currently browsing — decoupled from the live game's S.mode */
+function _modeKey(mode){mode=mode||(typeof S!=='undefined'&&S&&S.mode)||'campaign';return mode==='sandbox'?'sand':'camp';}
+function getSave(mode){const p=prof();if(!p)return null;return _modeKey(mode)==='sand'?(p.sand&&p.sand.save):(p.camp&&p.camp.run);}
+function setSave(sv,mode){const p=prof();if(!p)return;if(_modeKey(mode)==='sand'){if(!p.sand)p.sand={gold:0,pending:[],stash:[],save:null,stats:{}};p.sand.save=sv;}else{if(!p.camp)p.camp={gold:0,pending:[],stash:[],cleared:{},level:0,run:null};p.camp.run=sv;}saveDB();}
+function doAutosave(){try{if(!_liveGame||typeof S==='undefined'||!S||S.over)return;setSave({v:SAVE_V,ts:Date.now(),profile:DB.active,mode:S.mode,levelIdx:S.levelIdx,room:S.roomIndex,turn:S.turn,S:JSON.parse(JSON.stringify(S))});}catch(e){}}/* keyed to the live S.mode — always the game's own mode */
+function hasSave(mode){const sv=getSave(mode);return !!(sv&&sv.S&&!sv.S.over);}
 /* A finished descent (win/lose) has nothing to continue — drop the autosave so hasSave()/descentInProgress() read true ONLY while a run is genuinely underway, and so a death can't be undone via "Continue last game". */
-function clearSave(){try{if(typeof DB!=='undefined'&&DB){DB.save=null;saveDB();}}catch(e){}}
-/* "A descent is underway" — true while a saved run exists (cleared on win/lose) OR a live, un-finished game is in memory. The Merchant is closed (no shopping) whenever this is true; room-clear loot still flows into the satchel. */
-function descentInProgress(){return hasSave()||!!(_liveGame&&typeof S!=='undefined'&&S&&!S.over);}
+function clearSave(){try{setSave(null);}catch(e){}}
+/* "A descent is underway" IN A GIVEN MODE — true while that mode's saved run exists OR a live, un-finished game of THAT mode is in memory. Merchant-lock is now per-mode (mode defaults to the live S.mode; the store passes _uiMode), so a parked campaign run no longer locks the sandbox Merchant and vice-versa. */
+function descentInProgress(mode){mode=mode||(typeof S!=='undefined'&&S&&S.mode)||'campaign';return hasSave(mode)||!!(_liveGame&&typeof S!=='undefined'&&S&&!S.over&&S.mode===mode);}
 function migrate(s){if(!s||typeof s!=='object')return s;
   ['tokens','rules','plays','inv','lib','hand','gy','exile','deckColors','myGy','myExile','battles','emblemsEnemy','enemyWalkers'].forEach(k=>{if(!Array.isArray(s[k]))s[k]=[];});
   if(typeof s.nextId!=='number')s.nextId=1;/* ensure a numeric id counter before minting (review-fix: avoid an id collision) */
@@ -2775,12 +2872,14 @@ function migrate(s){if(!s||typeof s!=='object')return s;
   ['creatures','artifacts','enchants','walkers'].forEach(k=>(s.my[k]||[]).forEach(o=>{if(o&&!o.strength)o.strength='mid';})); // P6.1: backfill strength so the generalized threat hierarchy can read it on old saves (behavior-neutral — strengthOf() already defaults to 'mid')
   // defensive scalar backfills so a partial/corrupt save never throws in render()
   if(typeof s.youLife!=='number')s.youLife=40;if(typeof s.youMax!=='number')s.youMax=Math.max(40,s.youLife||40);
+  if(s.mode!=='sandbox'&&s.mode!=='campaign')s.mode='campaign';if(typeof s.levelIdx!=='number'||s.levelIdx<0||(typeof LEVELS!=='undefined'&&s.levelIdx>=LEVELS.length))s.levelIdx=0;/* P43.1/2: two-mode + multi-level fields, levelIdx clamped to a registered level */
   if(typeof s.roomIndex!=='number'||!DUNGEON[s.roomIndex])s.roomIndex=0;if(typeof s.diff!=='string'||!DIFF[s.diff])s.diff='standard';
   if(typeof s.notes!=='string')s.notes='';if(typeof s._spoils!=='string')s._spoils='';if(typeof s.bossMana!=='number')s.bossMana=0;if(typeof s.bossManaMax!=='number')s.bossManaMax=0;
   s.combat=null;return s;}
-function continueLastGame(){const sv=DB.save;if(!sv||!sv.S){log("sys","No saved game to continue.");return;}
-  S=migrate(JSON.parse(JSON.stringify(sv.S)));if(!DUNGEON[S.roomIndex])S.roomIndex=0;S._introShown=true;_liveGame=true;histReset();
-  ['plays','resolver','overlay','library','store','cutscene','menu'].forEach(id=>{const e=$(id);if(e)e.classList.remove("show");});
+function continueLastGame(sv){sv=sv||getSave();if(!sv||!sv.S){log("sys","No saved game to continue.");return;}
+  if(typeof setLevel==='function')setLevel((sv.S&&sv.S.levelIdx)||0);/* P43.2 fix: re-point DUNGEON to the SAVED level BEFORE migrate validates roomIndex against it (else a deep room in a larger level would clamp to 0) */
+  S=migrate(JSON.parse(JSON.stringify(sv.S)));if(typeof setLevel==='function')setLevel(S.levelIdx||0);_uiMode=S.mode;if(!DUNGEON[S.roomIndex])S.roomIndex=0;S._introShown=true;_liveGame=true;histReset();
+  ['plays','resolver','overlay','library','store','cutscene','menu','campaign','sandbox'].forEach(id=>{const e=$(id);if(e)e.classList.remove("show");});
   setDiff(S.diff||'standard');setWarrenArt();render();
   log("sys",`▶ Resumed your descent — <b>${DUNGEON[S.roomIndex].name}</b>, Turn ${S.turn}.`);
   if(S.paused&&!S.over)showEncounterClear();}
@@ -2789,10 +2888,12 @@ function newProfile(name){name=(name||'').trim();if(!name)return;if(!DB.profiles
 function switchProfile(name){if(DB.profiles[name]){DB.active=name;saveDB();renderMenu();}}
 function deleteProfile(name){if(!name||!DB.profiles[name])return;if(!confirm('Delete profile "'+name+'" and its library?'))return;delete DB.profiles[name];const names=Object.keys(DB.profiles);DB.active=names[0]||null;if(!DB.active){DB.profiles['Adventurer']=blankProfile('Adventurer');DB.active='Adventurer';}saveDB();renderMenu();}
 function recordResult(won){const p=prof();if(!p)return;if(won)p.wins=(p.wins||0)+1;else p.losses=(p.losses||0)+1;saveDB();renderMenu();}
-/* ===== Gold lives on the account (profile), accumulating across runs and sessions. ===== */
-function getGold(){const p=prof();return p?(p.gold||0):0;}
-function addGold(n){const p=prof();if(!p)return;p.gold=(p.gold||0)+n;saveDB();}
-function spendGold(n){const p=prof();if(!p||(p.gold||0)<n)return false;p.gold=(p.gold||0)-n;saveDB();return true;}
+/* ===== Gold lives on the account (profile), accumulating across runs and sessions — now split into a Campaign purse and a Sandbox purse (P43.1). ===== */
+/* The active mode's economy bucket. S.mode ('campaign'|'sandbox') selects camp/sand; defaults to camp at the menu / before fresh(). */
+function bucket(mode){const p=prof();if(!p)return null;const b=p[_modeKey(mode)];return b||p.camp||null;}
+function getGold(mode){const b=bucket(mode);return b?(b.gold||0):0;}
+function addGold(n,mode){const b=bucket(mode);if(!b)return;b.gold=(b.gold||0)+n;saveDB();}
+function spendGold(n,mode){const b=bucket(mode);if(!b||(b.gold||0)<n)return false;b.gold=(b.gold||0)-n;saveDB();return true;}
 
 function showMenu(){renderMenu();$("menu").classList.add("show");}
 function beginIntro(){ /* P1.4: first-boot cinematic — fire burns away the dark to reveal the warren art, then the menu drops in */
@@ -2863,19 +2964,66 @@ function runBurn(){
 /* Descend from the menu. A continuable save (incl. the autosave of a run already in progress) confirms first; otherwise begin a brand-new descent straight away. (Bugfix: a run in progress used to early-return on _introShown, so Descend was a no-op until a page refresh.) */
 function startGame(){if(hasSave()){confirmNewDescent();return;}startNewDescent();}
 /* Guard: Descend with a continuable save would silently overwrite it — confirm first. */
-function confirmNewDescent(){const sv=DB.save||{};const rn=(DUNGEON[sv.room!=null?sv.room:((sv.S&&sv.S.roomIndex)||0)]||{}).name||'your descent';const tn=sv.turn!=null?sv.turn:((sv.S&&sv.S.turn)||0);
+function confirmNewDescent(){const sv=getSave('campaign')||{};const rn=(DUNGEON[sv.room!=null?sv.room:((sv.S&&sv.S.roomIndex)||0)]||{}).name||'your descent';const tn=sv.turn!=null?sv.turn:((sv.S&&sv.S.turn)||0);
   showCutscene([`You have a descent already underway — <b>${rn}</b>, Turn ${tn}.`,`Starting a new descent will <b>abandon</b> it — once the new run begins, your saved game is overwritten.`],"Start a new descent?","⚠ A descent is already saved",null,
     {eyebrowAcc:'var(--ember)',buttons:[{label:"▶ Continue saved descent",on:continueLastGame,cls:"big azor"},{label:"✦ Start new — abandon save",on:startNewDescent,cls:"big ok"},{label:"Cancel",on:closeCutscene,cls:"big"}]});}
 /* Begin a brand-new descent from a clean board — works from first boot AND from a run already in progress (the latter requires the fresh() reset, which the old version omitted). Mirrors restart() but also dismisses the menu and any open overlays. */
-function startNewDescent(){const df=S.diff,carry=carryInvForward();closeCutscene();const mn=$("menu");if(mn){mn.classList.remove("show");mn.classList.remove("bootdrop");}["plays","resolver","overlay","library","store"].forEach(id=>{const e=$(id);if(e)e.classList.remove("show");});$("log").innerHTML="";fresh();S.diff=df;enterRoom(0,true);S.inv=carry;applyPendingPurchases();applyStashItems();setDiff(df);_liveGame=true;render();doAutosave();if(carry.length)log("loot",`🎒 ${carry.length} lasting relic${carry.length===1?'':'s'} carry into this descent.`);chooseCommander();}
+function startNewDescent(){startBattle({mode:'campaign',levelIdx:0,roomIdx:0,diff:(typeof S!=='undefined'&&S&&S.diff)||'standard'});}
 function menuSetDiff(df){setDiff(df);renderMenu();}
 function renderMenu(){
   const p=prof();const sel=$("menuProfileSel");if(sel){const names=Object.keys(DB.profiles);sel.innerHTML=names.map(n=>`<option value="${n}" ${n===DB.active?'selected':''}>${n}</option>`).join("");}
-  const rec=$("menuRecord");if(rec)rec.innerHTML=p?`<b>${p.name}</b> — <span style="color:var(--ok)">${p.wins||0} W</span> · <span style="color:var(--ember)">${p.losses||0} L</span> · <span style="color:var(--gold)">💰 ${p.gold||0}</span><br><span class="manaline">${(p.library||[]).length} saved card${(p.library||[]).length===1?'':'s'} · ${(p.tokens||[]).length} token${(p.tokens||[]).length===1?'':'s'}</span>`:'no profile';
+  const rec=$("menuRecord");if(rec)rec.innerHTML=p?`<b>${p.name}</b> — <span style="color:var(--ok)">${p.wins||0} W</span> · <span style="color:var(--ember)">${p.losses||0} L</span> · <span style="color:var(--gold)">💰 ⚔ ${(p.camp&&p.camp.gold)||0} · 🏟 ${(p.sand&&p.sand.gold)||0}</span><br><span class="manaline">${(p.library||[]).length} saved card${(p.library||[]).length===1?'':'s'} · ${(p.tokens||[]).length} token${(p.tokens||[]).length===1?'':'s'}</span>`:'no profile';/* P43.1: two purses — Campaign / Sandbox */
   const ds=$("menuDiff");if(ds)[...ds.children].forEach(b=>b.classList.toggle("on",b.dataset.d===S.diff));
-  const mg=$("menuGold");if(mg)mg.textContent=`💰 ${getGold()} gold`;
-  const cb=$("continueBtn");if(cb){if(hasSave()){const sv=DB.save;const rn=(DUNGEON[sv.room!=null?sv.room:(sv.S&&sv.S.roomIndex)||0]||{}).name||'your descent';cb.style.display="";cb.innerHTML=`▶ Continue last game <span style="font-weight:400;opacity:.7">${rn} · T${sv.turn!=null?sv.turn:(sv.S&&sv.S.turn)||0}</span>`;}else cb.style.display="none";}
+  const cb=$("continueBtn");if(cb){const ls=latestSave();if(ls){const sv=ls.sv;const sLvl=(sv.levelIdx!=null?sv.levelIdx:((sv.S&&sv.S.levelIdx)||0));const sRoom=(sv.room!=null?sv.room:((sv.S&&sv.S.roomIndex)||0));const rn=((LEVELS[sLvl]&&LEVELS[sLvl].rooms[sRoom])||{}).name||'your battle';const modeLbl=ls.slot==='sand'?'🏟 Sandbox':'⚔ Campaign';cb.style.display="";cb.innerHTML=`▶ Continue ${modeLbl} <span style="font-weight:400;opacity:.7">${rn} · T${sv.turn!=null?sv.turn:(sv.S&&sv.S.turn)||0}</span>`;}else cb.style.display="none";}/* P43.3: mode-aware — resumes whichever mode has the newer live save */
 }
+
+/* ===== P43.3: mode screens — ⚔ Campaign (story, one card per level) and 🏟 Sandbox (free play, one tile per beaten warden). Both route battles through startBattle(); the Merchant opens hard-keyed to each screen's bucket. ===== */
+function latestSave(){const p=prof();if(!p)return null;const c=p.camp&&p.camp.run,s=p.sand&&p.sand.save;const cv=(c&&c.S&&!c.S.over)?c:null,sv=(s&&s.S&&!s.S.over)?s:null;if(cv&&sv)return((cv.ts||0)>=(sv.ts||0))?{slot:'camp',sv:cv}:{slot:'sand',sv:sv};return cv?{slot:'camp',sv:cv}:(sv?{slot:'sand',sv:sv}:null);}
+function continueLatest(){const ls=latestSave();if(!ls){log("sys","No saved game to continue.");return;}_uiMode=(ls.slot==='sand')?'sandbox':'campaign';continueLastGame(ls.sv);}
+/* A level is cleared once EVERY room's battle is in the ledger. */
+function levelCleared(idx){const p=prof();if(!p||!p.camp||!p.camp.cleared)return false;const rooms=(LEVELS[idx]&&LEVELS[idx].rooms)||[];return rooms.length>0&&rooms.every(r=>p.camp.cleared[battleId(idx,r)]);}
+function openCampaign(){_uiMode='campaign';renderCampaign();$("campaign").classList.add("show");}
+function closeCampaign(){$("campaign").classList.remove("show");}
+function renderCampaign(){const p=prof();const g=$("campGold");if(g)g.textContent=`💰 ${(p&&p.camp&&p.camp.gold)||0} gold`;
+  const box=$("campList");if(!box)return;
+  const unlocked=(p&&p.camp&&p.camp.level)||0;const run=p&&p.camp&&p.camp.run;const hasRun=!!(run&&run.S&&!run.S.over);
+  const runOn=hasRun?((run.levelIdx!=null?run.levelIdx:((run.S&&run.S.levelIdx)||0))):-1;
+  box.innerHTML=LEVELS.map((L,idx)=>{
+    const locked=idx>unlocked;const done=levelCleared(idx);const current=idx===runOn;
+    const artKey=L.art&&L.art[0];const cover=(!locked&&artKey&&typeof ART!=='undefined'&&ART[artKey])?`<img src="${ART[artKey]}" alt="${L.name}">`:`<span>${locked?'🔒':'⚔'}</span>`;
+    let badge='';if(current)badge='<span class="lorenow">▶ in progress</span>';else if(done)badge='<span class="lorenow" style="color:var(--ok)">✓ cleared</span>';/* P43 review-fix: an actively re-run level shows "in progress", not the permanent-ledger "cleared" */
+    let btns='';
+    if(locked)btns=`<button class="tiny" disabled style="opacity:.5;cursor:not-allowed">🔒 Locked</button>`;
+    else if(current)btns=`<button class="tiny azor" onclick="continueCampaign()">▶ Continue run</button><button class="tiny ember" onclick="campaignStart()">✦ New run</button>`;
+    else if(!hasRun&&idx===0)btns=`<button class="tiny ok" onclick="campaignStart()">${done?'✦ New run':'▶ Begin campaign'}</button>`;
+    else btns=`<span class="manaline">${done?'Replay in 🏟 Sandbox':'Reached by descending'}</span>`;
+    const title=locked?'??? — a warden you have not yet reached':`Level ${L.levelNo} — ${L.name}`;
+    const text=locked?'Clear the level above to unlock this descent.':L.teaser;
+    return `<div class="loreent has-art${current?' cur':''}"><div class="loreframe ${locked?'locked':''}" style="--acc:var(--gold)">${cover}</div><div class="lorebody"><div class="loretitle">${title} ${badge}</div><div class="loretext">${text}</div><div class="btnrow" style="margin-top:7px;flex-wrap:wrap">${btns}</div></div></div>`;
+  }).join('');}
+/* Begin/New run — a campaign always starts at Level I Room 0 (forward-only); confirm-to-abandon if a run is already live. */
+function campaignStart(){const p=prof();const run=p&&p.camp&&p.camp.run;_uiMode='campaign';if(run&&run.S&&!run.S.over)confirmNewDescent();else startBattle({mode:'campaign',levelIdx:0,roomIdx:0,diff:(S&&S.diff)||'standard'});}
+function continueCampaign(){const p=prof();_uiMode='campaign';continueLastGame(p&&p.camp&&p.camp.run);}
+function continueSandbox(){const p=prof();_uiMode='sandbox';continueLastGame(p&&p.sand&&p.sand.save);}
+let _sandDiff='standard';
+/* Every battle across every level, in descent order — the sandbox grid; locked until beaten in the campaign. */
+function allBattles(){const out=[];LEVELS.forEach((L,li)=>{(L.rooms||[]).forEach((r,ri)=>{out.push({li,ri,room:r,id:battleId(li,r)});});});return out;}
+function openSandbox(){_uiMode='sandbox';if(!_sandDiff)_sandDiff=(S&&S.diff)||'standard';renderSandbox();$("sandbox").classList.add("show");}
+function closeSandbox(){$("sandbox").classList.remove("show");}
+function sandSetDiff(df){_sandDiff=df;renderSandbox();}
+function sandboxFight(li,ri){startBattle({mode:'sandbox',levelIdx:li,roomIdx:ri,diff:_sandDiff});}
+function renderSandbox(){const p=prof();const g=$("sandGold");if(g)g.textContent=`💰 ${(p&&p.sand&&p.sand.gold)||0} gold`;
+  const seg=$("sandDiff");if(seg)[...seg.children].forEach(b=>b.classList.toggle("on",b.dataset.d===_sandDiff));
+  const box=$("sandGrid");if(!box)return;const cleared=(p&&p.camp&&p.camp.cleared)||{};const stats=(p&&p.sand&&p.sand.stats)||{};
+  const bs=allBattles();const anyUnlocked=bs.some(b=>cleared[b.id]);
+  const run=p&&p.sand&&p.sand.save;const parked=!!(run&&run.S&&!run.S.over);/* P43.3/5: the sandbox grid continues p.sand.save */
+  const contBanner=parked?`<div class="manaline" style="border:1px solid var(--azor);border-radius:10px;padding:9px 12px;margin:0 0 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">▶ You have a parked sandbox battle — <b>${((DUNGEON[run.S&&run.S.roomIndex!=null?run.S.roomIndex:0]||{}).villain)||'a foe'} · T${run.turn!=null?run.turn:((run.S&&run.S.turn)||0)}</b>.<button class="tiny azor" onclick="continueSandbox()">▶ Continue battle</button></div>`:'';
+  const rows=bs.map(b=>{const unlocked=!!cleared[b.id];const artKey=LEVELS[b.li].art&&LEVELS[b.li].art[b.ri];const cover=(unlocked&&artKey&&typeof ART!=='undefined'&&ART[artKey])?`<img src="${ART[artKey]}" alt="${b.room.villain}">`:`<span>🔒</span>`;const st=stats[b.id];const rec=st?`<span class="lorenow" style="color:var(--gold)">${st.w||0}W · ${st.l||0}L</span>`:'';
+    const title=unlocked?b.room.villain:'??? — locked';const sub=unlocked?`${LEVELS[b.li].subtitle} · ${b.room.name}`:'Beat this warden in the Campaign to unlock free play.';
+    const btn=unlocked?`<button class="tiny ok" onclick="sandboxFight(${b.li},${b.ri})">⚔ Fight (${_sandDiff})</button>`:`<button class="tiny" disabled style="opacity:.45;cursor:not-allowed">🔒 Locked</button>`;
+    return `<div class="loreent has-art"><div class="loreframe ${unlocked?'':'locked'}" style="--acc:${villainAccent(b.room)}">${cover}</div><div class="lorebody"><div class="loretitle">${title} ${rec}</div><div class="loretext">${sub}</div><div class="btnrow" style="margin-top:7px">${btn}</div></div></div>`;
+  }).join('');
+  box.innerHTML=contBanner+(anyUnlocked?'':`<p class="manaline" style="margin:0 0 10px;color:var(--ember)">🔒 Beat a warden in the ⚔ Campaign to unlock it here for free play.</p>`)+rows;}
 
 /* ----- read the cast form into a reusable card config ----- */
 function _int(v,d){const n=parseInt(v,10);return isNaN(n)?d:n;}
@@ -2888,16 +3036,19 @@ function readCastForm(){const type=$("castType").value;const defName={creature:'
 /* ----- library ----- */
 function openLibrary(){renderLibrary();$("library").classList.add("show");}
 function closeLibrary(){$("library").classList.remove("show");}
-function openStore(){renderStore();$("store").classList.add("show");}
+/* P43.3: the Merchant opens hard-keyed to a mode screen's bucket — S.mode pins which purse pays and which pending receives. */
+function openStore(mode){if(mode)_uiMode=mode;renderStore();$("store").classList.add("show");}
 function closeStore(){$("store").classList.remove("show");}
-function renderStore(){const g=$("storeGold");if(g)g.textContent=getGold();const box=$("storeList");if(!box)return;const p=prof();if(p&&!Array.isArray(p.pending))p.pending=[];const pend=(p&&p.pending)||[];const locked=descentInProgress();
+function renderStore(){const g=$("storeGold");if(g)g.textContent=getGold(_uiMode);const box=$("storeList");if(!box)return;const bk=bucket(_uiMode);if(bk&&!Array.isArray(bk.pending))bk.pending=[];const pend=(bk&&bk.pending)||[];const locked=descentInProgress(_uiMode);/* P43.3: the store always operates on the BROWSED _uiMode, never the live game's S.mode */
+  /* P43.1: pin which purse pays / which pending receives — the store is opened hard-keyed to a mode screen's bucket. */
+  const modeLine=`<div class="manaline" style="opacity:.85;margin:0 0 8px">Buying for: <b>${_uiMode==='sandbox'?'🏟 Sandbox':'⚔ Campaign'}</b> — this purse and pack are separate from the other mode.</div>`;
   let banner='';
   if(locked)banner=`<div class="manaline" style="color:var(--ember);border:1px solid var(--ember);border-radius:10px;padding:9px 12px;margin:0 0 12px;line-height:1.5">\uD83D\uDD12 <b>The Merchant is closed while you're in the dungeon.</b> It trades only <b>between descents</b> and reopens once your current run ends (win or lose). Clearing a room still drops loot into your \uD83C\uDF92 satchel as you descend.</div>`;
   else if(pend.length)banner=`<div class="manaline" style="color:var(--ok);border:1px solid rgba(123,178,116,.4);border-radius:10px;padding:9px 12px;margin:0 0 12px;line-height:1.5">\uD83C\uDF92 Stowed in your pack for the next descent: <b>${pend.map(it=>(BOONS[it.id]&&BOONS[it.id].n)||it.id).join(', ')}</b>.</div>`;
   const cats=[];STORE.forEach(s=>{if(!cats.includes(s.cat))cats.push(s.cat);});
-  box.innerHTML=banner+cats.map(cat=>{const items=STORE.filter(s=>s.cat===cat);return `<div class="storecat">${cat}</div><div class="storegrid">${items.map(s=>{const b=BOONS[s.id];const aff=getGold()>=s.cost;const can=aff&&!locked;return `<div class="storeitem ${b.r}"><div class="si-ic">${s.icon||'\uD83E\uDDEA'}</div><div class="si-body"><div class="si-n">${b.n}<span class="si-r">${b.r}</span></div><div class="si-t">${b.t}</div><div class="si-foot"><span class="cost">\uD83D\uDCB0 ${s.cost}</span><button class="tiny ${can?'ok':''}" ${can?'':'disabled style="opacity:.45;cursor:not-allowed"'} onclick="buyStore('${s.id}')">${locked?'\uD83D\uDD12 Locked':(aff?'Buy':'Need gold')}</button></div></div></div>`;}).join('')}</div>`;}).join('');}
+  box.innerHTML=modeLine+banner+cats.map(cat=>{const items=STORE.filter(s=>s.cat===cat);return `<div class="storecat">${cat}</div><div class="storegrid">${items.map(s=>{const b=BOONS[s.id];const aff=getGold()>=s.cost;const can=aff&&!locked;return `<div class="storeitem ${b.r}"><div class="si-ic">${s.icon||'\uD83E\uDDEA'}</div><div class="si-body"><div class="si-n">${b.n}<span class="si-r">${b.r}</span></div><div class="si-t">${b.t}</div><div class="si-foot"><span class="cost">\uD83D\uDCB0 ${s.cost}</span><button class="tiny ${can?'ok':''}" ${can?'':'disabled style="opacity:.45;cursor:not-allowed"'} onclick="buyStore('${s.id}')">${locked?'\uD83D\uDD12 Locked':(aff?'Buy':'Need gold')}</button></div></div></div>`;}).join('')}</div>`;}).join('');}
 /* Buying never touches the live/saved run — the item is stowed on the profile (p.pending) and joins the satchel only when the next descent starts (applyPendingPurchases). Blocked outright while a descent is underway. */
-function buyStore(id){if(descentInProgress()){log("sys","The Merchant is closed while you're in the dungeon — finish or abandon your descent first.");renderStore();return;}const item=STORE.find(s=>s.id===id);if(!item)return;if(!spendGold(item.cost)){log("sys","Not enough gold for that.");renderStore();return;}const p=prof();if(p){if(!Array.isArray(p.pending))p.pending=[];p.pending.push({id});saveDB();}/* P42.1: descents dropped — duration is structural (any residual field on an old pending clears when applyPendingPurchases pushes without copying it) */log("loot",`🛒 Bought <b>${BOONS[id].n}</b> for ${item.cost} gold — stowed for your next descent (account ${getGold()}).`);renderStore();renderMenu();}
+function buyStore(id){if(descentInProgress(_uiMode)){log("sys","The Merchant is closed while you're in the dungeon — finish or abandon your descent first.");renderStore();return;}const item=STORE.find(s=>s.id===id);if(!item)return;if(!spendGold(item.cost,_uiMode)){log("sys","Not enough gold for that.");renderStore();return;}const bk=bucket(_uiMode);if(bk){if(!Array.isArray(bk.pending))bk.pending=[];bk.pending.push({id});saveDB();}/* P42.1: descents dropped · P43.3: into the BROWSED mode's pending/purse */log("loot",`🛒 Bought <b>${BOONS[id].n}</b> for ${item.cost} gold — stowed for your next descent (account ${getGold(_uiMode)}).`);renderStore();renderMenu();}
 function saveCardToLibrary(){const p=prof();if(!p){alert('Open the Menu and create a profile first.');return;}const cfg=readCastForm();cfg.lid='L'+Date.now()+Math.floor(Math.random()*1000);p.library.push(cfg);saveDB();log("loot",`★ Saved <b>${cfg.name}</b> to your library.`);renderLibrary();}
 function editLibrary(i){const p=prof();if(!p)return;const c=p.library[i];if(!c)return;if(!c.lid)c.lid=lidStamp();_editLid=c.lid;$("modalBody").innerHTML=castFormHTML();$("overlay").classList.add("show");loadCastFromLibrary(i);}
 function saveCardEdits(){const p=prof();if(!p){alert('Open the Menu and create a profile first.');return;}const cfg=readCastForm();const idx=p.library.findIndex(c=>c.lid===_editLid);if(idx>=0){cfg.lid=_editLid;p.library[idx]=cfg;log("loot",`✎ Updated <b>${cfg.name}</b> in your library.`);}else{cfg.lid=lidStamp();p.library.push(cfg);log("loot",`★ Saved <b>${cfg.name}</b> to your library.`);}saveDB();_editLid=null;$("overlay").classList.remove("show");renderLibrary();}
@@ -2954,12 +3105,13 @@ function newCommander(){_cmdCreating=true;openCast();}
 function castAsCommander(){const cfg=readCastForm();if(setStartCommander(cfg)){if(_cmdChooseActive)proceedAfterCommander();else closeOverlay();}}
 function skipCommander(){proceedAfterCommander();}
 function proceedAfterCommander(){_cmdChooseActive=false;_cmdCreating=false;$("overlay").classList.remove("show");
+  if(S.mode==='sandbox'){/* P43.5: a sandbox battle skips the campaign arrival/gate story — straight to the CHOSEN foe's own intro (room 0's gate would be the wrong room for a room-2 sandbox fight) */const room=DUNGEON[S.roomIndex]||DUNGEON[0];S._introShown=true;if(room&&room.intro)showCutscene(room.intro,room.villain,`🏟 ${room.name} · ${curLevel().subtitle}`,room.isVael?"Face the Tyrant ▸":"Fight ▸",villainCutOpts(room));return;}
   if(!S._introShown){S._introShown=true;
     showCutscene(ARRIVAL_LINES,"Nothing to Gain","Arrival · Ashveil","Descend into the Warren ▸",{
       sigil:'✦',accent:'var(--gold)',speaker:"the Conclave's plea",
       quote:"Find Guff. Free him. He is the last of us who can still build.",
       buttons:[{label:"Descend into the Warren ▸",cls:"big",on:()=>{
-        if(DUNGEON[0].intro)showCutscene(DUNGEON[0].intro,DUNGEON[0].villain,"Ember Gate · Level I","Enter the gate ▸",villainCutOpts(DUNGEON[0]));
+        if(DUNGEON[0].intro)showCutscene(DUNGEON[0].intro,DUNGEON[0].villain,`${DUNGEON[0].name} · ${curLevel().subtitle}`,"Enter the gate ▸",villainCutOpts(DUNGEON[0]));
       }}]
     });
   }
@@ -3031,7 +3183,7 @@ function dupMy(cat,id){const o=S.my[cat].find(x=>x.id===id);if(!o)return;const c
 
 /* ----- save export / import ----- */
 function exportSave(){try{const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=saveFileName('save');document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){alert('Export is not available in this browser context.');}}
-function importSave(input){const f=input.files&&input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);if(o&&o.kind==='library'){alert('That is a library file — use “⬆ Import library” instead.');return;}if(o&&o.profiles){DB=o;if(!DB.active||!DB.profiles[DB.active])DB.active=Object.keys(DB.profiles)[0]||null;if(!DB.active){DB.profiles['Adventurer']=blankProfile('Adventurer');DB.active='Adventurer';}saveDB();renderMenu();alert('Save loaded'+(hasSave()?' — “Continue last game” is now available.':'.'));}else alert('That file is not a valid save.');}catch(e){alert('Could not read that save file.');}};r.readAsText(f);input.value='';}
+function importSave(input){const f=input.files&&input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);if(o&&o.kind==='library'){alert('That is a library file — use “⬆ Import library” instead.');return;}if(o&&o.profiles){DB=o;if(!DB.active||!DB.profiles[DB.active])DB.active=Object.keys(DB.profiles)[0]||null;if(!DB.active){DB.profiles['Adventurer']=blankProfile('Adventurer');DB.active='Adventurer';}migrateProfiles();/* P43 review-fix (HIGH): a pre-P43 backup carries flat gold/pending/stash and a global DB.save — migrate them into the camp/sand buckets exactly as loadDB does, else the whole per-mode economy reads null and gold is silently destroyed on the next reload */saveDB();renderMenu();alert('Save loaded'+(latestSave()?' — “Continue last game” is now available.':'.'));}else alert('That file is not a valid save.');}catch(e){alert('Could not read that save file.');}};r.readAsText(f);input.value='';}
 /* ===== LIBRARY EXPORT / IMPORT — carries only Player name + library + tokens (P0.3) ===== */
 function exportLibrary(){try{const p=prof();if(!p){alert('Open the Menu and create a profile first.');return;}const data={v:SAVE_V,kind:'library',name:p.name,library:JSON.parse(JSON.stringify(p.library||[])),tokens:JSON.parse(JSON.stringify(p.tokens||[]))};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=saveFileName('library');document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){alert('Export is not available in this browser context.');}}
 function importLibrary(input){const f=input.files&&input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);if(!o||o.kind!=='library'||!Array.isArray(o.library)){alert(o&&o.profiles?'That is a full save — use “⬆ Import” under Saves instead.':'That file is not a library export.');return;}const p=prof();if(!p){alert('Open the Menu and create a profile first.');return;}
