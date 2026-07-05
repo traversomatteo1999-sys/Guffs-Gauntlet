@@ -187,7 +187,7 @@
 | &nbsp;&nbsp;P40.1 Enters-tapped (parse "enters tapped" → the permanent enters tapped; player + enemy creatures) | ✅ **DONE & merged** (`inferEffects`→`props.entersTapped`; `resolvePlayerItem`/`resolveEnemyCreature` honour it; 4-check jsdom) |
 | &nbsp;&nbsp;P40.2 Prowess (noncreature spell → controller's prowess creatures +1/+1 EOT; both sides) | ✅ **DONE & merged** (`firePlayerProwess`/`fireEnemyProwess` on noncreature resolve; `youEnd` clears the player's until-EOT buffs like `vaelEnd` does the enemy's) |
 | &nbsp;&nbsp;P40.3 Recognise flash + rare evasion (shadow/horsemanship/skulk/daunt/fear/intimidate) on import | ✅ **DONE & merged** (added to `KW_LIST` (flash/prowess) + `RECOGNISED_KW` (all) so imports round-trip + display; rare evasion is a display-only badge — no block-eligibility engine, a manual note; goad stays the existing `◐` marker; draw/tutor one-shots stay reminders — no player library) |
-| **Phase 41 — Lore fix: Guff is red-bearded (MTG canon)** | ⬜ **PLANNED** (specced 2026-07-04; one string + spec echo + STORY.md canon note) |
+| **Phase 41 — Lore fix: Guff is red-bearded (MTG canon)** | ✅ **DONE & verified** — `DUNGEON[2].guffFreed[0]` recoloured to red-bearded; P11 spec echo (~1034) swapped; STORY.md §5 appearance note added; index.html has 0 old-colour hits; jsdom cutscene assert + syntax gate green |
 | **Phase 42 — Item duration & economy coherence** | ⬜ **PLANNED** (specced 2026-07-04) — passives REALLY last 1 descent (stash-loop root cause) · Sapper's-Map row consumption · Scholar/Tome price-invert · heal/damage price curves (user anchor: Healing Draught 7g) |
 | &nbsp;&nbsp;P42.1 Passives really expire — `saveUnusedItems` stashes consumables only (+ drop dead `descents` field) | ⬜ PLANNED |
 | &nbsp;&nbsp;P42.2 Sapper's Map row consumed when the −4 fires | ⬜ PLANNED |
@@ -1031,7 +1031,7 @@ function win(){if(S.over)return;S.over=true;sfx('victory');
 `DUNGEON[2].guffFreed`:
 ```js
 guffFreed:[
- "Past the guttering throne the Warren narrows to one last vault — grave-cold, lit only by dying goblin-fire. In a cage of ember-iron a broad-shouldered man waits: grey-bearded, seamed with old scars, and in all this dark he has not knelt.",
+ "Past the guttering throne the Warren narrows to one last vault — grave-cold, lit only by dying goblin-fire. In a cage of ember-iron a broad-shouldered man waits: red-bearded, seamed with old scars, and in all this dark he has not knelt.",
  "The lock yields to your spark. The bars fall away, and <b>Commodore Guff</b> rises to his full height — slow and certain, the way a tide is certain of its shore.",
  "He closes a broad, scarred hand around your wrist — not to be lifted, but to be certain you are real. He takes your measure — an outsider, off-plane, owed nothing on this burning ground — and bows his head to you all the same."
 ],
@@ -2717,7 +2717,7 @@ Added `flash`/`prowess` to `KW_LIST` (creator toggles) and `flash`/`prowess`/`sh
 > **Build order = phase order** (41 trivial → 42 small-but-load-bearing → 43 the big infrastructure → 44 gameplay → 45 presentation → 46 hardening + the validation gate over everything).
 > **Grounding.** Every symbol/line below is from a 6-agent research sweep of the CURRENT `index.html` (2026-07-04, HEAD `0af2bb0`). Line numbers drift — **re-grep the symbol before building**; never Read a range spanning the `ART` blob line (~614).
 
-# PHASE 41 — Lore fix: Guff is red-bearded (MTG canon) ⬜ PLANNED
+# PHASE 41 — Lore fix: Guff is red-bearded (MTG canon) ✅ DONE
 
 > **Goal.** The Guff-freed cutscene calls Guff "grey-bearded". Canon Commodore Guff (Invasion-era novels; Commander Masters #706 art) has **reddish hair and beard** — the MTG Wiki: *"a raft of reddish-blond hair, an aggressive beard … perfectly matching his hair and beard."* One-string recolour + doc echo.
 
