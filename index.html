@@ -75,10 +75,18 @@
   .cmdbox .cn{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:1.05rem} .cmdbox .cpt{font-family:"Space Mono",monospace;font-weight:700;font-size:1.35rem;margin:3px 0} .cmdbox .cstat{font-size:.8rem;color:var(--bone-dim)} .cmdbox .acts{display:flex;gap:4px;margin-top:7px;flex-wrap:wrap}
   .gstate{font-size:.82rem;color:var(--bone-dim);border-left:2px solid var(--ember);padding-left:10px;margin-top:9px} .gstate b{color:var(--ember);font-family:"Space Mono",monospace;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:2px}
   .creatures{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:9px;margin-top:10px}
-  .crea{border:1px solid var(--line);border-radius:11px;background:var(--ink-3);padding:9px 10px;position:relative;animation:spawn .3s ease}
+  .crea{border:1px solid var(--line);border-radius:11px;background:var(--ink-3);padding:9px 10px;position:relative}
+  .crea.isnew{animation:spawn .3s ease} /* P45.3: spawn anim fires only on genuinely-new permanents (keyed by _bornIds), not on every innerHTML rebuild */
   .cardart{height:44px;border-radius:8px;margin-bottom:7px;background-color:var(--ink-2);background-size:cover;background-position:center;background-repeat:no-repeat;box-shadow:inset 0 -20px 24px -16px var(--ink-3);border:1px solid var(--line)} /* P45.2: art strip for Scryfall-imported cards; homebrew has no image so no strip; CSS bg → no broken-image icon offline, no layout shift */
   .libitem .cardart,.playcard .cardart{height:40px}
   .wardenpt{width:34px;height:34px;border-radius:7px;object-fit:cover;vertical-align:middle;margin-right:8px;border:1px solid var(--line)} /* P45.2: warden portrait in the boss panel header */ @keyframes spawn{from{opacity:0}to{opacity:1}}
+  /* P45.3: FX overlay — floating damage/heal numbers + life-bar flash, spawned imperatively at the mutation sites, CSS-animated, self-removing; never intercepts a tap. */
+  #fx{position:fixed;inset:0;pointer-events:none;z-index:36;overflow:hidden}
+  .fxnum{position:absolute;transform:translate(-50%,-50%);font-family:var(--ff-mono);font-weight:700;font-size:1.5rem;line-height:1;pointer-events:none;text-shadow:0 2px 7px rgba(0,0,0,.85),0 0 2px rgba(0,0,0,.9);white-space:nowrap;animation:fxrise 1.1s cubic-bezier(.2,.7,.3,1) forwards;will-change:transform,opacity}
+  .fxnum.dmg{color:var(--ember)} .fxnum.heal{color:var(--ok)} .fxnum.boss{color:var(--gold)}
+  @keyframes fxrise{0%{opacity:0;transform:translate(-50%,-30%) scale(.7)}12%{opacity:1;transform:translate(-50%,-62%) scale(1.12)}100%{opacity:0;transform:translate(-50%,-165%) scale(1)}}
+  @keyframes fxfade{0%{opacity:0}12%{opacity:1}100%{opacity:0}}
+  .bar.barflash{animation:barflash .5s ease} @keyframes barflash{0%{filter:brightness(2.6)}100%{filter:brightness(1)}}
   .crea.sick{opacity:.75} .crea.tapped{background:repeating-linear-gradient(135deg,var(--ink-3) 0 6px,#20242e 6px 12px)}
   .crea .cn{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:.86rem;line-height:1;padding-right:34px}
   .crea .cpt{font-family:"Space Mono",monospace;font-weight:700;font-size:1.1rem;margin:3px 0} .crea .cpt .buff{color:var(--gold)} .crea .cpt .deb{color:var(--ember)}
@@ -99,7 +107,10 @@
   .resolvermodal{width:min(480px,94vw);max-height:88vh;overflow-y:auto;overscroll-behavior:contain;border:1px solid var(--ember);border-radius:14px;background:var(--ink-2);box-shadow:0 26px 90px -16px rgba(0,0,0,.85);padding:14px 16px 12px;animation:spawn .3s ease}
   .resolver h3{font-family:"Grenze Gotisch",serif;font-size:1.12rem;margin-bottom:4px}
   /* P1.10: the Stack is a docked, auto-surfacing popup (not an inline panel) + a floating launcher */
-  .stackpop{position:fixed;inset:0;z-index:38;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(6,7,10,.82);backdrop-filter:blur(3px)}
+  .stackpop{position:fixed;inset:auto 0 0 0;z-index:38;display:none;align-items:flex-end;justify-content:center;padding:0;pointer-events:none} /* P45.6: a bottom-docked sheet that leaves the board visible + interactive above; .expanded restores the full-screen modal */
+  .stackpop .stackmodal{pointer-events:auto}
+  .stackpop:not(.expanded) .stackmodal{width:min(760px,100%);max-height:44vh;border-radius:16px 16px 0 0;box-shadow:0 -14px 34px -10px rgba(0,0,0,.72)}
+  .stackpop.expanded{inset:0;align-items:center;padding:14px;background:rgba(6,7,10,.82);backdrop-filter:blur(3px);pointer-events:auto}
   .stackpop.show{display:flex;animation:fade .25s ease}
   .stackmodal{display:flex;flex-direction:column;width:min(440px,94vw);max-height:88vh;border:1px solid var(--ember);border-radius:14px;background:var(--ink-2);box-shadow:0 26px 90px -16px rgba(0,0,0,.85);overflow:hidden;animation:spawn .3s ease}
   .stackhead{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:9px 11px;border-bottom:1px solid var(--line);background:rgba(8,9,12,.45)}
@@ -115,7 +126,26 @@
   .stackfab .sfl{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:.95rem;letter-spacing:.02em}
   .stackfab:hover{transform:translateY(-2px)} .stackfab.hot{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 22px -4px var(--gold)}
   .stackfabn{position:absolute;top:-5px;right:-5px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--ember);color:#fff;font-family:"Space Mono",monospace;font-size:.66rem;font-weight:700;display:flex;align-items:center;justify-content:center;border:1px solid var(--ink)} .stackfabn:empty{display:none}
-  @media(max-width:560px){.stackpop{padding:10px} .stackmodal{width:100%;max-height:88vh} .stackfab{right:12px;bottom:12px} .resolver{padding:10px} .resolvermodal{width:100%}}
+  @media(max-width:560px){.stackpop.expanded{padding:10px} .stackfab{right:12px;bottom:12px} .resolver{padding:10px} .resolvermodal{width:100%}}
+  /* P45.5/6: ≥1100px Moxfield desktop — three rails over the SAME panels (no JS re-home; the @media flips block↔grid live). Below 1100px nothing changes. */
+  @media(min-width:1100px){
+    .wrap{max-width:min(1580px,97vw)}
+    #battlefield{display:grid;grid-template-columns:minmax(262px,1fr) minmax(428px,1.7fr) minmax(298px,1fr);grid-template-rows:auto auto;gap:14px;align-items:start;margin-top:14px}/* P45.5 review-fix: column mins (262+428+298 + 2×14 = 1016) fit inside .wrap at a 1100px viewport (~1044px content) — no horizontal scrollbar in the 1100–1167px band */
+    #battlefield>.tab{margin-top:0}
+    #tab-info{grid-column:1;grid-row:1/3}
+    #tab-enemy{grid-column:2;grid-row:1}
+    #tab-player{grid-column:2;grid-row:2}
+    #tab-action{grid-column:3;grid-row:1}
+    #plays{grid-column:3;grid-row:2}
+    #tab-info,#tab-action,#tab-enemy,#tab-player,#plays{max-height:calc(100vh - 26px);overflow:auto}
+    #battlefield .tabhead{position:sticky;top:0;z-index:1}
+    /* every rail always open on desktop (override the phone accordion collapse; inner P12.1 panels still collapse) */
+    #battlefield .tab.collapsed .tabbody{display:flex} #battlefield .tab.collapsed .tabhint::after{content:""}
+    /* the stack docks into the right rail instead of a full-screen overlay */
+    #plays.stackpop{position:static;display:block;inset:auto;z-index:auto;background:none;backdrop-filter:none;padding:0;pointer-events:auto;align-items:stretch}
+    #plays .stackmodal{width:auto;max-width:none;max-height:none;box-shadow:none;animation:none;border-radius:14px}
+    .stackfab{display:none!important}
+  }
   .playcard{border:1px solid var(--line);border-radius:var(--r-tile);background:var(--ink-2);padding:10px 12px;margin:7px 0} .playcard.resolved{border-color:rgba(123,178,116,.4)} .playcard.countered{opacity:.4;text-decoration:line-through}
   /* P7.9: subtle per-type accent on stack cards (inset bar — never fights the status/mine borders) */
   .playcard.ty-creature{box-shadow:inset 3px 0 0 rgba(123,178,116,.55)} .playcard.ty-instant{box-shadow:inset 3px 0 0 rgba(77,168,218,.55)} .playcard.ty-sorcery{box-shadow:inset 3px 0 0 rgba(224,83,61,.55)} .playcard.ty-artifact{box-shadow:inset 3px 0 0 rgba(183,176,160,.5)} .playcard.ty-enchantment,.playcard.ty-enchant{box-shadow:inset 3px 0 0 rgba(154,134,196,.55)} .playcard.ty-planeswalker{box-shadow:inset 3px 0 0 rgba(217,164,65,.55)}
@@ -345,7 +375,11 @@
   .pchev{margin-left:auto;font-family:'Space Mono',monospace;font-size:.78rem;color:var(--bone-dim);transition:transform .2s;flex:none;user-select:none;padding-left:8px}
   .panel>h2>.pchev{align-self:center}
   .panel.collapsed .pchev{transform:rotate(-90deg)}
-  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  /* P45.3: tiered reduced-motion — kill DECORATIVE motion (near-instant) but keep functional feedback: damage/heal numbers fade in place (no travel) and the life bar still flashes. */
+  @media(prefers-reduced-motion:reduce){
+    *{animation-duration:.001ms!important;animation-delay:0ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}/* P45.3 review-fix: iteration-count:1 truly halts infinite decorative loops (e.g. .cutsigil sigilPulse) instead of flickering them at 0.001ms */
+    .fxnum{animation:fxfade .9s ease forwards!important} .bar.barflash{animation:barflash .45s ease!important}
+  }
 </style>
 </head>
 <body>
@@ -358,6 +392,7 @@
     <h1><span class="lvl">Level I</span> — The Warren of Embers</h1>
     <p class="subtitle">One descent into the Warren of Embers to free the caged Commodore Guff — three wardens, no road back up. Each room is a fresh game against a foe you have not yet met — you declare attacks and it blocks; it strikes and you answer. Only your life and your loot carry deeper into the dark.</p>
     <div class="track" id="track"></div>
+    <div class="hdrroom" id="hdrRoom" style="font-family:var(--ff-mono);font-size:var(--fs-xs);color:var(--bone-dim);letter-spacing:.08em;margin-top:4px"></div><!-- P45.5: level + room in the in-game header -->
   </header>
 
   <details class="help panel" style="margin-top:12px">
@@ -528,7 +563,7 @@
     </div>
   </div>
 
-  <div class="log" id="logBox"><h2 style="font-family:'Grenze Gotisch'"><span>📜 Dungeon Log</span><button class="logtoggle" id="logToggle" onclick="toggleLog()" aria-label="Expand or collapse the log">⤢</button></h2><div id="log"></div></div>
+  <div class="log" id="logBox"><h2 style="font-family:'Grenze Gotisch'"><span>📜 Dungeon Log</span><button class="logtoggle" id="logToggle" onclick="toggleLog()" aria-label="Expand or collapse the log">⤢</button></h2><div id="log" aria-live="polite" aria-atomic="false"></div></div>
 
   <!-- P1.10: the Stack — a docked, auto-surfacing popup that doesn't block the board, openable on demand via the launcher -->
   <div class="resolver" id="resolver" role="dialog" aria-label="Attack resolution">
@@ -544,7 +579,7 @@
     <div class="stackmodal">
       <div class="stackhead">
         <h3>🜟 The Stack <span class="tag">top-down</span></h3>
-        <div class="stackhacts"><button class="mini azor" onclick="openCardSearch()">✦ Cast a spell</button><button class="mini stackx" onclick="hidePlays()" aria-label="dismiss the stack">✕</button></div>
+        <div class="stackhacts"><button class="mini azor" onclick="openCardSearch()">✦ Cast a spell</button><button class="mini stackx" onclick="toggleStackExpand()" aria-label="expand or dock the stack" title="Expand / dock">⤢</button><button class="mini stackx" onclick="hidePlays()" aria-label="dismiss the stack">✕</button></div>
       </div>
       <div class="stackbody"><div id="stackProposal" class="stackproposal"></div><p class="stacknote">Your casts and the enemy's responses pile up here — the <b>TOP</b> resolves first. Enemy targeted spells auto-hit your tracked board on resolve; your permanents auto-enter your board.</p><div id="playCards"></div></div>
       <div class="btnrow" style="align-items:center;gap:10px"><button class="big ember inline" onclick="resolveStack()">▸ Resolve the stack</button><span class="manaline">resolves &amp; clears — the phase advances only on <b>Continue ▸</b></span></div>
@@ -925,7 +960,7 @@ function spinWheel(roll,base){roll=roll||(1+Math.floor(Math.random()*100));base=
 
 let S;
 function fresh(){histReset();S={diff:"standard",mode:"campaign",levelIdx:0,youLife:40,youMax:40,roomIndex:0,boss:null,cmd:null,tokens:[],rules:[],pw:null,turn:0,plays:[],stackProposal:null,phasesFired:[],nextId:1,over:false,paused:false,inv:[],phoenixUsed:false,weakenNext:false,phase2done:false,balanceScale:1,bossManaMod:0,bossManaFrozen:0,bossLands:0,bossLandPlayed:false,emblemsEnemy:[],enemyArtifacts:[],enemyEnchants:[],battles:[],plane:null,ui:{tabs:{},panels:{}},my:{creatures:[],artifacts:[],enchants:[],walkers:[],emblems:[]},combat:null,counters:{poison:0,energy:0,experience:0,cmdDmg:0},notes:"",_spoils:"",activeTurn:null,phase:0,bossMana:0,bossManaMax:0,lib:[],hand:[],gy:[],exile:[],deckColors:[],myGy:[],myExile:[],pcmd:null};enterRoom(0,true);}
-function enterRoom(i,first){S.roomIndex=i;const room=DUNGEON[i];const baseHp=(room.hp&&room.hp[S.diff])||room.life;let life=Math.max(1,Math.round(baseHp*(S.balanceScale||1)));/* P10: explicit per-difficulty HP (room.hp); balanceScale still scales it for in-run effects. */if(S.weakenNext){const _maps=Math.max(1,(S.inv||[]).filter(x=>x&&x.id==='map').length);life=Math.max(1,life-4*_maps);S.weakenNext=false;S.inv=(S.inv||[]).filter(x=>!(x&&x.id==='map'));log("loot",`🗺 The Sapper's Map is spent${_maps>1?` (×${_maps}, −${4*_maps} life)`:''}.`);}/* P42.2: consume the map row(s) the moment the −4 fires — looted maps stack, no dead rows left behind */
+function enterRoom(i,first){S.roomIndex=i;_bornIds.clear();/* P45.3: a fresh board — let its permanents play the spawn anim once */const room=DUNGEON[i];const baseHp=(room.hp&&room.hp[S.diff])||room.life;let life=Math.max(1,Math.round(baseHp*(S.balanceScale||1)));/* P10: explicit per-difficulty HP (room.hp); balanceScale still scales it for in-run effects. */if(S.weakenNext){const _maps=Math.max(1,(S.inv||[]).filter(x=>x&&x.id==='map').length);life=Math.max(1,life-4*_maps);S.weakenNext=false;S.inv=(S.inv||[]).filter(x=>!(x&&x.id==='map'));log("loot",`🗺 The Sapper's Map is spent${_maps>1?` (×${_maps}, −${4*_maps} life)`:''}.`);}/* P42.2: consume the map row(s) the moment the −4 fires — looted maps stack, no dead rows left behind */
   S.boss={name:room.villain,life,max:life,isVael:!!room.isVael,colors:(room.colors||["R"]).slice()};
   S.enemy={name:room.villain,colors:(room.colors||["R"]).slice(),lore:room.lore||"",isFinal:!!room.isVael};
   const _cw=!!room.cmd.isWalker,_cloy=(room.cmd.loy!=null?room.cmd.loy:(room.cmd.loyalty!=null?room.cmd.loyalty:3));
@@ -1548,7 +1583,7 @@ function approveCombat(){
     /* P39.1: route each attacker's face damage to its chosen target — enemy face (boss) / enemy planeswalker (w:id) / boss siege-battle (b:id). */
     const tmap=S.combat.target||{};let toBoss=0;const wHits={},bHits={};
     r.perAtt.forEach(({att,toFace})=>{const tg=''+(tmap[att.id]||'boss');if(tg.slice(0,2)==='w:')wHits[tg.slice(2)]=(wHits[tg.slice(2)]||0)+toFace;else if(tg.slice(0,2)==='b:')bHits[tg.slice(2)]=(bHits[tg.slice(2)]||0)+toFace;else toBoss+=toFace;});
-    if(toBoss>0){S.boss.life-=toBoss;sfx('strike');log("you",`<b>${toBoss}</b> to ${S.boss.name}'s life. (${Math.max(0,S.boss.life)})`);}
+    if(toBoss>0){S.boss.life-=toBoss;sfx('strike');fxLife('boss',-toBoss);log("you",`<b>${toBoss}</b> to ${S.boss.name}'s life. (${Math.max(0,S.boss.life)})`);}
     Object.keys(wHits).forEach(wid=>{const w=enemyWalkerList().find(x=>''+x.id===wid);if(w&&wHits[wid]>0){w.loyalty-=wHits[wid];log("you",`Your attackers hit <b>${w.name||w.n}</b> for ${wHits[wid]} (loyalty ${Math.max(0,w.loyalty)}).`);if(w.loyalty<=0)enemyWalkerDies(w);}});
     if(r.attLifelink){S.youLife+=r.attLifelink;log("you",`Lifelink: you +${r.attLifelink}.`);}
     if(r.defLifelink){bossHealLife(r.defLifelink);log("dm",`${ENs()} lifelink: +${r.defLifelink}.`);}
@@ -1569,7 +1604,7 @@ function approveCombat(){
     for(const w of (S.my.walkers||[])){if(w.attackableBy>0&&walkerAtkCount(tmap,w.id)>w.attackableBy){log("sys",`⚠ ${w.name} can be attacked by at most ${w.attackableBy} — reassign attackers before approving.`);return;}}
     let toYou=0;const wHits={};r.perAtt.forEach(({att,toFace})=>{const tg=tmap[att.id]||'you';if(tg==='you')toYou+=toFace;else wHits[tg]=(wHits[tg]||0)+toFace;});
     const ward=(S.inv.some(it=>it.id==="ward")?2:0)+(S.inv.some(it=>it.id==="aegis")?4:0)+(S.inv.some(it=>it.id==="buckler")?1:0);/* P15.2: Iron Buckler stacks +1 */const face=Math.max(0,toYou-ward);if(ward&&toYou>0)log("you",`Your charms soak ${Math.min(ward,toYou)}.`);
-    if(face>0){S.youLife-=face;sfx('hit');log("dm",`<b>${face}</b> to your life. (${S.youLife})`);}
+    if(face>0){S.youLife-=face;sfx('hit');fxLife('you',-face);log("dm",`<b>${face}</b> to your life. (${S.youLife})`);}
     Object.keys(wHits).forEach(wid=>{const w=S.my.walkers.find(x=>''+x.id===wid);if(w&&wHits[wid]>0){w.loyalty-=wHits[wid];log("dm",`${ENs()} hits <b>${w.name}</b> for ${wHits[wid]} (loyalty ${Math.max(0,w.loyalty)}).`);if(w.loyalty<=0){log("dm",`<b>${w.name}</b> is destroyed.`);killMy(w);}}});
     /* P18.2: commander damage = the commander's ACTUAL combat damage to your life (its perAtt face, scaled by the same ward soak that reduced toYou→face). Respects double strike (out already doubled), trample-over even when blocked, ward soak, and "deals no combat dmg" (0). */
     const cmdAtt=S.cmd.inPlay&&attackers.includes(S.cmd)&&(tmap[S.cmd.id]||'you')==='you';
@@ -1626,11 +1661,17 @@ function actionLabel(l){_actLabel=l;}
 function histReset(){_hist=[];_committed=null;_actLabel='';}
 function undo(){if(!_hist.length){log("sys","Nothing to undo.");return;}const ent=_hist.pop();let snap;try{snap=JSON.parse(ent.s);}catch(e){return;}S=snap;S.combat=null;closeTransientUI();_committed={full:JSON.stringify(S),strip:stripJSON(S)};_actLabel='';log("you",`↩ Undid: ${ent.label||'last action'}.`);scheduleAutosave();render();}
 function closeTransientUI(){const rz=$("resolver");if(rz)rz.classList.remove("show");const pl=$("plays");if(pl&&!(S.plays||[]).some(p=>p&&p.status==='pending'))pl.classList.remove("show");}
+/* P45.3: FX overlay helpers. fxFloat spawns a self-removing floating number at an anchor element; fxFlash pulses a life bar; fxLife does both for a life-total change. All no-op safely when the anchor is missing/hidden/headless (zero-size rect) and never intercept a tap. render() never touches #fx. _bornIds keys the .crea spawn animation to genuinely-new permanents. */
+let _bornIds=new Set();
+function fxFloat(anchor,text,cls){try{const fx=document.getElementById('fx');if(!fx||!anchor||!anchor.getBoundingClientRect)return;const r=anchor.getBoundingClientRect();if(!r||(!r.width&&!r.height))return;/* hidden / headless → skip so no stray corner numbers */const n=document.createElement('div');n.className='fxnum '+(cls||'');n.textContent=text;n.style.left=(r.left+r.width/2)+'px';n.style.top=(r.top+r.height*0.35)+'px';fx.appendChild(n);const kill=function(){if(n.parentNode)n.parentNode.removeChild(n);};n.addEventListener('animationend',kill);setTimeout(kill,1500);}catch(e){}}
+function fxFlash(bar){try{if(!bar||!bar.classList)return;if(bar.closest)bar=bar.closest('.bar')||bar;/* P45.3 review-fix: the CSS rule is .bar.barflash, but youBar/bossBar are the classless <i> fills — flash the .bar track so the pulse actually matches */if(!bar||!bar.classList)return;bar.classList.remove('barflash');void bar.offsetWidth;bar.classList.add('barflash');setTimeout(function(){if(bar&&bar.classList)bar.classList.remove('barflash');},650);}catch(e){}}
+function fxLife(who,n){if(!n)return;const isYou=who==='you';fxFloat(document.getElementById(isYou?'youLife':'bossLife'),(n>0?'+':'−')+Math.abs(n),n>0?'heal':(isYou?'dmg':'boss'));fxFlash(document.getElementById(isYou?'youBar':'bossBar'));}
 function render(){
   scheduleSettle();
   applyStaticEmblems();/* P13.2: recompute continuous static-emblem buffs before anything reads effP/effT */
   renderTrack();
   $("youLife").textContent=S.youLife;$("youMax").textContent=S.youMax;$("youBar").style.width=Math.max(0,Math.min(100,S.youLife/S.youMax*100))+"%";
+  {const _hr=$("hdrRoom");if(_hr&&typeof DUNGEON!=='undefined'&&DUNGEON[S.roomIndex])_hr.textContent=((typeof curLevel==='function'&&curLevel())?curLevel().name+' · ':'')+DUNGEON[S.roomIndex].name+' · room '+(S.roomIndex+1)+'/'+DUNGEON.length;}/* P45.5: header level+room (villain names stay hidden until earned) */
   $("bossName").textContent=S.boss.name+(S.phase2done?" · ENRAGED":"");{const bp=$("bossPortrait");if(bp){let k=null;try{k=_levelArt&&_levelArt[S.roomIndex];}catch(e){}const src=(k&&typeof ART!=='undefined'&&ART[k])||'';if(src){if(bp.getAttribute('src')!==src)bp.src=src;bp.style.display='';}else{bp.removeAttribute('src');bp.style.display='none';}}}/* P45.2: warden portrait */$("bossLife").textContent=Math.max(0,S.boss.life);$("bossMax").textContent=S.boss.max;$("bossBar").style.width=Math.max(0,Math.min(100,S.boss.life/S.boss.max*100))+"%";
   const bc=$("bossColors");if(bc)bc.innerHTML=(S.boss.colors||[]).map(col=>`<span class="cdot" title="${col}" style="background:${COLOR_HEX[col]||'#888'}"></span>`).join("");
   {const bfb=$("bossFrozen");if(bfb)bfb.innerHTML=(S.bossManaFrozen||0)>0?`❄ ${S.bossManaFrozen} frozen`:'';}
@@ -1651,7 +1692,7 @@ function render(){
    }else $("pwPanel").style.display="none";}
   const cf=$("creaField");cf.innerHTML="";const creaN=S.tokens.length+(S.cmd.inPlay?1:0);$("creaCount").textContent=creaN;$("creaEmpty").style.display=creaN?"none":"block";
   if(S.cmd.inPlay){const el=document.createElement("div");el.className="crea cmdcard"+(S.cmd.sick&&!S.cmd.isWalker?" sick":"")+(S.cmd.tapped?" tapped":"");if(S.cmd.isWalker)el.style.borderLeft="3px solid var(--ember)";/* P38.5: red enemy-walker-commander box */el.innerHTML=cmdFieldCard();cf.appendChild(el);}
-  S.tokens.forEach(c=>{const el=document.createElement("div");el.className="crea"+(c.sick?" sick":"")+(c.tapped?" tapped":"");el.innerHTML=enemyCard(c);cf.appendChild(el);});
+  S.tokens.forEach(c=>{const el=document.createElement("div");const _nu=!_bornIds.has(c.id);if(_nu)_bornIds.add(c.id);el.className="crea"+(_nu?" isnew":"")+(c.sick?" sick":"")+(c.tapped?" tapped":"");el.innerHTML=enemyCard(c);cf.appendChild(el);});
   renderMy();renderAtkPick();renderCounters();renderStackFab();renderEnemyEmblems();renderStackProposal();renderBattles();
   {const mr=$("myResList");if(mr)mr.innerHTML=renderResChips('mine');const er=$("enemyResList");if(er)er.innerHTML=renderResChips('enemy');}/* P16.2: resource-token chips on each board */
   const rp=$("rulesPanel"),rf=$("rulesField");if(S.rules.length){rp.style.display="";rf.innerHTML="";S.rules.forEach(r=>{const el=document.createElement("div");el.className="ruleperm"+(r.side==="boss"?" bossr":"");el.innerHTML=`<div class="rn">${r.name}</div><div class="rt">${r.text}</div><div class="acts">${r.die?`<button class="mini gold" onclick="rollRule(${r.id})">Roll d${r.die}</button>`:''}<button class="mini ember" onclick="destroyRule(${r.id})">Destroy</button></div>`;rf.appendChild(el);});}else rp.style.display="none";
@@ -1668,7 +1709,7 @@ function renderAtkPick(){const box=$("atkPick");box.innerHTML="";const av=S.my.c
   av.forEach(c=>{const el=document.createElement("div");el.className="crea";el.innerHTML=`<div class="cn">${c.name}</div><div class="cpt">${effP(c)}/${effT(c)}</div><div class="badges">${(c.kw||[]).map(k=>`<span class="badge kw">${k}</span>`).join("")}</div><button class="atk mini ${c._atk?'sel':''}" style="margin-top:6px;width:100%" onclick="toggleAtk(${c.id})">${c._atk?'attacking ✓':'attack'}</button>`;box.appendChild(el);});}
 function renderMy(){
   const mc=$("myCrea");mc.innerHTML="";if(!S.my.creatures.length)mc.innerHTML='<span class="empty">none logged</span>';
-  S.my.creatures.forEach(c=>{const el=document.createElement("div");el.className="crea"+(c.tapped?" tapped":"")+(c.phased?" phased":"")+(c.isCmd?" cmdcard mine":"");const buff=c.plus||0,deb=c.minus||0;
+  S.my.creatures.forEach(c=>{const el=document.createElement("div");const _nu=!_bornIds.has(c.id);if(_nu)_bornIds.add(c.id);el.className="crea"+(_nu?" isnew":"")+(c.tapped?" tapped":"")+(c.phased?" phased":"")+(c.isCmd?" cmdcard mine":"");const buff=c.plus||0,deb=c.minus||0;
     el.innerHTML=`${cardArt(c)}<button class="slay mini ember" onclick="rmMy('creatures',${c.id})">✕</button>
       <input type="text" value="${c.name}" style="width:100%;font-size:.8rem" onchange="setMy('creatures',${c.id},'name',this.value)">
       <div class="cpt">${effP(c)}/${effT(c)}${buff?` <span class="buff">+${buff}</span>`:''}${deb?` <span class="deb">−${deb}</span>`:''}${colorDots(c)}</div>
@@ -2036,7 +2077,7 @@ function cmdCastCost(){return (!S.cmd.inPlay&&S.cmd.inHand)?S.cmd.baseCost:(S.cm
 function _cmdClearMods(){S.cmd.inPlay=false;S.cmd.tapped=false;S.cmd.sick=false;S.cmd.phased=false;S.cmd.plus=0;S.cmd.minus=0;S.cmd.other=[];}
 function cmdToHand(){_cmdClearMods();S.cmd.inHand=true;log("dm",`♛ ${S.cmd.n} returns to ${ENs()}'s hand — it recasts at base <b>${S.cmd.baseCost}</b> (no tax). A later battlefield death still routes to the command zone with tax.`);render();}/* a bounce is not a death: tax/deaths unchanged */
 function cmdToZone(){_cmdClearMods();S.cmd.inHand=false;log("dm",`♛ ${S.cmd.n} goes to ${ENs()}'s command zone — recast <b>${S.cmd.baseCost}+${S.cmd.tax||0}</b>.`);render();}
-function adjLife(who,n){if(who==='you'){S.youLife+=n;if(n>0)sfx('heal');/* P45.4: heal cue (also covers heal items — useBoon routes them through adjLife) *//* P28.1: ordinary lifegain no longer raises the base (youMax) — life may exceed it temporarily; P16.4 trims the overheal between bosses */log("you",`Life ${n>=0?'+':''}${n} → <b>${S.youLife}</b>.`);checkLose();}render();}
+function adjLife(who,n){if(who==='you'){S.youLife+=n;if(n>0)sfx('heal');/* P45.4: heal cue (also covers heal items — useBoon routes them through adjLife) *//* P28.1: ordinary lifegain no longer raises the base (youMax) — life may exceed it temporarily; P16.4 trims the overheal between bosses */log("you",`Life ${n>=0?'+':''}${n} → <b>${S.youLife}</b>.`);checkLose();}render();if(who==='you')fxLife('you',n);/* P45.3: floating heal/damage number + bar flash */}
 function setLife(){const v=prompt("Set your life:",S.youLife);if(v===null)return;const x=parseInt(v,10);if(isNaN(x))return;S.youLife=x;if(x>S.youMax)S.youMax=x;log("you",`Life set to <b>${x}</b>.`);render();}
 function bossHealLife(n){S.boss.life+=n;if(S.boss.life>S.boss.max)S.boss.max=S.boss.life;}
 function adjBoss(n){S.boss.life+=n;if(S.boss.life>S.boss.max)S.boss.max=S.boss.life;log("you",`${S.boss.name} life ${n>=0?'+':''}${n} → <b>${Math.max(0,S.boss.life)}</b>.`);if(S.boss.life<=0)bossDown();render();}
@@ -2082,7 +2123,7 @@ function slayTo(id,where){const c=S.tokens.find(x=>x.id===id);if(!c){closeOverla
   log("you",`✦ <b>${cnm(c)}</b> is slain → ${ENs()}'s ${where}.`);bloodTithe();/* the death trigger fires (matches removeRef) */moveBoardCard(c,where,true);/* then route the body to S.gy/S.exile as a reanimatable record — quiet so no double log/render */closeOverlay();render();}
 function destroyRule(id){const i=S.rules.findIndex(r=>r.id===id);if(i<0)return;log("you",`Destroyed <b>${S.rules[i].name}</b>.`);S.rules.splice(i,1);render();}
 function rollRule(id){const r=S.rules.find(x=>x.id===id);if(!r)return;log("sys",`${r.name}: rolled <b>${d(r.die)}</b> on d${r.die}.`);}
-function dmgBoss(){const q=$("bossDmgIn");const v=parseInt(q.value,10);if(isNaN(v)||v<=0){log("sys","Enter direct damage.");return;}const emb=(S.inv||[]).some(x=>x&&x.id==='ember');const dmg=v+(emb?1:0);/* P42.4: Ember Sigil adds +1 to freeform direct damage automatically */S.boss.life-=dmg;log("you",`Direct damage <b>${dmg}</b>${emb?' <span style="opacity:.75">(🔥 Ember Sigil +1)</span>':''}. (${Math.max(0,S.boss.life)})`);q.value="";if(S.boss.life<=0)bossDown();render();}
+function dmgBoss(){const q=$("bossDmgIn");const v=parseInt(q.value,10);if(isNaN(v)||v<=0){log("sys","Enter direct damage.");return;}const emb=(S.inv||[]).some(x=>x&&x.id==='ember');const dmg=v+(emb?1:0);/* P42.4: Ember Sigil adds +1 to freeform direct damage automatically */S.boss.life-=dmg;fxLife('boss',-dmg);log("you",`Direct damage <b>${dmg}</b>${emb?' <span style="opacity:.75">(🔥 Ember Sigil +1)</span>':''}. (${Math.max(0,S.boss.life)})`);q.value="";if(S.boss.life<=0)bossDown();render();}
 function damagePW(){const w=(S.enemyWalkers||[])[0];if(!w)return;const v=parseInt($("pwDmgIn").value,10);if(isNaN(v)||v<=0){log("sys","Enter damage.");return;}w.loyalty=(w.loyalty||0)-v;log("you",`Hit ${w.name} for <b>${v}</b> (loyalty ${Math.max(0,w.loyalty)}).`);$("pwDmgIn").value="";if(w.loyalty<=0)enemyWalkerDies(w);render();}
 
 /* P21.1: satchel items carry a stable uid so the Use button removes exactly that item, robust to any S.inv change between render and click (loot dropped, another item used, re-order). */
@@ -2121,8 +2162,9 @@ function firePhase(ph){
 /* P4.3: ◂ step back one phase within the current turn — purely navigational. The effects already fired this turn (tracked in S.phasesFired), so going back then forward is a no-op for one-time effects. Blocked mid-combat and at the turn's first phase. */
 function backPhase(){if(S.over||S.paused||S.combat||S.activeTurn===null)return;if(S.plays.some(p=>p.status==='pending'&&p._player)){log("sys","Resolve the spells on your stack first.");showPlays();return;}if(S.phase<=0){log("sys","◂ Already at the start of the turn — can't step back further.");return;}S.phase--;S.stackProposal=null;log("sys",`◂ Stepped back to ${PHASE_LABEL[PHASES[S.phase]]} — its effects already happened this turn and won't repeat.`);render();}
 function resolveLeftoverPlays(){S.plays.forEach((p,i)=>{if(p.status==='pending'&&!p._player)resolvePlay(i);});}
-function showPlays(){renderPlays();renderStackProposal();$("plays").classList.add("show");renderStackFab();}
-function hidePlays(){$("plays").classList.remove("show");renderStackFab();}
+function showPlays(){renderPlays();renderStackProposal();$("plays").classList.remove("expanded");$("plays").classList.add("show");renderStackFab();}/* P45.6 review-fix: always surface DOCKED — never reopen a stale full-screen .expanded that would re-cover the board */
+function hidePlays(){$("plays").classList.remove("show");$("plays").classList.remove("expanded");renderStackFab();}
+function toggleStackExpand(){const pl=$("plays");if(pl)pl.classList.toggle('expanded');}/* P45.6: dock ↔ full-screen the mobile stack sheet */
 function toggleStack(){const pl=$("plays");if(pl&&pl.classList.contains("show"))hidePlays();else showPlays();}
 /* P8.4: ⚡ Quick Cast retired — the 📥 "Add real cards" launcher (openCardSearch) is now the fast cast
    path (your library + all of Scryfall in one search); ad-hoc homebrew is "✎ Create a card" (openCast). */
@@ -3496,6 +3538,8 @@ function buildTabs(){const byId=id=>document.getElementById(id),q=s=>document.qu
   /* P12.1: make each box collapsible — first box of a multi-box tab open, the rest closed. The Info You/Foe duo + the Dungeon Log (its own ⤢ toggle) are left as-is per spec. A tab with only one collapsible box gets no chevron. */
   const pgroups=[[[turnflow,'p-turnflow'],[yourAttack,'p-attack'],[tools,'p-tools'],[battles,'p-battles']],[[enemyCrea,'p-enemycrea'],[pw,'p-pw'],[enemyEmb,'p-enemyemb'],[enemyZones,'p-enemyzones']],[[yourBoard,'p-board'],[yourZones,'p-myzones'],[rules,'p-rules']]];
   pgroups.forEach(list=>{const present=list.filter(([el])=>el);if(present.length<2)return;present.forEach(([el,key])=>{el.dataset.panel=key;const h2=el.querySelector('h2');if(h2&&!h2.querySelector('.pchev')){h2.style.cursor='pointer';h2.insertAdjacentHTML('beforeend','<span class="pchev" aria-hidden="true">▾</span>');h2.addEventListener('click',ev=>{if(ev.target.closest('button,a,input,select,textarea,.ibtn'))return;togglePanel(key);});}});});
+  /* P45.5: wrap the 4 board tabs + the stack in a persistent #battlefield container so a CSS @media alone flips the phone tab-stack ↔ the ≥1100px Moxfield grid (no resize listener needed). */
+  try{const wrapEl=document.querySelector('.wrap');if(wrapEl&&byId('tab-info')&&!byId('battlefield')){const bf=document.createElement('div');bf.id='battlefield';wrapEl.insertBefore(bf,byId('tab-info'));['tab-info','tab-action','tab-enemy','tab-player','plays'].forEach(id=>{const el=byId(id);if(el)bf.appendChild(el);});}}catch(e){}
   applyPanels();}                                 // Your board
 /* Tabs default CLOSED: a never-toggled tab (undefined) is collapsed; only an explicit `false` means the player opened it. */
 function applyTabs(){if(typeof S==='undefined'||!S||!S.ui||!S.ui.tabs)return;TABS.forEach(k=>{const el=document.getElementById('tab-'+k);if(el)el.classList.toggle('collapsed',S.ui.tabs[k]!==false);});}
@@ -3573,5 +3617,6 @@ beginIntro();
 try{if(typeof navigator!=='undefined'&&navigator.serviceWorker&&typeof location!=='undefined'&&/^https?:/.test(location.protocol)){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}}catch(e){}
 
 </script>
+<div id="fx" aria-hidden="true"></div>
 </body>
 </html>
