@@ -1,0 +1,24 @@
+# Guff's Gauntlet — Netlify config. Static PWA: no build step, publish the repo root.
+#
+# ONE-TIME CD setup (do this once in the Netlify dashboard):
+#   Add new site → Import an existing project → pick this GitHub repo →
+#   Build command: (leave EMPTY) · Publish directory: "/" (or ".") → Deploy.
+# After that, every push to `main` redeploys the SAME site automatically (push = deploy).
+# Until then, drag-drop to the site's Deploys tab stays the fallback (see README).
+
+[build]
+  publish = "."
+  command = ""
+
+# The service worker and the app shell are versioned in-file (gg-cache-v*), so the CDN
+# must NOT long-cache them — otherwise a new build's SW/shell won't reach installed apps.
+# Everything else (icons, manifest) can cache normally.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
