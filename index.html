@@ -649,8 +649,8 @@ const FX={
   ogre:{n:"Warren Ogre",cost:3,type:"creature",color:"R",text:"Create a 4/3 with trample.",run:["spawn","Warren Ogre",4,3,["trample"],"R"]},
   nightmare:{n:"Cinder Nightmare",cost:3,type:"creature",color:"R",text:"Create a 3/3 with flying.",run:["spawn","Cinder Nightmare",3,3,["flying"],"R"]},
   colossus:{n:"Spark Colossus",cost:5,type:"creature",color:"R",text:"Create a 6/5 with trample.",flav:"A furnace given legs.",run:["spawn","Spark Colossus",6,5,["trample"],"R"]},
-  bolt:{n:"Ember Bolt",cost:1,type:"instant",color:"R",text:"You take 3 damage.",selfLoss:3},
-  storm:{n:"Ember Storm",cost:4,type:"sorcery",color:"R",text:"You take 5 damage.",selfLoss:5},
+  bolt:{n:"Ember Bolt",cost:1,type:"instant",color:"R",text:"Deal 3 damage to you or a creature you control.",burn:3},
+  storm:{n:"Ember Storm",cost:4,type:"sorcery",color:"R",text:"Deal 5 damage to you or a creature you control.",burn:5},
   lash:{n:"Cinder Lash",cost:2,type:"sorcery",color:"R",text:"Roll a d6 — you lose that much life.",die:6,dieLoss:true},
   warcry:{n:"War-Cry",cost:2,type:"sorcery",color:"R",text:"The enemy commander gains +2/+0.",flav:"\u201CBurn brighter, or burn.\u201D",run:["cmdBuff",2]},
   pyro:{n:"Pyroclasm",cost:3,type:"sorcery",color:"R",text:"Destroy your creatures with toughness \u22642.",target:"destroyToughLE2"},
@@ -683,28 +683,28 @@ const FX={
   firstwave:{n:"First of the Wave",cost:1,type:"creature",color:"R",text:"Create a 2/1 Goblin with haste that must attack.",run:["spawn","Vanguard Goblin",2,1,["haste","must attack"],"R"],flav:"Patience is for the dead."},
   matchstick:{n:"Matchstick Mob",cost:1,type:"sorcery",color:"R",text:"Create a 1/1 Goblin with haste.",run:["spawn","Goblin Whelp",1,1,["haste"],"R"],flav:"One spark, one goblin."},
   effigy:{n:"Gate Effigy",cost:1,type:"sorcery",color:"R",text:"The enemy commander gains +2/+0.",run:["cmdBuff",2],flav:"Burn the effigy; Ashmaw grows."},
-  jab:{n:"Ember Jab",cost:1,type:"instant",color:"R",text:"You take 2 damage.",selfLoss:2,flav:"A little fire, in a hurry."},
+  jab:{n:"Ember Jab",cost:1,type:"instant",color:"R",text:"Deal 2 damage to you or a creature you control.",burn:2,flav:"A little fire, in a hurry."},
   twinwhelp:{n:"Twin Whelps",cost:2,type:"sorcery",color:"R",text:"Create two 1/1 Goblins with haste.",run:[["spawn","Spark Goblin",1,1,["haste"],"R"],["spawn","Spark Goblin",1,1,["haste"],"R"]],flav:"Two torches, one fuse."},
   sapper:{n:"Gate Sapper",cost:2,type:"creature",color:"R",text:"Create a 2/2 with haste and menace.",run:["spawn","Gate Sapper",2,2,["haste","menace"],"R"],flav:"He knows where the walls are weakest."},
   scorchwing:{n:"Scorchwing",cost:2,type:"creature",color:"R",text:"Create a 2/1 with flying and haste.",run:["spawn","Scorchwing",2,1,["flying","haste"],"R"],flav:"Over the wall and onto your face."},
   firefist:{n:"Firefist Recruit",cost:2,type:"creature",color:"R",text:"Create a 3/1 with haste.",run:["spawn","Firefist Recruit",3,1,["haste"],"R"],flav:"All punch, no plan."},
   wallbreaker:{n:"Emberfist Wallbreaker",cost:2,type:"creature",color:"R",text:"Create a 3/1 with trample and haste.",run:["spawn","Wallbreaker",3,1,["trample","haste"],"R"],flav:"Doors are a suggestion."},
   rabble:{n:"Rabble Rouser",cost:2,type:"creature",color:"R",text:"Create a 2/2 Goblin and a 1/1 Goblin.",run:[["spawn","Rabble Rouser",2,2,[],"R"],["spawn","Goblin",1,1,[],"R"]],flav:"One loud goblin makes ten brave ones."},
-  twinbolt:{n:"Twin Bolt",cost:2,type:"instant",color:"R",text:"You take 4 damage.",selfLoss:4,flav:"Why throw one?"},
+  twinbolt:{n:"Twin Bolt",cost:2,type:"instant",color:"R",text:"Deal 4 damage to you or a creature you control.",burn:4,flav:"Why throw one?"},
   chant:{n:"Goblin War-Chant",cost:2,type:"sorcery",color:"R",text:"The enemy commander gains +3/+0.",run:["cmdBuff",3],flav:"\"BURN! BURN! BURN!\""},
   firetide:{n:"Goblin Firetide",cost:3,type:"sorcery",color:"R",text:"Create three 1/1 Goblins with haste.",run:[["spawn","Goblin",1,1,["haste"],"R"],["spawn","Goblin",1,1,["haste"],"R"],["spawn","Goblin",1,1,["haste"],"R"]],flav:"The tide comes in burning."},
   chieftain:{n:"Warren Chieftain",cost:3,type:"creature",color:"R",text:"Create a 3/3 with haste and trample.",run:["spawn","Warren Chieftain",3,3,["haste","trample"],"R"],flav:"He leads from the very front, where the fire is."},
   rocket:{n:"Goblin Rocketeer",cost:3,type:"creature",color:"R",text:"Create a 2/2 with flying and haste.",run:["spawn","Rocketeer",2,2,["flying","haste"],"R"],flav:"Strapped to a firework, screaming with joy."},
   firebrand:{n:"Gatefire Firebrand",cost:3,type:"creature",color:"R",text:"Create a 2/2 with haste; the enemy commander gains +1/+0.",run:[["spawn","Firebrand",2,2,["haste"],"R"],["cmdBuff",1]],flav:"He stokes Ashmaw as he runs."},
-  emberblast:{n:"Gatefire Blast",cost:3,type:"sorcery",color:"R",text:"You take 6 damage.",selfLoss:6,flav:"Grakk likes the big ones."},
+  emberblast:{n:"Gatefire Blast",cost:3,type:"sorcery",color:"R",text:"Deal 6 damage to you or a creature you control.",burn:6,flav:"Grakk likes the big ones."},
   meteor:{n:"Gate-Meteor",cost:3,type:"sorcery",color:"R",text:"Roll a d6, then take that much +2 damage.",selfLoss:2,die:6,dieLoss:true,flav:"It falls where Grakk points."},
   warbanner:{n:"Warren War-Banner",cost:2,type:"enchant",color:"R",text:"Each of your upkeeps, lose 2 life. (Destroy to stop.)",run:["rule","Warren War-Banner","Your upkeep: lose 2 life.",0],flav:"While it flies, the Warren never tires."},
   hellrider:{n:"Warren Hellrider",cost:4,type:"creature",color:"R",text:"Create a 4/3 with haste, trample, and must attack.",run:["spawn","Hellrider",4,3,["haste","trample","must attack"],"R"],flav:"It does not stop. It has never learned how."},
   warboss:{n:"Goblin Warboss",cost:4,type:"creature",color:"R",text:"Create a 4/3 Goblin with haste and two 1/1 Goblins.",run:[["spawn","Goblin Warboss",4,3,["haste"],"R"],["spawn","Goblin",1,1,[],"R"],["spawn","Goblin",1,1,[],"R"]],flav:"\"MORE. SOONER.\""},
   mob:{n:"Burning Mob",cost:4,type:"sorcery",color:"R",text:"Create four 1/1 Goblins.",run:[["spawn","Goblin Whelp",1,1,[],"R"],["spawn","Goblin Whelp",1,1,[],"R"],["spawn","Goblin Whelp",1,1,[],"R"],["spawn","Goblin Whelp",1,1,[],"R"]],flav:"There is no front of the mob. There is only mob."},
-  conflag:{n:"Conflagrate",cost:4,type:"sorcery",color:"R",text:"You take 6 damage.",selfLoss:6,flav:"Everything at once."},
+  conflag:{n:"Conflagrate",cost:4,type:"sorcery",color:"R",text:"Deal 6 damage to you or a creature you control.",burn:6,flav:"Everything at once."},
   inferno:{n:"Inferno Colossus",cost:5,type:"creature",color:"R",text:"Create a 5/5 with trample, haste, and menace.",run:["spawn","Inferno Colossus",5,5,["trample","haste","menace"],"R"],flav:"The gate, given legs and a grudge."},
-  firestorm:{n:"Warren Firestorm",cost:5,type:"sorcery",color:"R",text:"You take 7 damage.",selfLoss:7,flav:"The whole gorge, alight."},
+  firestorm:{n:"Warren Firestorm",cost:5,type:"sorcery",color:"R",text:"Deal 7 damage to you or a creature you control.",burn:7,flav:"The whole gorge, alight."},
   overrun:{n:"Warren Overrun",cost:5,type:"sorcery",color:"R",text:"FINISHER: Each creature the enemy controls gets +2/+1 and gains trample and haste until end of turn.",run:["anthem",2,1,["trample","haste"]],flav:"\"EVERYONE. NOW. THE GATE IS OPEN.\""},
   gatemaw:{n:"Gatemaw Forge",cost:0,type:"land",color:"R",text:"A red mana source (the gate-forge itself).",flav:"The fire that never goes out."},
   emberpit:{n:"Emberpit Caldera",cost:0,type:"land",color:"R",text:"A red mana source (a pit of living coals).",flav:"Goblins are born from it, screaming."},
@@ -760,13 +760,13 @@ const FX={
   screech:{n:"Screech Goblin",cost:1,type:"creature",color:"R",text:"Create a 1/1 with flying and haste.",run:["spawn","Screech Goblin",1,1,["flying","haste"],"R"],flav:"It comes in over the parapet, screaming."},
   sicem:{n:"Sic 'Em",cost:1,type:"sorcery",color:"R",text:"Create a 2/1 Goblin with haste.",run:["spawn","Loosed Goblin",2,1,["haste"],"R"],flav:"Grakk just points. The goblins do the rest."},
   hothead:{n:"Hothead Recruit",cost:1,type:"creature",color:"R",text:"Create a 2/1 Goblin with haste that must attack; you take 1 damage.",run:["spawn","Hothead Recruit",2,1,["haste","must attack"],"R"], selfLoss:1,flav:"\"WHERE'S THE WALL. I'LL HIT THE WALL.\""},
-  singe:{n:"Singe",cost:1,type:"instant",color:"R",text:"You take 2 damage.",selfLoss:2,flav:"Just a taste of the gate-fire."},
+  singe:{n:"Singe",cost:1,type:"instant",color:"R",text:"Deal 2 damage to you or a creature you control.",burn:2,flav:"Just a taste of the gate-fire."},
   emberkin:{n:"Emberkin Pair",cost:2,type:"sorcery",color:"R",text:"Create two 1/1 Goblins with haste.",run:[["spawn","Emberkin",1,1,["haste"],"R"],["spawn","Emberkin",1,1,["haste"],"R"]],flav:"They were one goblin. Then there was more fire."},
   tagalong:{n:"Tagalong Mob",cost:2,type:"creature",color:"R",text:"Create a 2/2 Goblin with haste and a 1/1 Goblin with haste.",run:[["spawn","Mob Leader",2,2,["haste"],"R"],["spawn","Goblin",1,1,["haste"],"R"]],flav:"Wherever one goblin runs, another is already running too."},
   dartfire:{n:"Dartfire Goblin",cost:2,type:"creature",color:"R",text:"Create a 3/1 with first strike and haste.",run:["spawn","Dartfire Goblin",3,1,["first strike","haste"],"R"],flav:"Hits before you've decided to flinch."},
   batling:{n:"Cinder Batling",cost:2,type:"creature",color:"R",text:"Create a 2/2 with flying and haste.",run:["spawn","Cinder Batling",2,2,["flying","haste"],"R"],flav:"It screeches in sparks."},
   packlead:{n:"Warren Packleader",cost:2,type:"creature",color:"R",text:"Create a 2/2 with haste; the enemy commander gains +1/+0.",run:[["spawn","Packleader",2,2,["haste"],"R"],["cmdBuff",1]],flav:"The more goblins behind him, the bigger Ashmaw stands."},
-  crackle:{n:"Crackling Bolt",cost:2,type:"instant",color:"R",text:"You take 4 damage.",selfLoss:4,flav:"Loud. Then quiet."},
+  crackle:{n:"Crackling Bolt",cost:2,type:"instant",color:"R",text:"Deal 4 damage to you or a creature you control.",burn:4,flav:"Loud. Then quiet."},
   kindlemob:{n:"Kindle the Mob",cost:3,type:"sorcery",color:"R",text:"Create three 1/1 Goblins with haste and a 2/2 Goblin.",run:[["spawn","Goblin",1,1,["haste"],"R"],["spawn","Goblin",1,1,["haste"],"R"],["spawn","Goblin",1,1,["haste"],"R"],["spawn","Goblin Brute",2,2,["haste"],"R"]],flav:"Light one, and the whole warren goes up."},
   gobhorde:{n:"Goblin Horde-Caller",cost:3,type:"creature",color:"R",text:"Create a 3/2 with haste; the enemy commander gains +2/+0.",run:[["spawn","Horde-Caller",3,2,["haste"],"R"],["cmdBuff",2]],flav:"He doesn't lead the horde. He IS the horde's volume."},
   warhorn:{n:"Goblin War Horn",cost:3,type:"sorcery",color:"R",text:"Each enemy creature gets +1/+0 and gains haste until end of turn.",run:["anthem",1,0,["haste"]],flav:"The note that means: now."},
@@ -984,6 +984,8 @@ function fxEffectSummary(fx){if(!fx||typeof fx!=='object')return '';const parts=
   }});
   const TL={destroyMaxPow:'destroy your strongest creature',destroyMinPow:'you sacrifice your weakest creature',destroyTop2:'destroy your two strongest creatures',destroyToughLE2:'destroy your creatures with toughness ≤2',minusAll2:'your creatures −2/−2',wither3:'your strongest creature −3/−3',walkerMinLoy3:'your least-loyal planeswalker −3 loyalty'};
   if(fx.target)parts.push(TL[fx.target]||(''+fx.target));
+  if(fx.burn)parts.push(`burn ${fx.burn} — your face or a creature`);/* P44.2: dual-mode burn */
+  if(fx.counter)parts.push(fx.counter.mode==='hard'?'counter your spell':`counter unless you ${fx.counter.life?('pay '+fx.counter.life+' life'):('take '+(fx.counter.dmg||0))}`);/* P44.4 */
   if(fx.selfLoss)parts.push(`you lose ${fx.selfLoss} life`);
   return parts.join('; ');
 }
@@ -1164,6 +1166,12 @@ function applyTarget(t,sc,forceId){sc=(sc&&sc.length)?sc:((S.boss&&S.boss.colors
   if(t==="wither3"){if(forced){forced.minus=(forced.minus||0)+3;const d=effT(forced)<=0;if(d)killMy(forced);return `gives <b>${forced.name}</b> −3/−3${d?' — it dies':` (now ${effP(forced)}/${effT(forced)})`}`;}if(!cr.length)return null;const pick=pickWardable(byT(cr));if(!pick)return "is warded off — the enemy can't pay to target";const v=pick.victim;v.minus=(v.minus||0)+3;const dead=effT(v)<=0;if(dead)killMy(v);return `gives <b>${v.name}</b> −3/−3${dead?' — it dies':` (now ${effP(v)}/${effT(v)})`}${pick.note}`;}
   if(t==="walkerMinLoy3"){if(!wk.length)return null;const ordered=wk.slice().sort((a,b)=>a.loyalty-b.loyalty);let v=null,note='';for(const w of ordered){const pr=payWard(w);if(pr!==null){v=w;note=pr;break;}}if(!v)return "is warded off — the enemy can't pay to target your walker";v.loyalty-=3;const dead=v.loyalty<=0;if(dead)killMy(v);return `hits <b>${v.name}</b> for −3${dead?' — destroyed':` (now ${v.loyalty})`}${note}`;}
   return null;}
+/* ===== P44.2: dual-mode burn — an enemy burn spell (burn:N) resolves as EITHER N to your face OR lethal to one of your creatures (toughness ≤ N), whichever is worth more; the creature route honours protection-from-colour / hexproof / shroud / indestructible / ward. This colour-agnostic creature-targeting route is library infra — green's `fight` (P44.4) rides it. ===== */
+function burnKillables(o){const n=o.burn||0;const col=o.color;const sc=col?String(col).split('').filter(Boolean):((S.boss&&S.boss.colors)||[]);const scc=sc.length?sc:((S.boss&&S.boss.colors)||[]);const safe=c=>!kw(c,'hexproof')&&!kw(c,'shroud')&&!c.phased&&!(c.prot||[]).some(x=>scc.indexOf(x)>=0);return (S.my.creatures||[]).filter(safe).filter(c=>!kw(c,'indestructible')&&effT(c)<=n).sort((a,b)=>threatScore(b)-threatScore(a));}
+function burnValue(fx){const n=fx.burn||0;if(n<=0)return 0;const best=burnKillables(fx)[0];return Math.max(n,best?threatScore(best):0);}/* worth the greater of face damage or the scariest creature it can kill */
+function resolveBurn(p){const n=p.burn||0;if(n<=0)return;
+  if(!p._forceFace){for(const c of burnKillables(p)){if(threatScore(c)<=n)break;/* a creature not worth more than face → go face instead */const pr=payWard(c);if(pr!==null){killMy(c);log("dm",`🔥 <b>${p.n}</b> — ${ENs()} burns your <b>${c.name}</b> (${effP(c)}/${effT(c)}) for ${n}; it dies${pr}.`);return;}/* warded & the enemy can't pay → try a lesser body, else face */}}
+  S.youLife-=n;log("dm",`🔥 <b>${p.n}</b> → <b>${n}</b> to your face. (${S.youLife})`);}
 
 /* ===== COMBAT ENGINE ===== */
 function colorsOf(c){if(c.color&&c.color.length)return c.color;if(c._cmd||S.tokens.indexOf(c)>=0)return (S.boss&&S.boss.colors)||["R"];return [];}
@@ -2126,6 +2134,7 @@ function castValue(fx,ctx){
   if(!fx)return 0;ctx=ctx||{};
   const main2=(ctx.phase==='main2'||ctx.which===2);let v=0;
   if(fx.target)v+=bestTargetThreat(fx,ctx.item||null);            // removal: worth the best threat it can answer
+  if(fx.burn>0)v+=burnValue(fx);                                  // P44.2: dual-mode burn — face OR the best creature it can kill
   if(fx.dieLoss&&fx.die)v+=(fx.die+1)/2+(fx.selfLoss||0);         // variable burn: expected roll + any flat rider (P44.6 Gate-Meteor)
   else if((fx.selfLoss||0)>0)v+=fx.selfLoss;                      // deterministic burn / drain rider: 1:1 face damage
   const runs=Array.isArray(fx.run)?(Array.isArray(fx.run[0])?fx.run:[fx.run]):[];
@@ -2146,14 +2155,14 @@ function castValue(fx,ctx){
   return v;
 }
 /* P5.2 AI: max unpreventable direct damage (burn/drain selfLoss) the enemy can afford this turn + which hand cards deliver it. */
-function enemyLethalReach(){let mana=usableMana(),dmg=0,picks=[];const reach=S.hand.map((c,i)=>({i,fx:FX[c.key]})).filter(o=>o.fx&&o.fx.type!=='land'&&!o.fx.target&&!o.fx.dieLoss&&((o.fx.selfLoss||0)>0));/* exclude variable die-roll burn (e.g. Gate-Meteor) — only count deterministic unpreventable damage as lethal */reach.sort((a,b)=>((b.fx.selfLoss||0)/(b.fx.cost||1))-((a.fx.selfLoss||0)/(a.fx.cost||1)));reach.forEach(o=>{if(o.fx.cost<=mana){mana-=o.fx.cost;dmg+=(o.fx.selfLoss||0);picks.push(o.i);}});return{dmg:dmg,picks:picks};}
+function enemyLethalReach(){let mana=usableMana(),dmg=0,picks=[];const face=o=>(o.fx.selfLoss||0)||(o.fx.burn||0);/* P44.2: burn counts as unpreventable face damage (it can always go face) */const reach=S.hand.map((c,i)=>({i,fx:FX[c.key]})).filter(o=>o.fx&&o.fx.type!=='land'&&!o.fx.target&&!o.fx.dieLoss&&face(o)>0);/* exclude variable die-roll burn (e.g. Gate-Meteor) — only count deterministic unpreventable damage as lethal */reach.sort((a,b)=>(face(b)/(b.fx.cost||1))-(face(a)/(a.fx.cost||1)));reach.forEach(o=>{if(o.fx.cost<=mana){mana-=o.fx.cost;dmg+=face(o);picks.push(o.i);}});return{dmg:dmg,picks:picks};}
 function vaelMain(which){
   let summonedCmd=false;
   if(which===1)playEnemyLand();
   enemyWalkersAct();/* P38.1/P38.4: enemy walkers activate ONE loyalty ability at sorcery speed (main phase, empty stack, 1/turn/walker) — gated inside; a just-cast walker-commander acts in main2 */
   if(which===1&&!S.cmd.inPlay&&!S.plays.some(p=>p._enemyCmd&&p.status==='pending')&&usableMana()>=cmdCastCost()){const cc=cmdCastCost(),fromHand=S.cmd.inHand;S.bossMana-=cc;S.plays.push({id:S.nextId++,_enemyCmd:true,side:'boss',status:'pending',n:S.cmd.n,type:'creature',cost:cc,color:(S.boss.colors||['R']).join(''),text:`♛ ${ENs()}'s commander — resolves to its battlefield, summoning-sick.`});summonedCmd=true;log("dm",`♛ ${ENs()} casts <b>${S.cmd.n}</b> from ${fromHand?'hand':'its command zone'} (spent ${cc}, ${S.bossMana} left). It's on the stack.`);}/* P29.1: zone-aware cost — hand cast pays base only */
   /* P5.2 AI — LETHAL: when the enemy can deal >= your life in unpreventable burn/drain it can afford, it goes for the throat (prioritised over developing). Runs in main2 too, so post-combat burn closes a chipped player. */
-  if(!S.over){const lr=enemyLethalReach();if(lr.picks.length&&lr.dmg>=S.youLife){log("dm",`🎯 <b>${ENs()} sees lethal</b> — ${lr.dmg} unpreventable damage in hand!`);lr.picks.slice().sort((a,b)=>b-a).forEach(pick=>{const card=S.hand[pick],fx=FX[card.key];if(fx&&fx.cost<=usableMana()){S.bossMana-=fx.cost;S.hand.splice(pick,1);const p=mkPlay(fx);p._card=card;S.plays.push(p);log("dm",`Casts <b>${fx.n}</b> — for the throat.`);}});}}
+  if(!S.over){const lr=enemyLethalReach();if(lr.picks.length&&lr.dmg>=S.youLife){log("dm",`🎯 <b>${ENs()} sees lethal</b> — ${lr.dmg} unpreventable damage in hand!`);lr.picks.slice().sort((a,b)=>b-a).forEach(pick=>{const card=S.hand[pick],fx=FX[card.key];if(fx&&fx.cost<=usableMana()){S.bossMana-=fx.cost;S.hand.splice(pick,1);const p=mkPlay(fx);p._card=card;if(p.burn>0)p._forceFace=true;/* P44.2: burn thrown for lethal goes FACE, never at a creature */S.plays.push(p);log("dm",`Casts <b>${fx.n}</b> — for the throat.`);}});}}
   /* P6.2: choose by VALUE, not cost — filter to non-fizzles the enemy can afford, score each with castValue, and
      hold premium removal for a real target (the removal floor mirrors the instant windows). Develops with the best
      body when nothing better; tie-break favours the cheaper card (mana left for a second play), then a true tie. */
@@ -2341,7 +2350,7 @@ function resolvePlay(i){const p=S.plays[i];if(!p||p.status==="resolved")return;i
     if(simple){if(run&&run[0]==='ramp')applyRun(p.run);/* a mana rock still ramps; its body becomes the permanent */_enemyCardToPerm(p);if(_noncreature)fireEnemyProwess();checkLose();renderPlays();render();return;}/* else (a special-run enchant/artifact like the Pit's Tithe bloodpact) keeps its existing resolution — don't duplicate it as a permanent */}
   if(p.type==='creature'&&!p._copy){resolveEnemyCreature(p);checkLose();renderPlays();render();return;}/* P35.1: enemy creature cards enter as REAL permanents (not spawned tokens); token-making spells + copies fall through */
   if(p.type==='planeswalker'&&!p._copy){const fx=(p._card&&FX[p._card.key])||p;const w=mkEnemyWalker(fx,(p._card&&p._card.key)||null);S.enemyWalkers.push(w);log("dm",`✦ <b>${w.name}</b> resolves onto ${ENs()}'s battlefield — a planeswalker at loyalty ${w.loyalty}.`);if(_noncreature)fireEnemyProwess();checkLose();renderPlays();render();return;}/* P38.1: an enemy planeswalker CARD resolves to a real walker permanent (AI-activated at sorcery speed) */
-  if(p.run)applyRun(p.run);if(p.target){const msg=applyTarget(p.target,(p.color||'').split('').filter(Boolean));if(msg)log("dm",`${p.n}: ${ENs()} ${msg}.`);else log("dm",`${p.n} — no valid target on your tracked board.`);}if(p.selfLoss){S.youLife-=p.selfLoss;log("dm",`${p.n} → you lose <b>${p.selfLoss}</b>. (${S.youLife})`);}else if(!p.target&&!p.run)log("dm",`${p.n} resolves.`);
+  if(p.run)applyRun(p.run);if(p.target){const msg=applyTarget(p.target,(p.color||'').split('').filter(Boolean));if(msg)log("dm",`${p.n}: ${ENs()} ${msg}.`);else log("dm",`${p.n} — no valid target on your tracked board.`);}if(p.burn>0)resolveBurn(p);/* P44.2: dual-mode burn */if(p.selfLoss){S.youLife-=p.selfLoss;log("dm",`${p.n} → you lose <b>${p.selfLoss}</b>. (${S.youLife})`);}else if(!p.target&&!p.run&&!(p.burn>0))log("dm",`${p.n} resolves.`);
   if(p._card&&!p._copy&&p.type!=='enchant'){S.gy.push(p._card);if(p.run&&JSON.stringify(p.run).indexOf('"spawn"')>=0)log("dm",`📜 The <b>${p.n}</b> spell card goes to ${ENs()}'s graveyard — the token it created stays on the battlefield.`);}/* P7.2: when a creature/token spell resolves, make the two facts explicit — the token enters (logged in applyRun), and the same-named spell CARD goes to the graveyard */
   if(_noncreature)fireEnemyProwess();/* P40.2: enemy noncreature spell → enemy prowess */
   checkLose();renderPlays();render();}
