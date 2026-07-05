@@ -775,7 +775,7 @@ const FX={
   vilewing:{n:"Vilewing Reaper",cost:5,type:"creature",color:"B",text:"Create a 4/4 with flying, deathtouch and lifelink.",run:["spawn","Vilewing Reaper",4,4,["flying","deathtouch","lifelink"],"B"],flav:"It harvests from above, and every life it cuts, it carries home."},
   undying:{n:"The Undying Glut",cost:6,type:"creature",color:"B",text:"FINISHER: Create a 7/7 with trample, deathtouch and lifelink.",run:["spawn","The Undying Glut",7,7,["trample","deathtouch","lifelink"],"B"],flav:"Everything the Pit ever swallowed, risen at once, and still hungry."},
 };
-const DUNGEON=[
+let DUNGEON=[
   {name:"Ember Gate",villain:"Grakk the Gatewarden",colors:["R"],life:30,hp:{easy:20,standard:30,brutal:40},landStart:1,/* P5.2 balance: landStart 0→1 — restores a clean easy/std/brutal 1/2/3 opening (was a dead lever: max(0,landStart-1) floored easy to 0) + an on-curve aggro start */
    cmd:{n:"Ashmaw",p:3,t:3,kw:["haste"],cost:3,colors:["R"]},
    pool:{whelp:1,raider:1,sparkling:1,emberpup:1,torchbearer:1,prowler:1,firstwave:1,matchstick:1,effigy:1,jab:1,bolt:1,warband:1,brute:1,drake:1,twinwhelp:1,sapper:1,scorchwing:1,firefist:1,wallbreaker:1,rabble:1,warcry:1,chant:1,lash:1,twinbolt:1,aura:1,warbanner:1,ogre:1,nightmare:1,chieftain:1,rocket:1,firebrand:1,firetide:1,pyro:1,emberblast:1,meteor:1,furnace:1,hellrider:1,warboss:1,mob:1,conflag:1,storm:1,colossus:1,inferno:1,firestorm:1,overrun:1,kindle:1,sparkpup:1,screech:1,sicem:1,hothead:1,singe:1,emberkin:1,tagalong:1,dartfire:1,batling:1,packlead:1,crackle:1,kindlemob:1,gobhorde:1,warhorn:1,warpack:1,fuse:1},lands:{mtn:35,gatemaw:1,emberpit:1},swaps:{easy:{cut:["firestorm","conflag"],add:{mtn:2}},brutal:{cut:["firstwave"],add:{mtn:1}}},
@@ -814,6 +814,17 @@ const DUNGEON=[
     "Far below, in the cold halls of the <b>Drowned Conclave</b>, the remnant still holds \u2014 and its scattered generals wait to be found. Guff turns toward the deep water, and for the first time in an age the grief eases out of his face \u2014 something like hope settles there instead."
    ]},
 ];
+/* ===== P43.2: LEVELS registry — DUNGEON and the room-art keys become aliases the (future) level-select re-points. With only Level I registered, setLevel(0) is a no-op and the game behaves identically. Adding a level is PURE DATA: each room carries its own colors/hp/cmd/pool/lands/lore, so deck-building/AI/combat never notice. Enemies of other colours (W/U/G) slot in as data once the P44 mechanics library exists. ===== */
+const LEVELS=[
+  {id:'warren',levelNo:1,name:'The Warren of Embers',subtitle:'Level I',unlock:null,
+   teaser:"The downward maze of the tyrant Vael — three wardens hold the dark between you and the caged Commodore Guff.",
+   rooms:DUNGEON,art:ROOM_ART}
+];
+let _levelArt=ROOM_ART;/* mutable alias for the active level's art keys; re-pointed by setLevel so the const ROOM_ART on the ART-blob line (614) is never touched */
+function curLevel(){return LEVELS[(typeof S!=='undefined'&&S&&S.levelIdx)||0]||LEVELS[0];}
+function setLevel(idx){idx=Math.max(0,Math.min(LEVELS.length-1,idx|0));const L=LEVELS[idx];if(L){DUNGEON=L.rooms;_levelArt=L.art;}if(typeof S!=='undefined'&&S)S.levelIdx=idx;return idx;}
+/* Stable FLAT battle id for the unlock ledger (P43.6) — keyed by villain, deliberately not nested under levels (sandbox unlocks are per-enemy). */
+function battleId(level,room){const L=LEVELS[level];const v=(room&&room.villain)||'';return `${L?L.id:('lvl'+level)}:${v}`;}
 const ARRIVAL_LINES=[
  "Your spark wakes between worlds and will not be argued with. A plea catches it — thin, far, the way water finds a crack — and drags you down through dark after dark to a plane you have never walked. <em>Ashveil</em>, where you have nothing to win and no reason to stay.",
  "The air reeks of old smoke. Beneath your boots the rock splits into a downward maze of goblin-fire and grave-cold, and at its heart a flame is burning that will not die. They call it the <em>Ember</em>; they call its maker Vael; and Vael has already won the war.",
@@ -2495,18 +2506,18 @@ function openWheel(lr){const roll=1+Math.floor(Math.random()*100);_wheelCtx={rol
 function wheelHTML(landed){const base=wheelBase();const slices=WHEEL.map(s=>{const on=s===landed;const pct=s[2]==='g50'?`${Math.round(base*0.5)}g`:s[2]==='g100'?`${base}g`:s[2]==='g150'?`${Math.round(base*1.5)}g`:s[2]==='g2x'?`${base*2}g`:(s[2]==='rare'?'rare item':'legendary item');return `<div class="wslice${on?' on':''}">${on?'▸ ':''}${s[3]} <span class="manaline">${pct}</span></div>`;}).join('');
   return `<h2>🎡 Fortune Wheel</h2><p style="color:var(--bone-dim);font-style:italic">The Tyrant's hoard spills out — the wheel decides your share of the spoils.</p><div class="wheel">${slices}</div><div class="btnrow" style="margin-top:12px"><button class="big ok inline" onclick="claimWheel()">🎡 Claim ▸</button></div>`;}
 function claimWheel(){const ctx=_wheelCtx;if(!ctx)return;_wheelCtx=null;const res=spinWheel(ctx.roll);$("overlay").classList.remove("show");winCutscene(ctx.lr,res.desc);}
-function winCutscene(lr,wheelDesc){const v=DUNGEON[2];
+function winCutscene(lr,wheelDesc){const v=DUNGEON[DUNGEON.length-1];/* P43.2: the ACTIVE level's finale room (Level I → Vael) — its vaelEscape/guffFreed/epilogue beats */
   /* BEAT 1 — Vael escapes (his death-line becomes an escape curse) */
   showCutscene(v.vaelEscape,"The Ember Keeps Its Own","The Tyrant slips the leash","Find Guff ▸",{
     sigil:'🔥',accent:'var(--ember)',speaker:'Vael',quote:"Embers... do not... choose... twice...",
     buttons:[{label:"Find Guff ▸",cls:"big ember",on:()=>
       /* BEAT 2 — Guff freed */
-      showCutscene(v.guffFreed,"The Commodore Rises","The Cage Breaks · Level I","Climb out of the dark ▸",{
+      showCutscene(v.guffFreed,"The Commodore Rises",`The Cage Breaks · ${curLevel().subtitle}`,"Climb out of the dark ▸",{
         sigil:'✦',accent:'var(--azor)',eyebrowAcc:'var(--gold)',speaker:'Commodore Guff',
         quote:"I did not call for a weapon. I called into the dark — and a friend answered. I will not forget which you chose to be.",
         buttons:[{label:"Climb out of the dark ▸",cls:"big ok",on:()=>
           /* BEAT 3 — L2 bridge (carries the spoils banner + restart/quit) */
-          showCutscene(v.epilogue,"The Long Way Back","Level I complete · The road ahead",null,{
+          showCutscene(v.epilogue,"The Long Way Back",`${curLevel().subtitle} complete · The road ahead`,null,{
             sigil:'✦',accent:'var(--gold)',eyebrowAcc:'var(--gold)',speaker:'Commodore Guff',
             quote:"The Conclave is not dead while one of us still stands. Walk with me.",
             spoils:`🎲 Spoils: ${lr.names.join(" + ")}!  ·  🎡 ${wheelDesc}  ·  account ${getGold()}g`,
@@ -2624,7 +2635,7 @@ function showEnemyAbilities(){if(typeof S==='undefined'||!S||!S.boss)return;$("i
 function openLore(){const who=(prof()&&prof().name)||'Adventurer';let h=`<h2 class="loreh">📖 The Warren of Embers</h2>
   <p style="color:var(--bone-dim);font-style:italic">You are <b>${who}</b> — a planeswalker from off this plane, with nothing to win on Ashveil and no reason to stay. But grief travels between worlds, and this one's had a name: <b>Commodore Guff</b>, founder of the Conclave — his war lost, his city drowned, himself caged alive beneath the throne of the tyrant who beat him. Ashveil belongs to <b>Vael</b> now, and he keeps it by fire, by fear, and by an ember that will not let him die. You crossed the Multiverse to break one good man out of the worst place on this plane. The only road to him runs down — into the Warren of Embers.</p>
   <p class="manaline" style="margin:-2px 0 10px">Three wardens hold the dark between you and Guff's cage, each set there to make the next step down cost more than the last. Their names are not given freely — the Warren surrenders a name only to the one who beats it out of its keeper. The wardens of the descent:</p>`;
-  DUNGEON.forEach((room,i)=>{const seen=i<=S.roomIndex,cur=i===S.roomIndex;const key=ROOM_ART[i];const acc=villainAccent(room);
+  DUNGEON.forEach((room,i)=>{const seen=i<=S.roomIndex,cur=i===S.roomIndex;const key=_levelArt[i];const acc=villainAccent(room);
     const frame=(seen&&key&&typeof ART!=='undefined'&&ART[key])?`<div class="loreframe" style="--acc:${acc}" onclick="openArt('${key}','${(room.villain||'').replace(/'/g,"")}')" title="Open ${room.villain} — full art in a new window"><img src="${ART[key]}" alt="${room.villain}"><span class="lf-hint">⤢ view</span></div>`:`<div class="loreframe locked"><span>?</span></div>`;
     h+=`<div class="loreent has-art${cur?' cur':''}">${frame}<div class="lorebody"><div class="loretitle">${seen?room.villain:'???'} <span class="lorecol">[${seen?(room.colors||[]).join("/"):'??'}]</span>${cur?'<span class="lorenow">— you are here</span>':''}</div><div class="loredom">${room.name}${room.isVael?' · final boss':''}</div><div class="loretext">${seen?room.lore:'A foe you have not yet faced. Descend to learn its name and its nature.'}</div></div></div>`;});
   h+=`<div class="loreent has-art">${(typeof ART!=='undefined'&&ART.merchant)?`<div class="loreframe" style="--acc:var(--gold)" onclick="openArt('merchant','The Wandering Merchant')" title="Open The Wandering Merchant — full art in a new window"><img src="${ART.merchant}" alt="The Wandering Merchant"><span class="lf-hint">⤢ view</span></div>`:`<div class="loreframe locked"><span>?</span></div>`}<div class="lorebody"><div class="loretitle">The Wandering Merchant <span class="lorecol">[?]</span></div><div class="loredom">Between the gates</div><div class="loretext">No one sells torches to people walking into a fire — unless the torches are the point. The Merchant keeps no name and is always one step further down than you last saw them, trading the gold of the dead back to the living. Spend it freely: gold is the one thing the Warren cannot take back from you.</div></div></div>`;
@@ -2792,7 +2803,7 @@ function migrate(s){if(!s||typeof s!=='object')return s;
   ['creatures','artifacts','enchants','walkers'].forEach(k=>(s.my[k]||[]).forEach(o=>{if(o&&!o.strength)o.strength='mid';})); // P6.1: backfill strength so the generalized threat hierarchy can read it on old saves (behavior-neutral — strengthOf() already defaults to 'mid')
   // defensive scalar backfills so a partial/corrupt save never throws in render()
   if(typeof s.youLife!=='number')s.youLife=40;if(typeof s.youMax!=='number')s.youMax=Math.max(40,s.youLife||40);
-  if(s.mode!=='sandbox'&&s.mode!=='campaign')s.mode='campaign';if(typeof s.levelIdx!=='number')s.levelIdx=0;/* P43.1: two-mode + multi-level fields (levelIdx clamp against LEVELS lands in P43.2) */
+  if(s.mode!=='sandbox'&&s.mode!=='campaign')s.mode='campaign';if(typeof s.levelIdx!=='number'||s.levelIdx<0||(typeof LEVELS!=='undefined'&&s.levelIdx>=LEVELS.length))s.levelIdx=0;/* P43.1/2: two-mode + multi-level fields, levelIdx clamped to a registered level */
   if(typeof s.roomIndex!=='number'||!DUNGEON[s.roomIndex])s.roomIndex=0;if(typeof s.diff!=='string'||!DIFF[s.diff])s.diff='standard';
   if(typeof s.notes!=='string')s.notes='';if(typeof s._spoils!=='string')s._spoils='';if(typeof s.bossMana!=='number')s.bossMana=0;if(typeof s.bossManaMax!=='number')s.bossManaMax=0;
   s.combat=null;return s;}
@@ -2981,7 +2992,7 @@ function proceedAfterCommander(){_cmdChooseActive=false;_cmdCreating=false;$("ov
       sigil:'✦',accent:'var(--gold)',speaker:"the Conclave's plea",
       quote:"Find Guff. Free him. He is the last of us who can still build.",
       buttons:[{label:"Descend into the Warren ▸",cls:"big",on:()=>{
-        if(DUNGEON[0].intro)showCutscene(DUNGEON[0].intro,DUNGEON[0].villain,"Ember Gate · Level I","Enter the gate ▸",villainCutOpts(DUNGEON[0]));
+        if(DUNGEON[0].intro)showCutscene(DUNGEON[0].intro,DUNGEON[0].villain,`${DUNGEON[0].name} · ${curLevel().subtitle}`,"Enter the gate ▸",villainCutOpts(DUNGEON[0]));
       }}]
     });
   }
