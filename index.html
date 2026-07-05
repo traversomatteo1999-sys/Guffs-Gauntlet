@@ -1781,9 +1781,14 @@ function payAttackTax(cands){const tx=attackTax();if(!tx.mana&&!tx.life)return{k
   return{kept,skipped,pm,pl,tx};}
 function aiTargets(attackers){const t={};attackers.forEach(a=>t[a.id]='you');const wks=S.my.walkers.filter(w=>!w.phased);if(!wks.length)return t;
   if(S.youLife>0&&estimateSwingDamage(attackers)>=S.youLife)return t;/* P34.1: the swing is lethal to the face — send everything at the player, don't divert to a walker */
-  const target=wks.slice().sort((x,y)=>threatScore(y)-threatScore(x))[0];/* P6.1: attack the highest-THREAT walker (loyalty + ult-proximity + strength), not just the beefiest */const totalP=attackers.reduce((s,a)=>s+effP(a),0);
-  if(totalP<target.loyalty)return t; // can't kill it this turn — go for the face
-  let need=target.loyalty;attackers.slice().sort((a,b)=>effP(b)-effP(a)).forEach(a=>{if(need>0){t[a.id]=''+target.id;need-=effP(a);}});
+  const target=wks.slice().sort((x,y)=>threatScore(y)-threatScore(x))[0];/* P6.1: attack the highest-THREAT walker (loyalty + ult-proximity + strength) */
+  /* P44.3: blocker-aware SPLIT — the player will block the biggest attackers aimed at the walker with their untapped bodies, so divert the FEWEST (smallest-first, keeping big hitters on the face) whose damage still kills the walker AFTER those blocks. If it can't be pushed through, go all-face. */
+  const blockers=S.my.creatures.filter(c=>!c.tapped&&!c.phased&&!kw(c,"can't block")).length;
+  const through=set=>{const ds=set.slice().sort((x,y)=>effP(y)-effP(x));return ds.slice(blockers).reduce((s,c)=>s+effP(c),0);};/* damage past `blockers` blocks (player blocks the biggest diverted) */
+  const asc=attackers.slice().sort((a,b)=>effP(a)-effP(b));const diverted=[];
+  for(const a of asc){if(through(diverted)>=target.loyalty)break;diverted.push(a);}
+  if(through(diverted)<target.loyalty)return t;/* even diverting all can't push loyalty past their blocks — go for the face */
+  diverted.forEach(a=>t[a.id]=''+target.id);
   return t;}
 function renderDeckColors(){const box=$("deckColorRow");if(!box)return;box.innerHTML=["W","U","B","R","G"].map(col=>`<button class="manapip ${S.deckColors.indexOf(col)>=0?'on':''}" style="--mc:${COLOR_HEX[col]}" onclick="toggleDeckColor('${col}')">${col}</button>`).join("");}
 function toggleDeckColor(col){const i=S.deckColors.indexOf(col);if(i>=0)S.deckColors.splice(i,1);else S.deckColors.push(col);render();}
@@ -2121,14 +2126,21 @@ function enemyWalkerList(){const out=(S.enemyWalkers||[]).filter(w=>w&&!w.phased
    a real threat (kept above 0 unless the walker is worth trading); else build loyalty toward the ult / to protect a
    threatened walker. Difficulty-scaled via enemyLuck(). */
 function pickWalkerAbility(w){const ab=wAbil(w),plus=ab.plus,minus=ab.minus,ult=ab.ult,loy=w.loyalty||0,thr=w.ultThreshold||7;
-  if(ult&&loy>=thr)return ult;/* fire the finisher at threshold */
   const canDefend=minus&&(loy+(minus.sign||0))>=1;/* a minus that keeps loyalty ≥1 */
   const nearUlt=ult&&loy>=thr-2;/* within 2 of the ult — COMMIT to building the finisher (never reset that progress) */
   const bomb=S.my.creatures.some(c=>effP(c)>=5&&!kw(c,'hexproof')&&!kw(c,'shroud')&&!c.phased);/* a genuine bomb worth spending loyalty to answer */
-  if(canDefend&&bomb&&!nearUlt&&(enemyLuck()>=0||Math.random()<0.5))return minus;/* std/brutal answer a real bomb; easy only sometimes — so std/brutal are harder, not inverted */
+  const incoming=playerAttackPotential();/* P44.3: the player's swing potential */
+  const boardLethal=S.boss.life>0&&incoming>=S.boss.life;/* the board can kill the boss on the crack-back */
+  /* P44.3 ULT SAFETY: fire the finisher at threshold, but std+ won't fire it into a lethal board that the ult can't answer (unless the ult itself forges a blocker) — it stabilises with the minus first. easy always fires. */
+  if(ult&&loy>=thr){const ultStabilizes=Array.isArray(ult.run)&&JSON.stringify(ult.run).indexOf('spawn')>=0;
+    if(enemyLuck()<0||!boardLethal||ultStabilizes||!(canDefend&&bomb))return ult;
+    return minus;/* defer the ult one turn — snipe the bomb to survive the crack-back */}
+  /* P44.3 DEFENSIVE MINUS: spend the minus to remove a threat when a real ≥5 bomb is out OR the board can lethal the boss on the crack-back — but NOT for a merely modest board (build by default, per P38.5). easy only sometimes. */
+  if(canDefend&&!nearUlt){const defend=bomb||boardLethal;
+    if(defend&&(enemyLuck()>=0||Math.random()<0.5))return minus;}
   if(plus)return plus;/* otherwise BUILD toward the ult by default — so the finisher is reachable on every difficulty */
   if(canDefend)return minus;
-  return null;}/* review-fix HIGH: was firing the minus every turn a threat existed (bigThreat = any 4-power OR any player walker), oscillating loyalty so the ult only ever fired on EASY (inverted). Now builds by default, snipes only real ≥5-power bombs, and commits within 2 of the ult. */
+  return null;}/* review-fix HIGH (P38.5): builds by default, snipes real bombs, commits within 2 of the ult · P44.3: adds crack-back-aware ult safety + a boss/walker-threat defensive minus */
 function enemyWalkerAct(w){if(!w||S.over||w._actedTurn===S.turn)return false;const ab=pickWalkerAbility(w);if(!ab)return false;const wn=w.name||w.n||'Planeswalker';/* review-fix: a walker COMMANDER stores its name in .n, not .name */
   w.loyalty=(w.loyalty||0)+(ab.sign||0);w._actedTurn=S.turn;
   const p=mkPlay({n:`${wn}: ${ab.n} (${ab.sign>0?'+':''}${ab.sign})`,type:'instant',text:ab.text,selfLoss:ab.selfLoss,run:ab.run,target:ab.target,color:ab.color,cost:0});S.plays.push(p);
