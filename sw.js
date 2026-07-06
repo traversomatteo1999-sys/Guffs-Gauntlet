@@ -1,5 +1,5 @@
 /* Guff's Gauntlet — service worker (offline app shell).
-   The cache name is versioned (gg-cache-v50), so installing this build
+   The cache name is versioned (gg-cache-v51), so installing this build
    evicts any earlier cached version on activate. A fetch handler is present,
    which is what makes the app installable.
    v49 (P45.1): the 4 typefaces are now inlined as data-URI woff2 inside
@@ -7,8 +7,10 @@
    v50 (P47 art pass): external image assets under Pictures/ (per-warden icons +
    dungeon backdrops, the menu backdrop, and the Ember/Conclave lore art) are now
    precached for offline use. They are added best-effort AFTER the critical shell,
-   so a single missing/renamed file cannot fail the whole install. */
-const CACHE = 'gg-cache-v50';
+   so a single missing/renamed file cannot fail the whole install.
+   v51 (P47.1): those images were compressed PNG->JPEG (~19MB -> ~1.9MB), so the
+   Pictures/ list is now .jpg and the cache is bumped to drop the stale .png entries. */
+const CACHE = 'gg-cache-v51';
 const SHELL = [
   './index.html',
   './manifest.webmanifest',
@@ -21,15 +23,15 @@ const SHELL = [
 /* P47: large art assets — cached best-effort (see install handler). Names must match
    the files in Pictures/ exactly (case-sensitive on Netlify/Linux). */
 const IMAGES = [
-  './Pictures/Grakk.png',
-  './Pictures/Murglax.png',
-  './Pictures/Vael.png',
-  './Pictures/GrakkBackground.png',
-  './Pictures/MurglaxBackground.png',
-  './Pictures/VaelBackground.png',
-  './Pictures/Menu.png',
-  './Pictures/Ember.png',
-  './Pictures/DrownedConclave.png'
+  './Pictures/Grakk.jpg',
+  './Pictures/Murglax.jpg',
+  './Pictures/Vael.jpg',
+  './Pictures/GrakkBackground.jpg',
+  './Pictures/MurglaxBackground.jpg',
+  './Pictures/VaelBackground.jpg',
+  './Pictures/Menu.jpg',
+  './Pictures/Ember.jpg',
+  './Pictures/DrownedConclave.jpg'
 ];
 
 self.addEventListener('install', (e) => {
