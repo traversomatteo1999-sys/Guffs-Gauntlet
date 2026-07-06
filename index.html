@@ -82,6 +82,10 @@
   .wardenpt{width:34px;height:34px;border-radius:7px;object-fit:cover;vertical-align:middle;margin-right:8px;border:1px solid var(--line)} /* P45.2: warden portrait in the boss panel header */ @keyframes spawn{from{opacity:0}to{opacity:1}}
   /* P45.3: FX overlay — floating damage/heal numbers + life-bar flash, spawned imperatively at the mutation sites, CSS-animated, self-removing; never intercepts a tap. */
   #fx{position:fixed;inset:0;pointer-events:none;z-index:36;overflow:hidden}
+  /* P46.2: non-blocking error toast — above every overlay (z60), auto-hides unless sticky */
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(18px);z-index:60;max-width:min(460px,92vw);display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:var(--ink-3);border:1px solid var(--ember);border-radius:12px;padding:10px 13px;color:var(--bone);font-size:.82rem;box-shadow:0 16px 44px -12px rgba(0,0,0,.82);opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+  .toast .tmsg{flex:1 1 160px;min-width:0}
   .fxnum{position:absolute;transform:translate(-50%,-50%);font-family:var(--ff-mono);font-weight:700;font-size:1.5rem;line-height:1;pointer-events:none;text-shadow:0 2px 7px rgba(0,0,0,.85),0 0 2px rgba(0,0,0,.9);white-space:nowrap;animation:fxrise 1.1s cubic-bezier(.2,.7,.3,1) forwards;will-change:transform,opacity}
   .fxnum.dmg{color:var(--ember)} .fxnum.heal{color:var(--ok)} .fxnum.boss{color:var(--gold)}
   @keyframes fxrise{0%{opacity:0;transform:translate(-50%,-30%) scale(.7)}12%{opacity:1;transform:translate(-50%,-62%) scale(1.12)}100%{opacity:0;transform:translate(-50%,-165%) scale(1)}}
@@ -375,11 +379,17 @@
   .pchev{margin-left:auto;font-family:'Space Mono',monospace;font-size:.78rem;color:var(--bone-dim);transition:transform .2s;flex:none;user-select:none;padding-left:8px}
   .panel>h2>.pchev{align-self:center}
   .panel.collapsed .pchev{transform:rotate(-90deg)}
-  /* P45.3: tiered reduced-motion — kill DECORATIVE motion (near-instant) but keep functional feedback: damage/heal numbers fade in place (no travel) and the life bar still flashes. */
-  @media(prefers-reduced-motion:reduce){
-    *{animation-duration:.001ms!important;animation-delay:0ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}/* P45.3 review-fix: iteration-count:1 truly halts infinite decorative loops (e.g. .cutsigil sigilPulse) instead of flickering them at 0.001ms */
-    .fxnum{animation:fxfade .9s ease forwards!important} .bar.barflash{animation:barflash .45s ease!important}
-  }
+  /* P45.3 + P46.3: tiered motion. A JS-set <html> class (motion-off/soft/full) overrides the OS query in BOTH directions; with no class the OS prefers-reduced-motion query is the fallback. off = decorative halted + damage numbers fade in place; soft = decorative halted but numbers still rise; full = everything animates. iteration-count:1 halts infinite loops (e.g. .cutsigil sigilPulse) rather than flickering them. */
+  html.motion-off *,html.motion-soft *{animation-duration:.001ms!important;animation-delay:0ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+  @media(prefers-reduced-motion:reduce){html:not(.motion-full):not(.motion-soft):not(.motion-off) *{animation-duration:.001ms!important;animation-delay:0ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+  html.motion-off .fxnum{animation:fxfade .9s ease forwards!important}
+  html.motion-soft .fxnum{animation:fxrise 1.1s cubic-bezier(.2,.7,.3,1) forwards!important}
+  @media(prefers-reduced-motion:reduce){html:not(.motion-full):not(.motion-soft):not(.motion-off) .fxnum{animation:fxfade .9s ease forwards!important}}
+  html.motion-off .bar.barflash,html.motion-soft .bar.barflash{animation:barflash .45s ease!important}
+  @media(prefers-reduced-motion:reduce){html:not(.motion-full):not(.motion-soft):not(.motion-off) .bar.barflash{animation:barflash .45s ease!important}}
+  /* P46.3: settings panel groups */
+  .setgrp{margin:12px 0;padding-bottom:9px;border-bottom:1px solid var(--line)} .setgrp:last-of-type{border-bottom:0}
+  .setlab{font-family:var(--ff-mono);font-size:var(--fs-badge);letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
 </style>
 </head>
 <body>
@@ -411,7 +421,7 @@
   <div class="controls">
     <span class="lab">Difficulty</span>
     <div class="seg" id="diffSeg"><button data-d="easy">Easy</button><button data-d="standard" class="on">Standard</button><button data-d="brutal">Brutal</button></div>
-    <button class="mini ember" id="resetBtn">↺ Restart Dungeon</button><button class="mini azor" onclick="undo()">↩ Undo</button><button class="mini gold" onclick="openTutorial()">❓ Tutorial</button><button class="mini" onclick="openLore()">📖 Lore</button><button class="mini gold" onclick="openLibrary()">🃏 Library</button><button class="mini" id="muteBtn" onclick="toggleMute()" title="Toggle sound">🔊 Sound</button><input type="range" id="volSlider" min="0" max="100" value="100" title="Volume" oninput="setVol(this.value)" style="width:80px;align-self:center;accent-color:var(--gold)"><button class="mini" id="padBtn" onclick="togglePad()" title="Ambient drone — off by default">🎵 Ambience off</button><button class="mini azor" onclick="showMenu()">☰ Menu</button><span class="goldpill" id="goldNote" style="align-self:center">💰 0</span><span class="lab" id="diffNote">standard</span>
+    <button class="mini ember" id="resetBtn">↺ Restart Dungeon</button><button class="mini azor" onclick="undo()">↩ Undo</button><button class="mini gold" onclick="openTutorial()">❓ Tutorial</button><button class="mini" onclick="openLore()">📖 Lore</button><button class="mini gold" onclick="openLibrary()">🃏 Library</button><button class="mini" id="muteBtn" onclick="toggleMute()" title="Toggle sound">🔊 Sound</button><input type="range" id="volSlider" min="0" max="100" value="100" title="Volume" oninput="setVol(this.value)" style="width:80px;align-self:center;accent-color:var(--gold)"><button class="mini" id="padBtn" onclick="togglePad()" title="Ambient drone — off by default">🎵 Ambience off</button><button class="mini" onclick="openSettings()" title="Volume · text size · animations · data">⚙ Settings</button><button class="mini azor" onclick="showMenu()">☰ Menu</button><span class="goldpill" id="goldNote" style="align-self:center">💰 0</span><span class="lab" id="diffNote">standard</span>
   </div>
 
   <section class="tab" id="tab-info"><button class="tabhead" onclick="toggleTab('info')"><span class="tablabel">⟡ Info <span class="tabnote">you · foe · log</span></span><span class="tabright"><span class="tabhint"></span><span class="tabchev">▾</span></span></button><div class="tabbody" id="tb-info"></div></section>
@@ -563,7 +573,7 @@
     </div>
   </div>
 
-  <div class="log" id="logBox"><h2 style="font-family:'Grenze Gotisch'"><span>📜 Dungeon Log</span><button class="logtoggle" id="logToggle" onclick="toggleLog()" aria-label="Expand or collapse the log">⤢</button></h2><div id="log" aria-live="polite" aria-atomic="false"></div></div>
+  <div class="log" id="logBox"><h2 style="font-family:'Grenze Gotisch'"><span>📜 Dungeon Log</span><button class="logtoggle" id="logToggle" onclick="toggleLog()" aria-label="Expand or collapse the log">⤢</button></h2><div id="log" aria-live="polite" aria-atomic="false" aria-relevant="additions"></div></div>
 
   <!-- P1.10: the Stack — a docked, auto-surfacing popup that doesn't block the board, openable on demand via the launcher -->
   <div class="resolver" id="resolver" role="dialog" aria-label="Attack resolution">
@@ -618,7 +628,7 @@
           <p class="manaline" style="margin:6px 0 0;font-size:.62rem">Full save = everything (profiles, gold, in-progress game). Library = only your cards &amp; tokens, to share between profiles.</p>
         </div>
       </div>
-      <div class="btnrow" style="margin-top:14px;flex-wrap:wrap"><button class="mini gold" onclick="openLibrary()">🃏 Card Library</button><button class="mini" onclick="openTutorial()">❓ How to play</button><button class="mini" onclick="openLore()">📖 Lore</button><button class="mini" id="menuMuteBtn" onclick="toggleMute()" title="Toggle sound">🔊 Sound</button></div>
+      <div class="btnrow" style="margin-top:14px;flex-wrap:wrap"><button class="mini gold" onclick="openLibrary()">🃏 Card Library</button><button class="mini" onclick="openTutorial()">❓ How to play</button><button class="mini" onclick="openLore()">📖 Lore</button><button class="mini" id="menuMuteBtn" onclick="toggleMute()" title="Toggle sound">🔊 Sound</button><button class="mini" onclick="openSettings()" title="Volume · text size · animations · data">⚙ Settings</button></div>
       <button class="big azor" id="continueBtn" style="margin-top:16px;display:none" onclick="continueLatest()">▶ Continue last game</button>
       <div class="btnrow" style="margin-top:12px;justify-content:center;gap:12px;flex-wrap:wrap"><button class="big ok" style="min-width:200px" onclick="openCampaign()">⚔ Campaign ▸</button><button class="big azor" style="min-width:200px" onclick="openSandbox()">🏟 Sandbox ▸</button></div>
       <p class="manaline" style="text-align:center;margin:8px 0 0;font-size:.6rem;opacity:.6">⟳ Autosaves as you play — close any time and pick up where you left off.</p>
@@ -1652,7 +1662,7 @@ let _hist=[],_committed=null,_settleScheduled=false,_actLabel='',_lastLog='';
    mutating actions: just call render() at the end (every action already does) —
    no per-action checkpoint bookkeeping needed. */
 function stripJSON(s){return JSON.stringify(s,(k,v)=>(k==='_drawer'||k==='_atk'||k==='_edit'||k==='_stp'||k==='_stt'||k==='combat'||k==='ui'||k==='stackProposal')?undefined:v);}
-function settleHistory(){if(typeof S==='undefined'||!S)return;const fullNow=JSON.stringify(S),stripNow=stripJSON(S);
+function settleHistory(){if(typeof S==='undefined'||!S)return;if(_renderBroke)return;/* P46.2: the last render threw — don't commit/autosave a possibly half-mutated S until a clean render clears the flag */const fullNow=JSON.stringify(S),stripNow=stripJSON(S);
   if(_committed===null){_committed={full:fullNow,strip:stripNow};return;}
   if(stripNow!==_committed.strip){_hist.push({s:_committed.full,label:_actLabel||_lastLog||'an action'});if(_hist.length>80)_hist.shift();_committed={full:fullNow,strip:stripNow};scheduleAutosave();}
   _actLabel='';}
@@ -1666,8 +1676,18 @@ let _bornIds=new Set();
 function fxFloat(anchor,text,cls){try{const fx=document.getElementById('fx');if(!fx||!anchor||!anchor.getBoundingClientRect)return;const r=anchor.getBoundingClientRect();if(!r||(!r.width&&!r.height))return;/* hidden / headless → skip so no stray corner numbers */const n=document.createElement('div');n.className='fxnum '+(cls||'');n.textContent=text;n.style.left=(r.left+r.width/2)+'px';n.style.top=(r.top+r.height*0.35)+'px';fx.appendChild(n);const kill=function(){if(n.parentNode)n.parentNode.removeChild(n);};n.addEventListener('animationend',kill);setTimeout(kill,1500);}catch(e){}}
 function fxFlash(bar){try{if(!bar||!bar.classList)return;if(bar.closest)bar=bar.closest('.bar')||bar;/* P45.3 review-fix: the CSS rule is .bar.barflash, but youBar/bossBar are the classless <i> fills — flash the .bar track so the pulse actually matches */if(!bar||!bar.classList)return;bar.classList.remove('barflash');void bar.offsetWidth;bar.classList.add('barflash');setTimeout(function(){if(bar&&bar.classList)bar.classList.remove('barflash');},650);}catch(e){}}
 function fxLife(who,n){if(!n)return;const isYou=who==='you';fxFloat(document.getElementById(isYou?'youLife':'bossLife'),(n>0?'+':'−')+Math.abs(n),n>0?'heal':(isYou?'dmg':'boss'));fxFlash(document.getElementById(isYou?'youBar':'bossBar'));}
+/* P46.2: error reporting — nothing fails silently. window.onerror/unhandledrejection buffer the error, log it (sys channel), show a non-blocking toast with a ⬇ debug-report download, and set _renderBroke so a crash mid-render can't autosave a half-mutated S. */
+let _errBuf=[],_renderBroke=false;
+function showToast(html,opts){opts=opts||{};try{const t=document.getElementById('toast');if(!t)return;t.innerHTML=html;t.classList.add('show');clearTimeout(showToast._t);if(!opts.sticky)showToast._t=setTimeout(function(){t.classList.remove('show');},opts.ms||4200);}catch(e){}}
+function hideToast(){try{const t=document.getElementById('toast');if(t)t.classList.remove('show');}catch(e){}}
+function recordError(kind,msg,detail){try{_renderBroke=true;_errBuf.push({kind:kind,msg:(''+msg).slice(0,300),detail:detail?(''+detail).slice(0,700):'',ts:Date.now(),turn:(typeof S!=='undefined'&&S)?S.turn:null});if(_errBuf.length>20)_errBuf.shift();}catch(_){}
+  try{log('sys','⚠ Something broke ('+kind+'). Your save is safe — keep playing, or grab a debug report from ⚙ Settings.');}catch(_){}
+  try{showToast('<span class="tmsg">⚠ Something broke — your save is safe.</span><button class="mini gold" onclick="downloadDebugReport()">⬇ Debug report</button><button class="mini" onclick="hideToast()">dismiss</button>',{sticky:true});}catch(_){}}
+function downloadDebugReport(){try{const rep={game:"Guff's Gauntlet",saveVersion:(typeof SAVE_V!=='undefined'?SAVE_V:null),ts:new Date().toISOString(),ua:(typeof navigator!=='undefined'?navigator.userAgent:''),profile:(typeof DB!=='undefined'&&DB)?DB.active:null,errors:_errBuf.slice(),state:(function(){try{return(typeof S!=='undefined'&&S)?{mode:S.mode,levelIdx:S.levelIdx,room:S.roomIndex,turn:S.turn,youLife:S.youLife,youMax:S.youMax,diff:S.diff,over:S.over,phase:S.phase,creatures:((S.my&&S.my.creatures)||[]).length,tokens:(S.tokens||[]).length}:null;}catch(_){return null;}})()};
+  const blob=new Blob([JSON.stringify(rep,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='guffs-gauntlet-debug.json';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);hideToast();}catch(e){try{alert('Could not build the debug report.');}catch(_){}}}
+function installErrorHandlers(){try{window.onerror=function(msg,src,line,col,err){recordError('script',msg,(err&&err.stack)?err.stack:((src||'')+':'+line+':'+col));return false;};window.addEventListener('unhandledrejection',function(ev){const r=ev&&ev.reason;recordError('promise',(r&&r.message)||r||'unhandled rejection',r&&r.stack);});}catch(e){}}
 function render(){
-  scheduleSettle();
+  scheduleSettle();_renderBroke=false;/* P46.2: a completed render clears the crash flag; a render that throws leaves it set so the settle/autosave below skips a half-mutated S */
   applyStaticEmblems();/* P13.2: recompute continuous static-emblem buffs before anything reads effP/effT */
   renderTrack();
   $("youLife").textContent=S.youLife;$("youMax").textContent=S.youMax;$("youBar").style.width=Math.max(0,Math.min(100,S.youLife/S.youMax*100))+"%";
@@ -1710,7 +1730,7 @@ function renderAtkPick(){const box=$("atkPick");box.innerHTML="";const av=S.my.c
 function renderMy(){
   const mc=$("myCrea");mc.innerHTML="";if(!S.my.creatures.length)mc.innerHTML='<span class="empty">none logged</span>';
   S.my.creatures.forEach(c=>{const el=document.createElement("div");const _nu=!_bornIds.has(c.id);if(_nu)_bornIds.add(c.id);el.className="crea"+(_nu?" isnew":"")+(c.tapped?" tapped":"")+(c.phased?" phased":"")+(c.isCmd?" cmdcard mine":"");const buff=c.plus||0,deb=c.minus||0;
-    el.innerHTML=`${cardArt(c)}<button class="slay mini ember" onclick="rmMy('creatures',${c.id})">✕</button>
+    el.innerHTML=`${cardArt(c)}<button class="slay mini ember" aria-label="remove ${c.name}" onclick="rmMy('creatures',${c.id})">✕</button>
       <input type="text" value="${c.name}" style="width:100%;font-size:.8rem" onchange="setMy('creatures',${c.id},'name',this.value)">
       <div class="cpt">${effP(c)}/${effT(c)}${buff?` <span class="buff">+${buff}</span>`:''}${deb?` <span class="deb">−${deb}</span>`:''}${colorDots(c)}</div>
       <div class="badges">${c.tapped?'<span class="badge tap">tapped</span>':''}${c.sick?'<span class="badge tap">sick</span>':''}${c.noAbil?'<span class="badge no">no-abil</span>':''}${propBadges(c)}${kwBadges('my',c.id,c)}${blockBadge(c)}${(c.other||[]).map((o,oi)=>`<span class="badge" style="cursor:pointer" title="click to remove" onclick="remCtrOther('creatures',${c.id},${oi})">${o} ✕</span>`).join("")}</div>
@@ -2981,12 +3001,13 @@ const SKEY='guffsGauntlet.v1';
 let DB={profiles:{},active:null};
 function storageGet(){try{if(typeof localStorage==='undefined')return null;const r=localStorage.getItem(SKEY);return r?JSON.parse(r):null;}catch(e){return null;}}
 function storageSet(o){try{if(typeof localStorage==='undefined')return false;localStorage.setItem(SKEY,JSON.stringify(o));return true;}catch(e){return false;}}
-function blankProfile(name){return {name,wins:0,losses:0,library:[],tokens:[],created:Date.now(),
+function blankProfile(name){return {name,wins:0,losses:0,library:[],tokens:[],created:Date.now(),seenTutorial:false,/* P46.5: a brand-new profile is offered the tutorial once, after its first arrival cutscene */
   camp:{gold:0,pending:[],stash:[],cleared:{},level:0,run:null},
   sand:{gold:0,pending:[],stash:[],save:null,stats:{}}};}
 /* P43.1: per-mode economy buckets. Campaign (⚔) and Sandbox (🏟) each keep their OWN gold, pending purchases, and stash so the two purses never mix. `camp.cleared` is the flat per-enemy unlock ledger (P43.6), `camp.level` the highest unlocked level, `camp.run`/`sand.save` the per-mode autosave slots. library/tokens stay profile-global (shared by both modes). */
 function migrateProfiles(){if(!DB||!DB.profiles)return;
   Object.keys(DB.profiles).forEach(name=>{const p=DB.profiles[name];if(!p||typeof p!=='object')return;
+    if(p.seenTutorial==null)p.seenTutorial=true;/* P46.5: existing profiles have already played — never first-run-prompt them */
     if(!p.camp||typeof p.camp!=='object')p.camp={gold:(typeof p.gold==='number'?p.gold:0),pending:Array.isArray(p.pending)?p.pending:[],stash:Array.isArray(p.stash)?p.stash:[],cleared:{},level:0,run:null};/* legacy flat gold/pending/stash fold into the campaign bucket */
     else{if(typeof p.camp.gold!=='number')p.camp.gold=0;['pending','stash'].forEach(k=>{if(!Array.isArray(p.camp[k]))p.camp[k]=[];});if(!p.camp.cleared||typeof p.camp.cleared!=='object')p.camp.cleared={};if(typeof p.camp.level!=='number')p.camp.level=0;if(p.camp.run===undefined)p.camp.run=null;}
     if(!p.sand||typeof p.sand!=='object')p.sand={gold:0,pending:[],stash:[],save:null,stats:{}};
@@ -3015,7 +3036,7 @@ let _uiMode='campaign';/* which mode the menu/store is currently browsing — de
 function _modeKey(mode){mode=mode||(typeof S!=='undefined'&&S&&S.mode)||'campaign';return mode==='sandbox'?'sand':'camp';}
 function getSave(mode){const p=prof();if(!p)return null;return _modeKey(mode)==='sand'?(p.sand&&p.sand.save):(p.camp&&p.camp.run);}
 function setSave(sv,mode){const p=prof();if(!p)return;if(_modeKey(mode)==='sand'){if(!p.sand)p.sand={gold:0,pending:[],stash:[],save:null,stats:{}};p.sand.save=sv;}else{if(!p.camp)p.camp={gold:0,pending:[],stash:[],cleared:{},level:0,run:null};p.camp.run=sv;}saveDB();}
-function doAutosave(){try{if(!_liveGame||typeof S==='undefined'||!S||S.over)return;setSave({v:SAVE_V,ts:Date.now(),profile:DB.active,mode:S.mode,levelIdx:S.levelIdx,room:S.roomIndex,turn:S.turn,S:JSON.parse(JSON.stringify(S))});}catch(e){}}/* keyed to the live S.mode — always the game's own mode */
+function doAutosave(){try{if(!_liveGame||typeof S==='undefined'||!S||S.over||_renderBroke)return;/* P46.2: skip autosave while a render is broken */setSave({v:SAVE_V,ts:Date.now(),profile:DB.active,mode:S.mode,levelIdx:S.levelIdx,room:S.roomIndex,turn:S.turn,S:JSON.parse(JSON.stringify(S))});}catch(e){}}/* keyed to the live S.mode — always the game's own mode */
 function hasSave(mode){const sv=getSave(mode);return !!(sv&&sv.S&&!sv.S.over);}
 /* A finished descent (win/lose) has nothing to continue — drop the autosave so hasSave()/descentInProgress() read true ONLY while a run is genuinely underway, and so a death can't be undone via "Continue last game". */
 function clearSave(){try{setSave(null);}catch(e){}}
@@ -3287,6 +3308,10 @@ function pickCommanderFromScry(i){if(!_cmdScryResults[i])return;const cfg=SCRY.b
 function newCommander(){_cmdCreating=true;openCast();}
 function castAsCommander(){const cfg=readCastForm();if(setStartCommander(cfg)){if(_cmdChooseActive)proceedAfterCommander();else closeOverlay();}}
 function skipCommander(){proceedAfterCommander();}
+/* ===== P46.5: first-run onboarding — offer (not force) the tutorial once per profile, after the arrival cutscene. The flag is set the moment the offer appears, so declining or reloading never re-prompts; the ❓/⚙ opt-in entry points stay. ===== */
+function shouldOfferTutorial(){try{const p=prof();return !!(p&&p.seenTutorial===false&&S&&S.mode==='campaign');}catch(e){return false;}}
+function markTutorialSeen(){try{const p=prof();if(p&&p.seenTutorial!==true){p.seenTutorial=true;saveDB();}}catch(e){}}
+function offerTutorial(next){markTutorialSeen();showCutscene(["New to the Gauntlet? A quick tour covers casting, the stack, combat and the dungeon — or dive straight in. You can reopen it any time from ❓ or ⚙ Settings."],"Learn the ropes?","First run · welcome",null,{sigil:'📖',accent:'var(--azor)',speaker:'',quote:'',buttons:[{label:"📖 Learn the ropes",cls:"big azor",on:()=>{closeCutscene();openTutorial();}},{label:"▶ Just play",cls:"big",on:()=>{closeCutscene();if(next)next();}}]});}
 function proceedAfterCommander(){_cmdChooseActive=false;_cmdCreating=false;$("overlay").classList.remove("show");
   if(S.mode==='sandbox'){/* P43.5: a sandbox battle skips the campaign arrival/gate story — straight to the CHOSEN foe's own intro (room 0's gate would be the wrong room for a room-2 sandbox fight) */const room=DUNGEON[S.roomIndex]||DUNGEON[0];S._introShown=true;if(room&&room.intro)showCutscene(room.intro,room.villain,`🏟 ${room.name} · ${curLevel().subtitle}`,room.isVael?"Face the Tyrant ▸":"Fight ▸",villainCutOpts(room));return;}
   if(!S._introShown){S._introShown=true;
@@ -3294,7 +3319,8 @@ function proceedAfterCommander(){_cmdChooseActive=false;_cmdCreating=false;$("ov
       sigil:'✦',accent:'var(--gold)',speaker:"the Conclave's plea",
       quote:"Find Guff. Free him. He is the last of us who can still build.",
       buttons:[{label:"Descend into the Warren ▸",cls:"big",on:()=>{
-        if(DUNGEON[0].intro)showCutscene(DUNGEON[0].intro,DUNGEON[0].villain,`${DUNGEON[0].name} · ${curLevel().subtitle}`,"Enter the gate ▸",villainCutOpts(DUNGEON[0]));
+        const gate=()=>{if(DUNGEON[0].intro)showCutscene(DUNGEON[0].intro,DUNGEON[0].villain,`${DUNGEON[0].name} · ${curLevel().subtitle}`,"Enter the gate ▸",villainCutOpts(DUNGEON[0]));};
+        if(shouldOfferTutorial())offerTutorial(gate);else gate();/* P46.5: first-run tutorial offer, right after the arrival cutscene */
       }}]
     });
   }
@@ -3544,6 +3570,36 @@ function defaultPanelStates(){const out={};TABS.forEach(k=>{const tab=document.g
 function applyPanels(){if(typeof S==='undefined'||!S)return;if(!S.ui)S.ui={tabs:{},panels:{}};if(!S.ui.panels||typeof S.ui.panels!=='object')S.ui.panels={};if(!Object.keys(S.ui.panels).length){const d=defaultPanelStates();if(Object.keys(d).length)S.ui.panels=d;}document.querySelectorAll('.panel[data-panel]').forEach(el=>{el.classList.toggle('collapsed',S.ui.panels[el.dataset.panel]===false);});}
 function togglePanel(k){if(!S.ui)S.ui={tabs:{},panels:{}};if(!S.ui.panels||typeof S.ui.panels!=='object')S.ui.panels={};if(!Object.keys(S.ui.panels).length)S.ui.panels=defaultPanelStates();S.ui.panels[k]=(S.ui.panels[k]===false);applyPanels();scheduleAutosave();}
 /* ===== Satchel popup (opened from the You panel, above the commander box) ===== */
+/* ===== P46.3: ⚙ Settings — one overlay for volume/mute · text size · animation level · data export/import. Persisted on DB.settings; applied live + at boot (loadSettings). ===== */
+function applyTextSize(){try{const sz=((DB&&DB.settings)||{}).textSize||'M';const px={S:15,M:16,L:18}[sz]||16;document.documentElement.style.fontSize=px+'px';}catch(e){}}
+function setTextSize(sz){try{if(!DB.settings)DB.settings={};DB.settings.textSize=sz;saveDB();}catch(e){}applyTextSize();if($("overlay")&&$("overlay").classList.contains('show'))openSettings();}
+function applyAnim(){try{const lv=((DB&&DB.settings)||{}).anim||'auto';const h=document.documentElement;h.classList.remove('motion-full','motion-soft','motion-off');if(lv==='full'||lv==='soft'||lv==='off')h.classList.add('motion-'+lv);}catch(e){}}
+function setAnimLevel(lv){try{if(!DB.settings)DB.settings={};DB.settings.anim=lv;saveDB();}catch(e){}applyAnim();if($("overlay")&&$("overlay").classList.contains('show'))openSettings();}
+function loadSettings(){try{if(!DB.settings)DB.settings={};}catch(e){}applyTextSize();applyAnim();}
+function settingsHTML(){const s=(DB&&DB.settings)||{};const ts=s.textSize||'M';const an=s.anim||'auto';const vol=Math.round(((typeof _vol==='number')?_vol:1)*100);
+  const seg=(cur,opts,fn)=>`<div class="seg">${opts.map(([v,l])=>`<button class="${cur===v?'on':''}" onclick="${fn}('${v}')">${l}</button>`).join('')}</div>`;
+  return `<h2>⚙ Settings</h2>
+  <div class="setgrp"><div class="setlab">🔊 Sound</div><div class="btnrow" style="align-items:center;gap:8px"><button class="mini" onclick="toggleMute();openSettings()">${_muted?'🔇 Muted':'🔊 On'}</button><input type="range" min="0" max="100" value="${vol}" aria-label="Volume" oninput="setVol(this.value)" style="flex:1 1 150px;accent-color:var(--gold)"><button class="mini" onclick="togglePad();openSettings()">${_padOn?'🎵 Ambience on':'🎵 Ambience off'}</button></div></div>
+  <div class="setgrp"><div class="setlab">🔤 Text size</div>${seg(ts,[['S','Small'],['M','Medium'],['L','Large']],'setTextSize')}</div>
+  <div class="setgrp"><div class="setlab">🎞 Animations</div>${seg(an,[['full','Full'],['soft','Soft'],['off','Off'],['auto','Auto']],'setAnimLevel')}<div class="manaline" style="margin-top:5px">“Auto” follows your device. “Off” still shows static damage numbers.</div></div>
+  <div class="setgrp"><div class="setlab">💾 Data</div><div class="btnrow"><button class="mini azor" onclick="exportSave()">⬇ Save</button><label class="mini" role="button" style="cursor:pointer">⬆ Save<input type="file" accept="application/json" style="display:none" onchange="importSave(this)"></label><button class="mini azor" onclick="exportLibrary()">⬇ Library</button><label class="mini" role="button" style="cursor:pointer">⬆ Library<input type="file" accept="application/json" style="display:none" onchange="importLibrary(this)"></label></div></div>
+  <div class="btnrow" style="margin-top:12px;justify-content:space-between"><button class="mini gold" onclick="downloadDebugReport()">⬇ Debug report</button><button class="big azor inline" onclick="closeOverlay()">Done</button></div>`;}
+function openSettings(){if(typeof DB==='undefined'||!DB)return;$("modalBody").innerHTML=settingsHTML();$("overlay").classList.add("show");}
+/* ===== P46.4: accessibility — dialog focus management + Esc. Overlays trap Tab while open and restore focus on close; Esc closes any open overlay EXCEPT the combat resolver (which keeps its no-accidental-dismiss Approve/Cancel rule). ===== */
+const _A11Y_OVERLAYS=['overlay','infoOverlay','store','library','campaign','sandbox','plays','cutscene','menu'];/* Esc-closable, checked topmost-first */
+const _A11Y_CLOSE={overlay:'closeOverlay',infoOverlay:'closeInfo',store:'closeStore',library:'closeLibrary',campaign:'closeCampaign',sandbox:'closeSandbox',plays:'hidePlays',cutscene:'closeCutscene',menu:null};
+const _A11Y_TRAP=_A11Y_OVERLAYS.concat(['resolver']);/* the resolver traps focus too, but is NOT Esc-closable */
+let _focusReturn=null;
+function _focusables(el){try{return [...el.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),label,[tabindex]:not([tabindex="-1"])')].filter(n=>n.offsetParent!==null||n===document.activeElement);}catch(e){return [];}}
+function _topOverlay(){for(const id of _A11Y_TRAP){const el=document.getElementById(id);if(el&&el.classList.contains('show'))return el;}return null;}
+function installA11y(){try{
+  const obs=new MutationObserver(function(muts){muts.forEach(function(m){const el=m.target;const shown=el.classList.contains('show');if(shown&&!el._a11yShown){el._a11yShown=true;try{if(!_focusReturn)_focusReturn=document.activeElement;const f=_focusables(el);if(f.length)f[0].focus();}catch(e){}}else if(!shown&&el._a11yShown){el._a11yShown=false;try{if(!_topOverlay()){if(_focusReturn&&_focusReturn.focus)_focusReturn.focus();_focusReturn=null;}}catch(e){}}});});
+  _A11Y_TRAP.forEach(function(id){const el=document.getElementById(id);if(el){el._a11yShown=el.classList.contains('show');obs.observe(el,{attributes:true,attributeFilter:['class']});}});
+  document.addEventListener('keydown',function(ev){
+    if(ev.key==='Escape'){for(const id of _A11Y_OVERLAYS){const el=document.getElementById(id);if(el&&el.classList.contains('show')){if(id==='cutscene'&&typeof S!=='undefined'&&S&&(S.paused||S.over)){ev.preventDefault();return;}/* P46.4 review-fix: a progression-GATING cutscene (Encounter Cleared / win / lose) stays button-only — Esc-closing it would skip advance()/restart and strand the paused run. Narrative cutscenes (not paused/over) still close on Esc. */const fn=_A11Y_CLOSE[id];if(fn&&typeof window[fn]==='function')window[fn]();else el.classList.remove('show');ev.preventDefault();return;}}return;}
+    if(ev.key==='Tab'){const el=_topOverlay();if(!el)return;const f=_focusables(el);if(!f.length)return;const first=f[0],last=f[f.length-1],a=document.activeElement;if(ev.shiftKey&&(a===first||!el.contains(a))){last.focus();ev.preventDefault();}else if(!ev.shiftKey&&(a===last||!el.contains(a))){first.focus();ev.preventDefault();}}
+  });
+}catch(e){}}
 function openSatchel(){if(typeof S==='undefined'||!S)return;$("modalBody").innerHTML=satchelHTML();$("overlay").classList.add("show");}
 function satchelHTML(){const items=(S&&S.inv)||[];if(!items.length)return `<h2>🎒 Satchel</h2><p style="color:var(--bone-dim);font-style:italic">Empty for now. Clearing a room drops <b>loot</b> here automatically; the <b>🛒 Merchant</b> restocks you <b>between descents</b>. Once you descend the Merchant is closed — no shopping until the level ends.</p>`;
   return `<h2>🎒 Satchel <span class="tag">${items.length} item${items.length===1?'':'s'}</span></h2><p class="manaline" style="margin:2px 0 10px">Consumables you trigger; passives apply automatically; reminders you apply yourself. Passives & reminders last exactly <b>one descent</b>. New gear comes from room-clear <b>loot</b> (as you descend) and the <b>🛒 Merchant</b> (between descents only) — once you descend the Merchant is closed until the level ends.</p><div class="inv">${items.map((it,i)=>{const b=BOONS[it.id];const lasts=b.kind==='passive'||b.kind==='reminder';
@@ -3600,8 +3656,8 @@ function loadMute(){try{_muted=!!(DB&&DB.muted);}catch(e){_muted=false;}}
 function toggleMute(){_muted=!_muted;try{DB.muted=_muted;saveDB();}catch(e){}if(_muted){stopPad();}else{unlockAudio();sfx('button');startPad();}renderMuteBtn();}
 function renderMuteBtn(){['muteBtn','menuMuteBtn'].forEach(id=>{const b=$(id);if(b)b.textContent=_muted?'🔇 Muted':'🔊 Sound';});}
 
-loadDB();loadMute();loadVol();
-fresh();setDiff("standard");render();setWarrenArt();setMenuArt();buildTabs();applyTabs();renderMuteBtn();renderVolUI();
+loadDB();loadMute();loadVol();installErrorHandlers();loadSettings();
+fresh();setDiff("standard");render();setWarrenArt();setMenuArt();buildTabs();applyTabs();renderMuteBtn();renderVolUI();installA11y();
 /* P7.8: unlock WebAudio on the first user gesture (browsers block autoplay until then) */
 try{['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,unlockAudio,{once:true}));}catch(e){}
 log("sys",`The Warren breathes cold and ash from the dark below. Your chronicle begins here — every blow, spell, and bargain is remembered.`);
@@ -3610,5 +3666,6 @@ try{if(typeof navigator!=='undefined'&&navigator.serviceWorker&&typeof location!
 
 </script>
 <div id="fx" aria-hidden="true"></div>
+<div id="toast" class="toast" role="status" aria-live="assertive"></div>
 </body>
 </html>
