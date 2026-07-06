@@ -1,0 +1,7 @@
+{
+  // Cloudflare Workers static-assets deploy (no Worker script — assets only).
+  // The deploy command in the Cloudflare build UI must be:  npx wrangler deploy
+  "name": "guffs-gauntlet",
+  "compatibility_date": "2025-01-01",
+  "assets": { "directory": "./" }
+}

@@ -1,0 +1,12 @@
+# Files NOT to publish as static assets (gitignore syntax). Cloudflare runs
+# `npm install`, so node_modules exists at deploy time — keep it (and all the
+# dev-only files) out of the uploaded site. Only the app shell + art ship.
+node_modules
+tests
+.git
+*.md
+package.json
+package-lock.json
+netlify.toml
+wrangler.jsonc
+.gitignore
