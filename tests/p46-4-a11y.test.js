@@ -23,7 +23,11 @@ esc(); ok(!d.getElementById('overlay').classList.contains('show'), 'Esc closes t
 ev('showPlays()'); esc(); ok(!d.getElementById('plays').classList.contains('show'), 'Esc closes the stack');
 d.getElementById('store').classList.add('show'); esc(); ok(!d.getElementById('store').classList.contains('show'), 'Esc closes the store');
 d.getElementById('library').classList.add('show'); esc(); ok(!d.getElementById('library').classList.contains('show'), 'Esc closes the library');
-d.getElementById('cutscene').classList.add('show'); esc(); ok(!d.getElementById('cutscene').classList.contains('show'), 'Esc closes a cutscene');
+ev("S.paused=false;S.over=false"); d.getElementById('cutscene').classList.add('show'); esc(); ok(!d.getElementById('cutscene').classList.contains('show'), 'Esc closes a NARRATIVE cutscene (not paused/over)');
+// review-fix: a progression-GATING cutscene stays button-only (Esc would skip advance()/restart and softlock)
+ev("S.paused=true"); d.getElementById('cutscene').classList.add('show'); esc(); ok(d.getElementById('cutscene').classList.contains('show'), 'Esc does NOT close a paused (Encounter-Cleared) cutscene — no softlock');
+ev("S.paused=false;S.over=true"); esc(); ok(d.getElementById('cutscene').classList.contains('show'), 'Esc does NOT close an over (win/lose) cutscene');
+ev("S.over=false;S.paused=false"); d.getElementById('cutscene').classList.remove('show');
 // the combat resolver keeps its no-accidental-dismiss rule
 d.getElementById('resolver').classList.add('show'); esc();
 ok(d.getElementById('resolver').classList.contains('show'), 'Esc does NOT close the combat resolver (Approve/Cancel only)');
