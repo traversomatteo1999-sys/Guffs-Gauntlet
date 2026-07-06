@@ -135,27 +135,11 @@
   .stackfab:hover{transform:translateY(-2px)} .stackfab.hot{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 22px -4px var(--gold)}
   .stackfabn{position:absolute;top:-5px;right:-5px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--ember);color:#fff;font-family:"Space Mono",monospace;font-size:.66rem;font-weight:700;display:flex;align-items:center;justify-content:center;border:1px solid var(--ink)} .stackfabn:empty{display:none}
   @media(max-width:560px){.stackpop.expanded{padding:10px} .stackfab{right:12px;bottom:12px} .resolver{padding:10px} .resolvermodal{width:100%}}
-  /* P45.5/6: ≥1100px Moxfield desktop — three rails over the SAME panels (no JS re-home; the @media flips block↔grid live). Below 1100px nothing changes. */
-  @media(min-width:1100px){
-    .wrap{max-width:min(1580px,97vw)}
-    #battlefield{display:grid;grid-template-columns:minmax(262px,1fr) minmax(428px,1.7fr) minmax(298px,1fr);grid-template-rows:auto auto;gap:14px;align-items:start;margin-top:14px}/* P45.5 review-fix: column mins (262+428+298 + 2×14 = 1016) fit inside .wrap at a 1100px viewport (~1044px content) — no horizontal scrollbar in the 1100–1167px band */
-    #battlefield>.tab{margin-top:0}
-    /* P47.2 fix: the two duos that land in the NARROW rails — You/Foe (info, col1) and Turn-flow/Your-attack (action, col3) — must stack, not sit side by side. The .duo 2-col rule keys off VIEWPORT width (≥780px) not the rail's ~419px, so it wrongly split them and clipped "Your attack" off the rail edge. The wide middle rail (col2) has no .grid.duo, so this is safe. */
-    #tab-info .grid.duo,#tab-action .grid.duo{grid-template-columns:1fr}
-    #tab-info{grid-column:1;grid-row:1/3}
-    #tab-enemy{grid-column:2;grid-row:1}
-    #tab-player{grid-column:2;grid-row:2}
-    #tab-action{grid-column:3;grid-row:1}
-    #plays{grid-column:3;grid-row:2}
-    #tab-info,#tab-action,#tab-enemy,#tab-player,#plays{max-height:calc(100vh - 26px);overflow:auto}
-    #battlefield .tabhead{position:sticky;top:0;z-index:1}
-    /* every rail always open on desktop (override the phone accordion collapse; inner P12.1 panels still collapse) */
-    #battlefield .tab.collapsed .tabbody{display:flex} #battlefield .tab.collapsed .tabhint::after{content:""}
-    /* the stack docks into the right rail instead of a full-screen overlay */
-    #plays.stackpop{position:static;display:block;inset:auto;z-index:auto;background:none;backdrop-filter:none;padding:0;pointer-events:auto;align-items:stretch}
-    #plays .stackmodal{width:auto;max-width:none;max-height:none;box-shadow:none;animation:none;border-radius:14px}
-    .stackfab{display:none!important}
-  }
+  /* P48.1: reverted the P45.5/6 ≥1100px three-rail grid. Per SPEC §3b (and P1.1's "four collapsible
+     cornice tabs"), the locked layout is the four tabs STACKED VERTICALLY at every width — Info, Action,
+     Enemy Board, Your Board — each full-width with its own boxes (You/Foe side-by-side inside Info;
+     Turn-flow/Your-attack on one row inside Action). No desktop grid: #battlefield stays a block, the tabs
+     flow top-to-bottom in DOM order, and the stack (#plays) is the P45.6 bottom-sheet popup at all widths. */
   .playcard{border:1px solid var(--line);border-radius:var(--r-tile);background:var(--ink-2);padding:10px 12px;margin:7px 0} .playcard.resolved{border-color:rgba(123,178,116,.4)} .playcard.countered{opacity:.4;text-decoration:line-through}
   /* P7.9: subtle per-type accent on stack cards (inset bar — never fights the status/mine borders) */
   .playcard.ty-creature{box-shadow:inset 3px 0 0 rgba(123,178,116,.55)} .playcard.ty-instant{box-shadow:inset 3px 0 0 rgba(77,168,218,.55)} .playcard.ty-sorcery{box-shadow:inset 3px 0 0 rgba(224,83,61,.55)} .playcard.ty-artifact{box-shadow:inset 3px 0 0 rgba(183,176,160,.5)} .playcard.ty-enchantment,.playcard.ty-enchant{box-shadow:inset 3px 0 0 rgba(154,134,196,.55)} .playcard.ty-planeswalker{box-shadow:inset 3px 0 0 rgba(217,164,65,.55)}
@@ -3333,7 +3317,7 @@ function skipCommander(){proceedAfterCommander();}
 /* ===== P46.5: first-run onboarding — offer (not force) the tutorial once per profile, after the arrival cutscene. The flag is set the moment the offer appears, so declining or reloading never re-prompts; the ❓/⚙ opt-in entry points stay. ===== */
 function shouldOfferTutorial(){try{const p=prof();return !!(p&&p.seenTutorial===false&&S&&S.mode==='campaign');}catch(e){return false;}}
 function markTutorialSeen(){try{const p=prof();if(p&&p.seenTutorial!==true){p.seenTutorial=true;saveDB();}}catch(e){}}
-function offerTutorial(next){markTutorialSeen();showCutscene(["New to the Gauntlet? A quick tour covers casting, the stack, combat and the dungeon — or dive straight in. You can reopen it any time from ❓ or ⚙ Settings."],"Learn the ropes?","First run · welcome",null,{sigil:'📖',accent:'var(--azor)',speaker:'',quote:'',buttons:[{label:"📖 Learn the ropes",cls:"big azor",on:()=>{closeCutscene();openTutorial();}},{label:"▶ Just play",cls:"big",on:()=>{closeCutscene();if(next)next();}}]});}
+function offerTutorial(next){markTutorialSeen();showCutscene(["New to the Gauntlet? A quick tour covers casting, the stack, combat and the dungeon — or dive straight in. You can reopen it any time from ❓ or ⚙ Settings."],"Learn the ropes?","First run · welcome",null,{sigil:'📖',accent:'var(--azor)',speaker:'',quote:'',buttons:[{label:"📖 Learn the ropes",cls:"big azor",on:()=>{if(next)next();openTutorial();/* P48.2: reveal the board (next) THEN open the tutorial over it — closing the tutorial lands on the game, and no cutscene is skipped */}},{label:"▶ Just play",cls:"big",on:()=>{if(next)next();}}]});}
 function proceedAfterCommander(){_cmdChooseActive=false;_cmdCreating=false;$("overlay").classList.remove("show");
   if(S.mode==='sandbox'){/* P43.5: a sandbox battle skips the campaign arrival/gate story — straight to the CHOSEN foe's own intro (room 0's gate would be the wrong room for a room-2 sandbox fight) */const room=DUNGEON[S.roomIndex]||DUNGEON[0];S._introShown=true;if(room&&room.intro)showCutscene(room.intro,room.villain,`🏟 ${room.name} · ${curLevel().subtitle}`,room.isVael?"Face the Tyrant ▸":"Fight ▸",villainCutOpts(room));return;}
   if(!S._introShown){S._introShown=true;
@@ -3341,8 +3325,11 @@ function proceedAfterCommander(){_cmdChooseActive=false;_cmdCreating=false;$("ov
       sigil:'✦',accent:'var(--gold)',speaker:"the Conclave's plea",
       quote:"Find Guff. Free him. He is the last of us who can still build.",
       buttons:[{label:"Descend into the Warren ▸",cls:"big",on:()=>{
-        const gate=()=>{if(DUNGEON[0].intro)showCutscene(DUNGEON[0].intro,DUNGEON[0].villain,`${DUNGEON[0].name} · ${curLevel().subtitle}`,"Enter the gate ▸",villainCutOpts(DUNGEON[0]));};
-        if(shouldOfferTutorial())offerTutorial(gate);else gate();/* P46.5: first-run tutorial offer, right after the arrival cutscene */
+        /* P48.2: play ALL story beats FIRST (arrival → gate intro), THEN offer the tutorial last — so choosing "Learn the ropes" no longer skips the gate cutscene. */
+        const startGame=()=>{closeCutscene();dropInGame();};/* reveal + drop the board in */
+        const afterGate=()=>{if(shouldOfferTutorial())offerTutorial(startGame);else startGame();};
+        if(DUNGEON[0].intro){const gopts=villainCutOpts(DUNGEON[0]);gopts.revealGame=false;/* don't drop the board on this beat — the tutorial offer is chained after it */gopts.buttons=[{label:"Enter the gate ▸",cls:"big ok",on:afterGate}];showCutscene(DUNGEON[0].intro,DUNGEON[0].villain,`${DUNGEON[0].name} · ${curLevel().subtitle}`,"Enter the gate ▸",gopts);}
+        else afterGate();
       }}]
     });
   }

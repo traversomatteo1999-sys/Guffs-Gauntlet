@@ -1,5 +1,5 @@
 /* Guff's Gauntlet — service worker (offline app shell).
-   The cache name is versioned (gg-cache-v52), so installing this build
+   The cache name is versioned (gg-cache-v53), so installing this build
    evicts any earlier cached version on activate. A fetch handler is present,
    which is what makes the app installable.
    v49 (P45.1): the 4 typefaces are now inlined as data-URI woff2 inside
@@ -12,8 +12,11 @@
    Pictures/ list is now .jpg and the cache is bumped to drop the stale .png entries.
    v52 (P47.2): CSS-only layout fix — the You/Foe and Turn-flow/Your-attack duos now
    stack in the narrow desktop rails instead of clipping; cache bumped so installed
-   players get the corrected index.html on their next online launch. */
-const CACHE = 'gg-cache-v52';
+   players get the corrected index.html on their next online launch.
+   v53 (P48): reverted the desktop three-rail grid to the spec's VERTICAL stacked
+   cornice tabs (SPEC §3b); first-run tutorial offer moved AFTER all story cutscenes
+   (choosing it no longer skips the gate intro). */
+const CACHE = 'gg-cache-v53';
 const SHELL = [
   './index.html',
   './manifest.webmanifest',
