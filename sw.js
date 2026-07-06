@@ -1,5 +1,5 @@
 /* Guff's Gauntlet — service worker (offline app shell).
-   The cache name is versioned (gg-cache-v51), so installing this build
+   The cache name is versioned (gg-cache-v52), so installing this build
    evicts any earlier cached version on activate. A fetch handler is present,
    which is what makes the app installable.
    v49 (P45.1): the 4 typefaces are now inlined as data-URI woff2 inside
@@ -9,8 +9,11 @@
    precached for offline use. They are added best-effort AFTER the critical shell,
    so a single missing/renamed file cannot fail the whole install.
    v51 (P47.1): those images were compressed PNG->JPEG (~19MB -> ~1.9MB), so the
-   Pictures/ list is now .jpg and the cache is bumped to drop the stale .png entries. */
-const CACHE = 'gg-cache-v51';
+   Pictures/ list is now .jpg and the cache is bumped to drop the stale .png entries.
+   v52 (P47.2): CSS-only layout fix — the You/Foe and Turn-flow/Your-attack duos now
+   stack in the narrow desktop rails instead of clipping; cache bumped so installed
+   players get the corrected index.html on their next online launch. */
+const CACHE = 'gg-cache-v52';
 const SHELL = [
   './index.html',
   './manifest.webmanifest',
