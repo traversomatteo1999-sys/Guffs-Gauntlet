@@ -1,0 +1,8 @@
+# Cloudflare Pages headers (Cloudflare ignores netlify.toml).
+# The service worker and app shell are versioned in-file (gg-cache-v*), so the CDN
+# must NOT long-cache them — otherwise a new build's SW/shell won't reach installed apps.
+# Everything else (icons, manifest, Pictures/) can cache normally.
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
