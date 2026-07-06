@@ -67,17 +67,19 @@ const lc=window.document.getElementById('libCards').innerHTML;
 ok((lc.match(/class="cardart"/g)||[]).length===1,'library: 1 art strip (imported card only)');
 ok(lc.includes('lib.jpg'),'library: art url present');
 
-// --- boss portrait ---
+// --- boss portrait (P47: dedicated per-warden Pictures/ icon, no longer the lore ART) ---
+ok(ev("typeof ENEMY_ICON==='object' && !!ENEMY_ICON.grakk"),'P47: ENEMY_ICON map defined');
+ok(ev("ENEMY_ICON.grakk!==ART.grakk"),'P47: enemy-box icon is a separate asset from the lore art');
 const key=ev("_levelArt&&_levelArt[S.roomIndex]");
-const artExists=ev("!!(_levelArt&&ART[_levelArt[S.roomIndex]])");
+const iconExists=ev("!!(_levelArt&&ENEMY_ICON[_levelArt[S.roomIndex]])");
 const bp=window.document.getElementById('bossPortrait');
 ok(!!bp,'bossPortrait element exists');
-if(artExists){
-  ok(bp.style.display==='','boss portrait shown when a warden art key resolves');
-  ok(bp.getAttribute('src')===ev("ART[_levelArt[S.roomIndex]]"),'boss portrait src = ART[wardenKey]');
+if(iconExists){
+  ok(bp.style.display==='','boss portrait shown when a warden icon resolves');
+  ok(bp.getAttribute('src')===ev("ENEMY_ICON[_levelArt[S.roomIndex]]"),'boss portrait src = ENEMY_ICON[wardenKey] (Pictures/ icon)');
 }else{
-  ok(bp.style.display==='none','boss portrait hidden when no art key');
-  console.log('  (note: no warden art key at room',key,'— portrait correctly hidden)');
+  ok(bp.style.display==='none','boss portrait hidden when no icon');
+  console.log('  (note: no warden icon at room',key,'— portrait correctly hidden)');
 }
 
 console.log(`\nP45.2: ${pass} passed, ${fail} failed`);
