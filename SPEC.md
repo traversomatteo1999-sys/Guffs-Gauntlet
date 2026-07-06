@@ -193,20 +193,20 @@
 | &nbsp;&nbsp;P42.2 Sapper's Map row consumed when the −4 fires | ✅ **DONE & verified** (`enterRoom` consumes looted map rows as the −4 fires (stacks −4×N); `applyPendingPurchases` applies a purchased map's −4 immediately + stows no row; **migrate collapses pre-P42 polluted satchels to old flat-−4 semantics** so stale rows can't double-apply, while new saves keep true stacking) |
 | &nbsp;&nbsp;P42.3 Scholar's Token ↔ Arcane Tome price-invert (premium engine vs cheap burst) | ✅ **DONE & verified** (Scholar = uncommon 18g always-on engine · Tome = common 7g 2-turn burst; store + satchel render the new rarities; loot d20 still grants scholar) |
 | &nbsp;&nbsp;P42.4 Price-curve rebalance (heals bulk-discount · damage premium-per-point · wheel label · Ember Sigil hook · wording) | ✅ **DONE & verified** (heal g/hp 1.4>1.2>1.0 · damage g/dmg 2.33<2.75<3.0<3.5 · wheel says "treasure" not "relic" · Ember Sigil auto-+1 in `dmgBoss` · advance() log "between battles" · Merchant-exclusive note (verified accurate — none loot/wheel-reachable)) |
-| **Phase 43 — Campaign & Sandbox: two game modes + multi-level infrastructure** | ⬜ **PLANNED** (specced 2026-07-04) — mode select · per-profile per-mode buckets (gold/items/saves) · LEVELS registry with `DUNGEON` alias · campaign carry-over + forward-only runs · sandbox per-enemy battle select · persistent lore progress |
-| &nbsp;&nbsp;P43.1 Data model & migration: per-profile `camp`/`sand` buckets + per-mode save slots (fixes the cross-profile Continue bug) | ⬜ PLANNED |
-| &nbsp;&nbsp;P43.2 `LEVELS[]` registry; `DUNGEON`/`ROOM_ART` become aliases via `setLevel()`; stable per-battle ids | ⬜ PLANNED |
-| &nbsp;&nbsp;P43.3 Menu rework: mode choice (⚔ Campaign / 🏟 Sandbox) + campaign screen + sandbox battle grid | ⬜ PLANNED |
-| &nbsp;&nbsp;P43.4 Campaign rules: sequential level unlock · HP/gold/items carry between levels · forward-only · new run erases old | ⬜ PLANNED |
-| &nbsp;&nbsp;P43.5 Sandbox rules: per-enemy unlock (flat) · single battles, no dungeon walk · HP refresh · own gold+inventory | ⬜ PLANNED |
-| &nbsp;&nbsp;P43.6 Persistent progress & lore: `cleared` ledger feeds sandbox unlocks + a lore panel that no longer re-locks | ⬜ PLANNED |
-| **Phase 44 — Enemy realism & balance pass 2** | ⬜ **PLANNED** (specced 2026-07-04; colour-pie rework 2026-07-05) — mana hold-up · mid-combat trick window · dual-mode burn · walker defense/ult safety · colour-pie mechanics library (interaction & card advantage; future-colour infra) · deck discipline · Gate-Meteor fix · dead knobs |
-| &nbsp;&nbsp;P44.1 Instant-speed realism: mana hold-up budget + the deferred P4.4 mid-combat trick window | ⬜ PLANNED |
-| &nbsp;&nbsp;P44.2 Burn & removal realism: dual-mode burn (face OR creature) + threat-based removal selectors | ⬜ PLANNED |
-| &nbsp;&nbsp;P44.3 Planeswalker play: defensive minus, ult safety gate, blocker-aware split attack targeting | ⬜ PLANNED |
-| &nbsp;&nbsp;P44.4 Colour-agnostic mechanics library + colour-pie'd Level-I content: `counter` op (hard + punisher; Level I default = ONE rare punisher on Vael only) · `draw` op (colour-styled) · `discard` op · bounce/fight/art-removal library · multi-kill valuation | ⬜ PLANNED |
-| &nbsp;&nbsp;P44.5 Deck discipline: Murglax 103→99 · Grakk manabase/removal · curve audit · mulligan v2 (flood-aware, per-difficulty) · deeper difficulty swaps | ⬜ PLANNED |
-| &nbsp;&nbsp;P44.6 Bugs & dead knobs: Gate-Meteor +2 rider · delete `DIFF.manaBonus`/`room.landStart`/`deckCopies` · bloodpact-as-permanent (optional) | ⬜ PLANNED |
+| **Phase 43 — Campaign & Sandbox: two game modes + multi-level infrastructure** | ✅ **DONE** (merged `67e6689`, 2026-07-05) — mode select · per-profile per-mode buckets (gold/items/saves) · LEVELS registry with `DUNGEON` alias · campaign carry-over + forward-only runs · sandbox per-enemy battle select · persistent lore progress |
+| &nbsp;&nbsp;P43.1 Data model & migration: per-profile `camp`/`sand` buckets + per-mode save slots (fixes the cross-profile Continue bug) | ✅ DONE |
+| &nbsp;&nbsp;P43.2 `LEVELS[]` registry; `DUNGEON`/`ROOM_ART` become aliases via `setLevel()`; stable per-battle ids | ✅ DONE |
+| &nbsp;&nbsp;P43.3 Menu rework: mode choice (⚔ Campaign / 🏟 Sandbox) + campaign screen + sandbox battle grid | ✅ DONE |
+| &nbsp;&nbsp;P43.4 Campaign rules: sequential level unlock · HP/gold/items carry between levels · forward-only · new run erases old | ✅ DONE |
+| &nbsp;&nbsp;P43.5 Sandbox rules: per-enemy unlock (flat) · single battles, no dungeon walk · HP refresh · own gold+inventory | ✅ DONE |
+| &nbsp;&nbsp;P43.6 Persistent progress & lore: `cleared` ledger feeds sandbox unlocks + a lore panel that no longer re-locks | ✅ DONE |
+| **Phase 44 — Enemy realism & balance pass 2** | ✅ **DONE** (merged `1ec7d48`, 2026-07-05) — mana hold-up · mid-combat trick window · dual-mode burn · walker defense/ult safety · colour-pie mechanics library (interaction & card advantage; future-colour infra) · deck discipline · Gate-Meteor fix · dead knobs |
+| &nbsp;&nbsp;P44.1 Instant-speed realism: mana hold-up budget + the deferred P4.4 mid-combat trick window | ✅ DONE |
+| &nbsp;&nbsp;P44.2 Burn & removal realism: dual-mode burn (face OR creature) + threat-based removal selectors | ✅ DONE |
+| &nbsp;&nbsp;P44.3 Planeswalker play: defensive minus, ult safety gate, blocker-aware split attack targeting | ✅ DONE |
+| &nbsp;&nbsp;P44.4 Colour-agnostic mechanics library + colour-pie'd Level-I content: `counter` op (hard + punisher; Level I default = ONE rare punisher on Vael only) · `draw` op (colour-styled) · `discard` op · bounce/fight/art-removal library · multi-kill valuation | ✅ DONE |
+| &nbsp;&nbsp;P44.5 Deck discipline: Murglax 103→99 · Grakk manabase/removal · curve audit · mulligan v2 (flood-aware, per-difficulty) · deeper difficulty swaps | ✅ DONE |
+| &nbsp;&nbsp;P44.6 Bugs & dead knobs: Gate-Meteor +2 rider · delete `DIFF.manaBonus`/`room.landStart`/`deckCopies` · bloodpact-as-permanent (optional) | ✅ DONE |
 | **Phase 45 — UI, animation & sound overhaul** (Moxfield-inspired desktop · card art · FX layer · fuller soundscape) | ✅ **DONE & verified (2026-07-05)** (specced 2026-07-04; governed by D5). Built in 2 steps: **Step 1** P45.1 fonts/tokens/legibility · P45.2 card art · P45.4 sound; **Step 2** P45.3 FX layer · P45.5 Moxfield desktop grid · P45.6 stack dock. Each step: per-task jsdom drivers + adversarial-review workflow (findings fixed) + headless-Edge visual pass (desktop 3-rail @1440px, phone unchanged @400px). |
 | &nbsp;&nbsp;P45.1 Foundation: token expansion · self-hosted fonts (offline PWA typography) · desktop legibility pass | ✅ **DONE & verified** (9 latin-subset woff2 inlined as data-URIs in `<style>` — Google Fonts CDN dropped; `:root` gains `--ff-*`/`--fs-*`/`--sp-*` tokens; interactive text ≥.7rem (`.badge`/`button.mini`/`.tiny`/`select`); `style="width:110px"` name fields → fluid `.namein`; sw.js cache→v49. t_p45_1 40/40 · visual pass) |
 | &nbsp;&nbsp;P45.2 Card art on board/stack/library tiles (Scryfall images already stored per card) | ✅ **DONE & verified** (`buildImportedCard` now persists `cfg.image`/`cfg.art` — imports did NOT store it before; `cardArt()` renders a rounded art-strip banner on player/enemy creatures, the stack `.playcard`, and library rows when a card carries an art url; homebrew → no strip; CSS `background-image` → no broken-image icon offline, no layout shift; boss-panel warden portrait. t_p45_2 23/23 · visual pass) |
@@ -2710,7 +2710,7 @@ Added `flash`/`prowess` to `KW_LIST` (creator toggles) and `flash`/`prowess`/`sh
 
 ---
 
-# THE PHASE 41–46 REWORK (specced 2026-07-04 — all ⬜ PLANNED, none built)
+# THE PHASE 41–46 REWORK (specced 2026-07-04 — ✅ ALL DONE & merged to origin/main 2026-07-06)
 
 > **Scope.** The user's full-game rework request: fix Guff's lore colour; make item durations real and the economy coherent; build **Campaign & Sandbox** as two proper game modes on a multi-level foundation; push enemy decks/AI to a second realism pass; overhaul UI/animation/sound (Moxfield-inspired on desktop); and close everything a *complete* game still lacks — ending in a **final clean-up & validation gate**.
 > **Platform decided first (per the user):** D4 — stay web/PWA, no engine port; D5 — one responsive app (see §3). The rework happens **in place**.

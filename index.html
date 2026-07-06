@@ -29,7 +29,11 @@
   *{box-sizing:border-box;margin:0;padding:0}
   html{font-size:17px;background:#0b0c10} /* gentle global zoom; rem-based UI scales, px media-query breakpoints stay put */
   body{background:transparent;color:var(--bone);font-family:var(--ff-body);line-height:1.5;padding:clamp(12px,3vw,28px);min-height:100vh}
-  #bgart{position:fixed;inset:-2%;z-index:-1;background:#0b0c10} /* warren landscape + glows + scrim layered via JS; inset:-2% overscan + cover = no bare edge at any size/tall phone (P1.2) */
+  /* P48: the in-game backdrop is a full-width, top-anchored IMAGE that scrolls with the page — tall warden art shows at its natural aspect (no cover-zoom crop) and the document extends so you can scroll all the way to the image's bottom edge. #bgscrim is a viewport-fixed vignette (glows + veil) layered over it so the UI stays legible at any scroll depth. (was: fixed inset:-2% + cover, which zoomed/cropped the new portrait art — P1.2) */
+  #bgart{position:absolute;top:0;left:0;width:100%;min-height:100vh;z-index:-2;background:#0b0c10;overflow:hidden}
+  #bgart img{display:block;width:100%;height:auto;margin:0}
+  #bgscrim{position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(1100px 560px at 75% -10%,rgba(224,83,61,.14),transparent 60%),radial-gradient(900px 500px at -5% 110%,rgba(77,168,218,.14),transparent 60%),linear-gradient(180deg,rgba(11,12,16,.40),rgba(11,12,16,.58) 50%,rgba(11,12,16,.80))}
+  html:has(#menu.show),html:has(#cutscene.show){overflow:hidden} /* P48: while a full-cover overlay (menu / cutscene) is up, clip the page so the tall scrolling backdrop can't push a stray scrollbar out beside the overlay */
   .wrap{max-width:1140px;margin:0 auto}
   header{border:1px solid var(--line);border-radius:14px;padding:clamp(16px,3vw,24px);background:linear-gradient(180deg,rgba(217,164,65,.06),transparent 70%),var(--ink-2);position:relative;overflow:hidden}
   header::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.012) 0 2px,transparent 2px 9px);pointer-events:none}
@@ -136,6 +140,8 @@
     .wrap{max-width:min(1580px,97vw)}
     #battlefield{display:grid;grid-template-columns:minmax(262px,1fr) minmax(428px,1.7fr) minmax(298px,1fr);grid-template-rows:auto auto;gap:14px;align-items:start;margin-top:14px}/* P45.5 review-fix: column mins (262+428+298 + 2×14 = 1016) fit inside .wrap at a 1100px viewport (~1044px content) — no horizontal scrollbar in the 1100–1167px band */
     #battlefield>.tab{margin-top:0}
+    /* P47.2 fix: the two duos that land in the NARROW rails — You/Foe (info, col1) and Turn-flow/Your-attack (action, col3) — must stack, not sit side by side. The .duo 2-col rule keys off VIEWPORT width (≥780px) not the rail's ~419px, so it wrongly split them and clipped "Your attack" off the rail edge. The wide middle rail (col2) has no .grid.duo, so this is safe. */
+    #tab-info .grid.duo,#tab-action .grid.duo{grid-template-columns:1fr}
     #tab-info{grid-column:1;grid-row:1/3}
     #tab-enemy{grid-column:2;grid-row:1}
     #tab-player{grid-column:2;grid-row:2}
@@ -394,7 +400,8 @@
 </style>
 </head>
 <body>
-<div id="bgart" aria-hidden="true"></div>
+<div id="bgart" aria-hidden="true"><img id="bgartImg" alt=""></div>
+<div id="bgscrim" aria-hidden="true"></div>
 <div id="intro" aria-hidden="true"></div>
 <canvas id="introfire" aria-hidden="true"></canvas>
 <div class="wrap">
@@ -2924,12 +2931,8 @@ function openLore(){const who=(prof()&&prof().name)||'Adventurer';let h=`<h2 cla
   $("modalBody").innerHTML=h;$("overlay").classList.add("show");}
 function villainAccent(room){const c=((room&&room.colors)||[])[0];return c==='B'?'var(--purp)':c==='R'?'var(--ember)':c==='U'?'var(--azor)':c==='G'?'var(--ok)':'var(--gold)';}
 function openArt(key,name){if(typeof ART==='undefined'||!ART[key])return;if(typeof window==='undefined'||!window.open)return;const w=window.open('','_blank');if(!w)return;const _raw=ART[key];const srcUrl=/^(data:|https?:|blob:)/.test(_raw)?_raw:(new URL(_raw,location.href).href);/* P47: resolve relative Pictures/ paths (ember/conclave) against the app URL — the popup base is about:blank */w.document.write(`<!doctype html><html style="background:#0b0c10"><head><meta charset="utf-8"><title>${name||'Warden'} — Guff's Gauntlet</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;padding:0;height:100%;background:#0b0c10;overflow:hidden}body{display:flex;align-items:center;justify-content:center}img{max-width:100%;max-height:100vh;display:block;border:0;outline:0}</style></head><body><img src="${srcUrl}" alt="${name||''}"></body></html>`);w.document.close();}
-function warrenBgCss(){const u=dungeonBgUrl();if(!u)return"";return(/* P47: per-warden backdrop via dungeonBgUrl(); lighter scrim than before so the room art reads through */
-  "radial-gradient(1100px 560px at 75% -10%,rgba(224,83,61,.14),transparent 60%),"+
-  "radial-gradient(900px 500px at -5% 110%,rgba(77,168,218,.14),transparent 60%),"+
-  "linear-gradient(180deg,rgba(11,12,16,.55),rgba(11,12,16,.70) 45%,rgba(11,12,16,.86)),"+
-  "url('"+u+"') center top / cover no-repeat,#0b0c10");}
-function setWarrenArt(){const bg=$("bgart");const css=warrenBgCss();if(bg&&css)bg.style.background=css;}
+/* P48: the per-warden backdrop is now a real <img> (full width, natural aspect) that scrolls with the page; the glows+veil live in the fixed #bgscrim layer (CSS). setWarrenArt just points the image at the current room's art (falls back to the shared warren art). */
+function setWarrenArt(){const img=$("bgartImg");if(!img)return;const u=dungeonBgUrl();if(u){if(img.getAttribute('src')!==u)img.src=u;img.style.display='';}else{img.removeAttribute('src');img.style.display='none';}}
 function menuBgCss(){return( /* P47: horizontal Menu.png as the menu backdrop — lighter scrim than #bgart so the art shows; centered for the landscape image */
   "radial-gradient(1100px 560px at 78% -12%,rgba(224,83,61,.20),transparent 60%),"+
   "radial-gradient(900px 520px at -8% 112%,rgba(77,168,218,.16),transparent 60%),"+
