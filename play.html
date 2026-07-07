@@ -2756,7 +2756,10 @@ function winCutscene(lr,wheelDesc){const v=DUNGEON[DUNGEON.length-1];/* P43.2: t
             sigil:'✦',accent:'var(--gold)',eyebrowAcc:'var(--gold)',speaker:'Commodore Guff',
             quote:"The Conclave is not dead while one of us still stands. Walk with me.",
             spoils:`🎲 Spoils: ${lr.names.join(" + ")}!  ·  🎡 ${wheelDesc}  ·  account ${getGold()}g`,
-            buttons:[{label:"↻ Descend again",on:restart,cls:"big ok"},{label:"Quit to Menu",on:quitToMenu,cls:"big"}]
+            /* P49.7(#8): after the FINAL level, a single soft "To be continued…" ending — win() already cleared the run, so replay is only via a NEW campaign from the menu (renderCampaign shows "✦ New run"). Auto-reverts to the normal restart/quit pair once a real Level 2 ships (S.levelIdx<LEVELS.length-1 → the between-level path takes over). */
+            buttons:(S.levelIdx>=LEVELS.length-1
+              ?[{label:"To be continued… ▸",on:quitToMenu,cls:"big ok"}]
+              :[{label:"↻ Descend again",on:restart,cls:"big ok"},{label:"Quit to Menu",on:quitToMenu,cls:"big"}])
           })
         }]
       })
@@ -3213,7 +3216,7 @@ function renderCampaign(){const p=prof();const g=$("campGold");if(g)g.textConten
     let badge='';if(current)badge='<span class="lorenow">▶ in progress</span>';else if(done)badge='<span class="lorenow" style="color:var(--ok)">✓ cleared</span>';/* P43 review-fix: an actively re-run level shows "in progress", not the permanent-ledger "cleared" */
     let btns='';
     if(locked)btns=`<button class="tiny" disabled style="opacity:.5;cursor:not-allowed">🔒 Locked</button>`;
-    else if(current)btns=`<button class="tiny azor" onclick="continueCampaign()">▶ Continue run</button><button class="tiny ember" onclick="campaignStart()">✦ New run</button>`;
+    else if(current)btns=`<button class="tiny azor" onclick="continueCampaign()">▶ Continue run</button><button class="tiny ember" onclick="campaignStart()">✦ New run</button><button class="tiny" onclick="abandonCampaign()" title="End this run — your gold, stash & unlocks are kept">✕ Abandon campaign</button>`;
     else if(!hasRun&&idx===0)btns=`<button class="tiny ok" onclick="campaignStart()">${done?'✦ New run':'▶ Begin campaign'}</button>`;
     else btns=`<span class="manaline">${done?'Replay in 🏟 Sandbox':'Reached by descending'}</span>`;
     const title=locked?'??? — a warden you have not yet reached':`Level ${L.levelNo} — ${L.name}`;
@@ -3223,6 +3226,10 @@ function renderCampaign(){const p=prof();const g=$("campGold");if(g)g.textConten
 /* Begin/New run — a campaign always starts at Level I Room 0 (forward-only); confirm-to-abandon if a run is already live. */
 function campaignStart(){const p=prof();const run=p&&p.camp&&p.camp.run;_uiMode='campaign';if(run&&run.S&&!run.S.over)confirmNewDescent();else startBattle({mode:'campaign',levelIdx:0,roomIdx:0,diff:(S&&S.diff)||'standard'});}
 function continueCampaign(){const p=prof();_uiMode='campaign';continueLastGame(p&&p.camp&&p.camp.run);}
+/* P49.7(#29): abandon the current campaign RUN only — resets the run position (p.camp.run) but preserves gold, stash, pending purchases, cleared-ledger and unlock level. Mode-explicit (setSave(null,'campaign')) so a stale live S.mode from the menu can't null the wrong slot. Gated behind a confirm. */
+function abandonCampaign(){const sv=getSave('campaign')||{};const rn=(DUNGEON[sv.room!=null?sv.room:((sv.S&&sv.S.roomIndex)||0)]||{}).name||'your descent';const tn=sv.turn!=null?sv.turn:((sv.S&&sv.S.turn)||0);
+  showCutscene([`Abandon your current campaign run — <b>${rn}</b>, Turn ${tn}?`,`Your run position is erased, but your <b>gold, stash, purchases and unlocked levels are kept</b>. You can start a fresh descent any time.`],"Abandon this campaign?","⚠ End the current run",null,
+    {eyebrowAcc:'var(--ember)',buttons:[{label:"✕ Abandon run",cls:"big ember",on:()=>{setSave(null,'campaign');closeCutscene();renderCampaign();}},{label:"Keep playing",on:closeCutscene,cls:"big"}]});}
 function continueSandbox(){const p=prof();_uiMode='sandbox';continueLastGame(p&&p.sand&&p.sand.save);}
 let _sandDiff='standard';
 /* Every battle across every level, in descent order — the sandbox grid; locked until beaten in the campaign. */
