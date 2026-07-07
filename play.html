@@ -857,6 +857,7 @@ const FX={
 let DUNGEON=[
   {name:"Ember Gate",villain:"Grakk the Gatewarden",colors:["R"],life:30,hp:{easy:20,standard:30,brutal:40},/* P44.6: the dead opening-lands knob was removed — lands-only mana (P17.1) never read it */
    cmd:{n:"Ashmaw",p:3,t:3,kw:["haste"],cost:3,colors:["R"]},
+   siege:{name:"Siege of the Ember Gate",def:6,tick:1,note:"Heals Grakk 1 each of its upkeeps while it stands. Attack it (remove defense) to break it — that deals 6 to Grakk."},/* Grakk fields this on arrival (was Vael's siege); heals +1/upkeep */
    pool:{whelp:1,raider:1,sparkling:1,emberpup:1,torchbearer:1,prowler:1,firstwave:1,matchstick:1,effigy:1,jab:1,bolt:1,warband:1,brute:1,drake:1,twinwhelp:1,sapper:1,scorchwing:1,firefist:1,wallbreaker:1,rabble:1,warcry:1,chant:1,lash:1,twinbolt:1,aura:1,warbanner:1,ogre:1,nightmare:1,chieftain:1,rocket:1,firebrand:1,firetide:1,pyro:1,emberblast:1,meteor:1,furnace:1,hellrider:1,warboss:1,mob:1,conflag:1,storm:1,colossus:1,inferno:1,firestorm:1,overrun:1,kindle:1,sparkpup:1,screech:1,sicem:1,hothead:1,singe:1,emberkin:1,tagalong:1,dartfire:1,batling:1,packlead:1,crackle:1,kindlemob:1,gobhorde:1,warhorn:1,warpack:1,fuse:1,kindled:1},lands:{mtn:32,gatemaw:1,emberpit:1},swaps:{easy:{cut:["firestorm","conflag","inferno"],add:{mtn:3}},brutal:{cut:["firstwave","screech"],add:{meteor:1,inferno:1}}},/* P44.5: easy loses its top-end + floods; brutal trims weak 1-drops for a 2nd Meteor + 2nd Inferno (gas) */
    lore:"Grakk holds the only road into the Warren, and he holds it the way a goblin holds anything \u2014 by setting it alight. He does not parley; every challenger is fresh kindling for the gate-fires. Fast, gleeful, and utterly without patience. If Grakk has a plan, the plan is more fire, sooner.",
    intro:["Smoke coils up out of the gorge. At its mouth squats the Ember Gate, and atop the wall a goblin warlord grins through the heat-haze.","\u201CDown there's where the dead things live,\u201D Grakk calls, hefting a torch. \u201CYou want past? Then burn \u2014 or be burned.\u201D"],
@@ -868,7 +869,7 @@ let DUNGEON=[
    intro:["The gate-fires gutter out behind you. The air turns wet and cold and sweet with rot.","Something vast shifts in the dark of the Slag Pit, and a voice like settling gravel says: \u201CGrakk burned bright. Bright things burn out. I will take my time with you.\u201D"],
    sigil:"\u2620",quote:"I am in no hurry. The dead never are. Bleed for me a while \u2014 I'll grow fat on it.",deathQuote:"Spent... at last... even the Pit... runs... dry..."},
   {name:"Vael's Throne",villain:"Vael, the Ember Tyrant",colors:["R","B"],life:60,hp:{easy:40,standard:60,brutal:80},reborn:{easy:10,standard:15,brutal:20},isVael:true,
-   cmd:{n:"Vael, the Ember Tyrant",isWalker:true,loy:4,ultThreshold:7,cost:5,colors:["R","B"],
+   cmd:{n:"Ash the Guardian",isWalker:true,loy:4,ultThreshold:7,cost:5,colors:["R","B"],
        plus:{sign:1,n:"Ember Whisper",text:"You lose 2 life.",selfLoss:2,color:"R"},
        minus:{sign:-3,n:"Grasping Ash",text:"Destroy your greatest-power creature.",target:"destroyMaxPow",color:"B"},
        ult:{sign:-7,n:"Avatar of Ash",text:"You lose 6 life; Vael forges his Avatar — an 8/8 with trample, haste, and lifelink.",selfLoss:6,run:["spawn","Vael's Avatar",8,8,["trample","haste","lifelink"],"RB"],color:"B",ult:true}},
@@ -981,7 +982,7 @@ function enterRoom(i,first){S.roomIndex=i;try{setWarrenArt();}catch(e){}/* P47: 
   S.enemyWalkers=[];if(room.pw)S.enemyWalkers.push(mkEnemyWalker(room.pw));/* P38.1: room.pw resolves to a real enemy walker permanent (Vael's is folded into his PW-commander in P38.3) */
   S.bossManaMod=0;S.bossLands=0;S.bossLandPlayed=false;S.bossManaMax=0;S.bossMana=0;/* P17.1: lands-only mana — the enemy opens every battle at 0 and grows its pool ONLY by playing land cards from hand (no pre-seed; ramp rocks stay; the 7-card hand + mulligan keeps it playable) */
   S.activeTurn=null;S.phase=0;S.plays=[];S.combat=null;S.paused=false;S.lib=buildDeck(room);S.hand=[];S.gy=[];S.exile=[];dealOpeningHand();/* P17.2: 7-card opening hand + mulligan-to-3-lands (was vaelDraw(4)) */
-  if(room.isVael)fieldVaelBattle();/* P7.7: Vael fields a boss-side Siege the player must break */
+  if(room.siege)fieldBossSiege(room.siege);/* P7.7: this warden fields a boss-side Siege the player must break (Grakk, since P48.3 — was Vael) */
   if(!first)log("sys",`— You descend into <b>${room.name}</b>. ${S.boss.name} [${S.boss.colors.join("/")}]: ${life} life. Commander ${S.cmd.n} (${S.cmd.cost} mana). Deck: ${S.lib.length} cards. —`);}
 function buildDeck(room){const lib=[];const add=(k,n)=>{for(let j=0;j<n;j++)lib.push({id:S.nextId++,key:k});};
   let pool={},lands=Object.assign({},(room&&room.lands)||{});const rp=(room&&room.pool)||[];
@@ -1883,7 +1884,7 @@ function renderDeckColors(){const box=$("deckColorRow");if(!box)return;box.inner
 function toggleDeckColor(col){const i=S.deckColors.indexOf(col);if(i>=0)S.deckColors.splice(i,1);else S.deckColors.push(col);render();}
 /* ===== P7.7: Battles + planar die (D3) =====
    A battle is a tracked permanent with DEFENSE COUNTERS — you attack it to remove counters; at 0 it's defeated
-   (flips / its siege breaks). Player battles are a manual tracker; Vael fields a boss-side Siege that heals it
+   (flips / its siege breaks). Player battles are a manual tracker; a warden (Grakk) fields a boss-side Siege that heals it
    each upkeep (the AI's "defend with priority" pressure — break it to stop the heal and punish Vael). The planar
    die is a neutral Planechase roll (1 planeswalk · 1 chaos · 4 blank) the player interprets. Murglax battles and
    deeper Planechase are deferred (P7.7-opt). */
@@ -1898,15 +1899,15 @@ function battleDefeat(b){if(b.defeated)return;b.defeated=true;b.def=0;log("you",
   else log("you",`Flip it to its back face — apply its reward yourself.${b.note?` (${b.note})`:''}`);
   render();}
 function rmBattle(id){const i=(S.battles||[]).findIndex(b=>b.id===id);if(i>=0){const nm=S.battles[i].name;S.battles.splice(i,1);log("sys",`Removed the battle <b>${nm}</b>.`);render();}}
-/* Vael fields a Siege on arrival (boss-side). It heals Vael each upkeep while it stands — the player must break it. */
-function fieldVaelBattle(){S.battles=S.battles||[];if(S.battles.some(b=>b.side==='boss'&&b._vael))return;S.battles.push({id:S.nextId++,name:"Siege of the Ember Throne",def:6,maxDef:6,side:'boss',_vael:true,tick:2,defeated:false,note:"Heals the Tyrant 2 each of its upkeeps while it stands. Attack it (remove defense) to break it — that deals 6 to Vael."});}
+/* P48.3: a warden fields a Siege on arrival (boss-side), configured by room.siege. It heals the enemy each upkeep while it stands — the player must break it. Grakk fields one now (was Vael). */
+function fieldBossSiege(cfg){S.battles=S.battles||[];if(!cfg||S.battles.some(b=>b.side==='boss'&&b._siege))return;const def=cfg.def||6;S.battles.push({id:S.nextId++,name:cfg.name||"Siege",def,maxDef:def,side:'boss',_siege:true,tick:(cfg.tick!=null?cfg.tick:1),defeated:false,note:cfg.note||""});}
 function tickBossBattles(){if(S.over)return;(S.battles||[]).filter(b=>b.side==='boss'&&!b.defeated&&(b.tick||0)>0).forEach(b=>{bossHealLife(b.tick);log("dm",`🜨 <b>${b.name}</b> stands — ${ENs()} gains ${b.tick} life. (${S.boss.life}) Break it to stop this.`);});}
 /* neutral planar die — 1 planeswalk · 1 chaos · 4 blank (matches the real die's 4 blanks); player interprets (open-question default). */
 function rollPlaneDie(){const r=d(6);let sym,out;if(r===1){sym='✦';out='PLANESWALK — leave this plane; turn to a new one.';}else if(r===2){sym='⊛';out="CHAOS — trigger this plane's chaos effect (you interpret it).";}else{sym='—';out='blank — nothing happens this roll.';}const o=$("planeOut");if(o)o.innerHTML=`${sym} <b style="color:var(--gold)">${out}</b>`;log("sys",`🎲 Planar die → ${sym} ${out}`);}
 function setPlaneName(v){if(!S.plane||typeof S.plane!=='object')S.plane={name:''};S.plane.name=v;}
 function renderBattles(){const box=$("battleList");if(!box)return;const pn=$("planeName");if(pn&&document.activeElement!==pn)pn.value=(S.plane&&S.plane.name)||'';
   const list=S.battles||[];
-  if(!list.length){box.innerHTML='<span class="empty">No battles in play. Add one to track its defense counters — or reach Vael\'s Throne, where the Tyrant fields a Siege you must break.</span>';return;}
+  if(!list.length){box.innerHTML='<span class="empty">No battles in play. Add one to track its defense counters — or face Grakk at the Ember Gate, where he fields a Siege you must break.</span>';return;}
   box.innerHTML='';
   list.forEach(b=>{const el=document.createElement('div');el.className='brow'+(b.side==='boss'?' cmdmine':'');
     if(b.defeated){el.innerHTML=`<span class="li-n">${embEsc(b.name)}</span> <span class="badge ok">defeated ✓</span>${b.side==='boss'?'<span class="badge tax">enemy</span>':''}<button class="tiny ember" onclick="rmBattle(${b.id})">✕</button>`;}
@@ -2203,7 +2204,7 @@ function playEnemyLand(){if(S.over||S.bossLandPlayed)return;const lands=S.hand.m
 function vaelUpkeep(){S.rules.filter(r=>r.side==="boss"&&r.heal).forEach(r=>{bossHealLife(r.heal);log("dm",`${r.name}: ${ENs()} gains ${r.heal}. (${S.boss.life})`);});
   fireEnemyEmblems('upkeep');if(S.over)return;/* a drain emblem can end the game on the enemy's upkeep — stop the rest of the upkeep */
   firePlayerEmblems('enemyUpkeep');if(S.over||S.paused)return;/* P23.2: a player emblem keyed to the enemy's upkeep fires here · review: also stop if it FELLED the boss (a mini-boss clear sets S.paused, not S.over) */
-  tickBossBattles();if(S.over)return;/* P7.7: Vael's Siege heals it each upkeep while it stands */
+  tickBossBattles();if(S.over)return;/* P7.7: a warden's Siege heals it each upkeep while it stands */
   /* P38.1: enemy walkers no longer auto-fire on upkeep — they activate at SORCERY SPEED in the main phase (enemyWalkersAct in vaelMain). */}
 /* ===== P38: enemy planeswalkers as REAL permanents with SORCERY-SPEED loyalty =====
    S.enemyWalkers = deck-cast PW permanents; a walker COMMANDER lives on S.cmd (isWalker). Each activates ONE
@@ -2837,7 +2838,7 @@ const INFO_TEXT={
   threat:{t:"⚔ Threat (AI hint)",h:`<p>Tells the enemy AI how dangerous this permanent is. The AI works to remove or block your <b>top</b> threats ahead of <b>mid</b> and <b>low</b> ones — set it honestly so the opponent plays sensibly.</p>`},
   ward:{t:"🛡 Ward",h:`<p>Ward makes the enemy <b>pay</b> before it can target this permanent — mana or life, your choice. If the enemy can't (or won't) pay the ward, it simply can't target it.</p>`},
   freeze:{t:"❄ Freeze mana",h:`<p>When you tap down or freeze the enemy's lands, set the <b>frozen</b> amount here. It lowers the enemy's <b>usable mana</b> this turn — the frozen part stays in the pool but can't be spent, so the AI casts and pays for less.</p><p>It <b>thaws automatically</b> at the end of the enemy's turn; re-apply it each turn for a lasting lock.</p>`},
-  battles:{t:"🜨 Battles & Planes",h:`<p>A <b>battle</b> is a permanent with <b>defense counters</b> — remove them (⚔ hit, or − / +) and at <b>0</b> it's defeated. When you reach the Throne, <b>Vael fields a Siege</b> that <b>heals the Tyrant each upkeep</b> until you break it — break it and the siege's defenses turn on Vael. You can now <b>attack a boss siege in combat</b>: aim an attacker at it in the resolver (the enemy may block to defend it); this tracker stays for manual bookkeeping.</p><p>The <b>planar die</b> is a neutral Planechase roll: mostly blank, occasionally <b>✦ planeswalk</b> (turn to a new plane) or <b>⊛ chaos</b> (trigger this plane's effect). Name a <b>current plane</b> to role-play; you interpret the outcomes.</p>`},
+  battles:{t:"🜨 Battles & Planes",h:`<p>A <b>battle</b> is a permanent with <b>defense counters</b> — remove them (⚔ hit, or − / +) and at <b>0</b> it's defeated. At the <b>Ember Gate</b>, <b>Grakk fields a Siege</b> that <b>heals him each upkeep</b> until you break it — break it and the siege's defenses turn on Grakk. You can now <b>attack a boss siege in combat</b>: aim an attacker at it in the resolver (the enemy may block to defend it); this tracker stays for manual bookkeeping.</p><p>The <b>planar die</b> is a neutral Planechase roll: mostly blank, occasionally <b>✦ planeswalk</b> (turn to a new plane) or <b>⊛ chaos</b> (trigger this plane's effect). Name a <b>current plane</b> to role-play; you interpret the outcomes.</p>`},
 };
 function infoBtn(key){return `<span class="ibtn" role="button" tabindex="0" onclick="event.stopPropagation();showInfo('${key}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();showInfo('${key}')}" title="What's this?">i</span>`;}
 function showInfo(key){const o=INFO_TEXT[key];if(!o)return;$("infoBody").innerHTML=`<h2 class="loreh">${o.t}</h2>${o.h}`;$("infoOverlay").classList.add("show");}
@@ -2851,10 +2852,11 @@ const ENEMY_ABIL={
      abil:[
        ["Goes wide, fast","A flood of cheap goblins, most entering with <b>haste</b> — they swing the turn they arrive, so the board fills and attacks at once."],
        ["Stokes its commander","<b>Gate Effigy</b> and <b>War-Cry</b> each give Ashmaw +2/+0, <b>Goblin War-Chant</b> +3/+0, and they stack — but <i>only while Ashmaw is actually on the battlefield.</i> A buff to a permanent needs that permanent in play; Grakk won't waste one on a commander still in its command zone."],
+       ["Siege of the Ember Gate","A boss-side battle (defense 6) that opens the fight <b>already in play</b> and <b>heals Grakk 1 each of its upkeeps</b> while it stands. Aim an attacker at it (the enemy may block to defend it) to grind its defense to 0 — break it and its own defenses deal <b>6 to Grakk</b>."],
        ["Reach to your face","Ember Bolt, Twin Bolt, Gatefire Blast, Conflagrate, Warren Firestorm — direct burn that ignores your blockers and hits your <b>life total</b>. Roughly half the deck doesn't care what creatures you field."],
        ["Finisher — Warren Overrun","Every creature it controls gets <b>+2/+1, trample, and haste</b> until end of turn. A board that looked survivable can turn lethal in a single cast."],
      ],
-     tip:"Trade early, hold removal for Ashmaw and the overrun turn, and watch your life — you can win the board and still lose to burn."},
+     tip:"Trade early, hold removal for Ashmaw and the overrun turn, break the Siege to stop its heal, and watch your life — you can win the board and still lose to burn."},
   1:{tag:"mono-black attrition & drain",
      lead:"The Pit does not kill you quickly; it spends you, a wound at a time, and feeds what it takes back into itself. The longer you last, the stronger it grows on your losses.",
      abil:[
@@ -2868,12 +2870,11 @@ const ENEMY_ABIL={
      lead:"Grakk was the spark; Murglax was the ash. Vael is the fire that learned to feed on its own ashes — both halves of the Warren in one deck, and the only general who fields a planeswalker.",
      abil:[
        ["Both halves at once","Grakk's burn and Murglax's drain & removal together, plus the biggest bodies in the dungeon."],
-       ["Planeswalker — Nyx, Voice of Cinders","<b>+1</b> you lose 2 life · <b>−3</b> destroy your greatest creature · <b>−7 ultimate</b> you lose 8 life and Vael makes a 5/5 trample-haste Cinder Wraith. The only enemy walker in Level I — answer it or it snowballs."],
-       ["Siege of the Ember Throne","A boss-side battle (defense 6) that <b>heals Vael 2 each of its upkeeps</b> while it stands. Attack its defense down to 0 to break it — that deals <b>6 to Vael</b>."],
+       ["Planeswalker — Ash the Guardian","<b>+1</b> Ember Whisper: you lose 2 life · <b>−3</b> Grasping Ash: destroy your greatest-power creature · <b>−7 ultimate</b> Avatar of Ash: you lose 6 life and Vael forges an 8/8 trample-haste-lifelink Avatar. The only enemy walker in Level I — answer it or it snowballs."],
        ["Dies twice","At 0 life Vael rises <b>ENRAGED</b> (reborn 10/15/20 life by difficulty) and calls a Pyre Revenant 4/3. You must put the Tyrant down a second time."],
        ["Finishers","Embers Choose a New Shape (a 6/6 plus drain), Warren Overrun, and Maw of the Pit (you lose 8, it gains 8)."],
      ],
-     tip:"Break the Siege early, save removal for Nyx and the avatars, and keep enough life and gas in hand for the second life bar."},
+     tip:"Save removal for Ash the Guardian and the Avatar, and keep enough life and gas in hand for the second life bar."},
 };
 function enemyAbilitiesHTML(){
   if(typeof S==='undefined'||!S||!S.boss)return `<h2 class="loreh">⚜ Enemy Abilities</h2><p>No general on the field yet — descend to face one.</p>`;
@@ -2992,7 +2993,7 @@ const TUTORIAL_HTML=`
 <p>Your side mirrors the enemy's: <b>emblems</b> with real automation (auto · static · triggered) that can target <b>you</b> (uncoloured) or the <b>enemy</b> (blue box); your own <b>counters</b>; and zone routing — resolved instants/sorceries rest in your <b>graveyard</b>, and the ✕ on a permanent asks graveyard / exile / none. Every permanent (both sides) gets the full option set for its kind: protection-from-colour, hexproof / shroud / indestructible, ↺ counters, ⧉ copy, and return-to-hand / library / exile / graveyard — all honoured in targeting.</p>
 
 <h3>🜨 Battles & the planar die</h3>
-<p>In <b>Battles &amp; Planes</b> (Action tab) you can track a <b>battle</b> — a permanent with <b>defense counters</b> you attack down to defeat. The final boss fields a <b>Siege</b> that heals it each upkeep until you break it (breaking it turns its defenses on the boss). The <b>planar die</b> is a neutral Planechase roll (mostly blank, sometimes planeswalk or chaos) — name a current plane and interpret the rest yourself.</p>
+<p>In <b>Battles &amp; Planes</b> (Action tab) you can track a <b>battle</b> — a permanent with <b>defense counters</b> you attack down to defeat. The Ember Gate's warden fields a <b>Siege</b> that heals it each upkeep until you break it (breaking it turns its defenses on the boss). The <b>planar die</b> is a neutral Planechase roll (mostly blank, sometimes planeswalk or chaos) — name a current plane and interpret the rest yourself.</p>
 
 <h3>⚰ Zones, life, loot & the store</h3>
 <p>Destroyed permanents route to <b>your graveyard or exile</b> (tokens just cease to exist); from either zone you can return them to the battlefield, hand, or another zone (see <b>🔀 Moving cards</b> above). Clear a room to roll <b>loot</b> and earn <b>gold</b> — spend gold at the <b>🛒 Merchant</b> <b>between descents only</b> on potions, charms, and relics: what you buy is stowed and joins your satchel when your next descent begins. <b>Once you've descended, the Merchant is closed until the level ends</b> (clearing rooms still drops loot). Loot lives in your <b>🎒 Satchel</b>; consumables you keep until you use them, while <b>passives &amp; reminders last exactly one descent</b> (then they expire).</p>

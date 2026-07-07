@@ -1,5 +1,5 @@
 /* Guff's Gauntlet — service worker (offline app shell).
-   The cache name is versioned (gg-cache-v54), so installing this build
+   The cache name is versioned (gg-cache-v55), so installing this build
    evicts any earlier cached version on activate. A fetch handler is present,
    which is what makes the app installable.
    v49 (P45.1): the 4 typefaces are now inlined as data-URI woff2 inside
@@ -19,8 +19,10 @@
 /* v54 (site): the marketing landing page is now './index.html' and the GAME moved to
    './play.html'. Both are precached; navigations fall back to whichever page was
    requested (then to play.html) so the installed app still opens straight into the game
-   offline. manifest start_url is now ./play.html. */
-const CACHE = 'gg-cache-v54';
+   offline. manifest start_url is now ./play.html.
+   v55 (P48.3): Vael's planeswalker renamed to "Ash the Guardian"; Vael's siege removed and
+   given to Grakk (starts in play, heals +1/upkeep). play.html changed → cache bumped. */
+const CACHE = 'gg-cache-v55';
 const SHELL = [
   './index.html',
   './play.html',
