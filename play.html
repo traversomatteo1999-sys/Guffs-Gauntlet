@@ -113,6 +113,10 @@
   .inv{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:9px;margin-top:10px} .item{border:1px solid var(--line);border-radius:11px;background:var(--ink-3);padding:9px 11px} .item.rare{border-color:rgba(217,164,65,.6)} .item .in{font-family:"Grenze Gotisch",serif;font-weight:700;font-size:.92rem;display:flex;justify-content:space-between;gap:6px} .item .ir{font-family:"Space Mono",monospace;font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)} .item .it{font-size:.76rem;color:var(--bone-dim);margin:4px 0 6px}
   .resolver{position:fixed;inset:0;z-index:39;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(3,4,7,.93);backdrop-filter:blur(3px)} .resolver.show{display:flex;animation:fade .25s ease}
   .resolvermodal{width:min(480px,94vw);max-height:88vh;overflow-y:auto;overscroll-behavior:contain;border:1px solid var(--ember);border-radius:14px;background:var(--ink-2);box-shadow:0 26px 90px -16px rgba(0,0,0,.85);padding:14px 16px 12px;animation:spawn .3s ease}
+  /* P49.10(#19): minimize the combat popup — the modal hides but S.combat stays set, so every "can't advance" guard keeps the turn blocked; a fab re-expands it. */
+  .resolver.show.min{display:none}
+  .combatfab{position:fixed;z-index:38;right:16px;bottom:74px;display:none;align-items:center;gap:7px;padding:11px 15px;border-radius:999px;background:linear-gradient(180deg,#3a2222,#261818);border:1px solid var(--ember);color:var(--gold);font-size:.95rem;font-weight:600;cursor:pointer;box-shadow:0 10px 26px -8px rgba(0,0,0,.75)}
+  .combatfab.show{display:flex}
   .resolver h3{font-family:"Grenze Gotisch",serif;font-size:1.12rem;margin-bottom:4px}
   /* P1.10: the Stack is a docked, auto-surfacing popup (not an inline panel) + a floating launcher */
   .stackpop{position:fixed;inset:auto 0 0 0;z-index:38;display:none;align-items:flex-end;justify-content:center;padding:0;pointer-events:none} /* P45.6: a bottom-docked sheet that leaves the board visible + interactive above; .expanded restores the full-screen modal */
@@ -557,7 +561,7 @@
     <h2>🜨 Battles &amp; Planes <span class="tag">defense counters · planar die</span></h2>
     <div class="btnrow"><span class="lab">Planar die</span><button class="mini gold" onclick="rollPlaneDie()">🎲 Roll planar die</button><span id="planeOut" class="manaline"></span></div>
     <div class="btnrow"><span class="lab">Current plane</span><input type="text" id="planeName" placeholder="(none — set a plane to role-play)" oninput="setPlaneName(this.value)" style="flex:1;min-width:0"></div>
-    <div class="subh"><span>Battles <span class="tag">attack to remove defense counters</span></span><button class="tiny ok" onclick="addBattle('you')">+ add a battle</button></div>
+    <div class="subh"><span>Battles <span class="tag">attack to remove defense counters</span></span><span class="btnrow" style="gap:5px"><button class="tiny ok" onclick="addBattle('you')" title="a battle you control — defeating it rewards you">+ your battle</button><button class="tiny ember" onclick="addBattle('boss')" title="an enemy siege — break it to turn its defenses on the boss">+ enemy siege</button></span></div>
     <div id="battleList"></div>
   </div>
 
@@ -581,9 +585,10 @@
       <div id="combatBox"></div>
       <div id="combatTrick" class="stackproposal"></div>
       <div class="incoming" id="combatPred"></div>
-      <div class="btnrow"><button class="big ember inline" onclick="approveCombat()">Approve &amp; apply</button><button class="mini" onclick="cancelCombat()">Cancel</button></div>
+      <div class="btnrow"><button class="big ember inline" onclick="approveCombat()">Approve &amp; apply</button><button class="mini" onclick="minimizeCombat()" title="minimize — peek at the board; your turn stays blocked until you resolve combat">▁ reduce</button><button class="mini" onclick="cancelCombat()">Cancel</button></div>
     </div>
   </div>
+  <div class="combatfab" id="combatFab" role="button" tabindex="0" onclick="restoreCombat()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();restoreCombat()}" title="combat is still in progress — click to resume">⚔ Resume combat</div>
   <div class="stackpop" id="plays" role="dialog" aria-label="The Stack" onclick="if(event.target===this)hidePlays()">
     <div class="stackmodal">
       <div class="stackhead">
@@ -1509,8 +1514,13 @@ function vaelAttackers(){let a=S.tokens.filter(c=>(!c.sick||kw(c,'haste'))&&!c.t
   return cap(a);}
 /* P4.1: resolve every pending item top-down, then CLEAR the resolved/countered items off the stack — WITHOUT advancing the phase. Phase advance is solely Continue ▸ (flowClick→advancePhase), so you can cast → resolve → cast again within one phase (multiple stacks per phase). */
 function resolveStack(){if(S.over)return;S.stackProposal=null;for(let i=S.plays.length-1;i>=0;i--){const p=S.plays[i];if(p&&p.status==='pending')resolvePlay(i);}S.plays=S.plays.filter(p=>p.status==='pending');if(!S.plays.length)hidePlays();render();}
-function openCombat(dir,attackers,pool,assign,target){S.stackProposal=null;/* P4.4: an instant-speed window proposal's window closes when combat begins (avoids a proposal layered over the combat resolver) */S.combat={dir,attackers,pool,assign,target:target||{},prevented:[]};/* P32: transient per-combat "prevent this attacker's damage" ids (cleared with S.combat when combat ends) */$("combatTitle").textContent=dir==='you'?`Your attack — ${ENs()} proposes blocks. Edit, then approve.`:`${ENs()} attacks — assign your blockers (and check targets), then approve.`;renderCombat();$("resolver").classList.add("show");}
-function cancelCombat(){S.combat=null;$("resolver").classList.remove("show");render();}
+function openCombat(dir,attackers,pool,assign,target){S.stackProposal=null;/* P4.4: an instant-speed window proposal's window closes when combat begins (avoids a proposal layered over the combat resolver) */S.combat={dir,attackers,pool,assign,target:target||{},prevented:[],_min:false};/* P32: transient per-combat "prevent this attacker's damage" ids (cleared with S.combat when combat ends) · P49.10: _min = minimized */$("combatTitle").textContent=dir==='you'?`Your attack — ${ENs()} proposes blocks. Edit, then approve.`:`${ENs()} attacks — assign your blockers (and check targets), then approve.`;renderCombat();$("resolver").classList.add("show");applyCombatMin();}
+/* P49.10(#19): minimize/restore the combat popup. Minimizing does NOT resolve/cancel combat — S.combat stays set, so advancePhase/flowClick/backPhase and #dmBtn/#backBtn all remain blocked; only the modal hides behind a resume fab. */
+function applyCombatMin(){const r=$("resolver"),f=$("combatFab");const min=!!(S.combat&&S.combat._min);if(r)r.classList.toggle("min",min);if(f)f.classList.toggle("show",min&&!!S.combat);}
+function minimizeCombat(){if(!S.combat)return;S.combat._min=true;applyCombatMin();}
+function restoreCombat(){if(!S.combat)return;S.combat._min=false;applyCombatMin();renderCombat();}
+function closeCombatModal(){const r=$("resolver");if(r){r.classList.remove("show");r.classList.remove("min");}const f=$("combatFab");if(f)f.classList.remove("show");}
+function cancelCombat(){S.combat=null;closeCombatModal();render();}
 function combatUsed(){const set=new Set();Object.values(S.combat.assign).forEach(arr=>arr.forEach(o=>set.add(o)));return set;}
 function renderCombat(){
   if(!S.combat)return;const box=$("combatBox");box.innerHTML="";const used=combatUsed();const vael=S.combat.dir==='vael';const wks=vael?S.my.walkers.filter(w=>!w.phased):[];
@@ -1624,7 +1634,7 @@ function approveCombat(){
     /* P19.2: your unblocked, FACE-targeted commander's combat damage accrues as commander damage (respects double strike / "deals no combat dmg"). */
     const pcmd=attackers.find(a=>a.isCmd&&(assign[a.id]||[]).length===0&&(''+(tmap[a.id]||'boss'))==='boss');
     if(pcmd){const cmdFace=((r.perAtt.find(x=>x.att===pcmd)||{}).toFace)||0;if(cmdFace>0){if(!S.enemyCounters)S.enemyCounters={poison:0,energy:0,experience:0,cmdDmg:0};S.enemyCounters.cmdDmg+=cmdFace;log("you",`Commander damage to ${S.boss.name}: +${cmdFace} → ${S.enemyCounters.cmdDmg}/21.`);renderCounters();}}
-    S.combat=null;$("resolver").classList.remove("show");
+    S.combat=null;closeCombatModal();
     /* P39.1: apply siege/battle damage last — battleDmg → battleDefeat may fire the break payoff (a boss siege deals its maxDef to the enemy) and bossDown. */
     Object.keys(bHits).forEach(bid=>{const b=getBattle(+bid);if(b&&!b.defeated&&bHits[bid]>0)battleDmg(b.id,bHits[bid]);});
     if(S.boss.life<=0)bossDown();else checkEnemyOut();render();
@@ -1646,7 +1656,7 @@ function approveCombat(){
     if(enTap.length)log("dm",`${ENs()} taps ${enTap.length===1?'its attacker':'its attackers'} (vigilant creatures stay untapped).`);
     if(r.deadAtt.length)log("cbt",`${ENs()} loses: ${r.deadAtt.map(cnm).join(", ")}.`);
     if(r.deadBlk.length)log("cbt",`Your losses: ${r.deadBlk.map(cnm).join(", ")}.`);
-    S.combat=null;$("resolver").classList.remove("show");
+    S.combat=null;closeCombatModal();
     checkLose();render();
   }
 }
@@ -1738,7 +1748,8 @@ function render(){
   const rp=$("rulesPanel"),rf=$("rulesField");if(S.rules.length){rp.style.display="";rf.innerHTML="";S.rules.forEach(r=>{const el=document.createElement("div");el.className="ruleperm"+(r.side==="boss"?" bossr":"");el.innerHTML=`<div class="rn">${r.name}</div><div class="rt">${r.text}</div><div class="acts">${r.die?`<button class="mini gold" onclick="rollRule(${r.id})">Roll d${r.die}</button>`:''}<button class="mini ember" onclick="destroyRule(${r.id})">Destroy</button></div>`;rf.appendChild(el);});}else rp.style.display="none";
   const sc=$("satchelCount");if(sc)sc.textContent=S.inv.length?`${S.inv.length} item${S.inv.length===1?'':'s'}`:'empty';
   $("turnTag").textContent="Turn "+S.turn+" · "+DUNGEON[S.roomIndex].name;renderFlow();renderZones();renderMyZones();renderDeckColors();renderBoardTokens();const gn=$("goldNote");if(gn)gn.textContent="💰 "+getGold();
-  if(S.combat)renderCombat();
+  if(S.combat){renderCombat();applyCombatMin();}/* P49.10(#19): keep the minimized state across a mid-combat re-render */
+  else{const r=$("resolver");if(r)r.classList.remove("min");const f=$("combatFab");if(f)f.classList.remove("show");}/* P49.10 review-fix: any teardown of combat (undo/quit/new battle) that ran while minimized must clear the stale resume fab + .min on the next render */
   applyTabs();applyLog();applyPanels();applyManaBox();
 }
 /* P7.3: one-click select-all (toggles to clear-all when everything eligible is already picked). */
@@ -1933,7 +1944,7 @@ function renderBattles(){const box=$("battleList");if(!box)return;const pn=$("pl
   box.innerHTML='';
   list.forEach(b=>{const el=document.createElement('div');el.className='brow'+(b.side==='boss'?' cmdmine':'');
     if(b.defeated){el.innerHTML=`<span class="li-n">${embEsc(b.name)}</span> <span class="badge ok">defeated ✓</span>${b.side==='boss'?'<span class="badge tax">enemy</span>':''}<button class="tiny ember" onclick="rmBattle(${b.id})">✕</button>`;}
-    else{el.innerHTML=`<input type="text" value="${embEsc(b.name)}" style="width:128px" onchange="setBattle(${b.id},'name',this.value)">${b.side==='boss'?'<span class="badge tax">enemy siege</span>':'<span class="badge">yours</span>'}<span class="lab">defense</span><button class="tiny" onclick="battleAdjDef(${b.id},-1)">−1</button><b style="font-family:'Space Mono';color:var(--gold);min-width:16px;text-align:center">${b.def}</b><span class="lab">/${b.maxDef}</span><button class="tiny" onclick="battleAdjDef(${b.id},1)">+1</button><span class="lab">attack for</span><input type="number" id="bdmg_${b.id}" value="1" min="1" style="width:42px"><button class="tiny ember" onclick="battleDealInput(${b.id})">⚔ hit</button>${(b.tick||0)>0?`<span class="badge tax" title="heals the enemy each upkeep while it stands">⟳ heals ${b.tick}</span>`:''}<button class="tiny ember" onclick="rmBattle(${b.id})">✕</button>${b.note?`<span class="manaline" style="flex:1 0 100%;margin-top:3px">${embEsc(b.note)}</span>`:''}`;}
+    else{el.innerHTML=`<input type="text" value="${embEsc(b.name)}" style="width:128px" onchange="setBattle(${b.id},'name',this.value)"><button class="tiny ${b.side==='boss'?'ember on':''}" title="whose battle this is — click to flip owner (defeat reward vs. break-to-turn-on-boss)" onclick="setBattle(${b.id},'side','${b.side==='boss'?'you':'boss'}')">${b.side==='boss'?'enemy siege':'yours'} ↔</button><span class="lab">defense</span><button class="tiny" onclick="battleAdjDef(${b.id},-1)">−1</button><b style="font-family:'Space Mono';color:var(--gold);min-width:16px;text-align:center">${b.def}</b><span class="lab">/${b.maxDef}</span><button class="tiny" onclick="battleAdjDef(${b.id},1)">+1</button><span class="lab">attack for</span><input type="number" id="bdmg_${b.id}" value="1" min="1" style="width:42px"><button class="tiny ember" onclick="battleDealInput(${b.id})">⚔ hit</button>${(b.tick||0)>0?`<span class="badge tax" title="heals the enemy each upkeep while it stands">⟳ heals ${b.tick}</span>`:''}<button class="tiny ember" onclick="rmBattle(${b.id})">✕</button>${b.note?`<span class="manaline" style="flex:1 0 100%;margin-top:3px">${embEsc(b.note)}</span>`:''}`;}
     box.appendChild(el);});}
 
 /* ===== EDITS ===== */
@@ -2263,14 +2274,18 @@ function pickWalkerAbility(w){const ab=wAbil(w),plus=ab.plus,minus=ab.minus,ult=
   if(plus)return plus;/* otherwise BUILD toward the ult by default — so the finisher is reachable on every difficulty */
   if(canDefend)return minus;
   return null;}/* review-fix HIGH (P38.5): builds by default, snipes real bombs, commits within 2 of the ult · P44.3: crack-back-aware ult safety + defensive minus · P49.11: reanimator-aware minus + empty-gy fizzle guard */
+/* P49.10(#22): resolve a loyalty ability's effect DIRECTLY (off the stack) — mirrors resolvePlay's generic branch (run / target / burn / selfLoss). Reverses P38's stack routing so the player can't counter a walker ability. */
+function _resolveAbilityInline(ab,wn){if(ab.run)applyRun(ab.run);if(ab.target){const msg=applyTarget(ab.target,(ab.color||'').split('').filter(Boolean));if(msg)log("dm",`${ab.n}: ${ENs()} ${msg}.`);else log("dm",`${ab.n} — no valid target on your tracked board.`);}if(ab.burn>0)resolveBurn(ab);if(ab.selfLoss){S.youLife-=ab.selfLoss;log("dm",`${ab.n} → you lose <b>${ab.selfLoss}</b>. (${S.youLife})`);}}
 function enemyWalkerAct(w){if(!w||S.over||w._actedTurn===S.turn)return false;const ab=pickWalkerAbility(w);if(!ab)return false;const wn=w.name||w.n||'Planeswalker';sfx('loyalty');/* review-fix: a walker COMMANDER stores its name in .n, not .name */
   w.loyalty=(w.loyalty||0)+(ab.sign||0);w._actedTurn=S.turn;
-  const p=mkPlay({n:`${wn}: ${ab.n} (${ab.sign>0?'+':''}${ab.sign})`,type:'instant',text:ab.text,selfLoss:ab.selfLoss,run:ab.run,target:ab.target,color:ab.color,cost:0});S.plays.push(p);
   log("dm",`✦ ${wn} activates <b>${ab.n}</b>${ab.ult?' — ULTIMATE':''} (loyalty ${w.loyalty}).`);
-  if(w.loyalty<=0)enemyWalkerDies(w);/* spent to 0 by its own minus/ult — leaves; the ability still resolves off the stack */
+  _resolveAbilityInline(ab,wn);/* P49.10(#22): resolves inline, not on the stack */
+  showToast(`✦ <b>${wn}</b> — ${ab.n}${ab.ult?' <span style="color:var(--gold)">(ULTIMATE)</span>':''}${ab.text?`<br><span style="opacity:.85">${ab.text}</span>`:''}`);/* non-blocking announcement */
+  if(w.loyalty<=0)enemyWalkerDies(w);/* spent to 0 by its own minus/ult — leaves */
+  checkLose();render();
   return true;}
-/* P38.1/P38.4: activate each enemy walker once, at sorcery speed (main phase, empty stack). Called from vaelMain. */
-function enemyWalkersAct(){if(S.over)return;enemyWalkerList().forEach(w=>{if((S.plays||[]).some(p=>p.status==='pending'))return;/* empty stack between activations */enemyWalkerAct(w);});if((S.plays||[]).some(p=>p.status==='pending'))showPlays();}
+/* P38.1/P38.4: activate each enemy walker once, at sorcery speed (main phase). Called from vaelMain. P49.10(#22): abilities now resolve inline, so no empty-stack gating / showPlays is needed. */
+function enemyWalkersAct(){if(S.over)return;enemyWalkerList().forEach(w=>enemyWalkerAct(w));}
 /* P38.1/P38.2: a walker at 0 loyalty leaves — a deck PW to the graveyard (recastable), a walker COMMANDER to the command zone with rising tax + loyalty reset (P29). */
 function enemyWalkerDies(w){if(w===S.cmd){S.cmd.deaths=(S.cmd.deaths||0)+1;S.cmd.inPlay=false;S.cmd.cost=S.cmd.baseCost+(S.cmd.tax||0);S.cmd.loyalty=S.cmd.baseLoy;log("dm",`♛ ${S.cmd.n} falls to 0 loyalty → command zone. Recast costs <b>${S.cmd.cost}</b> (tax +${S.cmd.tax||0}, unchanged — the tax rises only on a command-zone cast).`);return;}/* P49.2(15B): a death no longer bumps the tax */
   const i=(S.enemyWalkers||[]).indexOf(w);if(i>=0){S.enemyWalkers.splice(i,1);if(w.key){S.gy.push({id:S.nextId++,key:w.key,name:w.name,_moved:true,color:(w.color||[]).slice()});log("dm",`✦ <b>${w.name}</b> hits 0 loyalty → ${ENs()}'s graveyard (recastable).`);}else log("dm",`✦ <b>${w.name}</b> hits 0 loyalty and is gone.`);}}
@@ -2374,7 +2389,7 @@ function vaelMain(which){
     const o=top[Math.floor(Math.random()*top.length)];const card=S.hand[o.i],fx=o.fx;
     S.bossMana-=fx.cost;S.hand.splice(o.i,1);const p=mkPlay(fx);p._card=card;S.plays.push(p);sfx('enemycast');
     log("dm",`Casts <b>${fx.n}</b> (spent ${fx.cost}, ${S.bossMana} left).`);cast++;}/* value drives the pick but is NOT logged — the enemy's internal threat math stays hidden (matches the instant-window/lethal cast logs) */
-  if(which===1&&S.tokens.length===0&&!S.cmd.inPlay&&!summonedCmd&&!S.plays.some(p=>p._enemyCmd&&p.status==='pending')){const rb=S.boss.colors||["R"];const rn=rb.includes('B')&&!rb.includes('R')?"Pit Spawn":(rb.includes('R')&&!rb.includes('B')?"Goblin Whelp":"Ember Servant");applyRun(["spawn",rn,1,1,[],rb.join('')]);log("dm",`🜂 <b>Resurgence</b> — a 1/1 ${rn}.`);}
+  if(which===1&&S.tokens.length===0&&!S.cmd.inPlay&&!summonedCmd&&!S.plays.some(p=>p.status==='pending'&&(p.type==='creature'||p._enemyCmd))){/* P49.10(#10): also skip when a creature spell is still pending on the stack this main — it will resolve into a body, so the board isn't really empty */const rb=S.boss.colors||["R"];const rn=rb.includes('B')&&!rb.includes('R')?"Pit Spawn":(rb.includes('R')&&!rb.includes('B')?"Goblin Whelp":"Ember Servant");applyRun(["spawn",rn,1,1,[],rb.join('')]);log("dm",`🜂 <b>Resurgence</b> — a 1/1 ${rn}.`);}
   if(S.plays.some(p=>p.status==='pending'))showPlays();
   if(!cast&&!summonedCmd&&which===1&&!S.cmd.inPlay)log("dm",`${ENs()} can't afford a cast — still ramping.`);
   if(!cast&&which===2)log("dm",`${ENs()} holds — nothing more to cast.`);}
