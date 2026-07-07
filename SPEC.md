@@ -238,6 +238,10 @@
 | &nbsp;&nbsp;P49.10 Combat/PW UX: combat popup minimize/restore (turn stays blocked) · PW abilities off-stack + announce popup · battles/sieges side-selectable · resurgent timing | ✅ done (bullets 19·22·11·10) — **#22 reverses P38** (enemy walkers only) |
 | &nbsp;&nbsp;P49.11 Vael/Ash the Guardian: reborn at 1 HP · +1 → "Create a 1/1 Ash Soldier with haste" · −3 → graveyard exile-X + free reanimate ≤X | ✅ done (bullets 23·27·28) |
 | &nbsp;&nbsp;P49.12 Items & cards: enemy top/bottom-N reveal shows full card info · add art to saved homebrew cards | ✅ done (bullets 14·17; #13 resolved — no change) |
+| **Phase 50 — Fix batch 2026-07-08** (turn-flow Undo button · live-recalculating combat popup · deck-tools land→battlefield) | 🟡 **SPECCED — 1 of 3 built** (recorded 2026-07-08; grounded in `# PHASE 50`). ⬜ P50.1 · ⬜ P50.2 · ✅ P50.3 (shipped inside `70709f1`, not yet version-shipped). |
+| &nbsp;&nbsp;P50.1 Undo button in the Turn-flow box (`.flowbtns`, beside ◂ Back / ▶) wired to the existing `undo()` | ⬜ planned (user 2026-07-08) — LOW risk |
+| &nbsp;&nbsp;P50.2 Combat resolver popup auto-updates in real time — every board change (flash a creature = new blocker · removal drops an attacker/blocker) recalculates the open popup (`_combatPrune()`+`renderCombat()` driven from `render()`) | ⬜ planned (user 2026-07-08) — combat/state → HIGH-risk review when built |
+| &nbsp;&nbsp;P50.3 Deck-tools: a land searched/looked/revealed can go straight onto the enemy battlefield as a mana source | ✅ done — `70709f1` (`dtMoveObj` land branch + `moveActs` board button · `tests/land-to-board.test.js`) |
 
 ---
 
@@ -3222,6 +3226,41 @@ Play each difficulty a few runs and note:
 **Reconciliation:** #14 extends P31 to its one skipped sub-view (P14.7 browse already uses `fxItem`). #17 builds on P45.2 (`cardArt` + imported-art persistence). (#13 resolved above — passives expire on descend per P14.5; consumables already persist.) **Open Qs:** which art affordance (a/b/c) + bundle the edit-strips-art fix?
 
 **Verify:** jsdom — grantBoon('bomb') → lose() → startBattle(campaign L1) → `S.inv` still has bomb; used-then-lost → not present; carry an unused item across `descendToNextLevel`. Reveal: `openDeckTools`→`dtLook('top')` → modalBody now contains `dtToggleCard(`/`pchev`; toggle → an `fxbody` appears; same for `dtReveal()`. Art: set `p.library[0].art='https://…'`→`renderLibrary` shows the `.cardart` strip; `readCastForm` accepts an http art URL and rejects a non-http value; an imported card round-trips its art through `saveCardEdits`.
+
+---
+
+# PHASE 50 — Fix batch 2026-07-08 🟡 1 of 3 built (P50.1 · P50.2 planned)
+
+> **Goal.** Fixes reported by the user on 2026-07-08, grounded below in `play.html` (post-P49.9 code, `70709f1`). **P50.3 already shipped this session**; **P50.1–P50.2 are specced build-ready** — not yet in the code (re-grep confirmed: the Turn-flow box has only ◂ Back + ▶ `#dmBtn`, and the combat popup is static once opened).
+
+## P50.1 — Undo button in the Turn-flow box  *(user 2026-07-08)*
+
+**What.** Surface a visible **↩ Undo** control in the Turn-flow box so the player can reverse the last action from the board (today `undo()` exists but has no button there — only a tutorial-text mention).
+
+**Grounding.** The Turn-flow box is the panel around `#dmBtn`; its buttons live in the `.flowbtns` div (~line 574: `◂ Back` `#backBtn` + `▶ #dmBtn`). The engine action already exists — `undo()` (~line 1769) pops `_hist`, restores `S`, clears `S.combat`, `closeTransientUI()`, re-renders; history is snapshotted by `settleHistory` (~line 1764, cap 80). The render pass toggles `#dmBtn`/`#backBtn` `.disabled` (~line 2525: `btn.disabled=S.over||!!S.combat||S.paused`).
+
+**Build notes (LOW risk — UI surfacing).** Add a third button to `.flowbtns` (`↩ Undo`, `onclick="undo()"`, `backphase`/`mini` style so `.flowbtns #dmBtn{flex:1}` stays dominant); give it a new `id` (e.g. `undoBtn`) — a pure id-*add* is free against the idset guard (only removals fail it). Disable it when `!_hist.length`, in the same render spot that sets `#dmBtn.disabled` (~2525). No save-shape or combat impact.
+
+**Verify.** jsdom: `render()` → the `#dmBtn` panel contains a button whose `onclick` calls `undo()`; do an action (e.g. `slay(id)`), click Undo → `S` restored + a `↩ Undid:` log line; with `_hist` empty the button is `disabled`.
+
+## P50.2 — Combat resolver popup recalculates live  *(user 2026-07-08)*
+
+**What.** While the combat resolver popup is open, it must **auto-update in real time** as the board changes: cast/flash a creature → it becomes an available **blocker**; remove a creature with an instant/flash → it drops as an attacker or blocker; totals and legal choices recalculate — no cancel-and-reopen.
+
+**Grounding.** Combat lives on `S.combat` (`.attackers`, `.assign`, `.target`, `.dir`, `._min`); the popup is `#resolver`, rendered by **`renderCombat()`** (~line 1592). The resolver's own buttons already re-call `renderCombat()` after mutating (`combatDel`/`combatNegate`/`combatTarget`, ~1646-1662). **A pruning helper already exists — `_combatPrune()` (~line 1623)** — with an `alive(c)` check across `S.my.creatures`/`S.tokens`/`S.cmd`/walkers. P49.10 added minimize/restore (`applyCombatMin`/`#combatFab`, ~1586-1590). **What's missing:** nothing drives `_combatPrune()`+`renderCombat()` when the board changes *outside* the resolver (e.g. a spell resolving through the main `render()`), and the blocker pool must be **re-derived from the live board** so a flashed-in creature appears as an option.
+
+**Build notes (MEDIUM→HIGH risk — combat + state).** Two viable shapes: **(a)** from the main `render()`, when `S.combat && !S.combat._min`, call `_combatPrune()` then `renderCombat()` so every settled action refreshes the popup; or **(b)** make `renderCombat()` derive attackers/blockers from the live board each call and reconcile `S.combat.assign` (drop assignments whose creature left; permit newly-present creatures). Must **preserve still-legal block assignments**, drop stale ones, and never desync the two-step first-strike model in `resolveAttack`/`approveCombat`/`aiBlocks`. Watch the enemy instant window (`enemyCombatTrick`, ~1614) and the minimize state (don't force-restore a minimized popup on every render). **When built, this is a HIGH-risk change → multi-lens adversarial review** (combat + state-copy) plus a driver.
+
+**Verify.** jsdom: open the resolver (`resolveAttack(...)` → `renderCombat()`), snapshot its blocker list → push a creature onto `S.my.creatures` (simulate a flash cast) + `render()` → the popup now offers it as a blocker; `slay` a listed attacker + `render()` → it's gone from the popup and its `assign` entry cleared; zero console errors.
+
+## P50.3 — Deck-tools: lands searchable straight to the battlefield  *(this session — ✅ done)*
+
+**Shipped** inside `70709f1` (folded into the P49.9 commit by the user's concurrent CLI session). In the enemy deck-tools (Browse library · Look top/bottom N · Reveal hand), a **land** can now be put straight onto the enemy battlefield as a mana source (+1 land / +1 available / +1 max), matching `dtPlayCard`'s land path. Impl: a `land` branch in `dtMoveObj`'s `→ battlefield` handler + `moveActs` `canBoard=(t==='creature'||t==='land')`. Non-permanent spells stay rejected; creature reanimation unchanged. Driver: `tests/land-to-board.test.js` (10 asserts; `npm test` 38/38 green). ⚠ **not yet version-shipped** — `sw.js`/README still `v56`; bump on the next ship so installed players receive it.
+
+### Phase 50 decisions (confirm at build)
+- **P50.2 late-blocker legality:** a creature entering *after* attackers are declared — allow it to block (sandbox-honest; the engine "trusts your inputs") or forbid (strict MTG: only creatures present at declare-blockers may block)? *Default:* **allow**, since the resolver is a manual aid; note it in the log.
+- **P50.2 removed-attacker handling:** removing a declared attacker mid-resolve — auto-recompute totals and clear its `assign`/`target` (mirrors `combatNegate`). *Default:* yes.
+- **P50.1 placement/label:** inside `.flowbtns` beside Back/▶ as `↩ Undo` (default), disabled when nothing to undo.
 
 ---
 
