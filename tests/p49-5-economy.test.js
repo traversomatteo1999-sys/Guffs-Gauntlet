@@ -38,6 +38,12 @@ ok(ev("BOONS.surge.r==='rare'"),'still rare (grantBoon/pickByRarity path intact)
 ev("S.inv=[];grantBoon('surge')");
 ok(ev("S.inv.some(x=>x&&x.id==='surge')"),'grantBoon(surge) still works');
 
+// --- Ember Sigil realism: the run-long +1 direct-damage engine is now uncommon, not a 6g common ---
+ok(ev("BOONS.ember.r==='uncommon'"),'Ember Sigil promoted common → uncommon');
+ok(ev("STORE.find(s=>s.id==='ember').cost===16"),'Ember Sigil repriced 6 → 16g (uncommon band)');
+// balance guard: no OTHER store price changed in this pass (economy otherwise untouched)
+ok(ev("STORE.find(s=>s.id==='heal5').cost===7 && STORE.find(s=>s.id==='scholar').cost===18 && STORE.find(s=>s.id==='phoenix').cost===40"),'other item prices unchanged — economy kept balanced');
+
 if(errors.length){console.error('jsdomErrors:',errors.slice(0,5));fail++;}
 console.log(fail?'P49.5 FAILED':'P49.5 PASSED');
 process.exit(fail?1:0);
