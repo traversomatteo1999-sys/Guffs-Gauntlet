@@ -233,7 +233,7 @@
 | &nbsp;&nbsp;P49.5 Economy retune: Fortune-Wheel rarity/power monotonicity · post-battle gold curve · Mana Surge nerf | ✅ done (bullets 6·18·30) |
 | &nbsp;&nbsp;P49.6 Italian localization (cutscene/lore/UI/tutorial/info/abilities/shop/menus/library/settings, keep NAMES) + main-menu flag selector (default EN) | ⬜ planned (bullet 7) — net-new i18n layer |
 | &nbsp;&nbsp;P49.7 Campaign flow: Level-1 "To be continued…" → Menu + replay-lock + cancel/abandon campaign | ✅ done (bullets 8·29) |
-| &nbsp;&nbsp;P49.8 Enemy deck realism: colour-loyal permanent removal in every deck · deeper difficulty deck variation · Grakk gets ramp/ability permanents · balance | ⬜ planned (bullets 9·25·26) |
+| &nbsp;&nbsp;P49.8 Enemy deck realism: colour-loyal permanent removal in every deck · deeper difficulty deck variation · Grakk gets ramp/ability permanents · balance | ✅ done (bullets 9·25·26) |
 | &nbsp;&nbsp;P49.9 Enemy coloured/colourless mana costs + exact-mana casting/AI + London mulligan penalty (−1 card per mulligan) | ⬜ planned (bullets 16·24) — **reverses P44 default** |
 | &nbsp;&nbsp;P49.10 Combat/PW UX: combat popup minimize/restore (turn stays blocked) · PW abilities off-stack + announce popup · battles/sieges side-selectable · resurgent timing | ✅ done (bullets 19·22·11·10) — **#22 reverses P38** (enemy walkers only) |
 | &nbsp;&nbsp;P49.11 Vael/Ash the Guardian: reborn at 1 HP · +1 → "Create a 1/1 Ash Soldier with haste" · −3 → graveyard exile-X + free reanimate ≤X | ✅ done (bullets 23·27·28) |
