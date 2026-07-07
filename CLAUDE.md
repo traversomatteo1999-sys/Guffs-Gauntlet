@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Guff's Gauntlet is a **solo Magic: The Gathering Commander game** shipped as a single-file,
 installable **Progressive Web App**. You bring your own deck; the app plays a themed AI warden
 and does all the rules bookkeeping for both sides. It is deployed at `guffsgauntlet.com`
-(Netlify, continuous deploy from `main`).
+(Cloudflare, continuous deploy from `main`).
 
 The entire game — engine, UI, art, and fonts — lives in **`play.html`**. Everything else exists
 only to make it installable, offline-capable, deployable, and testable.
@@ -104,7 +104,34 @@ turn cycle, and win/lose without a console error.
 
 ## Deploy
 
-Static site, no build step — Netlify publishes the repo root (`netlify.toml`). Once the one-time
-Import-from-Git connection exists, **every push to `main` redeploys the same site automatically**.
-`sw.js`, `index.html`, and `play.html` are served `no-cache` so version bumps reach installed apps.
-`.assetsignore` keeps dev files (tests, node_modules, `*.md`) out of the uploaded site.
+Static site, no build step — hosting is **Cloudflare Workers static assets** (`wrangler.jsonc`;
+the Cloudflare build watches `main` and runs `npx wrangler deploy`), so **every push to `main`
+redeploys the live site**. `_headers` serves `sw.js`, `index.html`, and `play.html` `no-cache`
+so version bumps reach installed apps (Cloudflare ignores `netlify.toml` — it lingers from the
+earlier Netlify setup). `.assetsignore` keeps dev files (tests, node_modules, `*.md`, `.claude/`)
+out of the uploaded site.
+
+## Working method (any model — read before starting a task)
+
+This project's quality bar was set by orchestrated sessions: premise-check → serialized build →
+jsdom drivers → risk-triaged adversarial review → ship checklist. The full playbook lives in the
+project skill **`gg-orchestrator`** ([.claude/skills/gg-orchestrator/SKILL.md](.claude/skills/gg-orchestrator/SKILL.md))
+— **invoke it at the start of any code task** (feature, fix batch, balance, refactor). If the
+Skill tool doesn't list it, read the file directly; its `references/` folder has ready-to-run
+review-workflow scripts and the test-driver template. The non-negotiables even without the skill:
+
+1. **Premise-check before building** — re-grep the live code for everything the task assumes;
+   SPEC.md and memory go stale (tasks have been found already-built or mis-specced).
+2. **Serialize `play.html` edits** — exactly one agent edits it; subagents/workflows are for
+   read-only work only (exploration, design, review, driver drafts).
+3. **Never silently reverse a recorded decision** (SPEC.md `### … decisions` blocks, memory) —
+   flag it to the user first.
+4. **Every task ends the same way:** new `tests/<task>.test.js` + `npm test` green + `sw.js`
+   cache bump + `README.md` version line + SPEC.md STATUS row flipped + memory updated. Pushing
+   `main` = deploying the live site; never push red.
+5. **Risk triage sets review depth** — combat / save-migration / economy / mode-separation /
+   stack work gets a multi-agent adversarial review; contained data/UI work gets a hunk-by-hunk
+   self-review. When in doubt, review harder: every multi-lens review on this repo found 1–8
+   real bugs.
+6. **Ask open questions inline per sub-task** (not batched), each with a recommended default;
+   stop and ask "continue?" at phase boundaries unless the user pre-authorized a batch.

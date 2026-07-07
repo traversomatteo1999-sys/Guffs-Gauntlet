@@ -4,6 +4,7 @@
 node_modules
 tests
 .git
+.claude
 *.md
 package.json
 package-lock.json
