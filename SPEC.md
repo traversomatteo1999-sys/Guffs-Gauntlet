@@ -229,7 +229,7 @@
 | &nbsp;&nbsp;P49.1 Enemy-box UI: collapsible/grouped mana-modifier sub-box + ⓘ · bigger warden icons · Library Cards/Tokens default-collapsed | ✅ done (bullets 1·5·4) |
 | &nbsp;&nbsp;P49.2 Spell/stack routing: newest-on-top render · countered player spell → graveyard · commander tax flat +2 **per cast** | ✅ done (bullets 2·12·15) |
 | &nbsp;&nbsp;P49.3 Enemy instants fully automated (spend mana + card→graveyard, preserve counterability) + expandable enemy stack spells | ⬜ planned (bullets 20·21) — **reverses P4.2/4.4** |
-| &nbsp;&nbsp;P49.4 Counters on artifacts/enchantments (both sides) + battlefield UI for non-creature permanents (wire the unused `setCtr`) | ⬜ planned (bullet 3) — completes P30 |
+| &nbsp;&nbsp;P49.4 Counters on artifacts/enchantments (both sides) + battlefield UI for non-creature permanents (wire the unused `setCtr`) | ✅ done (bullet 3) — completes P30 |
 | &nbsp;&nbsp;P49.5 Economy retune: Fortune-Wheel rarity/power monotonicity · post-battle gold curve · Mana Surge nerf | ⬜ planned (bullets 6·18·30) |
 | &nbsp;&nbsp;P49.6 Italian localization (cutscene/lore/UI/tutorial/info/abilities/shop/menus/library/settings, keep NAMES) + main-menu flag selector (default EN) | ⬜ planned (bullet 7) — net-new i18n layer |
 | &nbsp;&nbsp;P49.7 Campaign flow: Level-1 "To be continued…" → Menu + replay-lock + cancel/abandon campaign | ✅ done (bullets 8·29) |
