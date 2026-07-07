@@ -30,17 +30,38 @@ ok(ev("var t=S.tokens[0];t.kw.includes('haste')&&t.sick===false"),'has haste and
 ok(ev("var t=S.tokens[0];t.token===true"),'flagged as a token');
 ok(ev("var y=S.youLife;true")&&ev("S.youLife===40"),'player life untouched by +1 (no selfLoss)');
 
-// --- Bullet 28: the -3 reanimator exiles X creatures and casts one with mv<=X ---
-ev(`fresh('standard');var cks=Object.keys(FX).filter(k=>FX[k].type==='creature').sort((a,b)=>(FX[a].cost||0)-(FX[b].cost||0));S.gy=[{key:cks[0]},{key:cks[1]},{key:cks[2]}];S.exile=[];S.tokens=[];S._X=3;S._cheapCost=FX[cks[0]].cost||0;applyRun(['ashReanimate']);`);
-ok(ev("S._cheapCost<=3"),'seeded graveyard has a creature with mv<=X (X=3)');
+// --- Bullet 28 (revised): the -3 is a DELVE reanimator — exile N cards as fuel, reanimate a creature with mv<=N ---
+ev(`fresh('standard');
+   var cks=Object.keys(FX).filter(k=>FX[k].type==='creature').sort((a,b)=>(FX[a].cost||0)-(FX[b].cost||0));
+   var tk=cks.find(k=>(FX[k].cost||0)>=1&&(FX[k].cost||0)<=3)||cks[0];   // one target creature with a small positive mv
+   var tc=FX[tk].cost||0;
+   var fuelKey=Object.keys(FX).find(k=>FX[k].type==='land')||cks[0];     // fuel can be ANY cards
+   S.gy=[{key:tk}]; for(var j=0;j<tc;j++)S.gy.push({key:fuelKey}); S.gy.push({key:fuelKey}); // target + tc fuel + 1 spare
+   S.exile=[];S.tokens=[];S._tc=tc;S._tk=tk;
+   applyRun(['ashReanimate']);`);
+ok(ev("S._tc>=1"),'target creature has a positive mana value (N>=1)');
 ok(ev("S.tokens.length===1"),'reanimates exactly one creature');
-ok(ev("S.exile.length===2"),'the other X-1 creatures are exiled');
-ok(ev("S.gy.length===0"),'graveyard emptied of the exiled creatures');
-ok(ev("var k=S.tokens[0].key;(FX[k].cost||0)<=3"),'reanimated body has mana value <= X');
+ok(ev("S.tokens[0].key===S._tk"),'reanimates the (only) eligible creature, not a fuel card');
+ok(ev("S.exile.length===S._tc"),'exiles exactly N = the reanimated creature\'s mana value as fuel');
+ok(ev("var k=S.tokens[0].key;(FX[k].cost||0)<=S._tc"),'reanimated body has mana value <= N');
+ok(ev("S.gy.length===1"),'only N fuel + the target leave the graveyard; the spare stays');
+
+// the AI picks the HIGHEST-value feasible creature when several are available
+ev(`fresh('standard');
+   var cks=Object.keys(FX).filter(k=>FX[k].type==='creature');
+   var weak=cks.slice().sort((a,b)=>((FX[a].p||0)+(FX[a].t||0))-((FX[b].p||0)+(FX[b].t||0)))[0];
+   var strong=cks.slice().filter(k=>(FX[k].cost||0)<=3).sort((a,b)=>((FX[b].p||0)+(FX[b].t||0))-((FX[a].p||0)+(FX[a].t||0)))[0];
+   S.gy=[{key:weak},{key:strong},{key:weak},{key:weak}];S.exile=[];S.tokens=[];S._strong=strong;
+   applyRun(['ashReanimate']);`);
+ok(ev("S.tokens.length===1 && S.tokens[0].key===S._strong"),'reanimates the biggest feasible body, exiling the weaker cards as fuel');
 
 // empty graveyard = clean no-op, no throw
 ev("S.gy=[];S.exile=[];S.tokens=[];applyRun(['ashReanimate']);");
 ok(ev("S.tokens.length===0&&S.exile.length===0"),'empty-gy ashReanimate is a clean no-op');
+
+// a lone creature with no fuel available cannot be reanimated (needs N>=mv OTHER cards)
+ev(`fresh('standard');var bigk=Object.keys(FX).filter(k=>FX[k].type==='creature'&&(FX[k].cost||0)>=2)[0];S.gy=[{key:bigk}];S.exile=[];S.tokens=[];applyRun(['ashReanimate']);`);
+ok(ev("S.tokens.length===0"),'a costly creature alone (no fuel) cannot be reanimated');
 
 // --- AI: reanimator-aware minus + empty-gy fizzle guard ---
 // craft a walker with the ash abilities

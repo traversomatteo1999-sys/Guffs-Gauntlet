@@ -888,7 +888,7 @@ let DUNGEON=[
   {name:"Vael's Throne",villain:"Vael, the Ember Tyrant",colors:["R","B"],life:60,hp:{easy:40,standard:60,brutal:80},reborn:{easy:1,standard:1,brutal:1},isVael:true,/* P49.11(#23): reborn at 1 HP on every difficulty (was 10/15/20) — the second life bar is a single desperate swing, not a fresh boss */
    cmd:{n:"Ash the Guardian",isWalker:true,loy:4,ultThreshold:7,cost:5,colors:["R","B"],
        plus:{sign:1,n:"Ashen Muster",text:"Create a 1/1 Ash Soldier token with haste.",run:["spawn","Ash Soldier",1,1,["haste"],"R"],color:"R"},/* P49.11(#27): +1 makes a hasty 1/1 (was Ember Whisper 'you lose 2 life') */
-       minus:{sign:-3,n:"Grasping Ash",text:"Exile the creature cards in Vael's graveyard, then cast one with mana value ≤ their count from his graveyard for free.",run:["ashReanimate"],color:"B"},/* P49.11(#28): −3 is now a scaling graveyard reanimator (was destroyMaxPow removal) */
+       minus:{sign:-3,n:"Grasping Ash",text:"Exile any number of cards (N) from Vael's graveyard, then cast a creature card with mana value ≤ N from his graveyard for free.",run:["ashReanimate"],color:"B"},/* P49.11(#28), revised: −3 is a delve-style reanimator — exile a CHOSEN N cards as fuel, reanimate a creature with mv ≤ N (was: exile ALL creatures, count = N) */
        ult:{sign:-7,n:"Avatar of Ash",text:"You lose 6 life; Vael forges his Avatar — an 8/8 with trample, haste, and lifelink.",selfLoss:6,run:["spawn","Vael's Avatar",8,8,["trample","haste","lifelink"],"RB"],color:"B",ult:true}},
    /* P38.3: Vael's COMMANDER is now the planeswalker (consolidating the old creature-commander + separate Nyx walker). Its ultimate forges the overpowered Avatar. The reborn 2nd life (bossDown → Pyre Revenant) stays, separate from the walker. */
    pool:{embershape:1,cinderwraith:1,rakfiend:1,ashdrake:1,emberglut:1,ashreborn:1,ogre:1,nightmare:1,chieftain:1,hellrider:1,warboss:1,inferno:1,crawler:1,pitfiend:1,gravewarden:1,reaper:1,hulk:1,slag:1,overlord:1,reaper5:1,pyro:1,wrath2:1,plague:1,smother:1,edict:1,wither:1,sunder:1,voidcall:1,rot:1,toughcull:1,bolt:1,twinbolt:1,storm:1,emberblast:1,conflag:1,firestorm:1,drain:1,bleed:1,tithe:1,bloodpact:1,idol:1,warcry:1,obol:1,overrun:1,brute:1,drake:1,firefist:1,scorchwing:1,rocket:1,tyrant:1,dirgewing:1,gravecall:1,meteor:1,lash:1,rendmind:1,cull:1,shrivel:1,glut:1,firebrand:1,raisedead:1,tyrantrefuse:1,tormentvoice:1,vaeldisjunct:1},lands:{mtn:18,swp:17,ashmire:1,emberfen:1},swaps:{easy:{cut:["overrun","embershape","raisedead","tyrantrefuse","inferno","vaeldisjunct"],add:{mtn:1,swp:2}},brutal:{cut:["rakfiend","brute"],add:{swp:1,raisedead:1,tyrantrefuse:1,vaeldisjunct:1}}}/* P44.5: easy loses the counter + a finisher; brutal adds recursion + a 2nd Tyrant's Refusal (a real counter density lever) · P49.8(#9/#25): + R/B relic removal; easy runs none, brutal runs two */,
@@ -1241,16 +1241,21 @@ function applyRun(run){if(!run)return;if(Array.isArray(run[0])){run.forEach(appl
   case "reanimate":{const cands=(S.gy||[]).map((c,i)=>({c,i,fx:c.key&&FX[c.key]})).filter(o=>o.fx&&o.fx.type==='creature');if(!cands.length){log("dm",`⚰ ${ENs()} reaches into its graveyard for a corpse to raise — finds none.`);break;}
     cands.sort((a,b)=>{const bs=_primarySpawn(b.fx),as=_primarySpawn(a.fx);return (bs?bodyValue(bs[2],bs[3],bs[4]||[]):0)-(as?bodyValue(as[2],as[3],as[4]||[]):0);});
     const pick=cands[0];S.gy.splice(pick.i,1);const perm=enemyBodyFromFX(pick.c.key);if(perm){S.tokens.push(perm);log("dm",`⚰ <b>Reanimation</b> — ${ENs()} returns <b>${perm.name}</b> (${perm.p}/${perm.t}) from its graveyard to the battlefield, summoning-sick.`);}break;}
-  case "ashReanimate":{/* P49.11(#28): Ash the Guardian −3. X = creature cards in the graveyard; exile all X to S.exile, then cast (reanimate, for free) the best creature with mana value ≤ X back from exile to the battlefield. */
-    const creas=(S.gy||[]).map((c,i)=>({c,i,fx:c.key&&FX[c.key]})).filter(o=>o.fx&&o.fx.type==='creature');
-    if(!creas.length){log("dm",`⚰ ${ENs()} reaches into its graveyard for corpses to raise — finds none.`);break;}
-    const X=creas.length;
-    creas.slice().sort((a,b)=>b.i-a.i).forEach(o=>{S.gy.splice(o.i,1);S.exile.push(o.c);});/* exile high-index first so splices stay valid */
+  case "ashReanimate":{/* P49.11(#28), revised: Ash the Guardian −3 is a DELVE-style reanimator. The enemy exiles a CHOSEN number N of cards from its graveyard as fuel, then casts (reanimates, for free) a creature CARD from its graveyard with mana value ≤ N. The AI picks the highest-value creature it can fund, then exiles exactly its mana value (N) in the least-valuable OTHER cards. */
+    const gy=S.gy||[];
+    const creas=gy.map((c,i)=>({c,i,fx:c.key&&FX[c.key]})).filter(o=>o.fx&&o.fx.type==='creature');
+    if(!creas.length){log("dm",`⚰ ${ENs()} reaches into its graveyard for a corpse to raise — finds none.`);break;}
     const _rv=o=>{const sp=_primarySpawn(o.fx);return sp?bodyValue(sp[2],sp[3],sp[4]||[]):bodyValue(o.fx.p||0,o.fx.t||0,o.fx.kw||[]);};
-    const elig=creas.filter(o=>((o.fx.cost||0)<=X)).sort((a,b)=>_rv(b)-_rv(a));
-    if(!elig.length){log("dm",`⚰ <b>Grasping Ash</b> — ${ENs()} exiles ${X} creature${X===1?'':'s'}, but none has mana value ≤ ${X} to bring back.`);break;}
-    const pick=elig[0],ei=S.exile.indexOf(pick.c);if(ei>=0)S.exile.splice(ei,1);
-    const perm=enemyBodyFromFX(pick.c.key);if(perm){S.tokens.push(perm);log("dm",`⚰ <b>Grasping Ash</b> — ${ENs()} exiles ${X} creature${X===1?'':'s'} and casts <b>${perm.name}</b> (${perm.p}/${perm.t}, mv ${pick.fx.cost||0} ≤ ${X}) from its graveyard for free.`);}break;}
+    /* a creature is castable only if enough OTHER cards remain to exile N = its mana value (the creature itself stays in the graveyard to be cast) */
+    const elig=creas.filter(o=>((o.fx.cost||0)<=gy.length-1)).sort((a,b)=>_rv(b)-_rv(a));
+    if(!elig.length){log("dm",`⚰ <b>Grasping Ash</b> — ${ENs()} hasn't the cards to fuel a reanimation from its graveyard.`);break;}
+    const pick=elig[0],N=pick.fx.cost||0;
+    /* pick N least-valuable OTHER cards as fuel (lands first, then cheap spells; never the reanimation target) */
+    const _fuelVal=c=>{const fx=c&&c.key&&FX[c.key];if(!fx)return 0;if(fx.type==='land')return 0;if(fx.type==='creature'){const sp=_primarySpawn(fx);return sp?bodyValue(sp[2],sp[3],sp[4]||[]):bodyValue(fx.p||0,fx.t||0,fx.kw||[]);}return castValue(fx,{})||1;};
+    const fuel=gy.map((c,i)=>({c,i})).filter(o=>o.i!==pick.i).sort((a,b)=>_fuelVal(a.c)-_fuelVal(b.c)).slice(0,N);
+    const rm=fuel.map(o=>o.i).concat([pick.i]).sort((a,b)=>b-a);/* splice high index first so indices stay valid */
+    rm.forEach(idx=>{const card=S.gy.splice(idx,1)[0];if(idx!==pick.i)S.exile.push(card);});/* fuel → exile; the picked creature is reanimated (a fresh body), not exiled */
+    const perm=enemyBodyFromFX(pick.c.key);if(perm){S.tokens.push(perm);log("dm",`⚰ <b>Grasping Ash</b> — ${ENs()} exiles ${N} card${N===1?'':'s'} from its graveyard and reanimates <b>${perm.name}</b> (${perm.p}/${perm.t}, mv ${N}) for free.`);}break;}
   case "recur":{const cands=(S.gy||[]).map((c,i)=>({c,i,fx:c.key&&FX[c.key]})).filter(o=>o.fx&&o.fx.type!=='land'&&o.fx.type!=='creature'&&!_hasRun(o.fx,'recur'));if(!cands.length){log("dm",`↩ ${ENs()} sifts its graveyard for a spell to reclaim — finds none.`);break;}/* review-fix: never recur another recur (avoids the degenerate loop) */
     cands.sort((a,b)=>castValue(b.fx,{})-castValue(a.fx,{}));const pick=cands[0];S.gy.splice(pick.i,1);S.hand.push(pick.c);log("dm",`↩ <b>Recursion</b> — ${ENs()} returns <b>${pick.fx.n}</b> from its graveyard to hand.`);break;}
   case "sac":{const mode=run[1]||'drain',n=run[2]||1;const pool=(S.tokens||[]).slice();if(!pool.length){log("dm",`🩸 ${ENs()} has no creature to sacrifice.`);break;}
@@ -2258,7 +2263,7 @@ function enemyWalkerList(){const out=(S.enemyWalkers||[]).filter(w=>w&&!w.phased
    a real threat (kept above 0 unless the walker is worth trading); else build loyalty toward the ult / to protect a
    threatened walker. Difficulty-scaled via enemyLuck(). */
 /* P49.11(#28): best body value the ash-reanimator minus could raise this turn (mv ≤ #creatures in gy); -1 = fizzle (no eligible creature). */
-function _ashReanimBest(){const creas=(S.gy||[]).filter(c=>c&&c.key&&FX[c.key]&&FX[c.key].type==='creature');const X=creas.length;let bv=-1;creas.forEach(c=>{const fx=FX[c.key];if((fx.cost||0)<=X){const sp=_primarySpawn(fx);const v=sp?bodyValue(sp[2],sp[3],sp[4]||[]):bodyValue(fx.p||0,fx.t||0,fx.kw||[]);if(v>bv)bv=v;}});return bv;}
+function _ashReanimBest(){const gy=S.gy||[];const creas=gy.filter(c=>c&&c.key&&FX[c.key]&&FX[c.key].type==='creature');let bv=-1;creas.forEach(c=>{const fx=FX[c.key];if((fx.cost||0)<=gy.length-1){const sp=_primarySpawn(fx);const v=sp?bodyValue(sp[2],sp[3],sp[4]||[]):bodyValue(fx.p||0,fx.t||0,fx.kw||[]);if(v>bv)bv=v;}});return bv;}/* P49.11(#28) delve: a creature is castable if N=mv OTHER cards can be exiled as fuel (gy.length-1 available) */
 function pickWalkerAbility(w){const ab=wAbil(w),plus=ab.plus,minus=ab.minus,ult=ab.ult,loy=w.loyalty||0,thr=w.ultThreshold||7;
   const nearUlt=ult&&loy>=thr-2;/* within 2 of the ult — COMMIT to building the finisher (never reset that progress) */
   const bomb=S.my.creatures.some(c=>effP(c)>=5&&!kw(c,'hexproof')&&!kw(c,'shroud')&&!c.phased);/* a genuine bomb worth spending loyalty to answer */
@@ -2932,7 +2937,7 @@ const ENEMY_ABIL={
      lead:"Grakk was the spark; Murglax was the ash. Vael is the fire that learned to feed on its own ashes — both halves of the Warren in one deck, and the only general who fields a planeswalker.",
      abil:[
        ["Both halves at once","Grakk's burn and Murglax's drain & removal together, plus the biggest bodies in the dungeon."],
-       ["Planeswalker — Ash the Guardian","<b>+1</b> Ashen Muster: create a 1/1 Ash Soldier with haste · <b>−3</b> Grasping Ash: exile the creatures in Vael's graveyard, then cast one with mana value ≤ their count for free · <b>−7 ultimate</b> Avatar of Ash: you lose 6 life and Vael forges an 8/8 trample-haste-lifelink Avatar. The only enemy walker in Level I — answer it or it snowballs."],
+       ["Planeswalker — Ash the Guardian","<b>+1</b> Ashen Muster: create a 1/1 Ash Soldier with haste · <b>−3</b> Grasping Ash: exile any number of cards (N) from Vael's graveyard, then reanimate a creature card with mana value ≤ N for free · <b>−7 ultimate</b> Avatar of Ash: you lose 6 life and Vael forges an 8/8 trample-haste-lifelink Avatar. The only enemy walker in Level I — answer it or it snowballs."],
        ["Dies twice","At 0 life Vael rises <b>ENRAGED</b> at just 1 life and calls a Pyre Revenant 4/3 — one last desperate swing. Put the Tyrant down a second time to win."],
        ["Finishers","Embers Choose a New Shape (a 6/6 plus drain), Warren Overrun, and Maw of the Pit (you lose 8, it gains 8)."],
      ],
@@ -3154,7 +3159,7 @@ function migrate(s){if(!s||typeof s!=='object')return s;
     c.p=spec.p||0;c.t=spec.t||0;c.baseP=spec.p||0;c.baseT=spec.t||0;
     c.color=(spec.colors||DUNGEON[s.roomIndex].colors||['R']).slice();if(!Array.isArray(c.kw))c.kw=[];
     c.ultThreshold=spec.ultThreshold||7;c.wplus=spec.plus||null;c.wminus=spec.minus||null;c.wult=spec.ult||null;
-    c.baseCost=spec.cost;c.tax=(typeof c.tax==='number')?c.tax:0;c.cost=c.baseCost+c.tax;if(typeof c.czCasts!=='number')c.czCasts=c.deaths||0;
+    c.baseCost=spec.cost;c.czCasts=(typeof c.czCasts==='number')?c.czCasts:0;c.tax=CMD_TAX_BASE*c.czCasts;c.cost=c.baseCost+c.tax;/* P49.2 rule: tax is a pure function of command-zone casts (base, +2, +4…) — recomputing here is idempotent for current saves and RESETS a legacy save's stale death-inflated tax (pre-P49.2 code wrongly bumped tax on every death; deaths no longer count) */
     if(cw){c.baseLoy=(spec.loy!=null?spec.loy:(spec.loyalty!=null?spec.loyalty:3));if(typeof c.loyalty!=='number')c.loyalty=c.baseLoy;}
     else{c.baseLoy=undefined;delete c.loyalty;}}
   s.combat=null;return s;}

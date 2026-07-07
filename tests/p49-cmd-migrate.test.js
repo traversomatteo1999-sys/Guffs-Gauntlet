@@ -37,8 +37,14 @@ ok(ev("S.cmd.inPlay===true"), 'live inPlay preserved');
 ok(ev("S.cmd.tapped===true"), 'live tapped preserved');
 ok(ev("S.cmd.plus===2"), 'live +1/+1 counters preserved');
 ok(ev("Array.isArray(S.cmd.other) && S.cmd.other.indexOf('goad')>=0"), 'live markers (goad) preserved');
-ok(ev("S.cmd.czCasts===2"), 'legacy deaths folded into czCasts (command-zone cast count)');
-ok(ev("S.cmd.baseCost===5 && S.cmd.cost===5"), 'baseCost re-synced, cost = base + tax(0)');
+ok(ev("S.cmd.czCasts===0"), 'legacy stale deaths do NOT count as command-zone casts (czCasts reset)');
+ok(ev("S.cmd.tax===0 && S.cmd.baseCost===5 && S.cmd.cost===5"), 'legacy death-inflated tax reconciled to the P49.2 rule: tax = 2×czCasts = 0');
+
+// a post-P49.2 save (czCasts already tracked) keeps its tax exactly (idempotent)
+ev(`fresh('standard');S.roomIndex=${vaelIdx};
+    S.cmd={id:'cmd',n:'x',isWalker:true,loyalty:4,baseLoy:4,color:['R','B'],baseCost:5,cost:9,tax:4,czCasts:2,inPlay:false,inHand:false,plus:0,minus:0,other:[]};
+    S=migrate(JSON.parse(JSON.stringify(S)));`);
+ok(ev("S.cmd.czCasts===2 && S.cmd.tax===4 && S.cmd.cost===9"), 'current save: 2 CZ casts → tax +4 preserved (base+tax=9) — tax applies from the 2nd CZ cast forward');
 
 // --- A CREATURE commander (Murglax → Slagmaw 5/5) must NOT be turned into a walker ---
 const murgIdx = ev("var i=-1;DUNGEON.forEach((r,k)=>{if(r.cmd && !r.cmd.isWalker && r.cmd.p)i=k;});i");
