@@ -875,10 +875,10 @@ let DUNGEON=[
    lore:"Below the gate, the Warren throws its dead into the Slag Pit \u2014 and the Pit answers with Murglax. He does not kill you quickly; he spends you, a wound and a year at a time, feeding what he takes back into himself. The longer you last, the stronger he grows on your losses. Patience is his only weapon, and he has all the patience of the grave.",
    intro:["The gate-fires gutter out behind you. The air turns wet and cold and sweet with rot.","Something vast shifts in the dark of the Slag Pit, and a voice like settling gravel says: \u201CGrakk burned bright. Bright things burn out. I will take my time with you.\u201D"],
    sigil:"\u2620",quote:"I am in no hurry. The dead never are. Bleed for me a while \u2014 I'll grow fat on it.",deathQuote:"Spent... at last... even the Pit... runs... dry..."},
-  {name:"Vael's Throne",villain:"Vael, the Ember Tyrant",colors:["R","B"],life:60,hp:{easy:40,standard:60,brutal:80},reborn:{easy:10,standard:15,brutal:20},isVael:true,
+  {name:"Vael's Throne",villain:"Vael, the Ember Tyrant",colors:["R","B"],life:60,hp:{easy:40,standard:60,brutal:80},reborn:{easy:1,standard:1,brutal:1},isVael:true,/* P49.11(#23): reborn at 1 HP on every difficulty (was 10/15/20) — the second life bar is a single desperate swing, not a fresh boss */
    cmd:{n:"Ash the Guardian",isWalker:true,loy:4,ultThreshold:7,cost:5,colors:["R","B"],
-       plus:{sign:1,n:"Ember Whisper",text:"You lose 2 life.",selfLoss:2,color:"R"},
-       minus:{sign:-3,n:"Grasping Ash",text:"Destroy your greatest-power creature.",target:"destroyMaxPow",color:"B"},
+       plus:{sign:1,n:"Ashen Muster",text:"Create a 1/1 Ash Soldier token with haste.",run:["spawn","Ash Soldier",1,1,["haste"],"R"],color:"R"},/* P49.11(#27): +1 makes a hasty 1/1 (was Ember Whisper 'you lose 2 life') */
+       minus:{sign:-3,n:"Grasping Ash",text:"Exile the creature cards in Vael's graveyard, then cast one with mana value ≤ their count from his graveyard for free.",run:["ashReanimate"],color:"B"},/* P49.11(#28): −3 is now a scaling graveyard reanimator (was destroyMaxPow removal) */
        ult:{sign:-7,n:"Avatar of Ash",text:"You lose 6 life; Vael forges his Avatar — an 8/8 with trample, haste, and lifelink.",selfLoss:6,run:["spawn","Vael's Avatar",8,8,["trample","haste","lifelink"],"RB"],color:"B",ult:true}},
    /* P38.3: Vael's COMMANDER is now the planeswalker (consolidating the old creature-commander + separate Nyx walker). Its ultimate forges the overpowered Avatar. The reborn 2nd life (bossDown → Pyre Revenant) stays, separate from the walker. */
    pool:{embershape:1,cinderwraith:1,rakfiend:1,ashdrake:1,emberglut:1,ashreborn:1,ogre:1,nightmare:1,chieftain:1,hellrider:1,warboss:1,inferno:1,crawler:1,pitfiend:1,gravewarden:1,reaper:1,hulk:1,slag:1,overlord:1,reaper5:1,pyro:1,wrath2:1,plague:1,smother:1,edict:1,wither:1,sunder:1,voidcall:1,rot:1,toughcull:1,bolt:1,twinbolt:1,storm:1,emberblast:1,conflag:1,firestorm:1,drain:1,bleed:1,tithe:1,bloodpact:1,idol:1,warcry:1,obol:1,overrun:1,brute:1,drake:1,firefist:1,scorchwing:1,rocket:1,tyrant:1,dirgewing:1,gravecall:1,meteor:1,lash:1,rendmind:1,cull:1,shrivel:1,glut:1,firebrand:1,raisedead:1,tyrantrefuse:1,tormentvoice:1},lands:{mtn:18,swp:17,ashmire:1,emberfen:1},swaps:{easy:{cut:["overrun","embershape","raisedead","tyrantrefuse","inferno"],add:{mtn:1,swp:2}},brutal:{cut:["rakfiend","brute"],add:{swp:1,raisedead:1,tyrantrefuse:1}}}/* P44.5: easy loses the counter + a finisher; brutal adds recursion + a 2nd Tyrant's Refusal (a real counter density lever) */,
@@ -1231,6 +1231,16 @@ function applyRun(run){if(!run)return;if(Array.isArray(run[0])){run.forEach(appl
   case "reanimate":{const cands=(S.gy||[]).map((c,i)=>({c,i,fx:c.key&&FX[c.key]})).filter(o=>o.fx&&o.fx.type==='creature');if(!cands.length){log("dm",`⚰ ${ENs()} reaches into its graveyard for a corpse to raise — finds none.`);break;}
     cands.sort((a,b)=>{const bs=_primarySpawn(b.fx),as=_primarySpawn(a.fx);return (bs?bodyValue(bs[2],bs[3],bs[4]||[]):0)-(as?bodyValue(as[2],as[3],as[4]||[]):0);});
     const pick=cands[0];S.gy.splice(pick.i,1);const perm=enemyBodyFromFX(pick.c.key);if(perm){S.tokens.push(perm);log("dm",`⚰ <b>Reanimation</b> — ${ENs()} returns <b>${perm.name}</b> (${perm.p}/${perm.t}) from its graveyard to the battlefield, summoning-sick.`);}break;}
+  case "ashReanimate":{/* P49.11(#28): Ash the Guardian −3. X = creature cards in the graveyard; exile all X to S.exile, then cast (reanimate, for free) the best creature with mana value ≤ X back from exile to the battlefield. */
+    const creas=(S.gy||[]).map((c,i)=>({c,i,fx:c.key&&FX[c.key]})).filter(o=>o.fx&&o.fx.type==='creature');
+    if(!creas.length){log("dm",`⚰ ${ENs()} reaches into its graveyard for corpses to raise — finds none.`);break;}
+    const X=creas.length;
+    creas.slice().sort((a,b)=>b.i-a.i).forEach(o=>{S.gy.splice(o.i,1);S.exile.push(o.c);});/* exile high-index first so splices stay valid */
+    const _rv=o=>{const sp=_primarySpawn(o.fx);return sp?bodyValue(sp[2],sp[3],sp[4]||[]):bodyValue(o.fx.p||0,o.fx.t||0,o.fx.kw||[]);};
+    const elig=creas.filter(o=>((o.fx.cost||0)<=X)).sort((a,b)=>_rv(b)-_rv(a));
+    if(!elig.length){log("dm",`⚰ <b>Grasping Ash</b> — ${ENs()} exiles ${X} creature${X===1?'':'s'}, but none has mana value ≤ ${X} to bring back.`);break;}
+    const pick=elig[0],ei=S.exile.indexOf(pick.c);if(ei>=0)S.exile.splice(ei,1);
+    const perm=enemyBodyFromFX(pick.c.key);if(perm){S.tokens.push(perm);log("dm",`⚰ <b>Grasping Ash</b> — ${ENs()} exiles ${X} creature${X===1?'':'s'} and casts <b>${perm.name}</b> (${perm.p}/${perm.t}, mv ${pick.fx.cost||0} ≤ ${X}) from its graveyard for free.`);}break;}
   case "recur":{const cands=(S.gy||[]).map((c,i)=>({c,i,fx:c.key&&FX[c.key]})).filter(o=>o.fx&&o.fx.type!=='land'&&o.fx.type!=='creature'&&!_hasRun(o.fx,'recur'));if(!cands.length){log("dm",`↩ ${ENs()} sifts its graveyard for a spell to reclaim — finds none.`);break;}/* review-fix: never recur another recur (avoids the degenerate loop) */
     cands.sort((a,b)=>castValue(b.fx,{})-castValue(a.fx,{}));const pick=cands[0];S.gy.splice(pick.i,1);S.hand.push(pick.c);log("dm",`↩ <b>Recursion</b> — ${ENs()} returns <b>${pick.fx.n}</b> from its graveyard to hand.`);break;}
   case "sac":{const mode=run[1]||'drain',n=run[2]||1;const pool=(S.tokens||[]).slice();if(!pool.length){log("dm",`🩸 ${ENs()} has no creature to sacrifice.`);break;}
@@ -2162,7 +2172,7 @@ function useBoon(ref){const i=(typeof ref==='number')?ref:S.inv.findIndex(x=>x&&
 function grantBoon(id){const b=BOONS[id];if(!b)return;sfx('loot');if(b.kind==="instant"){if(id==="spark"){S.youMax+=5;S.youLife+=5;}log("loot",`Gained <b>${b.n}</b>.`);return;}if(id==="map")S.weakenNext=true;S.inv.push({id,uid:newUid()});/* P7.4: 1-descent (structural) · P21.1: stable uid · P42.1: dead descents field dropped */log("loot",`Looted <b>${b.n}</b> (${b.r}).`);}
 function lootRoll(){const luck=Math.max(0,(DIFF[S.diff]&&DIFF[S.diff].luck)||0);/* P10: difficulty luck now nudges loot — but ONLY upward (brutal +1); easy/std are never penalized, so newer players keep full jackpot odds. */const raw=d(20);const roll=Math.min(20,raw+luck);let id="heal5";for(const[a,z,bid]of LOOT_D20){if(roll>=a&&roll<=z){id=bid;break;}}if(id==="map"&&(S.mode==='sandbox'||!DUNGEON[S.roomIndex+1]))id="heal10";/* P10: 'map' weakens the NEXT villain; on the final Vael win there is none — and in a Sandbox single battle there is no next villain either — so a heal instead of a dead drop (P43.5). */let names=[];if(id==="jackpot"){grantBoon("phoenix");grantBoon("elixir");names=["Phoenix Charm","Grand Elixir"];}else{grantBoon(id);names=[BOONS[id].n];}const label=raw===roll?`${roll}/20`:`${raw} (+${roll-raw} brutal luck) → ${roll}/20`;return{roll,raw,names,label};}
 
-function bossDown(){if(S.over)return;if(S.boss.isVael&&!S.phase2done){S.phase2done=true;const _vr=DUNGEON[S.roomIndex];S.boss.life=Math.max(1,(_vr.reborn&&_vr.reborn[S.diff])||Math.round(S.boss.max*0.25));applyRun(["spawn","Pyre Revenant",4,3,["trample","haste"],"RB"]);/* P10: Vael revives once at an explicit per-difficulty HP (room.reborn = 10/15/20 easy/std/brutal); the 0.25*max fallback matches those values. */log("dm",`🔥🔥 <b>UNDYING EMBERS!</b> Vael rises ENRAGED at ${S.boss.life} life and calls a Pyre Revenant.`);render();return;}
+function bossDown(){if(S.over)return;if(S.boss.isVael&&!S.phase2done){S.phase2done=true;const _vr=DUNGEON[S.roomIndex];S.boss.life=Math.max(1,(_vr.reborn&&_vr.reborn[S.diff])||Math.round(S.boss.max*0.25));applyRun(["spawn","Pyre Revenant",4,3,["trample","haste"],"RB"]);/* P10: Vael revives once at an explicit per-difficulty HP (room.reborn = 10/15/20 easy/std/brutal); the 0.25*max fallback matches those values. */log("dm",`🔥🔥 <b>UNDYING EMBERS!</b> Vael rises ENRAGED at ${S.boss.life} life and calls a Pyre Revenant.`);render();return;}/* P10 · P49.11(#23): reborn HP is now an explicit per-difficulty 1 (room.reborn = 1/1/1); the 0.25*max fallback only applies to a room that omits reborn. */
   if(S.mode==='sandbox'){endSandboxBattle(true);return;}/* P43.5: a sandbox battle ends here — no dungeon walk, no story */
   if(S.roomIndex>=DUNGEON.length-1){/* P43.4: the level's finale has fallen */if(S.levelIdx>=LEVELS.length-1){win();return;}/* the FINAL level → campaign complete (today's escape/Guff/epilogue win) */levelClearTransition();return;/* more levels remain → the between-level super-advance */}
   /* a mid-level boss (a room before the finale) → loot + encounter-clear, then advance() walks to the next room within the level */
@@ -2225,22 +2235,28 @@ function enemyWalkerList(){const out=(S.enemyWalkers||[]).filter(w=>w&&!w.phased
 /* P38.5: pick ONE loyalty ability by a real plan — ult at threshold when it's safe/decisive; else a minus to answer
    a real threat (kept above 0 unless the walker is worth trading); else build loyalty toward the ult / to protect a
    threatened walker. Difficulty-scaled via enemyLuck(). */
+/* P49.11(#28): best body value the ash-reanimator minus could raise this turn (mv ≤ #creatures in gy); -1 = fizzle (no eligible creature). */
+function _ashReanimBest(){const creas=(S.gy||[]).filter(c=>c&&c.key&&FX[c.key]&&FX[c.key].type==='creature');const X=creas.length;let bv=-1;creas.forEach(c=>{const fx=FX[c.key];if((fx.cost||0)<=X){const sp=_primarySpawn(fx);const v=sp?bodyValue(sp[2],sp[3],sp[4]||[]):bodyValue(fx.p||0,fx.t||0,fx.kw||[]);if(v>bv)bv=v;}});return bv;}
 function pickWalkerAbility(w){const ab=wAbil(w),plus=ab.plus,minus=ab.minus,ult=ab.ult,loy=w.loyalty||0,thr=w.ultThreshold||7;
-  const canDefend=minus&&(loy+(minus.sign||0))>=1;/* a minus that keeps loyalty ≥1 */
   const nearUlt=ult&&loy>=thr-2;/* within 2 of the ult — COMMIT to building the finisher (never reset that progress) */
   const bomb=S.my.creatures.some(c=>effP(c)>=5&&!kw(c,'hexproof')&&!kw(c,'shroud')&&!c.phased);/* a genuine bomb worth spending loyalty to answer */
   const incoming=playerAttackPotential();/* P44.3: the player's swing potential */
   const boardLethal=S.boss.life>0&&incoming>=S.boss.life;/* the board can kill the boss on the crack-back */
+  /* P49.11(#28): classify the minus. A removal minus (destroy/exile/bounce/fight) SNIPES a threat; a value minus (reanimate/ashReanimate) DEVELOPS the board. The empty-gy / no-eligible-target case makes the ash reanimator a fizzle → don't spend loyalty on a no-op. */
+  const minusReanim=minus&&Array.isArray(minus.run)&&minus.run[0]==='ashReanimate';
+  const reanimVal=minusReanim?_ashReanimBest():-1;
+  const minusWouldDo=minus?(minusReanim?reanimVal>=0:(!!minus.target||Array.isArray(minus.run))):false;
+  const canDefend=minus&&(loy+(minus.sign||0))>=1&&minusWouldDo;/* a minus that keeps loyalty ≥1 AND actually does something */
   /* P44.3 ULT SAFETY: fire the finisher at threshold, but std+ won't fire it into a lethal board that the ult can't answer (unless the ult itself forges a blocker) — it stabilises with the minus first. easy always fires. */
   if(ult&&loy>=thr){const ultStabilizes=Array.isArray(ult.run)&&JSON.stringify(ult.run).indexOf('spawn')>=0;
-    if(enemyLuck()<0||!boardLethal||ultStabilizes||!(canDefend&&bomb))return ult;
-    return minus;/* defer the ult one turn — snipe the bomb to survive the crack-back */}
-  /* P44.3 DEFENSIVE MINUS: spend the minus to remove a threat when a real ≥5 bomb is out OR the board can lethal the boss on the crack-back — but NOT for a merely modest board (build by default, per P38.5). easy only sometimes. */
-  if(canDefend&&!nearUlt){const defend=bomb||boardLethal;
-    if(defend&&(enemyLuck()>=0||Math.random()<0.5))return minus;}
+    if(enemyLuck()<0||!boardLethal||ultStabilizes||!(canDefend&&(bomb||minusReanim)))return ult;
+    return canDefend?minus:ult;/* defer the ult one turn — snipe/develop to survive the crack-back */}
+  /* MINUS use: a REMOVAL minus spends to answer a ≥5 bomb OR a lethal board; a REANIMATOR minus develops when it can raise a real body (≥4). Not for a merely modest situation (build by default, per P38.5). easy only sometimes. */
+  if(canDefend&&!nearUlt){const worth=minusReanim?(reanimVal>=4):(bomb||boardLethal);
+    if(worth&&(enemyLuck()>=0||Math.random()<0.5))return minus;}
   if(plus)return plus;/* otherwise BUILD toward the ult by default — so the finisher is reachable on every difficulty */
   if(canDefend)return minus;
-  return null;}/* review-fix HIGH (P38.5): builds by default, snipes real bombs, commits within 2 of the ult · P44.3: adds crack-back-aware ult safety + a boss/walker-threat defensive minus */
+  return null;}/* review-fix HIGH (P38.5): builds by default, snipes real bombs, commits within 2 of the ult · P44.3: crack-back-aware ult safety + defensive minus · P49.11: reanimator-aware minus + empty-gy fizzle guard */
 function enemyWalkerAct(w){if(!w||S.over||w._actedTurn===S.turn)return false;const ab=pickWalkerAbility(w);if(!ab)return false;const wn=w.name||w.n||'Planeswalker';sfx('loyalty');/* review-fix: a walker COMMANDER stores its name in .n, not .name */
   w.loyalty=(w.loyalty||0)+(ab.sign||0);w._actedTurn=S.turn;
   const p=mkPlay({n:`${wn}: ${ab.n} (${ab.sign>0?'+':''}${ab.sign})`,type:'instant',text:ab.text,selfLoss:ab.selfLoss,run:ab.run,target:ab.target,color:ab.color,cost:0});S.plays.push(p);
@@ -2881,8 +2897,8 @@ const ENEMY_ABIL={
      lead:"Grakk was the spark; Murglax was the ash. Vael is the fire that learned to feed on its own ashes — both halves of the Warren in one deck, and the only general who fields a planeswalker.",
      abil:[
        ["Both halves at once","Grakk's burn and Murglax's drain & removal together, plus the biggest bodies in the dungeon."],
-       ["Planeswalker — Ash the Guardian","<b>+1</b> Ember Whisper: you lose 2 life · <b>−3</b> Grasping Ash: destroy your greatest-power creature · <b>−7 ultimate</b> Avatar of Ash: you lose 6 life and Vael forges an 8/8 trample-haste-lifelink Avatar. The only enemy walker in Level I — answer it or it snowballs."],
-       ["Dies twice","At 0 life Vael rises <b>ENRAGED</b> (reborn 10/15/20 life by difficulty) and calls a Pyre Revenant 4/3. You must put the Tyrant down a second time."],
+       ["Planeswalker — Ash the Guardian","<b>+1</b> Ashen Muster: create a 1/1 Ash Soldier with haste · <b>−3</b> Grasping Ash: exile the creatures in Vael's graveyard, then cast one with mana value ≤ their count for free · <b>−7 ultimate</b> Avatar of Ash: you lose 6 life and Vael forges an 8/8 trample-haste-lifelink Avatar. The only enemy walker in Level I — answer it or it snowballs."],
+       ["Dies twice","At 0 life Vael rises <b>ENRAGED</b> at just 1 life and calls a Pyre Revenant 4/3 — one last desperate swing. Put the Tyrant down a second time to win."],
        ["Finishers","Embers Choose a New Shape (a 6/6 plus drain), Warren Overrun, and Maw of the Pit (you lose 8, it gains 8)."],
      ],
      tip:"Save removal for Ash the Guardian and the Avatar, and keep enough life and gas in hand for the second life bar."},
