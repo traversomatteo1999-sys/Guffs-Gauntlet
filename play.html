@@ -3148,6 +3148,15 @@ function migrate(s){if(!s||typeof s!=='object')return s;
   if(s.mode!=='sandbox'&&s.mode!=='campaign')s.mode='campaign';if(typeof s.levelIdx!=='number'||s.levelIdx<0||(typeof LEVELS!=='undefined'&&s.levelIdx>=LEVELS.length))s.levelIdx=0;/* P43.1/2: two-mode + multi-level fields, levelIdx clamped to a registered level */
   if(typeof s.roomIndex!=='number'||!DUNGEON[s.roomIndex])s.roomIndex=0;if(typeof s.diff!=='string'||!DIFF[s.diff])s.diff='standard';
   if(typeof s.notes!=='string')s.notes='';if(typeof s._spoils!=='string')s._spoils='';if(typeof s.bossMana!=='number')s.bossMana=0;if(typeof s.bossManaMax!=='number')s.bossManaMax=0;
+  /* P49 fix: a save made before the commander redesign (P38.3 creature→planeswalker · P48.3 rename to "Ash the Guardian" · P49.11 new +1/−3 abilities) serialized the OLD S.cmd — an old creature body (rendered as e.g. a 6/6) with stale ability text. Re-sync the STATIC commander definition from the current room's cmd spec while PRESERVING live battle state (loyalty/tax/in-play/counters). Idempotent for current saves; setLevel() has already re-pointed DUNGEON to the saved level before migrate runs, and roomIndex is validated just above, so DUNGEON[roomIndex].cmd is the correct commander for this battle. */
+  if(s.cmd&&typeof s.cmd==='object'&&DUNGEON[s.roomIndex]&&DUNGEON[s.roomIndex].cmd){const spec=DUNGEON[s.roomIndex].cmd,c=s.cmd,cw=!!spec.isWalker;
+    c.n=spec.n;c.isWalker=cw;
+    c.p=spec.p||0;c.t=spec.t||0;c.baseP=spec.p||0;c.baseT=spec.t||0;
+    c.color=(spec.colors||DUNGEON[s.roomIndex].colors||['R']).slice();if(!Array.isArray(c.kw))c.kw=[];
+    c.ultThreshold=spec.ultThreshold||7;c.wplus=spec.plus||null;c.wminus=spec.minus||null;c.wult=spec.ult||null;
+    c.baseCost=spec.cost;c.tax=(typeof c.tax==='number')?c.tax:0;c.cost=c.baseCost+c.tax;if(typeof c.czCasts!=='number')c.czCasts=c.deaths||0;
+    if(cw){c.baseLoy=(spec.loy!=null?spec.loy:(spec.loyalty!=null?spec.loyalty:3));if(typeof c.loyalty!=='number')c.loyalty=c.baseLoy;}
+    else{c.baseLoy=undefined;delete c.loyalty;}}
   s.combat=null;return s;}
 function continueLastGame(sv){sv=sv||getSave();if(!sv||!sv.S){log("sys","No saved game to continue.");return;}
   if(typeof setLevel==='function')setLevel((sv.S&&sv.S.levelIdx)||0);/* P43.2 fix: re-point DUNGEON to the SAVED level BEFORE migrate validates roomIndex against it (else a deep room in a larger level would clamp to 0) */
