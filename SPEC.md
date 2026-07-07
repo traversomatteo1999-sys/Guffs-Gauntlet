@@ -232,7 +232,7 @@
 | &nbsp;&nbsp;P49.4 Counters on artifacts/enchantments (both sides) + battlefield UI for non-creature permanents (wire the unused `setCtr`) | ⬜ planned (bullet 3) — completes P30 |
 | &nbsp;&nbsp;P49.5 Economy retune: Fortune-Wheel rarity/power monotonicity · post-battle gold curve · Mana Surge nerf | ⬜ planned (bullets 6·18·30) |
 | &nbsp;&nbsp;P49.6 Italian localization (cutscene/lore/UI/tutorial/info/abilities/shop/menus/library/settings, keep NAMES) + main-menu flag selector (default EN) | ⬜ planned (bullet 7) — net-new i18n layer |
-| &nbsp;&nbsp;P49.7 Campaign flow: Level-1 "To be continued…" → Menu + replay-lock + cancel/abandon campaign | ⬜ planned (bullets 8·29) |
+| &nbsp;&nbsp;P49.7 Campaign flow: Level-1 "To be continued…" → Menu + replay-lock + cancel/abandon campaign | ✅ done (bullets 8·29) |
 | &nbsp;&nbsp;P49.8 Enemy deck realism: colour-loyal permanent removal in every deck · deeper difficulty deck variation · Grakk gets ramp/ability permanents · balance | ⬜ planned (bullets 9·25·26) |
 | &nbsp;&nbsp;P49.9 Enemy coloured/colourless mana costs + exact-mana casting/AI + London mulligan penalty (−1 card per mulligan) | ⬜ planned (bullets 16·24) — **reverses P44 default** |
 | &nbsp;&nbsp;P49.10 Combat/PW UX: combat popup minimize/restore (turn stays blocked) · PW abilities off-stack + announce popup · battles/sieges side-selectable · resurgent timing | ⬜ planned (bullets 19·22·11·10) — **#22 reverses P38** |
