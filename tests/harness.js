@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
 
-const INDEX = require('path').join(__dirname,'..','index.html');
+const INDEX = require('path').join(__dirname,'..','play.html');
 
 function boot() {
   const html = fs.readFileSync(INDEX, 'utf8');

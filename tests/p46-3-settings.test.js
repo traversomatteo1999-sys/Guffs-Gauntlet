@@ -14,7 +14,7 @@ ev('openSettings()');
 ok(d.getElementById('overlay').classList.contains('show'), 'openSettings shows the overlay');
 const h = d.getElementById('modalBody').innerHTML;
 ok(/⚙ Settings/.test(h) && /Text size/.test(h) && /Animations/.test(h) && /Volume|Sound/.test(h), 'panel has sound + text-size + animation groups');
-const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
+const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'play.html'), 'utf8');
 ok(/onclick="openSettings\(\)"[^>]*>⚙ Settings/.test(src), '⚙ Settings button in the controls bar + menu');
 ok((src.match(/onclick="openSettings\(\)"/g) || []).length >= 2, 'settings reachable from >=2 places (menu + controls)');
 

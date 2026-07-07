@@ -1,7 +1,7 @@
 // P45.1 — Foundation: self-hosted fonts, :root tokens, legibility.
 const fs=require('fs');
 const {boot}=require('./harness.js');
-const INDEX=require('path').join(__dirname,'..','index.html');
+const INDEX=require('path').join(__dirname,'..','play.html');
 const html=fs.readFileSync(INDEX,'utf8');
 let pass=0,fail=0;
 const ok=(c,m)=>{if(c){pass++;}else{fail++;console.log('  FAIL:',m);}};

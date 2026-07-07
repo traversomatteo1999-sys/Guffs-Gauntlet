@@ -1,7 +1,7 @@
 // P45.5 (Moxfield desktop) + P45.6 (stack dock) — structure + responsive CSS.
 const fs=require('fs');
 const {boot}=require('./harness.js');
-const html=fs.readFileSync(require('path').join(__dirname,'..','index.html'),'utf8');
+const html=fs.readFileSync(require('path').join(__dirname,'..','play.html'),'utf8');
 let pass=0,fail=0;
 const ok=(c,m)=>{if(c){pass++;}else{fail++;console.log('  FAIL:',m);}};
 const {window,errors}=boot();

@@ -4,7 +4,7 @@ const {boot}=require('./harness.js');
 const {window,errors}=boot();
 const ev=e=>window.eval(e);
 let fail=0; const ok=(c,m)=>{if(!c){console.error('FAIL:',m);fail++;}else console.log('ok:',m);};
-const SRC=fs.readFileSync(require('path').join(__dirname,'..','index.html'),'utf8');
+const SRC=fs.readFileSync(require('path').join(__dirname,'..','play.html'),'utf8');
 
 // 1) every infoBtn('k') / showInfo('k') key in the source resolves to an INFO_TEXT entry (no dangling ⓘ)
 const keys=new Set();let m;const re=/(?:infoBtn|showInfo)\(\s*'([a-zA-Z0-9_]+)'/g;while((m=re.exec(SRC)))keys.add(m[1]);

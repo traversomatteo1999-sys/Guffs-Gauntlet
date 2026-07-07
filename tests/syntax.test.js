@@ -1,6 +1,6 @@
 // Syntax gate: extract every inline <script> from index.html and vm.Script-compile it.
 const fs=require('fs'),vm=require('vm'),path=require('path');
-const INDEX=require('path').join(__dirname,'..','index.html');
+const INDEX=require('path').join(__dirname,'..','play.html');
 const html=fs.readFileSync(INDEX,'utf8');
 const re=/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi;
 let m,i=0,fail=0;

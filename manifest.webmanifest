@@ -2,7 +2,7 @@
   "name": "Guff's Gauntlet",
   "short_name": "Gauntlet",
   "description": "A solo Magic: the Gathering Commander gauntlet. You play your own side; the app is the opponent and the bookkeeper. Descend the Warren of Embers and topple the three wardens who guard its dark.",
-  "start_url": "./index.html",
+  "start_url": "./play.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",

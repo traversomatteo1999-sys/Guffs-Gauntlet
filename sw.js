@@ -1,5 +1,5 @@
 /* Guff's Gauntlet — service worker (offline app shell).
-   The cache name is versioned (gg-cache-v53), so installing this build
+   The cache name is versioned (gg-cache-v54), so installing this build
    evicts any earlier cached version on activate. A fetch handler is present,
    which is what makes the app installable.
    v49 (P45.1): the 4 typefaces are now inlined as data-URI woff2 inside
@@ -16,9 +16,14 @@
    v53 (P48): reverted the desktop three-rail grid to the spec's VERTICAL stacked
    cornice tabs (SPEC §3b); first-run tutorial offer moved AFTER all story cutscenes
    (choosing it no longer skips the gate intro). */
-const CACHE = 'gg-cache-v53';
+/* v54 (site): the marketing landing page is now './index.html' and the GAME moved to
+   './play.html'. Both are precached; navigations fall back to whichever page was
+   requested (then to play.html) so the installed app still opens straight into the game
+   offline. manifest start_url is now ./play.html. */
+const CACHE = 'gg-cache-v54';
 const SHELL = [
   './index.html',
+  './play.html',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -67,11 +72,11 @@ self.addEventListener('fetch', (e) => {
   if (new URL(req.url).origin !== self.location.origin) return;
   // Navigations: try the network (so a fresh build shows when online), fall back to the cached shell.
   if (req.mode === 'navigate') {
-    e.respondWith(fetch(req).catch(() => caches.match('./index.html')));
+    e.respondWith(fetch(req).catch(() => caches.match(req).then((m) => m || caches.match('./play.html'))));
     return;
   }
-  // Everything else: cache-first, then network, then the shell as a last resort.
+  // Everything else: cache-first, then network, then the game shell as a last resort.
   e.respondWith(
-    caches.match(req).then((hit) => hit || fetch(req).catch(() => caches.match('./index.html')))
+    caches.match(req).then((hit) => hit || fetch(req).catch(() => caches.match('./play.html')))
   );
 });

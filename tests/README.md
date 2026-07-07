@@ -21,7 +21,7 @@ process.exit(fail ? 1 : 0);                 // non-zero exit = the runner marks 
 
 `window.eval('S')` reads engine state; `window.render`, `window.fresh`, etc. are on
 `window`. Source-level checks (CSS/markup) read `index.html` via
-`path.join(__dirname,'..','index.html')`.
+`path.join(__dirname,'..','play.html')`.
 
 ## Adding a test when you build a feature
 

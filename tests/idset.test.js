@@ -3,7 +3,7 @@
 // if you deliberately remove an id, regenerate the snapshot: `node tests/idset.test.js --update`.
 const fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..');
-const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const html = fs.readFileSync(path.join(root, 'play.html'), 'utf8');
 const ids = [...new Set(html.match(/id="[^"]+"/g) || [])].sort();
 const snapFile = path.join(__dirname, 'ids.snapshot.txt');
 if (process.argv.includes('--update') || !fs.existsSync(snapFile)) {

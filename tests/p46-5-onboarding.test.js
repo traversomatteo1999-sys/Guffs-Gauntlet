@@ -35,7 +35,7 @@ ok(ev("(function(){DB.profiles.Vet={name:'Vet'};migrateProfiles();return DB.prof
 ok(ev("(function(){DB.profiles.New={name:'New',seenTutorial:false};migrateProfiles();return DB.profiles.New.seenTutorial;})()") === false, 'migrate leaves a genuine first-run flag (false) intact');
 
 // the opt-in entry points still exist
-const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
+const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'play.html'), 'utf8');
 ok((src.match(/openTutorial\(\)/g) || []).length >= 2, 'the ❓/menu opt-in tutorial entry points remain');
 
 console.log(`p46-5-onboarding: ${pass} passed, ${fail} failed`);
