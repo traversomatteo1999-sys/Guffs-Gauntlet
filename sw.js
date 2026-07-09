@@ -29,7 +29,10 @@
    → "Servant of the Pit-Tyrant"; the enemy walker-commander (Ash) now reads as a PLANESWALKER on the
    stack, not a creature; the tax badge is removed from the enemy commander card face. */
 /* v59 (P50.1): a visible ↩ Undo button in the Turn-flow box (surfaces the existing undo()). */
-const CACHE = 'gg-cache-v59';
+/* v60 (P50.4/.5): the per-card "attack tax" (catk) is retired everywhere (ward replaces the
+   per-card need); the enemy-pays attack tax is now an "Attack tax — enemy pays" emblem that
+   makes the enemy pay N mana per attacker (unpayable attackers stay home). */
+const CACHE = 'gg-cache-v60';
 const SHELL = [
   './index.html',
   './play.html',
