@@ -32,7 +32,9 @@
 /* v60 (P50.4/.5): the per-card "attack tax" (catk) is retired everywhere (ward replaces the
    per-card need); the enemy-pays attack tax is now an "Attack tax — enemy pays" emblem that
    makes the enemy pay N mana per attacker (unpayable attackers stay home). */
-const CACHE = 'gg-cache-v60';
+/* v61 (P50.6): per-card options (keywords, ±P/T, counters, markers, properties drawer) now work
+   on commanders too — the player's command-zone commander and the enemy walker-commander. */
+const CACHE = 'gg-cache-v61';
 const SHELL = [
   './index.html',
   './play.html',
