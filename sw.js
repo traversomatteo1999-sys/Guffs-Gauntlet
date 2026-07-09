@@ -34,7 +34,9 @@
    makes the enemy pay N mana per attacker (unpayable attackers stay home). */
 /* v61 (P50.6): per-card options (keywords, ±P/T, counters, markers, properties drawer) now work
    on commanders too — the player's command-zone commander and the enemy walker-commander. */
-const CACHE = 'gg-cache-v61';
+/* v62 (P50.8): cast the designated commander straight from the ✦ Cast-a-spell launcher; a walker
+   (noncreature) commander cast now triggers your prowess on resolve, like any noncreature spell. */
+const CACHE = 'gg-cache-v62';
 const SHELL = [
   './index.html',
   './play.html',
