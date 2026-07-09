@@ -33,16 +33,16 @@ ok(ev("DIFF.brutal.goldMult===1.15"),'brutal goldMult compressed to 1.15');
 // --- Bullet 30: Mana Surge nerfed to +1/turn, price up ---
 ok(ev("/add 1 mana/.test(BOONS.surge.t)"),'Mana Surge text now +1 mana/turn');
 ok(ev("!/add 2 mana/.test(BOONS.surge.t)"),'no longer +2 mana');
-ok(ev("STORE.find(s=>s.id==='surge').cost===30"),'Mana Surge price bumped to 30');
-ok(ev("BOONS.surge.r==='rare'"),'still rare (grantBoon/pickByRarity path intact)');
+ok(ev("STORE.find(s=>s.id==='surge').cost===38"),'Mana Surge price is 38 (P49.5 set 30 → P50.12 re-tiered to legendary 38)');
+ok(ev("BOONS.surge.r==='legendary'"),'Mana Surge is now legendary (P50.12 re-tier; grantBoon/pickByRarity path intact)');
 ev("S.inv=[];grantBoon('surge')");
 ok(ev("S.inv.some(x=>x&&x.id==='surge')"),'grantBoon(surge) still works');
 
 // --- Ember Sigil realism: the run-long +1 direct-damage engine is now uncommon, not a 6g common ---
 ok(ev("BOONS.ember.r==='uncommon'"),'Ember Sigil promoted common → uncommon');
 ok(ev("STORE.find(s=>s.id==='ember').cost===16"),'Ember Sigil repriced 6 → 16g (uncommon band)');
-// balance guard: no OTHER store price changed in this pass (economy otherwise untouched)
-ok(ev("STORE.find(s=>s.id==='heal5').cost===7 && STORE.find(s=>s.id==='scholar').cost===18 && STORE.find(s=>s.id==='phoenix').cost===40"),'other item prices unchanged — economy kept balanced');
+// balance guard: unrelated store prices unchanged (scholar was later re-tiered by P50.12: 18→26g rare)
+ok(ev("STORE.find(s=>s.id==='heal5').cost===7 && STORE.find(s=>s.id==='scholar').cost===26 && STORE.find(s=>s.id==='phoenix').cost===40"),'unrelated prices unchanged; scholar re-tiered to rare 26g (P50.12)');
 
 if(errors.length){console.error('jsdomErrors:',errors.slice(0,5));fail++;}
 console.log(fail?'P49.5 FAILED':'P49.5 PASSED');
