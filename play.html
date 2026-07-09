@@ -571,7 +571,7 @@
       <div class="turnlabel pre" id="turnLabel">Pre-game — set up your board</div>
       <div class="phasechips" id="phaseChips"></div>
       <div class="flowmana" id="flowMana"></div>
-      <div class="flowbtns"><button class="backphase" id="backBtn" onclick="backPhase()" title="Step back one phase — one-time effects won't re-fire" disabled>◂ Back</button><button class="big" id="dmBtn" onclick="flowClick()">▶ Begin the first turn</button></div>
+      <div class="flowbtns"><button class="backphase" id="backBtn" onclick="backPhase()" title="Step back one phase — one-time effects won't re-fire" disabled>◂ Back</button><button class="backphase" id="undoBtn" onclick="undo()" title="Undo the last action (revert the board to before your last move)" disabled>↩ Undo</button><button class="big" id="dmBtn" onclick="flowClick()">▶ Begin the first turn</button></div>
       <div class="btnrow" style="justify-content:center;margin-top:10px"><button class="big azor inline" onclick="openCardSearch()">✦ Cast a spell</button></div>
     </div>
   </div>
@@ -2524,6 +2524,7 @@ function renderFlow(){const chips=$("phaseChips");if(chips){chips.innerHTML="";P
   const fm=$("flowMana");if(fm)fm.innerHTML=S.activeTurn==='vael'?`${ENs()}'s mana: <b>${usableMana()}</b> / ${S.bossManaMax}${(S.bossManaFrozen||0)>0?` ❄${S.bossManaFrozen}`:''} · hand ${S.hand.length} · library ${S.lib.length}`:`${ENs()}'s mana next turn: <b>${projBossMana()}</b> · hand ${S.hand.length} · library ${S.lib.length}`;
   const btn=$("dmBtn");if(btn){btn.disabled=S.over||!!S.combat||S.paused;btn.textContent=flowLabel();}
   const bb=$("backBtn");if(bb)bb.disabled=S.over||!!S.combat||S.paused||S.activeTurn===null||S.phase<=0;
+  const ub=$("undoBtn");if(ub)ub.disabled=!_hist.length||S.paused;/* P50.1: ↩ Undo in the Turn-flow box — enabled whenever there's history to pop (undo() itself clears any open combat); disabled during a paused cutscene */
   const sb=$("swingBtn");if(sb)sb.classList.toggle('offphase',!(S.activeTurn==='you'&&PHASES[S.phase]==='combat'));}
 /* P7.5: enemy zone chips show colour dots + mana cost + full text on hover, with per-card affordances —
    a graveyard card can be ▸ played (recursion, via P6.5's dtPlayCard) or ⊘ exiled; an exiled card returned. */

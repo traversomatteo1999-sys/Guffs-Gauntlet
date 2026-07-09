@@ -28,7 +28,8 @@
 /* v58 (P50.7/.11/.13 polish): renamed the FX card off the verbatim warden name "Murglax, Pit-Tyrant"
    → "Servant of the Pit-Tyrant"; the enemy walker-commander (Ash) now reads as a PLANESWALKER on the
    stack, not a creature; the tax badge is removed from the enemy commander card face. */
-const CACHE = 'gg-cache-v58';
+/* v59 (P50.1): a visible ↩ Undo button in the Turn-flow box (surfaces the existing undo()). */
+const CACHE = 'gg-cache-v59';
 const SHELL = [
   './index.html',
   './play.html',
