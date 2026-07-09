@@ -16,10 +16,18 @@ ok(ev("S.bossMana")===2,  'land → +1 available mana (1→2)');
 ok(ev("S.bossManaMax")===3,'land → +1 max mana (2→3)');
 ok(ev("S.lib.indexOf(window._TL)")===-1, 'land removed from the library');
 
+// 1b. P50.10: the land records its COLOUR (Mountain → +1 R source & pool), not colour-blind scalars.
+ev("S.bossLands=0;S.bossMana=0;S.bossManaMax=0;S.bossSrc=null;S.bossPool=null;window._TR={id:9310,key:'mtn'};S.lib=[window._TR]");
+ev("dtMoveObj('lib',window._TR,'battlefield')");
+ok(ev("bossSrcPool().R")===1, 'P50.10: a Mountain → +1 RED source (bossSrc.R)');
+ok(ev("bossPool().R")===1,    'P50.10: a Mountain → +1 RED in the available pool (bossPool.R)');
+ok(ev("bossSrcPool().A||0")===0,'P50.10: it is NOT recorded as any-colour A');
+
 // 2. A land revealed from the enemy's HAND works too (same mover, zone='hand').
-ev("S.bossLands=0;S.bossMana=0;S.bossManaMax=0;window._TH={id:9302,key:'swp'};S.hand=[window._TH]");
+ev("S.bossLands=0;S.bossMana=0;S.bossManaMax=0;S.bossSrc=null;S.bossPool=null;window._TH={id:9302,key:'swp'};S.hand=[window._TH]");
 ev("dtMoveObj('hand',window._TH,'battlefield')");
 ok(ev("S.bossLands")===1 && ev("S.hand.indexOf(window._TH)")===-1, 'a land from hand also enters the battlefield as a mana source');
+ok(ev("bossSrcPool().B")===1, 'P50.10: a Swamp from hand → +1 BLACK source (bossSrc.B)');
 
 // 3. Regression: a creature still reanimates to a real permanent on the board.
 ev("S.tokens=[];window._CR={id:9401,key:'ogre'};S.lib=[window._CR]");
