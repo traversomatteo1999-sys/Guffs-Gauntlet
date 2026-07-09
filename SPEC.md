@@ -8,6 +8,7 @@
 
 ## STATUS (update as you go)
 
+- **⏩ CURRENT FRONTIER (2026-07-09):** Phases 0–48 done. **Phase 49 = 11 of 12 done** — P49.9 (enemy coloured mana + London mulligan) shipped at `70709f1`; only **P49.6 (Italian i18n)** remains, deferred to its own session. **Phase 50 (2026-07-08 fix batch, 14 sub-tasks) is IN PROGRESS this session** — see `# PHASE 50`; P50.9 (smarter enemy AI) built to the user's "way smarter, consider all variables" directive, P50.14 (story soundtrack) built against the user-committed `Soundtrack/` folder. `sw.js` moving v56→v57→…
 - **Branch:** `main` (== `origin/main`). **Phases 0–40 ALL BUILT, merged & pushed** (each: per-task jsdom driver + syntax gate + id-diff + adversarial review). **Phases 41–46 — the full-game rework (specced 2026-07-04) — ✅ ALL DONE, merged & pushed (2026-07-06):** ✅ Guff red-beard lore fix (41) · ✅ item duration & economy coherence + the immortal-passives root-cause fix (42) · ✅ Campaign & Sandbox two-mode + multi-level infra (43 — 4-lens review, 8 fixed) · ✅ enemy realism 2 + colour-pie mechanics library (44 — 5-lens review, 5 fixed) · ✅ **UI/animation/sound overhaul (45 — self-hosted fonts/tokens/legibility · card art · sound · FX layer · Moxfield desktop grid · stack dock; two 3-lens reviews, 3+4 fixed)** · ✅ **completeness & hardening + FINAL VALIDATION GATE (46 — checked-in `npm test` suite (25/25) · error toast · ⚙ Settings · a11y · onboarding · deploy files · code cleanup; the P46.8 gate passed — see the VALIDATION RECORD under `# PHASE 46`)**. **Remaining = 2 user actions only:** the balance playtest + the one-time Netlify Import-from-Git connection (checklists in §P46.8). Platform decision **D4 (stay web/PWA)** + app-strategy **D5 (one responsive app)** adopted in §3. **Post-46 shipped (in code, now back-filled into this tracker): Phase 47** (real per-warden art — icons/backdrops/menu/lore images + cutscene reveal; PNG→JPEG compression) · **Phase 48** (reverted the P45.5/6 desktop grid back to the spec's **vertical cornice tabs** at every width · fixed first-run tutorial order to fire after all cutscenes · **P48.3 renamed Vael's planeswalker to "Ash the Guardian"** (villain name stays *Vael, the Ember Tyrant*) and **moved the Siege from Vael to Grakk** ("Siege of the Ember Gate", data-driven `room.siege`+`fieldBossSiege`, heals Grakk +1/upkeep)). `sw.js` now `gg-cache-v55`. **Phase 49 = the 2026-07-07 fix batch (30 bullets → 12 themed sub-tasks) — ✅ 10 of 12 BUILT, merged & pushed (`origin/main` @ `2714681`):** ✅ P49.1 · P49.2 · P49.3 (reverses P4.2/4.4 — enemy instants auto-cast) · P49.4 · P49.5 · P49.7 · P49.8 · P49.10 (reverses P38 — enemy PW abilities off-stack) · P49.11 · P49.12. Each: branch-per-task → merge `--no-ff` → push, with a committed `tests/p49-*.test.js` driver + syntax gate (risky ones P49.2/.3/.10 got a single-agent adversarial review); **`npm test` = 35/35 green.** **Remaining = the 2 mega-tasks the user deferred to their own weekly budget windows:** ⬜ P49.6 (Italian i18n layer, net-new) · ⬜ P49.9 (enemy coloured/colourless mana + London-mulligan penalty; reverses the P44 default). See `# PHASE 49` for the narrowing defaults on both.
 - **Canonical file:** `play.html` (the deployed PWA game). ⚠ **the game moved `index.html`→`play.html` on 2026-07-06** (`72b567b`); **`index.html` is now the tiny SEO landing page** — do NOT edit it for gameplay. The test harness, `sw.js` precache, and every `tests/*.js` source-read now target `play.html` (some in-file *comments*/`tests/README.md` still say "index.html" — stale wording, they read `play.html`). ⚠ **`const ART=` is a ~1.5 MB single-line base64 blob at ~line 683 — never Read/print any range spanning it** (re-check with `grep -n 'const ART='` before trusting the number); the self-hosted **fonts are also inlined as data-URIs in the CSS**. Real JS runs from ~685 to end; **re-grep function names — line numbers drift** (they shifted vs the old `index.html`).
 - **Verification harness:** headless engine smoke test (Node + DOM shim) drives boot→turn-cycle→undo→save; syntax gate via `node -e` + `vm.Script` over the `<script>` body; **id-set diff** (`grep -oE 'id="[^"]+"'` before/after) after any DOM restructure — nothing may be removed. For visual phases, review live at `http://localhost:8000/` (`python -m http.server 8000` from the repo; incognito to dodge a cached service worker).
@@ -3058,7 +3059,9 @@ Play each difficulty a few runs and note:
 
 ---
 
-# PHASE 49 — Fix batch 2026-07-07 🟢 10 of 12 DONE (P49.6 + P49.9 remain)
+# PHASE 49 — Fix batch 2026-07-07 🟢 11 of 12 DONE (only P49.6 Italian i18n remains — deferred to its own session)
+
+> **P49.9 update (built & merged `70709f1`, `build/p49-9`):** enemy coloured/colourless mana + London-mulligan penalty ARE built — per-colour pools `S.bossPool`/`S.bossSrc`, `MANA_KEYS`, `parseMc`/`canAffordFrom`/`payFrom`/`prodUnits`/`addBossSource`/`canAfford`/`payCost`, save-migration, coloured pip display, and the mulligan bottom-N penalty. Driver `tests/p49-9-mana.test.js` green. Only **P49.6** (Italian i18n) remains, deferred by the user to a dedicated window.
 
 > **Goal.** The user's 2026-07-07 fix list (30 bullets), grounded below in `play.html` (post-P48 code). Organised as **12 themed sub-tasks (P49.1–P49.12)**; each names the raw bullet ids it covers.
 >
@@ -3240,7 +3243,7 @@ Play each difficulty a few runs and note:
 
 ---
 
-# PHASE 50 — Fix batch 2026-07-08 🟡 1 of 14 built (P50.3 done · P50.1–.2 + P50.4–.14 planned)
+# PHASE 50 — Fix batch 2026-07-08 🟡 3 of 14 built (P50.3 shipped v57 · P50.10 done · P50.1–.2 + P50.4–.9 + P50.11–.14 planned)
 
 > **Goal.** Fixes reported by the user on 2026-07-08, grounded below in `play.html` (post-P49.9 code, `70709f1`). **P50.3 already shipped this session**; **P50.1–P50.2 are specced build-ready** — not yet in the code (re-grep confirmed: the Turn-flow box has only ◂ Back + ▶ `#dmBtn`, and the combat popup is static once opened).
 
@@ -3266,7 +3269,7 @@ Play each difficulty a few runs and note:
 
 ## P50.3 — Deck-tools: lands searchable straight to the battlefield  *(this session — ✅ done)*
 
-**Shipped** inside `70709f1` (folded into the P49.9 commit by the user's concurrent CLI session). In the enemy deck-tools (Browse library · Look top/bottom N · Reveal hand), a **land** can now be put straight onto the enemy battlefield as a mana source (+1 land / +1 available / +1 max), matching `dtPlayCard`'s land path. Impl: a `land` branch in `dtMoveObj`'s `→ battlefield` handler + `moveActs` `canBoard=(t==='creature'||t==='land')`. Non-permanent spells stay rejected; creature reanimation unchanged. Driver: `tests/land-to-board.test.js` (10 asserts; `npm test` 38/38 green). ⚠ **not yet version-shipped** — `sw.js`/README still `v56`; bump on the next ship so installed players receive it.
+**Shipped** inside `70709f1` (folded into the P49.9 commit by the user's concurrent CLI session). In the enemy deck-tools (Browse library · Look top/bottom N · Reveal hand), a **land** can now be put straight onto the enemy battlefield as a mana source (+1 land / +1 available / +1 max), matching `dtPlayCard`'s land path. Impl: a `land` branch in `dtMoveObj`'s `→ battlefield` handler + `moveActs` `canBoard=(t==='creature'||t==='land')`. Non-permanent spells stay rejected; creature reanimation unchanged. Driver: `tests/land-to-board.test.js` (now 15 asserts; `npm test` green). ✅ **version-shipped in `sw.js`/README `v57`** (folded with P50.10).
 
 ## P50.4 — Enemy-emblem attack tax → the ENEMY pays per attacker, automated  *(user 2026-07-08, item 1)*
 
@@ -3316,7 +3319,10 @@ Play each difficulty a few runs and note:
 
 **Build notes (MED — dense, regression-prone → HIGH-risk review when built, combat math).** Improve `aiBlocks` (~1495) and `vaelAttackers`/`estimateSwingDamage` (~1558/1548) EV (account for player gang-blocks; weigh creature value vs life saved), and tune `castValue`/`enemyHoldUpReserve` for tempo. Keep `enemyLuck()` gating (easy stays legacy). **Needs a concrete target metric (win-rate / turns-to-lethal) — none defined; ask the user (see decisions).**
 
-## P50.10 — Enemy land mana colour on the manual deck-tools path  *(user 2026-07-08, item 7 — completes P50.3)*
+## P50.10 — Enemy land mana colour on the manual deck-tools path  *(user 2026-07-08, item 7 — completes P50.3)* — ✅ **DONE** (v57)
+
+**Shipped (`build/p50-3-10-land-colour`).** `dtMoveObj`'s land→battlefield branch (~1178) now calls `addBossSource(prodUnits(fx,1))` instead of the three colour-blind `S.bossLands++/S.bossMana++/S.bossManaMax++` — the three scalars still bump identically AND the land's colour is recorded on `S.bossSrc`/`S.bossPool` (a Mountain → +1 R, a Swamp → +1 B; no longer heals to any-colour `'A'`). Driver `tests/land-to-board.test.js` extended (+4 asserts). Original spec below.
+
 
 **What.** In-deck basic lands must produce the correct colour of enemy mana, **including** when the player manually puts an enemy's land on the board (the P50.3 deck-tools path).
 
