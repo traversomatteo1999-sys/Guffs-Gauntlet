@@ -3243,7 +3243,7 @@ Play each difficulty a few runs and note:
 
 ---
 
-# PHASE 50 — Fix batch 2026-07-08 🟡 9 of 14 built (P50.3 v57 · P50.7/.10/.11/.13 v58 · P50.1 v59 · P50.4/.5 v60 · P50.2 + P50.6 + P50.8–.9 + P50.12 + P50.14 planned)
+# PHASE 50 — Fix batch 2026-07-08 🟡 10 of 14 built (P50.3 v57 · P50.7/.10/.11/.13 v58 · P50.1 v59 · P50.4/.5 v60 · P50.6 v61 · P50.2 + P50.8–.9 + P50.12 + P50.14 planned)
 
 > **Goal.** Fixes reported by the user on 2026-07-08, grounded below in `play.html` (post-P49.9 code, `70709f1`). **P50.3 already shipped this session**; **P50.1–P50.2 are specced build-ready** — not yet in the code (re-grep confirmed: the Turn-flow box has only ◂ Back + ▶ `#dmBtn`, and the combat popup is static once opened).
 
@@ -3296,7 +3296,10 @@ Play each difficulty a few runs and note:
 
 **Build notes (LOW-MED — mostly deletion).** Remove the `catk` per-card UI/field (drawer rows, cast-form `castAtkN`/`castAtkTgt`, tax badge, `setCatk`/`setObjCatk`/`catkTgtSel`). ⚠ `enemyAttackTax()` (~1864) still consumes enemy `catk` — decide (see decisions) whether to also drop the enemy propaganda-tax path or keep the summation. Leave ward untouched.
 
-## P50.6 — Expand card options to commanders  *(user 2026-07-08, item 3)*
+## P50.6 — Expand card options to commanders  *(user 2026-07-08, item 3)* — ✅ **DONE** (v61)
+
+**Shipped (`build/p50-6-cmd-options`).** Added a `pcmd` scope to `getObj`/`getCre` (→ `S.pcmd`), so every scope-generic editor works on the command-zone commander; fixed `markerRow`/`toggleMarker` to use `getObj` (was `_boardArr().find()`, which couldn't resolve `cmd`/`pcmd`); added a generic `objPT(scope,id,f,n)` ±P/T/loyalty adjuster. (a) `renderPlayerCmd`'s `S.pcmd` box now renders ±P/T (or ±loyalty), counters, a keyword add (creature), counter/prot/kw badges, and a full properties drawer (`enemyDrawer` for a creature, `commonPermRow` for a walker) — edits persist onto the battlefield because `castCmd`/`deployCmd`/`resolveCmdToBoard` push the same `S.pcmd` object. (b) The enemy walker-commander branch of `cmdFieldCard` now has counters + a properties drawer (`commonPermRow`), not just loyalty. Driver `tests/p50-6-cmd-options.test.js` (22 asserts). Original spec below.
+
 
 **What.** Per-card options (keywords, ±P/T, counters, note, properties drawer) should be available on commanders too.
 
