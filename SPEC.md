@@ -3243,11 +3243,14 @@ Play each difficulty a few runs and note:
 
 ---
 
-# PHASE 50 — Fix batch 2026-07-08 🟡 6 of 14 built (P50.3 shipped v57 · P50.7/.10/.11/.13 done v58 · P50.1–.2 + P50.4–.6 + P50.8–.9 + P50.12 + P50.14 planned)
+# PHASE 50 — Fix batch 2026-07-08 🟡 7 of 14 built (P50.3 v57 · P50.7/.10/.11/.13 v58 · P50.1 v59 · P50.2 + P50.4–.6 + P50.8–.9 + P50.12 + P50.14 planned)
 
 > **Goal.** Fixes reported by the user on 2026-07-08, grounded below in `play.html` (post-P49.9 code, `70709f1`). **P50.3 already shipped this session**; **P50.1–P50.2 are specced build-ready** — not yet in the code (re-grep confirmed: the Turn-flow box has only ◂ Back + ▶ `#dmBtn`, and the combat popup is static once opened).
 
-## P50.1 — Undo button in the Turn-flow box  *(user 2026-07-08)*
+## P50.1 — Undo button in the Turn-flow box  *(user 2026-07-08)* — ✅ **DONE** (v59)
+
+**Shipped (`build/p50-1-undo`).** Added `<button id="undoBtn" onclick="undo()">↩ Undo</button>` to `.flowbtns` (between ◂ Back and ▶). Disabled in `render()` (~2526) when `!_hist.length||S.paused` (undo() itself clears any open combat, so combat isn't gated). Pure id-add (idset-safe). Driver `tests/p50-1-undo.test.js` (8 asserts). Original spec below.
+
 
 **What.** Surface a visible **↩ Undo** control in the Turn-flow box so the player can reverse the last action from the board (today `undo()` exists but has no button there — only a tutorial-text mention).
 
