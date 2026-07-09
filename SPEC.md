@@ -3243,7 +3243,7 @@ Play each difficulty a few runs and note:
 
 ---
 
-# PHASE 50 — Fix batch 2026-07-08 🟡 7 of 14 built (P50.3 v57 · P50.7/.10/.11/.13 v58 · P50.1 v59 · P50.2 + P50.4–.6 + P50.8–.9 + P50.12 + P50.14 planned)
+# PHASE 50 — Fix batch 2026-07-08 🟡 9 of 14 built (P50.3 v57 · P50.7/.10/.11/.13 v58 · P50.1 v59 · P50.4/.5 v60 · P50.2 + P50.6 + P50.8–.9 + P50.12 + P50.14 planned)
 
 > **Goal.** Fixes reported by the user on 2026-07-08, grounded below in `play.html` (post-P49.9 code, `70709f1`). **P50.3 already shipped this session**; **P50.1–P50.2 are specced build-ready** — not yet in the code (re-grep confirmed: the Turn-flow box has only ◂ Back + ▶ `#dmBtn`, and the combat popup is static once opened).
 
@@ -3274,7 +3274,10 @@ Play each difficulty a few runs and note:
 
 **Shipped** inside `70709f1` (folded into the P49.9 commit by the user's concurrent CLI session). In the enemy deck-tools (Browse library · Look top/bottom N · Reveal hand), a **land** can now be put straight onto the enemy battlefield as a mana source (+1 land / +1 available / +1 max), matching `dtPlayCard`'s land path. Impl: a `land` branch in `dtMoveObj`'s `→ battlefield` handler + `moveActs` `canBoard=(t==='creature'||t==='land')`. Non-permanent spells stay rejected; creature reanimation unchanged. Driver: `tests/land-to-board.test.js` (now 15 asserts; `npm test` green). ✅ **version-shipped in `sw.js`/README `v57`** (folded with P50.10).
 
-## P50.4 — Enemy-emblem attack tax → the ENEMY pays per attacker, automated  *(user 2026-07-08, item 1)*
+## P50.4 — Enemy-emblem attack tax → the ENEMY pays per attacker, automated  *(user 2026-07-08, item 1)* — ✅ **DONE** (v60, with P50.5)
+
+**Shipped (`build/p50-4-5-attack-tax`).** New `ENEMY_EMBLEMS` entry "Attack tax — enemy pays (per attacker)" `{auto:{k:'attackTaxEnemy',n:1},static:true}` + `emblemValueLabel` case ('N mana/attacker'). `attackTax()` rewritten to sum `attackTaxEnemy` from `enemyAutoSources()` (emblem/artifact/enchant, honouring `autoOn`/`phased`) instead of the retired per-card catk; `payAttackTax()` (in `vaelCombat`) already ranks and skips unpayable enemy attackers and deducts from the enemy pool. `static:true` keeps it out of the trigger/`applyStaticEmblems` loops (verified it never fires youLose or buffs creatures). Adversarial single-agent review → NO CONFIRMED FINDINGS. Original spec below.
+
 
 **What.** Replace the player-pays "attack tax" idea with an **enemy emblem** that automatically requires the enemy to have **N mana per creature it attacks with** — if it can't pay for a given attacker, that attacker can't swing.
 
@@ -3282,7 +3285,10 @@ Play each difficulty a few runs and note:
 
 **Build notes (MED-HIGH — new automated gate in emblem+combat engine).** Add an emblem kind (e.g. `attackTaxEnemy`, value N) to `ENEMY_EMBLEMS` + `emblemValueLabel`, and hook the enemy attack declaration (`vaelAttackers` ~1558) to filter its attacker set by affordable mana, reusing the `payAttackTax` affordability loop and actually deducting from the enemy pool. Confirm interaction with `usableMana()` / the P49.9 coloured pools.
 
-## P50.5 — Per-card attack tax is useless → remove it; per-card ward already exists  *(user 2026-07-08, item 2)*
+## P50.5 — Per-card attack tax is useless → remove it; per-card ward already exists  *(user 2026-07-08, item 2)* — ✅ **DONE** (v60, with P50.4)
+
+**Shipped (`build/p50-4-5-attack-tax`).** Removed the per-card `catk` field entirely: `setCatk`/`setObjCatk`/`catkTgtSel` functions; the attack-tax rows in creatureDrawer / walkerDrawer / permDrawer / the enemy drawer; the cast-form fields (`castAtkN`/`castAtkType`/`castAtkTgt` — idset rebaselined 264→262); `propBadges` "atk:" badge + `fillPerm` "tax" badge; the `catk:` entries in resolvePlayerItem/addC/addP/saveBoardToLibrary/cmdObjFromCfg/two build helpers; the threat-score term; and `migrate()` now `delete o.catk` on every permanent (legacy saves shed it). `enemyAttackTax()` keeps only the generic `setEnemyAtkRule` reminder. Ward (`cward`) is untouched (verified present in all three ward drawers + cast form). Original spec below.
+
 
 **What.** The per-card "attack tax" field isn't useful — remove it. The replacement the user wants — a per-card **ward** (set N ward on a specific card, unrelated to attacks) — **already exists**, so this is cleanup, not new work.
 
