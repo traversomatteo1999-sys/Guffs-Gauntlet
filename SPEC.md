@@ -238,7 +238,7 @@
 | &nbsp;&nbsp;P49.10 Combat/PW UX: combat popup minimize/restore (turn stays blocked) · PW abilities off-stack + announce popup · battles/sieges side-selectable · resurgent timing | ✅ done (bullets 19·22·11·10) — **#22 reverses P38** (enemy walkers only) |
 | &nbsp;&nbsp;P49.11 Vael/Ash the Guardian: reborn at 1 HP · +1 → "Create a 1/1 Ash Soldier with haste" · −3 → graveyard exile-X + free reanimate ≤X | ✅ done (bullets 23·27·28) |
 | &nbsp;&nbsp;P49.12 Items & cards: enemy top/bottom-N reveal shows full card info · add art to saved homebrew cards | ✅ done (bullets 14·17; #13 resolved — no change) |
-| **Phase 50 — Fix batch 2026-07-08** (Undo button · live combat popup · deck-tools land→board · emblem/card tax↔ward · commander casting & options · Murglax card rename · smarter enemy AI · land mana colour · Ash-as-planeswalker · store balance · hide commander tax) | 🟡 **SPECCED — 1 of 13 built** (recorded 2026-07-08; grounded in `# PHASE 50`). ✅ P50.3 only (in `70709f1`, not version-shipped); ⬜ P50.1–.2 · P50.4–.13 planned. Ward (P50.5) and enemy-land colour on the AI's own plays (P50.10) already exist — only residual gaps remain. |
+| **Phase 50 — Fix batch 2026-07-08** (Undo button · live combat popup · deck-tools land→board · emblem/card tax↔ward · commander casting & options · Murglax card rename · smarter enemy AI · land mana colour · Ash-as-planeswalker · store balance · hide commander tax · pooled soundtrack music) | 🟡 **SPECCED — 1 of 14 built** (recorded 2026-07-08; grounded in `# PHASE 50`). ✅ P50.3 only (in `70709f1`, not version-shipped); ⬜ P50.1–.2 · P50.4–.14 planned. Ward (P50.5) and enemy-land colour on the AI's own plays (P50.10) already exist; sound-on-default (part of P50.14) already true. |
 | &nbsp;&nbsp;P50.1 Undo button in the Turn-flow box (`.flowbtns`, beside ◂ Back / ▶) wired to the existing `undo()` | ⬜ planned (user 2026-07-08) — LOW risk |
 | &nbsp;&nbsp;P50.2 Combat resolver popup auto-updates in real time — every board change (flash a creature = new blocker · removal drops an attacker/blocker) recalculates the open popup (`_combatPrune()`+`renderCombat()` driven from `render()`) | ⬜ planned (user 2026-07-08) — combat/state → HIGH-risk review when built |
 | &nbsp;&nbsp;P50.3 Deck-tools: a land searched/looked/revealed can go straight onto the enemy battlefield as a mana source | ✅ done — `70709f1` (`dtMoveObj` land branch + `moveActs` board button · `tests/land-to-board.test.js`) |
@@ -252,6 +252,7 @@
 | &nbsp;&nbsp;P50.11 "Ash the Guardian" must be a **planeswalker** on the stack, not a creature (`type:'creature'` hardcoded ~2444) | ⬜ planned (item 8) — LOW (one line) |
 | &nbsp;&nbsp;P50.12 Store items cost a bit more + re-tier by strength (scholar +1 card/turn, surge +1 mana/turn under-tiered) | ⬜ planned (item 9) — LOW data / MED if new "epic" tier |
 | &nbsp;&nbsp;P50.13 Don't show **tax** on the commander card face (enemy `cmdFieldCard` ~2548/2554 · player `#pcmdBox`) | ⬜ planned (item 10) — LOW (cosmetic) |
+| &nbsp;&nbsp;P50.14 Story-driven **soundtrack system** — pooled music (menu/grakk/murglax/vael/victory), story-switched, random-no-repeat; removes the P45.4 ambient pad (sound-on-default already true) | ⬜ planned (item 11) — MED (new subsystem + sw.js precache; `soundtrack/` folder not yet in repo) |
 
 ---
 
@@ -3239,7 +3240,7 @@ Play each difficulty a few runs and note:
 
 ---
 
-# PHASE 50 — Fix batch 2026-07-08 🟡 1 of 13 built (P50.3 done · P50.1–.2 + P50.4–.13 planned)
+# PHASE 50 — Fix batch 2026-07-08 🟡 1 of 14 built (P50.3 done · P50.1–.2 + P50.4–.14 planned)
 
 > **Goal.** Fixes reported by the user on 2026-07-08, grounded below in `play.html` (post-P49.9 code, `70709f1`). **P50.3 already shipped this session**; **P50.1–P50.2 are specced build-ready** — not yet in the code (re-grep confirmed: the Turn-flow box has only ◂ Back + ▶ `#dmBtn`, and the combat popup is static once opened).
 
@@ -3347,7 +3348,39 @@ Play each difficulty a few runs and note:
 
 **Build notes (LOW — cosmetic).** Remove the two `${c.tax?…tax +…}` spans at ~2548/~2554 (enemy face); optionally trim the `+${c.cmdTax}` text in `renderPlayerCmd` (~1949-1950). Tax value/state and cost logic (`CMD_TAX_BASE` ~702, `czCasts`/`tax`) stay intact — display only, not the P49.2 rule.
 
+## P50.14 — Story-driven soundtrack system (pooled music manager)  *(user 2026-07-08, item 11)*
+
+**What.** Replace the P45.4 ambient synth pad with a real **music manager** that plays pooled soundtracks tied to story state: MENU music at the menu → GRAKK music from descend start through Grakk's death + final words → MURGLAX music from the first Murglax lore popup to his death → VAEL music from Vael's lore to his defeat → VICTORY music the instant Vael falls, lasting until back at the menu. Returning to the menu always plays MENU music; continuing a parked descend/battle resumes that enemy's pool. Within a pool, tracks are chosen at random and don't repeat until ≥2 other tracks have played (~4 tracks/pool). Each subfolder of `soundtrack/` = one pool.
+
+**(a) Sound ON by default — ✅ ALREADY TRUE, no change.** `loadMute()` (~3818) is `_muted=!!(DB&&DB.muted)`; a fresh profile has no `DB.muted` → sound is already on (also `let _muted=false` at ~3775). Optionally hard-guard a legacy stored `true`, but not required.
+
+**(b) Eliminate the ambient pad (P45.4).** Remove the synth drone: `startPad`/`stopPad`/`togglePad` (~3786-3788), the `_pad`/`_padOn` state (~3775), `_padOn=!!(DB&&DB.pad)` in `loadVol` (~3782), the `if(_padOn)startPad()` calls in `unlockAudio` (~3777), the `stopPad()`/`startPad()` in `toggleMute` (~3819), and the "🎵 Ambience on/off" button in `settingsHTML` (~3745). **Keep all synthesized `sfx()` cues** (~3789) — only the music/pad is replaced.
+
+**(c) Asset pipeline (folder + offline).** ⚠ **No `soundtrack/` folder exists in the repo yet** (only `icons/`, `Pictures/`, `tests/`) — it must be added, populated, and committed. Precedent: P47 warden art already ships as real files under `Pictures/` (referenced by URL via `ENEMY_ICON`/`DUNGEON_BG`), `.assetsignore` does NOT exclude new folders, and `wrangler.jsonc` serves `./`, so a root `soundtrack/` publishes automatically. For OFFLINE playback, add the track URLs to a precache list in `sw.js` (extend/duplicate the best-effort `IMAGES` array ~38-48) **and bump `gg-cache-v56`→`v57`** (mandatory). ⚠ **Range-request caveat:** the SW fetch handler (~81-83) is a plain cache-first that returns the whole cached Response; `<audio>` seeking/streaming issues HTTP Range requests it doesn't honor — fine for short fully-buffered tracks, may misbehave for long ones/seeking. ⚠ **Autoplay policy:** browsers block audio until a user gesture; `unlockAudio()` (~3777) already resumes the context on first gesture — so MENU music starts on the first interaction, not literally at page paint.
+
+**(d) Pool → story-transition hooks** (grounded; only Level I exists — one descend, rooms 0=Grakk / 1=Murglax / 2=Vael, id via `_levelArt[S.roomIndex]` = `'grakk'|'murglax'|'vael'`):
+
+| Transition | Anchor | Pool |
+|---|---|---|
+| Boot / any return to menu | `showMenu()` (~3252; via `beginIntro`/`quitToMenu`) | MENU |
+| Descend/battle start | `startBattle()` (~2942) | first enemy = `_levelArt[S.roomIndex]` |
+| Grakk intro | `proceedAfterCommander` (~3481) | grakk |
+| Grakk final words → Murglax popup, and Murglax → Vael | `advance()` (~2270, the `showCutscene(nr.intro,…)` at ~2275) | `_levelArt[next]` |
+| Warden death / final words | `bossDown()` (~2264) → `showEncounterClear()` (~3084, `deathQuote`) | keep current pool through the death cutscene |
+| Vael beaten → victory | `win()` (~2853) | VICTORY (persists through `winCutscene` until menu) |
+| Resume parked/interrupted | `continueLastGame()` (~3233) | `_levelArt[S.roomIndex]` (+ `S.phase2done` for Vael) |
+
+Key: `advance()` (~2270) is the **single choke point** for both Grakk→Murglax and Murglax→Vael hand-offs — it fires the next warden's first lore popup right after the dying warden's `deathQuote`, so "Grakk music until his final words, then Murglax at the first Murglax popup" is one switch at ~2275.
+
+**(e) Track selection (randomness without repetition, ~4/pool).** Per pool: pick a random track, play it fully, then on `ended` pick the next — with a **no-repeat cooldown of ≥2 songs** (a track can't re-enter the eligible set until 2 others have played). Cleanest = a **shuffle-bag**: shuffle the pool, play through it, reshuffle when empty (guarantees no repeat until every other track has played — strictly stronger than the ≥2 ask and natural for 4 tracks); alternative = a "last-2 played" exclusion set. Switching pools interrupts the current track immediately and starts the new pool's selection; loop within a pool for as long as that story phase lasts.
+
+**Build notes (MED — self-contained subsystem + light story hooks + sw.js).** New music-manager in the audio block (~3775-3826) using `<audio>` elements (or `AudioBufferSourceNode`), volume/mute governed by the existing `_muted`/`_vol` so the Sound toggle + volume slider control it; expose `playPool(name)` / `stopMusic()` and call them from the 7 hooks above. Keep `sfx()` intact. The audio block sits ~3000 lines below the ART blob — no proximity risk. Driver: assert `playPool` sets the active pool + honors the no-repeat window; assert each hook selects the right pool (stub `<audio>` in jsdom).
+
 ### Phase 50 decisions (confirm at build)
+- **P50.14 folder/pools (BLOCKER):** the `soundtrack/` folder is not in the repo — confirm the exact subfolder (pool) names (expected `menu`, `grakk`, `murglax`, `vael`, `victory`), the audio format (mp3 = widest support; ogg/m4a otherwise), and commit the files before build.
+- **P50.14 no-repeat model:** shuffle-bag (default — full-pool no-repeat) vs an explicit last-2 exclusion.
+- **P50.14 offline scope:** precache all tracks (adds to every install's download) vs online-only stream (silent offline)? *Default:* precache best-effort like `IMAGES`, accept the Range caveat for short tracks.
+
 - **P50.4 attack-tax semantics:** enemy pays N per attacking creature — an unpayable attacker simply stays home (default), not "whole attack aborts"; pay from any mana (generic N) unless a colour is specified.
 - **P50.5 enemy propaganda tax:** when removing the per-card `catk`, also drop `enemyAttackTax()` (the enemy's own "you pay to attack" rule) or keep it as a manual `S.rules` reminder? *Default:* keep the reminder, remove only the per-card field/UI.
 - **P50.7 rename target:** the new name for `tyrant` (was "Murglax, Pit-Tyrant") — pick one (default "Servant of the Pit-Tyrant").
