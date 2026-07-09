@@ -422,7 +422,7 @@
   <div class="controls">
     <span class="lab">Difficulty</span>
     <div class="seg" id="diffSeg"><button data-d="easy">Easy</button><button data-d="standard" class="on">Standard</button><button data-d="brutal">Brutal</button></div>
-    <button class="mini ember" id="resetBtn">↺ Restart Dungeon</button><button class="mini azor" onclick="undo()">↩ Undo</button><button class="mini gold" onclick="openTutorial()">❓ Tutorial</button><button class="mini" onclick="openLore()">📖 Lore</button><button class="mini gold" onclick="openLibrary()">🃏 Library</button><button class="mini" id="muteBtn" onclick="toggleMute()" title="Toggle sound">🔊 Sound</button><input type="range" id="volSlider" min="0" max="100" value="100" title="Volume" oninput="setVol(this.value)" style="width:80px;align-self:center;accent-color:var(--gold)"><button class="mini" id="padBtn" onclick="togglePad()" title="Ambient drone — off by default">🎵 Ambience off</button><button class="mini" onclick="openSettings()" title="Volume · text size · animations · data">⚙ Settings</button><button class="mini azor" onclick="showMenu()">☰ Menu</button><span class="goldpill" id="goldNote" style="align-self:center">💰 0</span><span class="lab" id="diffNote">standard</span>
+    <button class="mini ember" id="resetBtn">↺ Restart Dungeon</button><button class="mini azor" onclick="undo()">↩ Undo</button><button class="mini gold" onclick="openTutorial()">❓ Tutorial</button><button class="mini" onclick="openLore()">📖 Lore</button><button class="mini gold" onclick="openLibrary()">🃏 Library</button><button class="mini" id="muteBtn" onclick="toggleMute()" title="Toggle sound">🔊 Sound</button><input type="range" id="volSlider" min="0" max="100" value="100" title="Volume" oninput="setVol(this.value)" style="width:80px;align-self:center;accent-color:var(--gold)"><button class="mini" onclick="openSettings()" title="Volume · text size · animations · data">⚙ Settings</button><button class="mini azor" onclick="showMenu()">☰ Menu</button><span class="goldpill" id="goldNote" style="align-self:center">💰 0</span><span class="lab" id="diffNote">standard</span>
   </div>
 
   <section class="tab" id="tab-info"><button class="tabhead" onclick="toggleTab('info')"><span class="tablabel">⟡ Info <span class="tabnote">you · foe · log</span></span><span class="tabright"><span class="tabhint"></span><span class="tabchev">▾</span></span></button><div class="tabbody" id="tb-info"></div></section>
@@ -2263,7 +2263,7 @@ function bossDown(){if(S.over)return;if(S.boss.isVael&&!S.phase2done){S.phase2do
   /* a mid-level boss (a room before the finale) → loot + encounter-clear, then advance() walks to the next room within the level */
   recordCleared(S.levelIdx,DUNGEON[S.roomIndex]);/* P43.6: this warden is now beaten — unlocks its lore + sandbox tile */
   S.paused=true;sfx('victory');const lr=lootRoll();const gold=goldReward(S.roomIndex);addGold(gold);log("sys",`🏳 <b>${S.boss.name} falls!</b>`);log("loot",`💰 You collect <b>${gold} gold</b> (account balance ${getGold()}). Spend it at the 🛒 Merchant between descents.`);S._spoils=`🎲 Loot roll ${lr.label} → ${lr.names.join(" + ")}!  ·  💰 +${gold} gold (account ${getGold()})`;render();showEncounterClear();}
-function advance(){sfx('descend');const next=S.roomIndex+1;closeCutscene();S._spoils="";freshGameForDungeon();enterRoom(next);S.paused=false;
+function advance(){sfx('descend');const next=S.roomIndex+1;closeCutscene();S._spoils="";freshGameForDungeon();enterRoom(next);S.paused=false;playPool(roomMusicPool());/* P50.14: warden hand-off — the next warden's soundtrack starts as its first lore popup fires */
   /* P16.4: between-boss life reset — trim excess TEMPORARY life down to the permanent base (youMax). Spent magic fading, distinct from damage; never raises life, never touches life ≤ base, never lowers youMax. Runs BEFORE the P15.4 descent-heal so "missing HP" is measured from the post-cap value. After a Tonic of Vigor (+10 base) the cap tracks the new base automatically (Phase 28). */
   if(S.youLife>S.youMax){const was=S.youLife;S.youLife=S.youMax;log("sys",`✨ Temporary vigor fades — your life settles to <b>${S.youMax}</b> between battles (was ${was}).`);}
   /* P15.4: difficulty-scaled recovery between bosses — only when below the threshold; adjLife/floor never overheal. (P16.4 will reset >40 life FIRST, then this heals against the post-cap value.) */
@@ -2846,7 +2846,7 @@ function counterChoiceDecline(){const cc=_counterChoice;if(!cc)return;_counterCh
 /* P19.2: the enemy can lose to its own counters (10 poison / 21 commander damage), mirroring checkLose — routed through bossDown so Vael's phase-2 + loot/clear fire exactly like a life-based death. No Phoenix-style save on the enemy side. */
 function checkEnemyOut(){if(S.over)return;const ec=S.enemyCounters||{},poison=ec.poison||0,cmdd=ec.cmdDmg||0;if(poison>=10||cmdd>=21){if(poison>=10)log("dm",`☠ 10 poison — ${S.boss.name} falls.`);if(cmdd>=21)log("dm",`☠ 21 commander damage — ${S.boss.name} falls.`);bossDown();}}
 function checkLose(){if(S.over)return;const poison=(S.counters&&S.counters.poison)||0,cmdd=(S.counters&&S.counters.cmdDmg)||0;if(S.youLife<=0||poison>=10||cmdd>=21){if(S.youLife<=0&&S.inv.some(it=>it.id==="phoenix")&&!S.phoenixUsed){S.phoenixUsed=true;S.inv=S.inv.filter(it=>it.id!=="phoenix");S.youLife=1;log("loot",`🔥 <b>Phoenix Charm</b> catches you at <b>1</b>!`);render();return;}if(poison>=10)log("sys","☠ 10 poison counters - you fall.");if(cmdd>=21)log("sys","☠ 21 commander damage - you fall.");lose();}}
-function win(){if(S.over)return;S.over=true;saveUnusedItems();clearSave();sfx('victory');/* P15.3: stash unused items before the save is wiped */
+function win(){if(S.over)return;S.over=true;saveUnusedItems();clearSave();sfx('victory');playPool('Victory');/* P15.3: stash unused items before the save is wiped · P50.14: VICTORY soundtrack the instant Vael falls (persists through the win cutscene until the menu) */
   recordResult(true);recordCleared(S.levelIdx,DUNGEON[DUNGEON.length-1]);bumpLevelUnlock(S.levelIdx);/* P43.6: the campaign finale into the ledger + mark the level complete */S.boss.life=0;
   const lr=lootRoll();
   log("sys",`🏆 <b>THE WARREN BREAKS — VAEL FLEES.</b> You could not kill the deathless thing; the Ember relit him beyond your reach. You broke his hold here — and freed the prisoner.`);
@@ -2939,7 +2939,7 @@ function startBattle(opts){opts=opts||{};const mode=(opts.mode==='sandbox')?'san
   closeCutscene();['menu','campaign','sandbox','plays','resolver','overlay','library','store'].forEach(id=>{const e=$(id);if(e){e.classList.remove("show");e.classList.remove("bootdrop");}});
   const lg=$("log");if(lg)lg.innerHTML="";
   fresh();S.mode=mode;_uiMode=mode;S.diff=df;setLevel(levelIdx);enterRoom(roomIdx,true);
-  applyPendingPurchases();applyStashItems();setDiff(df);_liveGame=true;render();doAutosave();chooseCommander();/* P3.1: re-ask the commander each new battle (fresh() clears it); proceedAfterCommander shows the intro */}
+  applyPendingPurchases();applyStashItems();setDiff(df);_liveGame=true;render();doAutosave();playPool(roomMusicPool());/* P50.14: the descend/battle starts the current warden's soundtrack */chooseCommander();/* P3.1: re-ask the commander each new battle (fresh() clears it); proceedAfterCommander shows the intro */}
 /* Restart the current mode: campaign → a new run from Level I Room 0 (forward-only); sandbox → re-fight the same battle. */
 function restart(){const mode=(typeof S!=='undefined'&&S&&S.mode==='sandbox')?'sandbox':'campaign';if(mode==='sandbox')startBattle({mode:'sandbox',levelIdx:(S&&S.levelIdx)||0,roomIdx:(S&&S.roomIndex)||0,diff:S.diff});else startBattle({mode:'campaign',levelIdx:0,roomIdx:0,diff:(S&&S.diff)||'standard'});}
 $("diffSeg").addEventListener("click",e=>{if(!e.target.dataset.d)return;if(S.turn===0&&S.roomIndex===0&&!S.inv.length){const df=e.target.dataset.d;fresh();S.diff=df;enterRoom(0,true);setDiff(df);render();}else log("sys","Restart to change difficulty.");});
@@ -3230,7 +3230,7 @@ function continueLastGame(sv){sv=sv||getSave();if(!sv||!sv.S){log("sys","No save
   if(typeof setLevel==='function')setLevel((sv.S&&sv.S.levelIdx)||0);/* P43.2 fix: re-point DUNGEON to the SAVED level BEFORE migrate validates roomIndex against it (else a deep room in a larger level would clamp to 0) */
   S=migrate(JSON.parse(JSON.stringify(sv.S)));if(typeof setLevel==='function')setLevel(S.levelIdx||0);_uiMode=S.mode;if(!DUNGEON[S.roomIndex])S.roomIndex=0;S._introShown=true;_liveGame=true;histReset();
   ['plays','resolver','overlay','library','store','cutscene','menu','campaign','sandbox'].forEach(id=>{const e=$(id);if(e)e.classList.remove("show");});
-  setDiff(S.diff||'standard');setWarrenArt();render();
+  setDiff(S.diff||'standard');setWarrenArt();render();playPool(roomMusicPool());/* P50.14: resuming a parked descent restores that warden's soundtrack */
   log("sys",`▶ Resumed your descent — <b>${DUNGEON[S.roomIndex].name}</b>, Turn ${S.turn}.`);
   if(S.paused&&!S.over)showEncounterClear();}
 function saveFileName(kind){const p=prof();const nm=(((p&&p.name)||'profile').replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,''))||'profile';let ts='save';try{const d=new Date();const pad=n=>String(n).padStart(2,'0');ts=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;}catch(e){}return `guffs-gauntlet${kind==='library'?'-library':''}_${nm}_${ts}.json`;}
@@ -3245,7 +3245,7 @@ function getGold(mode){const b=bucket(mode);return b?(b.gold||0):0;}
 function addGold(n,mode){const b=bucket(mode);if(!b)return;b.gold=(b.gold||0)+n;saveDB();}
 function spendGold(n,mode){const b=bucket(mode);if(!b||(b.gold||0)<n)return false;b.gold=(b.gold||0)-n;saveDB();return true;}
 
-function showMenu(){renderMenu();$("menu").classList.add("show");}
+function showMenu(){renderMenu();$("menu").classList.add("show");playPool('Menu');}/* P50.14: MENU soundtrack whenever we return to the menu */
 function beginIntro(){ /* P1.4: first-boot cinematic — fire burns away the dark to reveal the warren art, then the menu drops in */
   const intro=$("intro"),fire=$("introfire"),menu=$("menu");
   const reduce=(typeof matchMedia!=='undefined')&&matchMedia('(prefers-reduced-motion:reduce)').matches;
@@ -3741,7 +3741,7 @@ function loadSettings(){try{if(!DB.settings)DB.settings={};}catch(e){}applyTextS
 function settingsHTML(){const s=(DB&&DB.settings)||{};const ts=s.textSize||'M';const an=s.anim||'auto';const vol=Math.round(((typeof _vol==='number')?_vol:1)*100);
   const seg=(cur,opts,fn)=>`<div class="seg">${opts.map(([v,l])=>`<button class="${cur===v?'on':''}" onclick="${fn}('${v}')">${l}</button>`).join('')}</div>`;
   return `<h2>⚙ Settings</h2>
-  <div class="setgrp"><div class="setlab">🔊 Sound</div><div class="btnrow" style="align-items:center;gap:8px"><button class="mini" onclick="toggleMute();openSettings()">${_muted?'🔇 Muted':'🔊 On'}</button><input type="range" min="0" max="100" value="${vol}" aria-label="Volume" oninput="setVol(this.value)" style="flex:1 1 150px;accent-color:var(--gold)"><button class="mini" onclick="togglePad();openSettings()">${_padOn?'🎵 Ambience on':'🎵 Ambience off'}</button></div></div>
+  <div class="setgrp"><div class="setlab">🔊 Sound</div><div class="btnrow" style="align-items:center;gap:8px"><button class="mini" onclick="toggleMute();openSettings()">${_muted?'🔇 Muted':'🔊 On'}</button><input type="range" min="0" max="100" value="${vol}" aria-label="Volume" oninput="setVol(this.value)" style="flex:1 1 150px;accent-color:var(--gold)"></div></div>
   <div class="setgrp"><div class="setlab">🔤 Text size</div>${seg(ts,[['S','Small'],['M','Medium'],['L','Large']],'setTextSize')}</div>
   <div class="setgrp"><div class="setlab">🎞 Animations</div>${seg(an,[['full','Full'],['soft','Soft'],['off','Off'],['auto','Auto']],'setAnimLevel')}<div class="manaline" style="margin-top:5px">“Auto” follows your device. “Off” still shows static damage numbers.</div></div>
   <div class="setgrp"><div class="setlab">💾 Data</div><div class="btnrow"><button class="mini azor" onclick="exportSave()">⬇ Save</button><label class="mini" role="button" style="cursor:pointer">⬆ Save<input type="file" accept="application/json" style="display:none" onchange="importSave(this)"></label><button class="mini azor" onclick="exportLibrary()">⬇ Library</button><label class="mini" role="button" style="cursor:pointer">⬆ Library<input type="file" accept="application/json" style="display:none" onchange="importLibrary(this)"></label></div></div>
@@ -3771,20 +3771,46 @@ function satchelHTML(){const items=(S&&S.inv)||[];if(!items.length)return `<h2>�
 
 /* ===== P7.8: synthesized WebAudio SFX (no audio assets) — soft, low cues; persisted mute; first-gesture unlock.
    Everything is wrapped so a context that blocks autoplay, an old browser, or a headless run silently no-ops. */
-let _audioCtx=null,_muted=false,_audioReady=false,_masterGain=null,_vol=1,_pad=null,_padOn=false,_sfxBatch=null;
+let _audioCtx=null,_muted=false,_audioReady=false,_masterGain=null,_vol=1,_sfxBatch=null;
+let _music=null,_musicPool=null,_musicBag=[],_musicLast=null,_musicCurrent=null;/* P50.14: story-soundtrack state (replaces the P45.4 synth pad) */
 function audioCtx(){if(_audioCtx)return _audioCtx;try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;_audioCtx=new AC();}catch(e){_audioCtx=null;}return _audioCtx;}
-function unlockAudio(){if(_audioReady)return;_audioReady=true;try{const c=audioCtx();if(c&&c.state==='suspended'){const r=c.resume();if(r&&r.then)r.then(function(){if(_padOn)startPad();});else if(_padOn)startPad();}else if(_padOn)startPad();}catch(e){}}/* P45.4 review-fix: resume a persisted ambience (DB.pad) on the first gesture — otherwise the button reads "on" but the drone stays silent all session */
+function unlockAudio(){if(_audioReady)return;_audioReady=true;try{const c=audioCtx();if(c&&c.state==='suspended')c.resume();}catch(e){}resumeMusic();}/* P50.14: browsers block audio until a gesture — the first interaction resumes the sfx context AND starts the story soundtrack (the intended pool was already set at boot/menu) */
 /* one soft oscillator blip with an attack/decay envelope; vol kept low (default-quiet) */
 function _tone(freq,dur,type,vol,when,glideTo){try{const c=audioCtx();if(!c||c.state!=='running')return;const t0=c.currentTime+(when||0);const o=c.createOscillator(),g=c.createGain();o.type=type||'sine';o.frequency.setValueAtTime(freq,t0);if(glideTo)o.frequency.exponentialRampToValueAtTime(glideTo,t0+dur);const v=(vol==null?0.10:vol);g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(v,t0+0.012);g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);o.connect(g);g.connect(masterGain(c)||c.destination);o.start(t0);o.stop(t0+dur+0.03);}catch(e){}}
 /* P45.4: a master GainNode so a volume slider governs every cue + the ambient pad; persisted next to DB.muted. All _tone cues route through it. */
 function masterGain(c){c=c||audioCtx();if(!c)return null;if(!_masterGain){try{_masterGain=c.createGain();_masterGain.gain.value=_vol;_masterGain.connect(c.destination);}catch(e){_masterGain=null;}}return _masterGain;}
-function loadVol(){try{_vol=(DB&&typeof DB.vol==='number')?Math.max(0,Math.min(1,DB.vol/100)):1;}catch(e){_vol=1;}try{_padOn=!!(DB&&DB.pad);}catch(e){_padOn=false;}}
-function setVol(v){_vol=Math.max(0,Math.min(1,(+v||0)/100));try{DB.vol=Math.round(_vol*100);saveDB();}catch(e){}try{if(_masterGain)_masterGain.gain.value=_vol;}catch(e){}}
-function renderVolUI(){const s=$("volSlider");if(s)s.value=Math.round(_vol*100);const b=$("padBtn");if(b)b.textContent=_padOn?'🎵 Ambience on':'🎵 Ambience off';}
+function loadVol(){try{_vol=(DB&&typeof DB.vol==='number')?Math.max(0,Math.min(1,DB.vol/100)):1;}catch(e){_vol=1;}}
+function setVol(v){_vol=Math.max(0,Math.min(1,(+v||0)/100));try{DB.vol=Math.round(_vol*100);saveDB();}catch(e){}try{if(_masterGain)_masterGain.gain.value=_vol;}catch(e){}_musicSetVol();}
+function renderVolUI(){const s=$("volSlider");if(s)s.value=Math.round(_vol*100);}
 /* P45.4: optional ambient drone — OFF by default, respects mute + volume (routed through the master gain); a single low pad you can toggle. */
-function startPad(){if(_pad||_muted||!_padOn)return;const c=audioCtx();if(!c||c.state!=='running')return;try{const o=c.createOscillator(),o2=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=98;o2.type='sine';o2.frequency.value=147;g.gain.value=0.02;o.connect(g);o2.connect(g);g.connect(masterGain(c)||c.destination);o.start();o2.start();_pad={o:o,o2:o2,g:g};}catch(e){_pad=null;}}
-function stopPad(){if(!_pad)return;try{_pad.o.stop();_pad.o2.stop();}catch(e){}_pad=null;}
-function togglePad(){_padOn=!_padOn;try{DB.pad=_padOn;saveDB();}catch(e){}if(_padOn){unlockAudio();startPad();}else stopPad();renderVolUI();}
+/* ===== P50.14: story-driven soundtrack — pooled <audio> music tied to the story phase (replaces
+   the P45.4 synth pad). Each Soundtrack/<Pool>/ subfolder = one pool. Within a pool tracks play in a
+   shuffle-bag (no repeat until the pool is exhausted), looping for as long as that phase lasts.
+   Governed by the same _muted/_vol as the sfx cues. OFFLINE: tracks stream online and are NOT
+   precached (the pool is ~100 MB — far too large to bundle into every install); the SW version is
+   still bumped because play.html changed. Music is silent offline; the game is unaffected.
+   JSDOM-safe: _musicCanPlay() is false under the test harness, so no <audio> is created/played
+   there (the pool/bag selection logic still runs, so it's testable). ===== */
+const MUSIC_POOLS={
+  Menu:['Ashveil Aftermath','The Afterfall','The Drowned Conclave','The Ember Dominion'],
+  Grakk:['Grakk The Gatekeeper',"Grakk's Frenzy","Grakk's Gate",'Wall Of Goblins'],
+  Murglax:['Catacomb Pressure','Deathly Wishes','Murglax Pit','Stink Of Rot'],
+  Vael:['Ashes Under Iron','Ember Flame','The Ember Tyrant','Throne of Vael'],
+  Victory:['Guff is Free','The Conclave Reborn']
+};
+function _musicCanPlay(){try{return typeof Audio!=='undefined'&&!/jsdom/i.test((typeof navigator!=='undefined'&&navigator.userAgent)||'');}catch(e){return false;}}
+function musicEl(){if(_music)return _music;if(!_musicCanPlay())return null;try{_music=new Audio();_music.preload='auto';_music.addEventListener('ended',_musicNext);}catch(e){_music=null;}return _music;}
+/* which pool the current room's warden uses (Level I: room 0=Grakk / 1=Murglax / 2=Vael via _levelArt) */
+function roomMusicPool(){let k='grakk';try{k=(_levelArt&&_levelArt[S.roomIndex])||'grakk';}catch(e){}const p=(''+k).charAt(0).toUpperCase()+(''+k).slice(1);return MUSIC_POOLS[p]?p:'Grakk';}
+/* shuffle-bag: reshuffle the whole pool when the bag empties (guarantees no repeat until every other
+   track has played — strictly stronger than "≥2 apart"), and never let the reshuffle repeat the last one */
+function _musicPick(){const pool=MUSIC_POOLS[_musicPool];if(!pool||!pool.length)return null;if(!_musicBag.length){_musicBag=pool.slice();for(let i=_musicBag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)),t=_musicBag[i];_musicBag[i]=_musicBag[j];_musicBag[j]=t;}if(pool.length>2&&_musicLast&&_musicBag[0]===_musicLast)_musicBag.push(_musicBag.shift());}const tr=_musicBag.shift();_musicLast=tr;return tr;}
+function _musicNext(){if(!_musicPool)return;const tr=_musicPick();if(!tr)return;_musicCurrent=tr;const el=musicEl();if(!el)return;try{el.src=encodeURI('Soundtrack/'+_musicPool+'/'+tr+'.mp3');el.volume=_muted?0:Math.max(0,Math.min(1,_vol));if(!_muted){const p=el.play();if(p&&p.catch)p.catch(function(){});}}catch(e){}}
+function playPool(name){if(!MUSIC_POOLS[name])return;if(_musicPool===name&&_musicCurrent)return;/* already on this pool — don't restart mid-track */_musicPool=name;_musicBag=[];_musicLast=null;_musicCurrent=null;_musicNext();}
+function stopMusic(){_musicPool=null;_musicBag=[];_musicCurrent=null;if(_music){try{_music.pause();}catch(e){}}}
+function pauseMusic(){if(_music){try{_music.pause();}catch(e){}}}
+function resumeMusic(){if(!_musicPool||_muted)return;const el=musicEl();if(!el)return;try{if(el.src){const p=el.play();if(p&&p.catch)p.catch(function(){});}else _musicNext();}catch(e){}}
+function _musicSetVol(){if(_music){try{_music.volume=_muted?0:Math.max(0,Math.min(1,_vol));}catch(e){}}}
 function sfx(name){if(_muted)return;
   /* P45.4 review-fix: collapse a synchronous burst of the SAME cue into one (e.g. the enemy developing several spells in one main phase) so identical cues don't stack into a harsh overlapping blip; the batch clears on the next microtask — i.e. between separate user/AI events. */
   if(_sfxBatch===null){_sfxBatch={};try{Promise.resolve().then(function(){_sfxBatch=null;});}catch(e){_sfxBatch=null;}}
@@ -3815,7 +3841,7 @@ function sfx(name){if(_muted)return;
   case 'counter':_tone(640,0.05,'triangle',0.045);_tone(820,0.045,'sine',0.03,0.035);break;
 }}catch(e){}}
 function loadMute(){try{_muted=!!(DB&&DB.muted);}catch(e){_muted=false;}}
-function toggleMute(){_muted=!_muted;try{DB.muted=_muted;saveDB();}catch(e){}if(_muted){stopPad();}else{unlockAudio();sfx('button');startPad();}renderMuteBtn();}
+function toggleMute(){_muted=!_muted;try{DB.muted=_muted;saveDB();}catch(e){}if(_muted){pauseMusic();}else{unlockAudio();sfx('button');resumeMusic();}_musicSetVol();renderMuteBtn();}
 function renderMuteBtn(){['muteBtn','menuMuteBtn'].forEach(id=>{const b=$(id);if(b)b.textContent=_muted?'🔇 Muted':'🔊 Sound';});}
 
 loadDB();loadMute();loadVol();installErrorHandlers();loadSettings();

@@ -3243,7 +3243,7 @@ Play each difficulty a few runs and note:
 
 ---
 
-# PHASE 50 — Fix batch 2026-07-08 🟡 12 of 14 built (P50.3 v57 · P50.7/.10/.11/.13 v58 · P50.1 v59 · P50.4/.5 v60 · P50.6 v61 · P50.8 v62 · P50.12 v63 · P50.2 + P50.9 + P50.14 planned)
+# PHASE 50 — Fix batch 2026-07-08 🟡 13 of 14 built (P50.3 v57 · P50.7/.10/.11/.13 v58 · P50.1 v59 · P50.4/.5 v60 · P50.6 v61 · P50.8 v62 · P50.12 v63 · P50.14 v64 · only P50.2 + P50.9 remain)
 
 > **Goal.** Fixes reported by the user on 2026-07-08, grounded below in `play.html` (post-P49.9 code, `70709f1`). **P50.3 already shipped this session**; **P50.1–P50.2 are specced build-ready** — not yet in the code (re-grep confirmed: the Turn-flow box has only ◂ Back + ▶ `#dmBtn`, and the combat popup is static once opened).
 
@@ -3381,7 +3381,10 @@ Play each difficulty a few runs and note:
 
 **Build notes (LOW — cosmetic).** Remove the two `${c.tax?…tax +…}` spans at ~2548/~2554 (enemy face); optionally trim the `+${c.cmdTax}` text in `renderPlayerCmd` (~1949-1950). Tax value/state and cost logic (`CMD_TAX_BASE` ~702, `czCasts`/`tax`) stay intact — display only, not the P49.2 rule.
 
-## P50.14 — Story-driven soundtrack system (pooled music manager)  *(user 2026-07-08, item 11)*
+## P50.14 — Story-driven soundtrack system (pooled music manager)  *(user 2026-07-08, item 11)* — ✅ **DONE** (v64)
+
+**Shipped (`build/p50-14-music`).** User committed `Soundtrack/` (5 pools: Menu×4, Grakk×4, Murglax×4, Vael×4, Victory×2, ~100 MB). (b) Removed the P45.4 synth pad entirely (`startPad`/`stopPad`/`togglePad`, `_pad`/`_padOn`, both Ambience buttons — settings + controls bar; `padBtn` id removed → idset rebaselined 262→261). (c) New pooled `<audio>` manager (`MUSIC_POOLS`, `playPool`/`stopMusic`/`pauseMusic`/`resumeMusic`, `roomMusicPool`) governed by the existing `_muted`/`_vol`; `unlockAudio` starts music on the first gesture. **JSDOM-safe:** `_musicCanPlay()` is false under the harness (UA contains "jsdom") so no `<audio>` is created — the pool/bag logic still runs and is tested; driver asserts **zero jsdom errors**. (e) Shuffle-bag selection = no repeat until the pool is exhausted, no immediate repeat across reshuffle. (d) Story hooks: `showMenu`→Menu, `startBattle`→room warden, `advance`→next warden (hand-off), `win`→Victory, `continueLastGame`→resumed warden. **OFFLINE:** tracks stream online, NOT precached (100 MB would bloat every install); music is silent offline, game unaffected — a documented, deferrable enhancement. Driver `tests/p50-14-music.test.js` (23 asserts). Original spec below.
+
 
 **What.** Replace the P45.4 ambient synth pad with a real **music manager** that plays pooled soundtracks tied to story state: MENU music at the menu → GRAKK music from descend start through Grakk's death + final words → MURGLAX music from the first Murglax lore popup to his death → VAEL music from Vael's lore to his defeat → VICTORY music the instant Vael falls, lasting until back at the menu. Returning to the menu always plays MENU music; continuing a parked descend/battle resumes that enemy's pool. Within a pool, tracks are chosen at random and don't repeat until ≥2 other tracks have played (~4 tracks/pool). Each subfolder of `soundtrack/` = one pool.
 

@@ -38,7 +38,10 @@
    (noncreature) commander cast now triggers your prowess on resolve, like any noncreature spell. */
 /* v63 (P50.12): re-tiered the two under-priced strong passives — Scholar's Token (+1 card/turn)
    uncommon→rare 26g, Mana Surge (+1 mana/turn) rare→legendary 38g. */
-const CACHE = 'gg-cache-v63';
+/* v64 (P50.14): story-driven soundtrack manager (pooled <audio> tied to the story phase) replaces
+   the P45.4 synth pad. The Soundtrack/ tracks are NOT precached here — the pool is ~100 MB, far too
+   large to bundle into every install; they stream online (silent offline). Cache bumped for play.html. */
+const CACHE = 'gg-cache-v64';
 const SHELL = [
   './index.html',
   './play.html',
