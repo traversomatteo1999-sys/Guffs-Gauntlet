@@ -3243,7 +3243,7 @@ Play each difficulty a few runs and note:
 
 ---
 
-# PHASE 50 — Fix batch 2026-07-08 🟡 10 of 14 built (P50.3 v57 · P50.7/.10/.11/.13 v58 · P50.1 v59 · P50.4/.5 v60 · P50.6 v61 · P50.2 + P50.8–.9 + P50.12 + P50.14 planned)
+# PHASE 50 — Fix batch 2026-07-08 🟡 11 of 14 built (P50.3 v57 · P50.7/.10/.11/.13 v58 · P50.1 v59 · P50.4/.5 v60 · P50.6 v61 · P50.8 v62 · P50.2 + P50.9 + P50.12 + P50.14 planned)
 
 > **Goal.** Fixes reported by the user on 2026-07-08, grounded below in `play.html` (post-P49.9 code, `70709f1`). **P50.3 already shipped this session**; **P50.1–P50.2 are specced build-ready** — not yet in the code (re-grep confirmed: the Turn-flow box has only ◂ Back + ▶ `#dmBtn`, and the combat popup is static once opened).
 
@@ -3318,7 +3318,10 @@ Play each difficulty a few runs and note:
 
 **Build notes (LOW — pure data).** Rename `tyrant`'s `n:` to a related-but-distinct name (e.g. "Servant of the Pit-Tyrant"). Keep the key. Confirm the new name (see decisions).
 
-## P50.8 — Cast the commander from "✦ Cast a spell" (+ prowess on cast)  *(user 2026-07-08, item 5)*
+## P50.8 — Cast the commander from "✦ Cast a spell" (+ prowess on cast)  *(user 2026-07-08, item 5)* — ✅ **DONE** (v62)
+
+**Shipped (`build/p50-8-cast-cmd`).** (a) `cardSearchHTML` now surfaces a "♛ Your commander" row (only when `S.pcmd` exists — i.e. in the command zone/hand, not on the board) with a ✦ Cast-commander button → new `castCmdFromSearch()` (guards `S.over`/null → `closeOverlayCommit()` + `castCmd()`). (b) `resolveCmdToBoard` and `deployCmd` now call `firePlayerProwess()` when the commander is a **walker** (`c.kind==='walkers'`) — a noncreature spell cast triggers your prowess, matching `resolvePlayerItem`; a creature commander does not. Driver `tests/p50-8-cast-cmd.test.js` (11 asserts). Original spec below.
+
 
 **What.** From the "Cast a spell" launcher, offer to cast the player's designated commander directly (show it, cast it, update the command zone). Casting from the command zone counts as a NORMAL cast → triggers on-cast effects like prowess.
 
