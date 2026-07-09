@@ -3243,7 +3243,7 @@ Play each difficulty a few runs and note:
 
 ---
 
-# PHASE 50 — Fix batch 2026-07-08 🟡 11 of 14 built (P50.3 v57 · P50.7/.10/.11/.13 v58 · P50.1 v59 · P50.4/.5 v60 · P50.6 v61 · P50.8 v62 · P50.2 + P50.9 + P50.12 + P50.14 planned)
+# PHASE 50 — Fix batch 2026-07-08 🟡 12 of 14 built (P50.3 v57 · P50.7/.10/.11/.13 v58 · P50.1 v59 · P50.4/.5 v60 · P50.6 v61 · P50.8 v62 · P50.12 v63 · P50.2 + P50.9 + P50.14 planned)
 
 > **Goal.** Fixes reported by the user on 2026-07-08, grounded below in `play.html` (post-P49.9 code, `70709f1`). **P50.3 already shipped this session**; **P50.1–P50.2 are specced build-ready** — not yet in the code (re-grep confirmed: the Turn-flow box has only ◂ Back + ▶ `#dmBtn`, and the combat popup is static once opened).
 
@@ -3359,7 +3359,10 @@ Play each difficulty a few runs and note:
 
 **Build notes (LOW — one line).** At ~2444 change `type:'creature'` → `type:(S.cmd.isWalker?'planeswalker':'creature')` (and optionally the `text:` string). Resolve/prowess/board unaffected (they branch before the generic type handlers). Driver assert: the enemy-cmd stack item's `type` is `planeswalker` when `S.cmd.isWalker`.
 
-## P50.12 — Store item balance & rarity re-tier  *(user 2026-07-08, item 9)*
+## P50.12 — Store item balance & rarity re-tier  *(user 2026-07-08, item 9)* — ✅ **DONE** (v63)
+
+**Shipped (`build/p50-12-store`).** Re-tiered + repriced the two flagged under-priced strong passives **in-band** (no new "epic" tier, no blanket bump): **Scholar's Token** (+1 card/turn) uncommon 18g → **rare 26g**; **Mana Surge** (+1 mana/turn) rare 30g → **legendary 38g**. Prices stay inside the documented bands (rare 18-34, legendary 36+); `pickByRarity` pools follow the move automatically. **Deliberately NOT done:** a dedicated "epic" tier or a blanket price bump — both ripple through `pickByRarity` weights / CSS / price floors and risk the P42/P49.5 economy curves (heal≈gold/HP, damage≈gold/dmg), and P49.5(#18) *lowered* income (std ~42g/descent), so raising all prices would over-tighten. The two named items were the concrete complaint. Driver `tests/p50-12-store.test.js` (14 asserts). Original spec below.
+
 
 **What.** Items should cost a bit more and be tiered by strength — strong ones epic/legendary. Flagged: "+1 card/turn" (strong) and "+1 mana/turn" (extra strong) are under-tiered/under-priced.
 

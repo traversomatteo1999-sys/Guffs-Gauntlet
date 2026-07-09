@@ -36,7 +36,9 @@
    on commanders too — the player's command-zone commander and the enemy walker-commander. */
 /* v62 (P50.8): cast the designated commander straight from the ✦ Cast-a-spell launcher; a walker
    (noncreature) commander cast now triggers your prowess on resolve, like any noncreature spell. */
-const CACHE = 'gg-cache-v62';
+/* v63 (P50.12): re-tiered the two under-priced strong passives — Scholar's Token (+1 card/turn)
+   uncommon→rare 26g, Mana Surge (+1 mana/turn) rare→legendary 38g. */
+const CACHE = 'gg-cache-v63';
 const SHELL = [
   './index.html',
   './play.html',
