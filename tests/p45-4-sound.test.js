@@ -48,26 +48,17 @@ before();ev("S.my.creatures.push({id:7001,name:'C',p:1,t:1,kw:[]});myctr(7001,'p
 before();ev("S.tokens.push({id:7002,name:'T',p:1,t:1,kw:[]});cctr(7002,'plus',1)");ok(osc>0,'cctr → counter cue');
 before();ev("showCutscene(['x'],'T','e',null,{})");ok(osc>0,'showCutscene → sting cue');
 
-// --- ambient pad: off by default, toggles, 2 oscillators, persisted ---
-ok(ev("_padOn")===false,'pad OFF by default');
-before();ev("togglePad()");ok(ev("_padOn")===true&&ev("DB.pad")===true,'togglePad → on + persisted');
-ok(osc>=2&&!!ev("_pad"),`pad started 2 oscillators (${osc})`);
-ev("togglePad()");ok(ev("_padOn")===false&&!ev("_pad"),'togglePad again → off + stopped');
-// muted pad won't start
-ev("_muted=true;_padOn=true;_pad=null");before();ev("startPad()");ok(osc===0&&!ev("_pad"),'startPad no-ops while muted');
-ev("_muted=false;_padOn=false;_pad=null");
+// --- P50.14: the P45.4 ambient synth pad was REPLACED by the story soundtrack manager ---
+ok(ev("typeof togglePad")==="undefined"&&ev("typeof startPad")==="undefined",'P50.14: the ambient pad (startPad/togglePad) is retired');
+ok(ev("typeof playPool")==="function",'P50.14: the story-soundtrack manager exists instead');
 
 // --- review-fix #3: same cue collapses within one synchronous tick; distinct cues still both play ---
 before();ev("sfx('enemycast');sfx('enemycast');sfx('enemycast')");ok(osc===2,`same cue dedups within a tick — one enemycast (${osc} osc, not 6)`);
 before();ev("sfx('cast');sfx('resolve')");ok(osc>=3,`distinct cues in one tick both play (${osc} osc)`);
 before();ev("sfx('cast')");ok(osc>0,'dedup clears between ticks (fresh cast plays after _sfxBatch reset)');
 
-// --- review-fix #2: persisted ambience (DB.pad) resumes on the first gesture (unlockAudio) ---
-ev("_pad=null;_padOn=true;_muted=false;_audioReady=false");
-before();ev("unlockAudio()");
-ok(!!ev("_pad"),'unlockAudio starts the pad when ambience was persisted ON');
-ev("stopPad();_padOn=false;_audioReady=true");
-ev("_pad=null;_padOn=false;_audioReady=false");before();ev("unlockAudio()");ok(!ev("_pad"),'unlockAudio does NOT start the pad when ambience is OFF');
+// --- P50.14: unlockAudio resumes the sfx context (and would start music) without throwing ---
+ev("_muted=false;_audioReady=false");before();ev("unlockAudio()");ok(true,'unlockAudio() runs cleanly with the soundtrack manager (no pad)');
 
 console.log(`\nP45.4: ${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);
