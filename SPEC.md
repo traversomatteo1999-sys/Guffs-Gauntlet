@@ -238,10 +238,20 @@
 | &nbsp;&nbsp;P49.10 Combat/PW UX: combat popup minimize/restore (turn stays blocked) · PW abilities off-stack + announce popup · battles/sieges side-selectable · resurgent timing | ✅ done (bullets 19·22·11·10) — **#22 reverses P38** (enemy walkers only) |
 | &nbsp;&nbsp;P49.11 Vael/Ash the Guardian: reborn at 1 HP · +1 → "Create a 1/1 Ash Soldier with haste" · −3 → graveyard exile-X + free reanimate ≤X | ✅ done (bullets 23·27·28) |
 | &nbsp;&nbsp;P49.12 Items & cards: enemy top/bottom-N reveal shows full card info · add art to saved homebrew cards | ✅ done (bullets 14·17; #13 resolved — no change) |
-| **Phase 50 — Fix batch 2026-07-08** (turn-flow Undo button · live-recalculating combat popup · deck-tools land→battlefield) | 🟡 **SPECCED — 1 of 3 built** (recorded 2026-07-08; grounded in `# PHASE 50`). ⬜ P50.1 · ⬜ P50.2 · ✅ P50.3 (shipped inside `70709f1`, not yet version-shipped). |
+| **Phase 50 — Fix batch 2026-07-08** (Undo button · live combat popup · deck-tools land→board · emblem/card tax↔ward · commander casting & options · Murglax card rename · smarter enemy AI · land mana colour · Ash-as-planeswalker · store balance · hide commander tax) | 🟡 **SPECCED — 1 of 13 built** (recorded 2026-07-08; grounded in `# PHASE 50`). ✅ P50.3 only (in `70709f1`, not version-shipped); ⬜ P50.1–.2 · P50.4–.13 planned. Ward (P50.5) and enemy-land colour on the AI's own plays (P50.10) already exist — only residual gaps remain. |
 | &nbsp;&nbsp;P50.1 Undo button in the Turn-flow box (`.flowbtns`, beside ◂ Back / ▶) wired to the existing `undo()` | ⬜ planned (user 2026-07-08) — LOW risk |
 | &nbsp;&nbsp;P50.2 Combat resolver popup auto-updates in real time — every board change (flash a creature = new blocker · removal drops an attacker/blocker) recalculates the open popup (`_combatPrune()`+`renderCombat()` driven from `render()`) | ⬜ planned (user 2026-07-08) — combat/state → HIGH-risk review when built |
 | &nbsp;&nbsp;P50.3 Deck-tools: a land searched/looked/revealed can go straight onto the enemy battlefield as a mana source | ✅ done — `70709f1` (`dtMoveObj` land branch + `moveActs` board button · `tests/land-to-board.test.js`) |
+| &nbsp;&nbsp;P50.4 Enemy-emblem attack tax → the **enemy** pays N mana per attacking creature, automated (unpayable ⇒ that attacker can't swing) | ⬜ planned (item 1) — MED-HIGH (new automated combat gate) |
+| &nbsp;&nbsp;P50.5 Remove the useless per-card **attack tax** (`catk`); the per-card **ward** it should be replaced by already exists (`cward`) | ⬜ planned (item 2) — LOW-MED, mostly deletion; ward part ✅ already done |
+| &nbsp;&nbsp;P50.6 Expand card options (kw / ±P/T / counters / drawer) to **commanders** — fill the command-zone player-cmd and enemy walker-cmd gaps | ⬜ planned (item 3) — LOW-MED, additive |
+| &nbsp;&nbsp;P50.7 Rename the one card using a warden's exact name: `tyrant` "Murglax, Pit-Tyrant" → related-but-distinct | ⬜ planned (item 4) — LOW (data) |
+| &nbsp;&nbsp;P50.8 Cast the **commander** from "✦ Cast a spell" (show + cast + update command zone) · command-zone cast fires prowess | ⬜ planned (item 5) — LOW / LOW-MED |
+| &nbsp;&nbsp;P50.9 Smarter enemy strategy — mana spend + attack/block EV that minimizes self/creature loss | ⬜ planned (item 6) — MED, HIGH-risk review (combat math); needs a balance target |
+| &nbsp;&nbsp;P50.10 Enemy land **mana colour** on the manual deck-tools land→board path (`dtMoveObj` still colour-blind — completes P50.3) | ⬜ planned (item 7) — LOW (one line); AI's own land plays ✅ already coloured (P49.9) |
+| &nbsp;&nbsp;P50.11 "Ash the Guardian" must be a **planeswalker** on the stack, not a creature (`type:'creature'` hardcoded ~2444) | ⬜ planned (item 8) — LOW (one line) |
+| &nbsp;&nbsp;P50.12 Store items cost a bit more + re-tier by strength (scholar +1 card/turn, surge +1 mana/turn under-tiered) | ⬜ planned (item 9) — LOW data / MED if new "epic" tier |
+| &nbsp;&nbsp;P50.13 Don't show **tax** on the commander card face (enemy `cmdFieldCard` ~2548/2554 · player `#pcmdBox`) | ⬜ planned (item 10) — LOW (cosmetic) |
 
 ---
 
@@ -3229,7 +3239,7 @@ Play each difficulty a few runs and note:
 
 ---
 
-# PHASE 50 — Fix batch 2026-07-08 🟡 1 of 3 built (P50.1 · P50.2 planned)
+# PHASE 50 — Fix batch 2026-07-08 🟡 1 of 13 built (P50.3 done · P50.1–.2 + P50.4–.13 planned)
 
 > **Goal.** Fixes reported by the user on 2026-07-08, grounded below in `play.html` (post-P49.9 code, `70709f1`). **P50.3 already shipped this session**; **P50.1–P50.2 are specced build-ready** — not yet in the code (re-grep confirmed: the Turn-flow box has only ◂ Back + ▶ `#dmBtn`, and the combat popup is static once opened).
 
@@ -3257,7 +3267,94 @@ Play each difficulty a few runs and note:
 
 **Shipped** inside `70709f1` (folded into the P49.9 commit by the user's concurrent CLI session). In the enemy deck-tools (Browse library · Look top/bottom N · Reveal hand), a **land** can now be put straight onto the enemy battlefield as a mana source (+1 land / +1 available / +1 max), matching `dtPlayCard`'s land path. Impl: a `land` branch in `dtMoveObj`'s `→ battlefield` handler + `moveActs` `canBoard=(t==='creature'||t==='land')`. Non-permanent spells stay rejected; creature reanimation unchanged. Driver: `tests/land-to-board.test.js` (10 asserts; `npm test` 38/38 green). ⚠ **not yet version-shipped** — `sw.js`/README still `v56`; bump on the next ship so installed players receive it.
 
+## P50.4 — Enemy-emblem attack tax → the ENEMY pays per attacker, automated  *(user 2026-07-08, item 1)*
+
+**What.** Replace the player-pays "attack tax" idea with an **enemy emblem** that automatically requires the enemy to have **N mana per creature it attacks with** — if it can't pay for a given attacker, that attacker can't swing.
+
+**Grounding (verified NOT built).** No emblem carries an attack-tax kind: `ENEMY_EMBLEMS` (~2069), `emblemEffect` (~2097), `emblemValueLabel` (~2132). The existing "attack tax" is non-emblem, player-pays, reminder-only: `enemyAttackTax()` / `setEnemyAtkRule()` (~1864-1868, pushes an `S.rules` "players pay to attack" — manual; the player has no mana pool). The **automated enemy-pays-per-attacker primitive already exists** — `payAttackTax()` / `attackTax()` (~1968-1973) ranks attackers and skips unpayable ones — but it's driven by the player's cards, not an emblem.
+
+**Build notes (MED-HIGH — new automated gate in emblem+combat engine).** Add an emblem kind (e.g. `attackTaxEnemy`, value N) to `ENEMY_EMBLEMS` + `emblemValueLabel`, and hook the enemy attack declaration (`vaelAttackers` ~1558) to filter its attacker set by affordable mana, reusing the `payAttackTax` affordability loop and actually deducting from the enemy pool. Confirm interaction with `usableMana()` / the P49.9 coloured pools.
+
+## P50.5 — Per-card attack tax is useless → remove it; per-card ward already exists  *(user 2026-07-08, item 2)*
+
+**What.** The per-card "attack tax" field isn't useful — remove it. The replacement the user wants — a per-card **ward** (set N ward on a specific card, unrelated to attacks) — **already exists**, so this is cleanup, not new work.
+
+**Grounding.** ✅ **Ward is already a full mechanic:** field `cward`, `setCward` (~1869), `payWard` (~1334), `pickWardable` (~1335), honored across enemy removal/bounce/burn/fight/naturalize (~1343-1354), drawer rows (~1914/1925/1937), cast-form "Ward — enemy pays" (~2743), help entry (~2971). The per-card **attack tax to remove:** field `catk`, `setCatk` (~1859), `setObjCatk` (~1862), `catkTgtSel` (~1861), drawer "attack tax (enemy pays)" (~1924), cast-form (~2745-2747), `tax` badge (~1845).
+
+**Build notes (LOW-MED — mostly deletion).** Remove the `catk` per-card UI/field (drawer rows, cast-form `castAtkN`/`castAtkTgt`, tax badge, `setCatk`/`setObjCatk`/`catkTgtSel`). ⚠ `enemyAttackTax()` (~1864) still consumes enemy `catk` — decide (see decisions) whether to also drop the enemy propaganda-tax path or keep the summation. Leave ward untouched.
+
+## P50.6 — Expand card options to commanders  *(user 2026-07-08, item 3)*
+
+**What.** Per-card options (keywords, ±P/T, counters, note, properties drawer) should be available on commanders too.
+
+**Grounding (partial today).** Enemy commander `S.cmd` (creature) already has full options — `cmdFieldCard` creature branch (~2553-2560: kw, ±P/T, counters, `enemyDrawer`). Player commander ON the battlefield gets the normal creature editor (`renderMy` ~1835). **Gaps:** (a) player commander in the COMMAND ZONE — `renderPlayerCmd` / `#pcmdBox` (~1948-1951) shows only name + cast/deploy, no kw/counters/drawer; (b) the enemy WALKER-commander branch of `cmdFieldCard` (~2546-2552) has only loyalty controls, no kw/properties drawer.
+
+**Build notes (LOW-MED — additive, reuse helpers).** Extend `renderPlayerCmd` (~1949) with the control row + `kwSelect` + drawer (mirror the enemy `cmdFieldCard` template); add kw/drawer to the walker branch. Ensure the command-zone object accepts counter/kw mutators without breaking cast-cost/tax bookkeeping.
+
+## P50.7 — Rename the enemy card that uses a warden's exact name  *(user 2026-07-08, item 4)*
+
+**What.** Cards must never be a warden's exact name (related-but-different is fine). Exactly one offender.
+
+**Grounding.** FX key **`tyrant`** (~806) is `n:"Murglax, Pit-Tyrant"` — the *verbatim* warden name (wardens: Grakk the Gatewarden · Murglax, Pit-Tyrant · Vael, the Ember Tyrant). `overlord` (~805) `n:"Murglax's Overlord"` is possessive → **fine, no change**. No card `n:` contains "Grakk" or "Vael".
+
+**Build notes (LOW — pure data).** Rename `tyrant`'s `n:` to a related-but-distinct name (e.g. "Servant of the Pit-Tyrant"). Keep the key. Confirm the new name (see decisions).
+
+## P50.8 — Cast the commander from "✦ Cast a spell" (+ prowess on cast)  *(user 2026-07-08, item 5)*
+
+**What.** From the "Cast a spell" launcher, offer to cast the player's designated commander directly (show it, cast it, update the command zone). Casting from the command zone counts as a NORMAL cast → triggers on-cast effects like prowess.
+
+**Grounding (NOT built).** The launcher `openCardSearch` / `cardSearchHTML` (~3630-3650) offers library + Scryfall + create-a-card only — no commander option (the `♛ + commander` button ~497 only *designates* via `chooseCommander`). Commander casting works today only via the command-zone box: `castCmd()` (~1946, builds `{_player,_pcmd,ctype:isW?'planeswalker':'creature',_pcmdObj}`, bumps `czCasts`/`cmdTax`), resolve `_pcmd`→`resolveCmdToBoard` (~1947/2634). **Prowess does NOT fire on a commander cast** — the `_pcmd` resolve returns before `resolvePlayerItem`'s `firePlayerProwess()` (~2653); `firePlayerProwess` is ~2626.
+
+**Build notes (LOW / LOW-MED).** (a) Add a "cast your commander" row to `cardSearchHTML` surfacing `S.pcmd`, calling the existing `castCmd()` (guard null / already-on-board / `S.over`). (b) Fire `firePlayerProwess()` on commander RESOLVE, gated to noncreature (walker) casts (in `resolveCmdToBoard` or the `_pcmd` branch ~2634) so a creature commander doesn't wrongly trigger it — matching `resolvePlayerItem`.
+
+## P50.9 — Smarter enemy strategy (mana + attacks + blocks)  *(user 2026-07-08, item 6)*
+
+**What.** The enemy should spend mana more wisely and make combat decisions (attacks and blocks) that consistently minimize damage to itself and preserve its creatures.
+
+**Grounding (enhancement — already fairly smart at standard+, gated behind `enemyLuck()>=0`; easy keeps legacy).** Mana/what-to-cast: `vaelMain` (~2440), value-based via `castValue` (~2405), `enemyLethalReach` (~2433), `enemyHoldUpReserve` (~2436). Attacks: `vaelAttackers` (~1558) with `profitableBlock` hold-back, LETHAL PUSH (~1576), defensive hold-back (~1580). Blocks: `aiBlocks` (~1495, `smart=enemyLuck()>=0`) — least-valuable killer-that-survives, `gangToKill` (~1509), survival-first pass (~1517). **Known weaknesses to target:** block/attack models assume single-creature player blocks (no gang / combat-trick lookahead); flat chump threshold `max(5, life*0.4)` ignores own-creature future value; `castValue` has no curve/tempo (won't hold to double-spell next turn); no multi-step combat lookahead.
+
+**Build notes (MED — dense, regression-prone → HIGH-risk review when built, combat math).** Improve `aiBlocks` (~1495) and `vaelAttackers`/`estimateSwingDamage` (~1558/1548) EV (account for player gang-blocks; weigh creature value vs life saved), and tune `castValue`/`enemyHoldUpReserve` for tempo. Keep `enemyLuck()` gating (easy stays legacy). **Needs a concrete target metric (win-rate / turns-to-lethal) — none defined; ask the user (see decisions).**
+
+## P50.10 — Enemy land mana colour on the manual deck-tools path  *(user 2026-07-08, item 7 — completes P50.3)*
+
+**What.** In-deck basic lands must produce the correct colour of enemy mana, **including** when the player manually puts an enemy's land on the board (the P50.3 deck-tools path).
+
+**Grounding (mostly DONE post-P49.9; one gap).** P49.9 built a per-colour model: `S.bossPool` / `S.bossSrc`, `MANA_KEYS`, `parseMc` / `canAffordFrom` / `payFrom` (~1207-1250), `prodUnits(fx,n)` (~1228), `addBossSource` (~1250). ✅ Enemy land plays already record colour: `dtPlayCard` (~1069) and the `vaelMain` land drop (~2312) both call `addBossSource(prodUnits(fx,1))`. **The gap:** the deck-tools manual land→battlefield branch in `dtMoveObj` (~1178, the P50.3 code) does `S.bossLands++;S.bossMana++;S.bossManaMax++` (scalars only) — colour-blind; the pool self-heals it as any-colour `'A'`. (Only `mtn`=R / `swp`=B basics exist — R/B enemies only; no isl/for/pls, which is fine.)
+
+**Build notes (LOW — one line).** In `dtMoveObj`'s land branch, replace the three `++` lines with `addBossSource(prodUnits(fx,1))` (`fx` already fetched at ~1177); it bumps all three scalars AND the coloured source/pool, so the total is unchanged and the log's `S.bossLands` stays correct. Extend `tests/land-to-board.test.js` to assert the coloured source (`S.bossSrc`/pool) gains R for a Mountain.
+
+## P50.11 — "Ash the Guardian" must be a PLANESWALKER on the stack  *(user 2026-07-08, item 8)*
+
+**What.** The enemy walker-commander "Ash the Guardian" shows as a *creature* card on the stack; it must read as a planeswalker (stack shows planeswalker; the board already renders it under the creatures area as its detailed walker card, which is correct).
+
+**Grounding (NOT built — one-line bug).** The enemy-commander stack play is hardcoded `type:'creature'` regardless of `S.cmd.isWalker`: `S.plays.push({... _enemyCmd:true, ... type:'creature', ...})` (~2444). `renderPlays` derives the badge/CSS from `type` (~2582-2592) → shows "creature". Ash data: `cmd:{n:"Ash the Guardian",isWalker:true,...}` (~889). The RESOLVE and BOARD paths are already correct (the `_enemyCmd` branch ~2635 branches on `isWalker`, keeps it on `S.cmd`, renders via `cmdFieldCard`; `_noncreature` ~2633 excludes `_enemyCmd` from enemy prowess).
+
+**Build notes (LOW — one line).** At ~2444 change `type:'creature'` → `type:(S.cmd.isWalker?'planeswalker':'creature')` (and optionally the `text:` string). Resolve/prowess/board unaffected (they branch before the generic type handlers). Driver assert: the enemy-cmd stack item's `type` is `planeswalker` when `S.cmd.isWalker`.
+
+## P50.12 — Store item balance & rarity re-tier  *(user 2026-07-08, item 9)*
+
+**What.** Items should cost a bit more and be tiered by strength — strong ones epic/legendary. Flagged: "+1 card/turn" (strong) and "+1 mana/turn" (extra strong) are under-tiered/under-priced.
+
+**Grounding (partially addressed by P49.5).** Item definitions + rarity in `BOONS` (~941-948, field `r`); prices in `STORE` (~950-973, field `cost`); price-band comment ~951 (common 5-8, uncommon 12-20, rare 18-34, legendary 36+). **No "epic" tier exists.** Flagged items: **Scholar's Token** (`scholar`, +1 card/turn) — uncommon, **18g**, *untouched* by P49.5. **Mana Surge** (`surge`, +1 mana/turn) — rare, **30g**; P49.5(#30) already nerfed it +2→+1 and 22→30g but left it rare.
+
+**Build notes (LOW data / MED if new tier).** Re-price (`STORE.cost`) and re-tier (`BOONS.r`) the flagged items upward (e.g. scholar → rare + pricier; surge → legendary-band). Adding an "epic" tier = MED: touch every rarity consumer (CSS/label, `pickByRarity` weights, price-floor logic) — grep `rarity` / `pickByRarity` / `'legendary'` first. **Economy is banded (P42/P49.5) → confirm target gold-per-clear before big moves (see decisions).**
+
+## P50.13 — Don't show tax on the commander card  *(user 2026-07-08, item 10)*
+
+**What.** The commander card must not display a tax indicator on its face.
+
+**Grounding (NOT built).** Enemy commander `cmdFieldCard` shows a red `tax +${c.tax}` tag in BOTH branches — walker (~2548) and creature (~2554) — in the `.cn` name line. Player commander `renderPlayerCmd` (~1949-1950) shows `Recast tax +${c.cmdTax}` / `base + tax +${c.cmdTax}` text in `#pcmdBox`.
+
+**Build notes (LOW — cosmetic).** Remove the two `${c.tax?…tax +…}` spans at ~2548/~2554 (enemy face); optionally trim the `+${c.cmdTax}` text in `renderPlayerCmd` (~1949-1950). Tax value/state and cost logic (`CMD_TAX_BASE` ~702, `czCasts`/`tax`) stay intact — display only, not the P49.2 rule.
+
 ### Phase 50 decisions (confirm at build)
+- **P50.4 attack-tax semantics:** enemy pays N per attacking creature — an unpayable attacker simply stays home (default), not "whole attack aborts"; pay from any mana (generic N) unless a colour is specified.
+- **P50.5 enemy propaganda tax:** when removing the per-card `catk`, also drop `enemyAttackTax()` (the enemy's own "you pay to attack" rule) or keep it as a manual `S.rules` reminder? *Default:* keep the reminder, remove only the per-card field/UI.
+- **P50.7 rename target:** the new name for `tyrant` (was "Murglax, Pit-Tyrant") — pick one (default "Servant of the Pit-Tyrant").
+- **P50.8 prowess trigger:** fire player prowess only for a *walker* (noncreature) commander cast (default), not a creature commander.
+- **P50.9 AI target metric:** no balance target exists — provide an intended win-rate / turns-to-lethal, or tune to "feels fair at standard"? This gates the HIGH-risk build.
+- **P50.12 prices/tiers:** provide intended new prices + whether to add an "epic" tier, or use defaults (scholar → rare, surge → legendary-band, ~+20-30% price).
+
 - **P50.2 late-blocker legality:** a creature entering *after* attackers are declared — allow it to block (sandbox-honest; the engine "trusts your inputs") or forbid (strict MTG: only creatures present at declare-blockers may block)? *Default:* **allow**, since the resolver is a manual aid; note it in the log.
 - **P50.2 removed-attacker handling:** removing a declared attacker mid-resolve — auto-recompute totals and clear its `assign`/`target` (mirrors `combatNegate`). *Default:* yes.
 - **P50.1 placement/label:** inside `.flowbtns` beside Back/▶ as `↩ Undo` (default), disabled when nothing to undo.
