@@ -25,7 +25,10 @@
 /* v57 (P50.3 ship + P50.10): ships the already-merged P50.3 (in-deck lands searchable straight
    to the enemy battlefield) and P50.10 (that manual land→board path now records the land's mana
    COLOUR via addBossSource, not colour-blind scalars). play.html changed → cache bumped. */
-const CACHE = 'gg-cache-v57';
+/* v58 (P50.7/.11/.13 polish): renamed the FX card off the verbatim warden name "Murglax, Pit-Tyrant"
+   → "Servant of the Pit-Tyrant"; the enemy walker-commander (Ash) now reads as a PLANESWALKER on the
+   stack, not a creature; the tax badge is removed from the enemy commander card face. */
+const CACHE = 'gg-cache-v58';
 const SHELL = [
   './index.html',
   './play.html',

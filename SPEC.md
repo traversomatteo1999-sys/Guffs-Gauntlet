@@ -3243,7 +3243,7 @@ Play each difficulty a few runs and note:
 
 ---
 
-# PHASE 50 — Fix batch 2026-07-08 🟡 3 of 14 built (P50.3 shipped v57 · P50.10 done · P50.1–.2 + P50.4–.9 + P50.11–.14 planned)
+# PHASE 50 — Fix batch 2026-07-08 🟡 6 of 14 built (P50.3 shipped v57 · P50.7/.10/.11/.13 done v58 · P50.1–.2 + P50.4–.6 + P50.8–.9 + P50.12 + P50.14 planned)
 
 > **Goal.** Fixes reported by the user on 2026-07-08, grounded below in `play.html` (post-P49.9 code, `70709f1`). **P50.3 already shipped this session**; **P50.1–P50.2 are specced build-ready** — not yet in the code (re-grep confirmed: the Turn-flow box has only ◂ Back + ▶ `#dmBtn`, and the combat popup is static once opened).
 
@@ -3295,7 +3295,10 @@ Play each difficulty a few runs and note:
 
 **Build notes (LOW-MED — additive, reuse helpers).** Extend `renderPlayerCmd` (~1949) with the control row + `kwSelect` + drawer (mirror the enemy `cmdFieldCard` template); add kw/drawer to the walker branch. Ensure the command-zone object accepts counter/kw mutators without breaking cast-cost/tax bookkeeping.
 
-## P50.7 — Rename the enemy card that uses a warden's exact name  *(user 2026-07-08, item 4)*
+## P50.7 — Rename the enemy card that uses a warden's exact name  *(user 2026-07-08, item 4)* — ✅ **DONE** (v58)
+
+**Shipped (`build/p50-polish`).** FX key `tyrant`'s `n:` renamed "Murglax, Pit-Tyrant" → **"Servant of the Pit-Tyrant"** (key preserved). `overlord` ("Murglax's Overlord", possessive) left as-is. The room's warden name is unchanged. Driver asserts no FX card `n:` equals any `DUNGEON[].villain`. Original spec below.
+
 
 **What.** Cards must never be a warden's exact name (related-but-different is fine). Exactly one offender.
 
@@ -3330,7 +3333,10 @@ Play each difficulty a few runs and note:
 
 **Build notes (LOW — one line).** In `dtMoveObj`'s land branch, replace the three `++` lines with `addBossSource(prodUnits(fx,1))` (`fx` already fetched at ~1177); it bumps all three scalars AND the coloured source/pool, so the total is unchanged and the log's `S.bossLands` stays correct. Extend `tests/land-to-board.test.js` to assert the coloured source (`S.bossSrc`/pool) gains R for a Mountain.
 
-## P50.11 — "Ash the Guardian" must be a PLANESWALKER on the stack  *(user 2026-07-08, item 8)*
+## P50.11 — "Ash the Guardian" must be a PLANESWALKER on the stack  *(user 2026-07-08, item 8)* — ✅ **DONE** (v58)
+
+**Shipped (`build/p50-polish`).** The enemy-commander stack push (~2444) now sets `type:(S.cmd.isWalker?'planeswalker':'creature')` (+ walker-aware text). Resolve/prowess/board unaffected — the `_enemyCmd` resolve branch (~2635) keys on `isWalker` and returns before generic type handling, and `_noncreature` (~2633) already excludes `_enemyCmd`. Driver drives `vaelMain(1)` for both a walker and a creature commander. Original spec below.
+
 
 **What.** The enemy walker-commander "Ash the Guardian" shows as a *creature* card on the stack; it must read as a planeswalker (stack shows planeswalker; the board already renders it under the creatures area as its detailed walker card, which is correct).
 
@@ -3346,7 +3352,10 @@ Play each difficulty a few runs and note:
 
 **Build notes (LOW data / MED if new tier).** Re-price (`STORE.cost`) and re-tier (`BOONS.r`) the flagged items upward (e.g. scholar → rare + pricier; surge → legendary-band). Adding an "epic" tier = MED: touch every rarity consumer (CSS/label, `pickByRarity` weights, price-floor logic) — grep `rarity` / `pickByRarity` / `'legendary'` first. **Economy is banded (P42/P49.5) → confirm target gold-per-clear before big moves (see decisions).**
 
-## P50.13 — Don't show tax on the commander card  *(user 2026-07-08, item 10)*
+## P50.13 — Don't show tax on the commander card  *(user 2026-07-08, item 10)* — ✅ **DONE** (v58)
+
+**Shipped (`build/p50-polish`).** Removed the two `<span>tax +${c.tax}</span>` badges from the enemy commander card face in `cmdFieldCard` (walker branch ~2548, creature branch ~2554). Tax value/state and cost logic (`CMD_TAX_BASE`, `czCasts`/`tax`) are untouched — display-only. The command-zone recast **cost reminders** (renderPlayerCmd / enemy cmdbox) are intentionally kept: they tell the player what a recast will cost, which is not a badge on the card face. Original spec below.
+
 
 **What.** The commander card must not display a tax indicator on its face.
 
