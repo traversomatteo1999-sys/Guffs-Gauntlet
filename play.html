@@ -2064,6 +2064,7 @@ const PLAYER_EMBLEMS=[
   {n:'Growth +1/+1 (your upkeep)',note:'At the beginning of your upkeep, put a +1/+1 counter on each creature you control.',auto:{k:'buffYourCreatures',n:1}},
   {n:'Token each upkeep',note:'At the beginning of your upkeep, create a 1/1 token.',auto:{k:'spawnYourToken',n:1,tn:'Spirit',tp:1,tt:1}},
   {n:'Damages enemy (your upkeep)',note:'At the beginning of your upkeep, deal 2 damage to the enemy.',auto:{k:'enemyLose',n:2}},
+  {n:'⚔ Deal N damage (each trigger)',note:'At the beginning of the chosen step, deal N damage — retargetable to hit the enemy or yourself. Tune N and the trigger.',auto:{k:'enemyLose',n:2}},/* P51.5: first-class discoverable damage-per-trigger emblem; honours the target toggle via playerEmblemEffect */
   {n:'Drains enemy (your END step)',note:'At the beginning of your end step, the enemy loses 1 life.',auto:{k:'enemyLose',n:1},trigger:'endStep'},
   {n:'⟳ Anthem +1/+1 (static)',note:'Your creatures get +1/+1 while this is on the battlefield (continuous).',auto:{k:'anthemYou',n:1},static:true},
   {n:'⟳ Enemy creatures −1/−0 (static)',note:'Enemy creatures get −1/−0 while this is on the battlefield (continuous).',auto:{k:'debuffEnemyCreatures',n:1},static:true},
@@ -2088,7 +2089,7 @@ function togglePlayerEmblemTarget(id){const em=findMyFx(id);if(em&&!em.static){e
 function rmMyEmblem(id){const em=findMyFx(id);if(!em)return;const i=S.my.emblems.indexOf(em);if(i>=0)S.my.emblems.splice(i,1);log("you",`✦ You lose the emblem <b>${em.name}</b>.`);render();}
 function playerEmblemEffect(em){if(!em||!em.auto)return;const a=em.auto,n=a.n||0;
   if(a.k==='youGain'){S.youLife+=n;/* P28.1: ordinary lifegain no longer raises the base (youMax) — life may exceed it temporarily; P16.4 trims the overheal between bosses */log("you",`✦ ${em.name}: you gain ${n} life. (${S.youLife})`);}/* P23 review: inline (mirror of bossHealLife) — one log line, no mid-loop render; firePlayerEmblems' checkLose/render handle the rest */
-  else if(a.k==='enemyLose'){S.boss.life-=n;log("you",`✦ ${em.name}: ${S.boss.name} loses ${n} life. (${Math.max(0,S.boss.life)})`);}
+  else if(a.k==='enemyLose'){if(em.target==='player'){S.youLife-=n;log("you",`✦ ${em.name}: you take ${n} damage. (${S.youLife})`);}else{S.boss.life-=n;log("you",`✦ ${em.name}: ${S.boss.name} loses ${n} life. (${Math.max(0,S.boss.life)})`);}}/* P51.5: honour the emblem's target toggle — a player damage emblem can be retargeted at either side */
   else if(a.k==='youDraw'){log("you",`✦ ${em.name}: draw ${n} card${n===1?'':'s'} (draw physically).`);}
   else if(a.k==='buffYourCreatures'){let c=0;(S.my.creatures||[]).forEach(t=>{t.plus=(t.plus||0)+n;c++;});log("you",`✦ ${em.name}: +${n}/+${n} on ${c} creature${c===1?'':'s'} you control.`);}
   else if(a.k==='spawnYourToken'){const tn=a.tn||'Spirit',tp=a.tp||1,tt=a.tt||1,cnt=Math.max(1,n||1);for(let q=0;q<cnt;q++)S.my.creatures.push({id:S.nextId++,name:tn,p:tp,t:tt,baseP:tp,baseT:tt,kw:[],color:[],plus:0,minus:0,other:[],tapped:false,sick:true,phased:false,token:true,dies:'graveyard'});log("you",`✦ ${em.name}: create ${cnt} <b>${tn}</b> ${tp}/${tt} token${cnt===1?'':'s'}.`);}}
@@ -2104,6 +2105,7 @@ const ENEMY_EMBLEMS=[
   {n:'Token each upkeep',note:'At the beginning of its upkeep, create a 1/1 enemy token.',auto:{k:'spawnToken',n:1,tn:'Servant',tp:1,tt:1}},
   {n:'Scry 1 (its upkeep)',note:'At the beginning of its upkeep, the enemy scries 1.',auto:{k:'enemyScry',n:1}},
   {n:'Damages you (its upkeep)',note:'At the beginning of its upkeep, it deals 2 damage to you.',auto:{k:'youLose',n:2}},
+  {n:'⚔ Deal N damage (each trigger)',note:'At the beginning of the chosen step, it deals N damage — retargetable to hit you or itself. Tune N and the trigger.',auto:{k:'youLose',n:2}},/* P51.5: first-class discoverable damage-per-trigger emblem; emblemEffect already honours the target toggle */
   {n:'Drains you (its END step)',note:'At the beginning of its end step, you lose 1 life.',auto:{k:'youLose',n:1},trigger:'endStep'},
   {n:'Tax on your upkeep',note:'At the beginning of YOUR upkeep, you lose 1 life.',auto:{k:'youLose',n:1},trigger:'yourUpkeep'},
   {n:'⟳ Anthem +1/+1 (static)',note:'Enemy creatures get +1/+1 while this is on the battlefield (continuous).',auto:{k:'anthemEnemy',n:1},static:true},
