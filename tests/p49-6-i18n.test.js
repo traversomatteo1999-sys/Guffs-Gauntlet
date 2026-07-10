@@ -39,8 +39,11 @@ ok(ev("t('Combat')")==='Combattimento', 'phase label translates');
 ok(/Continua ▸/.test(ev("flowLabel()")), 'flowLabel translates the fixed part');
 ok(/Minaccia/.test(ev("(function(){showInfo('threat');return document.getElementById('infoBody').innerHTML})()")), 'info popup translates');
 
-// 7. Cutscene narrative translates (arrival line).
+// 7. Cutscene narrative translates (arrival + warden + victory).
 ok(ev("t(ARRIVAL_LINES[3])")!==ev("ARRIVAL_LINES[3]") && /Porta delle Braci/.test(ev("t(ARRIVAL_LINES[3])")), 'arrival narrative translates');
+ok(/Brucia intensamente/.test(ev("t(DUNGEON[0].quote)")), 'warden quote (Grakk) translates');
+ok(/cripta/.test(ev("t(DUNGEON[2].guffFreed[0])")), 'victory narrative (guffFreed) translates');
+ok(ev("t('legendary')")==='leggendario' && ev("t('rare')")==='raro', 'shop rarity words translate');
 
 // 8. Proper nouns + MTG keywords stay English (not in the dictionary).
 ok(ev("t('Grakk')")==='Grakk' && ev("t('deathtouch')")==='deathtouch', 'proper nouns + MTG keywords stay English');
