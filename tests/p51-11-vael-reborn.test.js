@@ -23,6 +23,10 @@ ok(!/rises <b>ENRAGED<\/b> at just 1 life/.test(src), 'stale "at just 1 life" ti
   ok(ev("S.boss.life")===5, `[${diff}] reborn at 5 HP (got ${ev("S.boss.life")})`);
   ok(ev("S.phase2done")===true, `[${diff}] phase2done set`);
   ok(!ev("S.over"), `[${diff}] not game-over on first death`);
+  // the reborn fires the "Undying Embers" lore cutscene (the Ember saves Vael from death)
+  ok(ev("document.getElementById('cutscene').classList.contains('show')"), `[${diff}] the Undying Embers cutscene is shown`);
+  ok(/Undying Embers/.test(ev("document.getElementById('cutscene').innerHTML")), `[${diff}] cutscene titled "Undying Embers"`);
+  ev("closeCutscene()");
 });
 
 if(errors.length){console.error('jsdomErrors:',errors.slice(0,5));fail++;}
