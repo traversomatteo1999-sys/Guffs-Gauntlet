@@ -9,7 +9,7 @@ const src=fs.readFileSync(path.join(__dirname,'..','play.html'),'utf8');
 // 1. Source: no "properties" label remains on the drawer toggle; "Actions" replaces it.
 ok(!/\?'▾ properties':'▸ properties'/.test(src), 'no "properties" drawer-toggle label remains');
 ok(/\?'▾ Actions':'▸ Actions'/.test(src), '"Actions" drawer-toggle label present');
-ok((src.match(/\?'▾ Actions':'▸ Actions'/g)||[]).length===5, 'all 5 drawer-toggle sites renamed');
+ok((src.match(/\?'▾ Actions':'▸ Actions'/g)||[]).length===4, 'all drawer-toggle sites renamed (4 after P52.1 removed the command-zone commander drawer)');
 
 // 2. Source: .drawtoggle now uses the gold token (yellow), not the greyish bone-dim.
 const rule=(src.match(/\.drawtoggle\{[^}]*\}/)||[''])[0];
