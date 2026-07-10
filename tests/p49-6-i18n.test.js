@@ -54,6 +54,13 @@ const camp=D.getElementById('campaign').innerHTML;
 ok(/Tana delle Braci/.test(camp), 'campaign screen: the level name translates');
 ok(/labirinto discendente/.test(camp), 'campaign screen: the teaser translates');
 
+// 7c. Combat resolver + attack panel translate.
+ev("DB.lang='it';fresh('standard');S.activeTurn='you';S.phase=4;S.my.creatures=[{id:1,name:'X',p:3,t:3,baseP:3,baseT:3,kw:[],color:[],plus:0,minus:0,other:[],tapped:false,sick:false,phased:false,_atk:true,dies:'graveyard'}];render();");
+ev("openCombat('you',[S.my.creatures[0]],vaelDefenders(),{})");
+ok(/Il tuo attacco/.test(D.getElementById('combatTitle').textContent), 'combat resolver title translates');
+ok(/Conferma e applica/.test(D.getElementById('resolver').innerHTML), 'combat resolver Approve button translates');
+ev("cancelCombat()");
+
 // 8. Proper nouns + MTG keywords stay English (not in the dictionary).
 ok(ev("t('Grakk')")==='Grakk' && ev("t('deathtouch')")==='deathtouch', 'proper nouns + MTG keywords stay English');
 
