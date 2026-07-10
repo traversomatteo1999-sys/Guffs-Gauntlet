@@ -3779,10 +3779,10 @@ function togglePanel(k){if(!S.ui)S.ui={tabs:{},panels:{}};if(!S.ui.panels||typeo
 /* ===== P46.3: ⚙ Settings — one overlay for volume/mute · text size · animation level · data export/import. Persisted on DB.settings; applied live + at boot (loadSettings). ===== */
 function applyTextSize(){try{const sz=((DB&&DB.settings)||{}).textSize||'M';const px={S:15,M:16,L:18}[sz]||16;document.documentElement.style.fontSize=px+'px';}catch(e){}}
 function setTextSize(sz){try{if(!DB.settings)DB.settings={};DB.settings.textSize=sz;saveDB();}catch(e){}applyTextSize();if($("overlay")&&$("overlay").classList.contains('show'))openSettings();}
-function applyAnim(){try{const lv=((DB&&DB.settings)||{}).anim||'auto';const h=document.documentElement;h.classList.remove('motion-full','motion-soft','motion-off');if(lv==='full'||lv==='soft'||lv==='off')h.classList.add('motion-'+lv);}catch(e){}}
+function applyAnim(){try{const lv=((DB&&DB.settings)||{}).anim||'full';/* P51.10: default = full (was 'auto'; 'auto' stays an explicit choice that defers to the OS reduced-motion query) */const h=document.documentElement;h.classList.remove('motion-full','motion-soft','motion-off');if(lv==='full'||lv==='soft'||lv==='off')h.classList.add('motion-'+lv);}catch(e){}}
 function setAnimLevel(lv){try{if(!DB.settings)DB.settings={};DB.settings.anim=lv;saveDB();}catch(e){}applyAnim();if($("overlay")&&$("overlay").classList.contains('show'))openSettings();}
 function loadSettings(){try{if(!DB.settings)DB.settings={};}catch(e){}applyTextSize();applyAnim();}
-function settingsHTML(){const s=(DB&&DB.settings)||{};const ts=s.textSize||'M';const an=s.anim||'auto';const vol=Math.round(((typeof _vol==='number')?_vol:1)*100);
+function settingsHTML(){const s=(DB&&DB.settings)||{};const ts=s.textSize||'M';const an=s.anim||'full';/* P51.10: default = full (matches applyAnim) */const vol=Math.round(((typeof _vol==='number')?_vol:1)*100);
   const seg=(cur,opts,fn)=>`<div class="seg">${opts.map(([v,l])=>`<button class="${cur===v?'on':''}" onclick="${fn}('${v}')">${l}</button>`).join('')}</div>`;
   return `<h2>⚙ Settings</h2>
   <div class="setgrp"><div class="setlab">🔊 Sound</div><div class="btnrow" style="align-items:center;gap:8px"><button class="mini" onclick="toggleMute();openSettings()">${_muted?'🔇 Muted':'🔊 On'}</button><input type="range" min="0" max="100" value="${vol}" aria-label="Volume" oninput="setVol(this.value)" style="flex:1 1 150px;accent-color:var(--gold)"></div></div>
