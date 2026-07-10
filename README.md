@@ -52,7 +52,7 @@ everyone's saves.
 
 Every shipped change:
 1. Edit the files (usually `index.html`).
-2. **Bump the cache name in `sw.js`.** This build ships `gg-cache-v74`; increment it
+2. **Bump the cache name in `sw.js`.** This build ships `gg-cache-v75`; increment it
    (`v55`, `v56`, …). The SW deletes the old cache on activate, so installed players pick up
    the new build on their next online launch (network-first navigation + fresh cache).
 3. **Update this line to match** — the regression suite fails if the README version and
