@@ -268,7 +268,7 @@
 | &nbsp;&nbsp;P51.9 Attacker selection: centered **target popup** — shown only when targets beyond the enemy face exist | ✅ **done v77** — `swing()` opens `openAtkTargetPicker` (centered `#overlay`) when enemy walkers/walker-cmd/sieges exist; `confirmAtkTargets` feeds the target map into `openCombat` + preserves P39.2 siege-defense; else combat opens directly |
 | &nbsp;&nbsp;P51.10 Default **animation level = full** | ✅ **done v70** — both `applyAnim`/`settingsHTML` fallbacks `'auto'`→`'full'`; `'auto'` stays an explicit OS-deferring option |
 | &nbsp;&nbsp;P51.11 Vael reborn heals to **5 HP** (was 1) | ✅ **done v71** — `reborn:{5,5,5}`; explicit reversal of P49.11 #23; tip/comments updated |
-| **Phase 52 — Fix batch 2026-07-10 (batch 2)** (command-zone commander shows no options · siege/battle popup · enemy-commander creature-card **layout** parity · legendary-planeswalker copy → legend-rule discard · **creature/permanent subtypes** on every card · wire the new soundtracks) | 🟢 **P52.7 shipped (v81) · P52.1–P52.6 SPECCED, NOT built** — the user's 2026-07-10 *second* fix list, grounded below in `# PHASE 52` against `play.html` post-P51. **P52.1 is an explicit user-requested reversal of P50.6** (see Phase 52 decisions). |
+| **Phase 52 — Fix batch 2026-07-10 (batch 2)** (command-zone commander shows no options · siege/battle popup · enemy-commander creature-card **layout** parity · legendary-planeswalker copy → legend-rule discard · **creature/permanent subtypes** on every card · wire the new soundtracks) | 🟢 **P52.7 shipped (v81) · P52.1–P52.6 + P52.8 SPECCED, NOT built** — the user's 2026-07-10 *second* fix list, grounded below in `# PHASE 52` against `play.html` post-P51. **P52.1 is an explicit user-requested reversal of P50.6** (see Phase 52 decisions). |
 | &nbsp;&nbsp;P52.1 Player commander in the **command zone shows no card options** — the per-card controls appear only once it's on the battlefield (like any card) | ⬜ **SPECCED** — trims `renderOneCmd` `cz` branch to name + cast/deploy/to-hand; **reverses P50.6** (user-requested) |
 | &nbsp;&nbsp;P52.2 **Popup when a siege/battle is played**; if the enemy **starts** a turn with one in play, pop it at begin-turn | ⬜ **SPECCED** — modal on `fieldBossSiege`/battle-enter + a begin-turn check with a per-battle `_popped` flag |
 | &nbsp;&nbsp;P52.3 Enemy commander creature-card **layout** parity — top: ↩hand · ↺reset · Slay → name → abilities → **⧉copy at the bottom** | ⬜ **SPECCED** — reorders `cmdFieldCard` creature branch + `_cmdSecondaryBtns` to mirror `enemyCard()` (refines P51.3) |
@@ -276,6 +276,7 @@
 | &nbsp;&nbsp;P52.5 **Creature/permanent subtypes** on every card (enemy + player) — auto-migrate imported library, manual editor, walker type = its name, multi-type (e.g. Soldier Artifact), enchantment types (Aura/Elemental) | ⬜ **SPECCED (MED-HIGH — save-shape migration + all enemy data + import mapper + UI; may split 52.5a/b)** |
 | &nbsp;&nbsp;P52.6 Wire the **newly-added soundtracks** into `MUSIC_POOLS` (Grakk +2 · Murglax +2 · Vael +2) | ⬜ **SPECCED** — pure data; add the 6 new track filenames |
 | &nbsp;&nbsp;P52.7 Level-I **victory loops only "Guff is Free"**; "The Conclave Reborn" moved to the **Menu** pool for now (earmarked for the Level-II victory) | ✅ **done v81** — `MUSIC_POOLS.Victory=['Guff is Free']` (single-track shuffle-bag loops it); `The Conclave Reborn` relocated to `Soundtrack/Menu/` + added to the Menu pool; `tests/p52-7-victory-music.test.js` + P50.14 count fix (2→1) |
+| &nbsp;&nbsp;P52.8 Red **"✦ New run"** (with a run to continue) must **auto-close the menu/campaign window** after the new run starts | ⬜ **SPECCED** — `campaignStart`→`confirmNewDescent`→`startNewDescent`→`startBattle`; startBattle already strips `show` from the overlays, so **diagnose first** (a re-show or an overlay id missing from the teardown) |
 
 ---
 
@@ -3597,7 +3598,7 @@ Key: `advance()` (~2270) is the **single choke point** for both Grakk→Murglax 
 
 **Verify.** jsdom: `bossDown()` on a Vael room at 0 life → `S.boss.life===5` (all difficulties).
 
-# PHASE 52 — Fix batch 2026-07-10 (batch 2) 🟢 P52.7 shipped (v81) · P52.1–P52.6 SPECCED, NOT built
+# PHASE 52 — Fix batch 2026-07-10 (batch 2) 🟢 P52.7 shipped (v81) · P52.1–P52.6 + P52.8 SPECCED, NOT built
 
 > **Goal.** The user's 2026-07-10 *second* fix list (6 items), grounded below in `play.html` (post-P51,
 > `sw` v80 @ `fe658f7`) by direct greps. **NOT yet built — this entry only records the spec.** Same loop
@@ -3779,3 +3780,29 @@ track (a level-hook follow-up).
 play `Guff is Free`; five simulated track-ends all loop the same track; on disk `Guff is Free.mp3` is in
 `Victory/` and `The Conclave Reborn.mp3` is in `Menu/`. Updated the P50.14 driver's Victory-count
 assertion (2→1). `sw` v80→v81 + README.
+
+## P52.8 — Red "✦ New run" must auto-close the menu window  *(user 2026-07-10)*
+
+**What/why.** From the campaign screen, when a run is in progress the level card shows **▶ Continue run**
+and a **red ✦ New run** (`class="tiny ember"`, in `renderCampaign` ~3476) → `campaignStart()` (~3484).
+With a live run, `campaignStart` calls `confirmNewDescent()` (~3446 — the "Start a new descent?"
+abandon-guard cutscene); its **✦ Start new — abandon save** button → `startNewDescent()` (~3450) →
+`startBattle()` (~3063). The user reports that after choosing New run the menu/campaign **window stays
+open** — it should dismiss itself once the new run begins.
+
+**Grounding / suspected cause.** `startBattle` (~3064) ALREADY does `closeCutscene()` + strips `show` from
+`['menu','campaign','sandbox','plays','resolver','overlay','library','store']`, then `render()` +
+`chooseCommander()` (which re-opens the `#overlay` commander picker — intended). So on a static read the
+campaign/menu overlay IS dismissed — the lingering window means a subtle gap: a
+post-`render()`/`chooseCommander()` path that re-shows it, an overlay id not in the teardown list, or the
+confirm cutscene itself. **Diagnose FIRST** — reproduce live (menu → campaign with a parked run → red ✦
+New run → Start new → observe which element keeps `show`).
+
+**Build notes (LOW-MED — diagnose first).** Pin the exact element that stays `show`n and dismiss it (add
+its id to `startBattle`'s teardown list, or close it explicitly on the New-run path). Do NOT close the
+`#overlay` commander picker — that's the intended next step. Keep the abandon-guard (`confirmNewDescent`)
+intact; the only fix is that the window auto-closes once the run actually starts.
+
+**Verify.** jsdom: with a live campaign run parked, show the campaign menu (`#campaign` has `show`), drive
+`campaignStart()`→`startNewDescent()`, then assert `#campaign` and `#menu` no longer carry `show` (the
+`#overlay` commander picker may be shown); zero console errors.
