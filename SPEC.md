@@ -268,13 +268,14 @@
 | &nbsp;&nbsp;P51.9 Attacker selection: centered **target popup** — shown only when targets beyond the enemy face exist | ✅ **done v77** — `swing()` opens `openAtkTargetPicker` (centered `#overlay`) when enemy walkers/walker-cmd/sieges exist; `confirmAtkTargets` feeds the target map into `openCombat` + preserves P39.2 siege-defense; else combat opens directly |
 | &nbsp;&nbsp;P51.10 Default **animation level = full** | ✅ **done v70** — both `applyAnim`/`settingsHTML` fallbacks `'auto'`→`'full'`; `'auto'` stays an explicit OS-deferring option |
 | &nbsp;&nbsp;P51.11 Vael reborn heals to **5 HP** (was 1) | ✅ **done v71** — `reborn:{5,5,5}`; explicit reversal of P49.11 #23; tip/comments updated |
-| **Phase 52 — Fix batch 2026-07-10 (batch 2)** (command-zone commander shows no options · siege/battle popup · enemy-commander creature-card **layout** parity · legendary-planeswalker copy → legend-rule discard · **creature/permanent subtypes** on every card · wire the new soundtracks) | ⬜ **SPECCED — NOT built** — the user's 2026-07-10 *second* fix list (6 items), grounded below in `# PHASE 52` against `play.html` post-P51. **P52.1 is an explicit user-requested reversal of P50.6** (see Phase 52 decisions). |
+| **Phase 52 — Fix batch 2026-07-10 (batch 2)** (command-zone commander shows no options · siege/battle popup · enemy-commander creature-card **layout** parity · legendary-planeswalker copy → legend-rule discard · **creature/permanent subtypes** on every card · wire the new soundtracks) | 🟢 **P52.7 shipped (v81) · P52.1–P52.6 SPECCED, NOT built** — the user's 2026-07-10 *second* fix list, grounded below in `# PHASE 52` against `play.html` post-P51. **P52.1 is an explicit user-requested reversal of P50.6** (see Phase 52 decisions). |
 | &nbsp;&nbsp;P52.1 Player commander in the **command zone shows no card options** — the per-card controls appear only once it's on the battlefield (like any card) | ⬜ **SPECCED** — trims `renderOneCmd` `cz` branch to name + cast/deploy/to-hand; **reverses P50.6** (user-requested) |
 | &nbsp;&nbsp;P52.2 **Popup when a siege/battle is played**; if the enemy **starts** a turn with one in play, pop it at begin-turn | ⬜ **SPECCED** — modal on `fieldBossSiege`/battle-enter + a begin-turn check with a per-battle `_popped` flag |
 | &nbsp;&nbsp;P52.3 Enemy commander creature-card **layout** parity — top: ↩hand · ↺reset · Slay → name → abilities → **⧉copy at the bottom** | ⬜ **SPECCED** — reorders `cmdFieldCard` creature branch + `_cmdSecondaryBtns` to mirror `enemyCard()` (refines P51.3) |
 | &nbsp;&nbsp;P52.4 Copying a **legendary planeswalker** → popup: pick which duplicate goes to the **graveyard**, or tick "**copy isn't legendary**" | ⬜ **SPECCED** — extends `cloneInto`/`copyPermanent` with a legend-rule prompt |
 | &nbsp;&nbsp;P52.5 **Creature/permanent subtypes** on every card (enemy + player) — auto-migrate imported library, manual editor, walker type = its name, multi-type (e.g. Soldier Artifact), enchantment types (Aura/Elemental) | ⬜ **SPECCED (MED-HIGH — save-shape migration + all enemy data + import mapper + UI; may split 52.5a/b)** |
 | &nbsp;&nbsp;P52.6 Wire the **newly-added soundtracks** into `MUSIC_POOLS` (Grakk +2 · Murglax +2 · Vael +2) | ⬜ **SPECCED** — pure data; add the 6 new track filenames |
+| &nbsp;&nbsp;P52.7 Level-I **victory loops only "Guff is Free"**; "The Conclave Reborn" moved to the **Menu** pool for now (earmarked for the Level-II victory) | ✅ **done v81** — `MUSIC_POOLS.Victory=['Guff is Free']` (single-track shuffle-bag loops it); `The Conclave Reborn` relocated to `Soundtrack/Menu/` + added to the Menu pool; `tests/p52-7-victory-music.test.js` + P50.14 count fix (2→1) |
 
 ---
 
@@ -3596,7 +3597,7 @@ Key: `advance()` (~2270) is the **single choke point** for both Grakk→Murglax 
 
 **Verify.** jsdom: `bossDown()` on a Vael room at 0 life → `S.boss.life===5` (all difficulties).
 
-# PHASE 52 — Fix batch 2026-07-10 (batch 2) ⬜ SPECCED — NOT built
+# PHASE 52 — Fix batch 2026-07-10 (batch 2) 🟢 P52.7 shipped (v81) · P52.1–P52.6 SPECCED, NOT built
 
 > **Goal.** The user's 2026-07-10 *second* fix list (6 items), grounded below in `play.html` (post-P51,
 > `sw` v80 @ `fe658f7`) by direct greps. **NOT yet built — this entry only records the spec.** Same loop
@@ -3757,3 +3758,24 @@ mp3s stream online and are NOT precached (P50.14).
 **Verify.** jsdom: `MUSIC_POOLS.Grakk` includes `'Burning Flame'` & `'Gates Of The Ember'` (and the
 Murglax/Vael pairs); every array entry equals a real file in `Soundtrack/<Pool>/` (the array assert is a
 tiny driver; file-existence is a manual/CI check).
+
+## P52.7 — Level-I victory loops only "Guff is Free"; Conclave Reborn → Menu  *(user 2026-07-10)* — ✅ **DONE (v81)**
+
+**What/why.** The user wants the Level I victory to play **only** `Guff is Free`, looping. `win()` (~2974
+— Vael's defeat = the Level I win) fires `playPool('Victory')`, which shuffle-bags `MUSIC_POOLS.Victory` —
+previously `['Guff is Free','The Conclave Reborn']`, so a win rolled either track. The user then (mid-task)
+**relocated** `The Conclave Reborn.mp3` from `Soundtrack/Victory/` into `Soundtrack/Menu/` and asked to use
+it as menu music "for now" (still earmarked for the Level-II victory).
+
+**Change.** `MUSIC_POOLS.Victory` → `['Guff is Free']` (a single-track pool loops naturally — the
+shuffle-bag refills with the one track on every `ended`). `'The Conclave Reborn'` added to
+`MUSIC_POOLS.Menu` (now 5 tracks; file at `Soundtrack/Menu/`). Inline comments on both pools warn not to
+re-add Conclave Reborn to Victory without level-aware victory selection (else a Level-I win would randomly
+play it). Victory music is not level-aware today; when Level II lands, its win path picks the reserved
+track (a level-hook follow-up).
+
+**Verify.** `tests/p52-7-victory-music.test.js`: `MUSIC_POOLS.Victory` is exactly `['Guff is Free']`;
+`'The Conclave Reborn'` is out of Victory and **in** the Menu pool; `playPool('Victory')` and `win()` both
+play `Guff is Free`; five simulated track-ends all loop the same track; on disk `Guff is Free.mp3` is in
+`Victory/` and `The Conclave Reborn.mp3` is in `Menu/`. Updated the P50.14 driver's Victory-count
+assertion (2→1). `sw` v80→v81 + README.
