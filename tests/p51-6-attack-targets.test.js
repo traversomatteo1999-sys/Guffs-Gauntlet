@@ -50,6 +50,14 @@ ev(`window._atks=[${mkAtk(3,301)}];`);
 tmap=ev("aiTargets(window._atks)");
 ok(!Object.values(tmap).some(v=>(''+v).slice(0,2)==='b:'), 'easy: never targets a battle (legacy walkers-only)');
 
+// 5b. Review regression: easy/standard commit to the TOP object — if it can't be killed, go all-face
+//     (do NOT fall through to a lower killable walker). Legacy invariant.
+ev("S.diff='easy';S.youLife=100;S.my.creatures=[];S.battles=[];");
+ev("S.my.walkers=[{id:701,name:'Big',loyalty:10,baseLoy:10,phased:false,strength:'mid'},{id:702,name:'Small',loyalty:1,baseLoy:1,phased:false,strength:'low'}]");
+ev(`window._atks=[${mkAtk(1,301)}]`);  // one 1-power attacker: can't kill Big(10), could kill Small(1)
+tmap=ev("aiTargets(window._atks)");
+ok(tmap['301']==='you', 'easy: commits to the top walker (unkillable) -> all-face, never diverts to the killable lower walker');
+
 // 6. Lethal to the face -> all attackers stay on the face.
 ev("S.diff='brutal';S.youLife=1;");
 ev(`S.my.walkers=[{id:501,name:'Chandra',loyalty:1,baseLoy:1,phased:false,strength:'mid'}];S.battles=[];S.my.creatures=[];`);

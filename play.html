@@ -2064,12 +2064,12 @@ function aiTargets(attackers){const t={};attackers.forEach(a=>t[a.id]='you');
   const powerOf=a=>effP(a);const diverted={};/* attId -> objId */
   const blockedIds=()=>{const dv=attackers.filter(a=>diverted[a.id]!=null).sort((a,b)=>powerOf(b)-powerOf(a));return new Set(dv.slice(0,blockers).map(a=>''+a.id));};/* the player blocks the biggest DIVERTED attackers (across all objects) */
   const dmgTo=objId=>{const bl=blockedIds();return attackers.filter(a=>''+diverted[a.id]===''+objId&&!bl.has(''+a.id)).reduce((s,a)=>s+powerOf(a),0);};
-  let placed=0;
+  let tried=0;
   for(const obj of objs){
-    if(placed>=maxObjs)break;
+    if(tried>=maxObjs)break;tried++;/* P51.6 review-fix: count objects TRIED, not just killed — so easy/standard (maxObjs=1) commit to the SINGLE top object and go all-face if it can't be finished (exactly legacy), instead of falling through to a lower killable walker */
     const avail=attackers.filter(a=>diverted[a.id]==null).sort((a,b)=>powerOf(a)-powerOf(b));/* smallest-first: they sneak past the player's blocks */
     const trial=[];for(const a of avail){diverted[a.id]=obj.id;trial.push(a);if(dmgTo(obj.id)>=obj.hp)break;}
-    if(dmgTo(obj.id)>=obj.hp){placed++;
+    if(dmgTo(obj.id)>=obj.hp){
       trial.slice().sort((a,b)=>powerOf(b)-powerOf(a)).forEach(a=>{const save=diverted[a.id];delete diverted[a.id];if(dmgTo(obj.id)<obj.hp)diverted[a.id]=save;});/* prune the biggest redundant back to the face */
     }else trial.forEach(a=>delete diverted[a.id]);/* can't finish this object → free them back to the face */
   }
