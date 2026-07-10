@@ -19,7 +19,7 @@ ok(ev("typeof sfx")==="function", 'P50.14b: synthesized sfx() cues are kept');
 // ---- the manager + pools ----
 ok(ev("typeof playPool")==="function" && ev("typeof stopMusic")==="function", 'P50.14: playPool/stopMusic exist');
 ok(ev("Object.keys(MUSIC_POOLS).sort().join(',')")==="Grakk,Menu,Murglax,Vael,Victory", 'P50.14: five pools (Menu/Grakk/Murglax/Vael/Victory)');
-ok(ev("MUSIC_POOLS.Grakk.length")===4 && ev("MUSIC_POOLS.Victory.length")===1, 'P50.14: pools carry their tracks (Victory trimmed to 1 track by P52.7)');
+ok(ev("MUSIC_POOLS.Grakk.length")===6 && ev("MUSIC_POOLS.Victory.length")===1, 'P50.14: pools carry their tracks (Grakk 6 per P52.6; Victory trimmed to 1 by P52.7)');
 
 // ---- playPool sets the active pool; stopMusic clears it ----
 ev("playPool('Menu')");
