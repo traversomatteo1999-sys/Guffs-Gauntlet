@@ -51,7 +51,7 @@
 /* v68 (P50.9): smarter enemy AI (standard+, easy stays legacy) — holds back a bomb the player can
    GANG-kill favorably, doesn't throw away a valuable body to chump a non-lethal hit when the boss is
    healthy, and develops instead of sandbagging interaction mana when clearly behind on board. */
-const CACHE = 'gg-cache-v93';
+const CACHE = 'gg-cache-v94';
 const SHELL = [
   './index.html',
   './play.html',

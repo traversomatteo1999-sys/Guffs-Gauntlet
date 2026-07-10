@@ -268,7 +268,7 @@
 | &nbsp;&nbsp;P51.9 Attacker selection: centered **target popup** — shown only when targets beyond the enemy face exist | ✅ **done v77** — `swing()` opens `openAtkTargetPicker` (centered `#overlay`) when enemy walkers/walker-cmd/sieges exist; `confirmAtkTargets` feeds the target map into `openCombat` + preserves P39.2 siege-defense; else combat opens directly |
 | &nbsp;&nbsp;P51.10 Default **animation level = full** | ✅ **done v70** — both `applyAnim`/`settingsHTML` fallbacks `'auto'`→`'full'`; `'auto'` stays an explicit OS-deferring option |
 | &nbsp;&nbsp;P51.11 Vael reborn heals to **5 HP** (was 1) | ✅ **done v71** — `reborn:{5,5,5}`; explicit reversal of P49.11 #23; tip/comments updated |
-| **Phase 52 — Fix batch 2026-07-10 (batch 2)** (command-zone commander shows no options · siege/battle popup · enemy-commander creature-card **layout** parity · legendary-planeswalker copy → legend-rule discard · **creature/permanent subtypes** on every card · wire the new soundtracks) | ✅ **ALL 8 built** (P52.7 v81 · P52.6 v82 · P52.1 v83 · P52.3 v84 · P52.8 v85 · P52.2 v86 · P52.4 v87 · P52.5 v88) — the user's 2026-07-10 *second* fix list. P52.1 reverses P50.6 (user-requested); P52.4 + P52.5 got adversarial reviews (P52.4: 2 findings fixed; P52.5: clean). |
+| **Phase 52 — Fix batch 2026-07-10 (batch 2)** (command-zone commander shows no options · siege/battle popup · enemy-commander creature-card **layout** parity · legendary-planeswalker copy → legend-rule discard · **creature/permanent subtypes** on every card · wire the new soundtracks) | ✅ **ALL 8 built + P52.9 fix** (P52.7 v81 · P52.6 v82 · P52.1 v83 · P52.3 v84 · P52.8 v85 · P52.2 v86 · P52.4 v87 · P52.5 v88 · P52.9 v94) — the user's 2026-07-10 *second* fix list. P52.1 reverses P50.6 (user-requested); P52.4 + P52.5 got adversarial reviews (P52.4: 2 findings fixed; P52.5: clean). |
 | &nbsp;&nbsp;P52.1 Player commander in the **command zone shows no card options** — the per-card controls appear only once it's on the battlefield (like any card) | ✅ **done v83** — `renderOneCmd` cz branch trimmed to name/stat/cast/deploy/hand-toggle (removed .ctr/kwSelect/.badges/drawer); reverses P50.6; scope accessors + on-board drawer unchanged |
 | &nbsp;&nbsp;P52.2 **Popup when a siege/battle is played**; if the enemy **starts** a turn with one in play, pop it at begin-turn | ✅ **done v86** — `siegeBattlePopup` (name/type/heal/break-it) via #overlay; `_maybeSiegePopup` pops on a mid-game boss-side field (`addBattle`/`fieldBossSiege`), `_popPendingSiege` pops at `beginYourTurn` if unacknowledged; once per battle via `b._popped`; player battles + room-setup exempt |
 | &nbsp;&nbsp;P52.3 Enemy commander creature-card **layout** parity — top: ↩hand · ↺reset · Slay → name → abilities → **⧉copy at the bottom** | ✅ **done v84** — split `_cmdSecondaryBtns` (top: ↩hand·↺reset) from `_cmdCopyBtn` (bottom); both branches reorder to Slay+top-actions → name → stats/abilities/drawer → ⧉copy at the bottom; single .slay preserved |
@@ -277,6 +277,7 @@
 | &nbsp;&nbsp;P52.6 Wire the **newly-added soundtracks** into `MUSIC_POOLS` (Grakk +2 · Murglax +2 · Vael +2) | ✅ **done v82** — Grakk +Burning Flame/+Gates Of The Ember · Murglax +Evil Spirits/+Underground · Vael +Ashveil Reliquary/+The Hollowing (each pool now 6); driver asserts every entry maps to a real file |
 | &nbsp;&nbsp;P52.7 Level-I **victory loops only "Guff is Free"**; "The Conclave Reborn" moved to the **Menu** pool for now (earmarked for the Level-II victory) | ✅ **done v81** — `MUSIC_POOLS.Victory=['Guff is Free']` (single-track shuffle-bag loops it); `The Conclave Reborn` relocated to `Soundtrack/Menu/` + added to the Menu pool; `tests/p52-7-victory-music.test.js` + P50.14 count fix (2→1) |
 | &nbsp;&nbsp;P52.8 Red **"✦ New run"** (with a run to continue) must **auto-close the menu/campaign window** after the new run starts | ✅ **done v85** — front-loaded `closeMenusForRun()` (menu/campaign/sandbox) in `startNewDescent` + the direct `campaignStart` path, so the window dismisses instantly on commit (not only after startBattle's later render work) |
+| &nbsp;&nbsp;P52.9 Enemy **opening-hand log names the actual warden** — no stray "Grakk mulligans…" in Murglax/Vael sandbox fights (bug) | ✅ **done v94** — `startBattle` clears the log AFTER `fresh()` (its bootstrap `enterRoom(0)` deals a throwaway Grakk opening that leaked ahead of the real warden's); `tests/p52-9-enemy-opening-log.test.js` |
 
 ---
 
@@ -3598,7 +3599,7 @@ Key: `advance()` (~2270) is the **single choke point** for both Grakk→Murglax 
 
 **Verify.** jsdom: `bossDown()` on a Vael room at 0 life → `S.boss.life===5` (all difficulties).
 
-# PHASE 52 — Fix batch 2026-07-10 (batch 2) ✅ ALL 8 BUILT (P52.7 v81 · P52.6 v82 · P52.1 v83 · P52.3 v84 · P52.8 v85 · P52.2 v86 · P52.4 v87 · P52.5 v88)
+# PHASE 52 — Fix batch 2026-07-10 (batch 2) ✅ ALL 8 BUILT (P52.7 v81 · P52.6 v82 · P52.1 v83 · P52.3 v84 · P52.8 v85 · P52.2 v86 · P52.4 v87 · P52.5 v88) + P52.9 fix (v94)
 
 > **Goal.** The user's 2026-07-10 *second* fix list (6 items), grounded below in `play.html` (post-P51,
 > `sw` v80 @ `fe658f7`) by direct greps. **NOT yet built — this entry only records the spec.** Same loop
@@ -3806,3 +3807,26 @@ intact; the only fix is that the window auto-closes once the run actually starts
 **Verify.** jsdom: with a live campaign run parked, show the campaign menu (`#campaign` has `show`), drive
 `campaignStart()`→`startNewDescent()`, then assert `#campaign` and `#menu` no longer carry `show` (the
 `#overlay` commander picker may be shown); zero console errors.
+
+## P52.9 — Enemy opening-hand log names the actual warden  *(user 2026-07-10, bug)* — ✅ **DONE (v94)**
+
+**Symptom.** Fighting Murglax or Vael in Sandbox, the Dungeon Log showed **Grakk**'s opening every time —
+e.g. "Vael opens on a 3-land hand" followed by "Grakk keeps 6 cards…" / "Grakk mulligans a land-light
+opening hand and redraws." (a stray second warden), every time.
+
+**Root cause.** `fresh()` (~996) ends with `enterRoom(0,true)` to bootstrap a valid default board (room 0
+= Grakk) — needed for first boot, where nothing else calls `enterRoom`. `enterRoom` deals AND logs an
+opening hand (`dealOpeningHand`, `ENs()` = the room's warden). `startBattle` (~3111) cleared the log
+**before** `fresh()`, so `fresh()`→`enterRoom(0)` logged Grakk's throwaway opening, then the real
+`enterRoom(roomIdx)` logged the actual warden's — both survived the clear. Fighting Grakk (room 0) the two
+coincided and looked fine; for Murglax/Vael the Grakk lines showed as noise.
+
+**Fix (LOW).** Move `startBattle`'s log-clear to **after** `fresh()` (and before the real
+`enterRoom(roomIdx)`), so the bootstrap Grakk opening is wiped and only the actual opponent's opening is
+logged. One-statement reorder; `fresh()`'s boot behaviour is untouched (it still bootstraps room 0). The
+campaign-descend path (`advance()`→`freshGameForDungeon()`+`enterRoom(next)`) never had the bug (no
+`fresh()` bootstrap). The rare `diffSeg` double-Grakk at turn 0 is same-warden and left out of scope.
+
+**Verify.** `tests/p52-9-enemy-opening-log.test.js`: `startBattle` into Vael (room 2) and Murglax (room 1)
+→ the log names the real warden and contains NO "Grakk"; Grakk (room 0) still logs its real opening; zero
+jsdom errors. `sw` v93→v94 + README.
