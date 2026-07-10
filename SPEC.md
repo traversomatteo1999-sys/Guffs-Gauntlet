@@ -8,7 +8,8 @@
 
 ## STATUS (update as you go)
 
-- **⏩ CURRENT FRONTIER (2026-07-09):** Phases 0–48 done. **Phase 49 = 11 of 12 done** — P49.9 (enemy coloured mana + London mulligan) shipped at `70709f1`; only **P49.6 (Italian i18n)** remains, deferred to its own session. **Phase 50 (2026-07-08 fix batch, 14 sub-tasks) is IN PROGRESS this session** — see `# PHASE 50`; P50.9 (smarter enemy AI) built to the user's "way smarter, consider all variables" directive, P50.14 (story soundtrack) built against the user-committed `Soundtrack/` folder. `sw.js` moving v56→v57→…
+- **⏩ CURRENT FRONTIER (2026-07-10):** Phases 0–50 done (Phase 50 all 16 sub-tasks shipped, `sw` v68 @ `acf4b70`). **Phase 51 (2026-07-10 fix batch, 11 sub-tasks) is IN PROGRESS this session** — see `# PHASE 51`; the user asked to build the whole batch autonomously (commit-merge-push each, no stopping). Only spec item still deferred repo-wide besides Phase 51: **P49.6 (Italian i18n)**. `sw.js` moving v68→v69→…
+- **⏩ PRIOR FRONTIER (2026-07-09):** Phases 0–48 done. **Phase 49 = 11 of 12 done** — P49.9 (enemy coloured mana + London mulligan) shipped at `70709f1`; only **P49.6 (Italian i18n)** remains, deferred to its own session. **Phase 50 (2026-07-08 fix batch, 14 sub-tasks) is IN PROGRESS this session** — see `# PHASE 50`; P50.9 (smarter enemy AI) built to the user's "way smarter, consider all variables" directive, P50.14 (story soundtrack) built against the user-committed `Soundtrack/` folder. `sw.js` moving v56→v57→…
 - **Branch:** `main` (== `origin/main`). **Phases 0–40 ALL BUILT, merged & pushed** (each: per-task jsdom driver + syntax gate + id-diff + adversarial review). **Phases 41–46 — the full-game rework (specced 2026-07-04) — ✅ ALL DONE, merged & pushed (2026-07-06):** ✅ Guff red-beard lore fix (41) · ✅ item duration & economy coherence + the immortal-passives root-cause fix (42) · ✅ Campaign & Sandbox two-mode + multi-level infra (43 — 4-lens review, 8 fixed) · ✅ enemy realism 2 + colour-pie mechanics library (44 — 5-lens review, 5 fixed) · ✅ **UI/animation/sound overhaul (45 — self-hosted fonts/tokens/legibility · card art · sound · FX layer · Moxfield desktop grid · stack dock; two 3-lens reviews, 3+4 fixed)** · ✅ **completeness & hardening + FINAL VALIDATION GATE (46 — checked-in `npm test` suite (25/25) · error toast · ⚙ Settings · a11y · onboarding · deploy files · code cleanup; the P46.8 gate passed — see the VALIDATION RECORD under `# PHASE 46`)**. **Remaining = 2 user actions only:** the balance playtest + the one-time Netlify Import-from-Git connection (checklists in §P46.8). Platform decision **D4 (stay web/PWA)** + app-strategy **D5 (one responsive app)** adopted in §3. **Post-46 shipped (in code, now back-filled into this tracker): Phase 47** (real per-warden art — icons/backdrops/menu/lore images + cutscene reveal; PNG→JPEG compression) · **Phase 48** (reverted the P45.5/6 desktop grid back to the spec's **vertical cornice tabs** at every width · fixed first-run tutorial order to fire after all cutscenes · **P48.3 renamed Vael's planeswalker to "Ash the Guardian"** (villain name stays *Vael, the Ember Tyrant*) and **moved the Siege from Vael to Grakk** ("Siege of the Ember Gate", data-driven `room.siege`+`fieldBossSiege`, heals Grakk +1/upkeep)). `sw.js` now `gg-cache-v55`. **Phase 49 = the 2026-07-07 fix batch (30 bullets → 12 themed sub-tasks) — ✅ 10 of 12 BUILT, merged & pushed (`origin/main` @ `2714681`):** ✅ P49.1 · P49.2 · P49.3 (reverses P4.2/4.4 — enemy instants auto-cast) · P49.4 · P49.5 · P49.7 · P49.8 · P49.10 (reverses P38 — enemy PW abilities off-stack) · P49.11 · P49.12. Each: branch-per-task → merge `--no-ff` → push, with a committed `tests/p49-*.test.js` driver + syntax gate (risky ones P49.2/.3/.10 got a single-agent adversarial review); **`npm test` = 35/35 green.** **Remaining = the 2 mega-tasks the user deferred to their own weekly budget windows:** ⬜ P49.6 (Italian i18n layer, net-new) · ⬜ P49.9 (enemy coloured/colourless mana + London-mulligan penalty; reverses the P44 default). See `# PHASE 49` for the narrowing defaults on both.
 - **Canonical file:** `play.html` (the deployed PWA game). ⚠ **the game moved `index.html`→`play.html` on 2026-07-06** (`72b567b`); **`index.html` is now the tiny SEO landing page** — do NOT edit it for gameplay. The test harness, `sw.js` precache, and every `tests/*.js` source-read now target `play.html` (some in-file *comments*/`tests/README.md` still say "index.html" — stale wording, they read `play.html`). ⚠ **`const ART=` is a ~1.5 MB single-line base64 blob at ~line 683 — never Read/print any range spanning it** (re-check with `grep -n 'const ART='` before trusting the number); the self-hosted **fonts are also inlined as data-URIs in the CSS**. Real JS runs from ~685 to end; **re-grep function names — line numbers drift** (they shifted vs the old `index.html`).
 - **Verification harness:** headless engine smoke test (Node + DOM shim) drives boot→turn-cycle→undo→save; syntax gate via `node -e` + `vm.Script` over the `<script>` body; **id-set diff** (`grep -oE 'id="[^"]+"'` before/after) after any DOM restructure — nothing may be removed. For visual phases, review live at `http://localhost:8000/` (`python -m http.server 8000` from the repo; incognito to dodge a cached service worker).
@@ -255,6 +256,18 @@
 | &nbsp;&nbsp;P50.12 Store items cost a bit more + re-tier by strength (scholar +1 card/turn, surge +1 mana/turn under-tiered) | ✅ **done v63** — in-band: scholar→rare 26g, surge→legendary 38g (no epic tier / no blanket bump) |
 | &nbsp;&nbsp;P50.13 Don't show **tax** on the commander card face (enemy `cmdFieldCard` ~2548/2554 · player `#pcmdBox`) | ✅ **done v58** — removed the two enemy-cmd tax badges (command-zone cost reminders kept) |
 | &nbsp;&nbsp;P50.14 Story-driven **soundtrack system** — pooled music (menu/grakk/murglax/vael/victory), story-switched, random-no-repeat; removes the P45.4 ambient pad (sound-on-default already true) | ✅ **done v64** — pooled `<audio>` manager (shuffle-bag), 5 story hooks, pad removed; streams online (not precached, ~100 MB); jsdom-safe |
+| **Phase 51 — Fix batch 2026-07-10** (animate-any-permanent · Grakk siege heal+2/auto-open · enemy-commander option parity · **partner / second commander** · emblem "deal N dmg/trigger" · enemy attack-target intelligence · Actions button (yellow) · Vael War-Cry cut + walker treatment · attacker target popup · animations-full default · Vael reborn 5 HP) | 🟢 **IN PROGRESS (this session)** — the user's 2026-07-10 fix list, grounded below in `# PHASE 51`. Building branch-per-task → merge `--no-ff` → push, each with a `tests/p51-*.test.js` driver + syntax gate; combat/commander tasks get adversarial review. |
+| &nbsp;&nbsp;P51.1 Card-creation: turn ANY permanent into a creature (with P/T), optionally **retaining** old types | ⬜ |
+| &nbsp;&nbsp;P51.2 Grakk's Siege heals him **+2**/upkeep (was +1); siege panel **starts open** + auto-opens when an enemy casts a siege | ⬜ |
+| &nbsp;&nbsp;P51.3 Enemy commander (creature **and** walker) gets full card-option parity (deal-damage etc.); fix "put to hand"/"copy" overlapping "slay" | ⬜ |
+| &nbsp;&nbsp;P51.4 **Partner commanders** — import `partner` from Scryfall; play a 2nd commander; show both boxes stacked on the "You" panel | ⬜ |
+| &nbsp;&nbsp;P51.5 Emblems/anthems can **deal N damage every trigger** (both sides) | ⬜ |
+| &nbsp;&nbsp;P51.6 Enemy attack-target intelligence — threat order PW > creature > enchant > artifact; face vs walkers/sieges/battles | ⬜ |
+| &nbsp;&nbsp;P51.7 Card "properties" button → **"Actions"**, yellow / more visible | ⬜ |
+| &nbsp;&nbsp;P51.8 Remove Vael's **War Cry** (+2/+0 creature buff, incoherent for a walker deck); ensure Vael's commander is treated as a **planeswalker** everywhere | ⬜ |
+| &nbsp;&nbsp;P51.9 Attacker selection: centered **target popup** — shown only when targets beyond the enemy face exist | ⬜ |
+| &nbsp;&nbsp;P51.10 Default **animation level = full** | ⬜ |
+| &nbsp;&nbsp;P51.11 Vael reborn heals to **5 HP** (was 1) | ⬜ |
 
 ---
 
@@ -3471,3 +3484,107 @@ Key: `advance()` (~2270) is the **single choke point** for both Grakk→Murglax 
 - **Enemy deck "not overpowered" metric (P49.8 / bullets 9·25·26):** the codebase has **no defined balance target** (win-rate / turns-to-lethal) to tune against. Also: does Murglax (mono-B) get artifact removal via a combined naturalize target, a life-cost black variant, or none? and what should **Grakk's** new red ramp/ability permanent actually DO (Treasure needs a new `applyRun` op; an anthem risks power creep)?
 - **Bigger warden icon size (P49.1 / bullet 5):** "a bit bigger" — *Default:* `.wardenpt` 34px → ~44px. Confirm if you want a specific size.
 - **Ash the Guardian −3 semantics (P49.11 / bullet 28):** *Default:* X = ALL creature cards in the graveyard; the free reanimate enters **body-only** (no ETB re-trigger, matching the existing `reanimate` path). Confirm both.
+
+---
+
+# PHASE 51 — Fix batch 2026-07-10 🟢 IN PROGRESS
+
+> **Goal.** The user's 2026-07-10 fix list (11 sub-tasks), grounded below in `play.html` (post-P50, `sw` v68 @ `acf4b70`) by an 8-agent investigation workflow + direct greps. User directive: **build the whole batch autonomously — commit/merge/push each task, do not stop.** Branch-per-task → merge `--no-ff` → push; each with a `tests/p51-*.test.js` driver + syntax gate; combat/commander tasks get adversarial review. `sw.js` moves v68→v79.
+
+### Phase 51 decisions (recorded)
+
+- **P51.11 Vael reborn HP 1→5 — EXPLICIT REVERSAL of the P49.11 (#23) decision** ("reborn = a single desperate 1-HP swing"). The user directly asked for 5 HP in this batch, so it is an *explicit* reversal (allowed per CLAUDE.md when the user requests it). Applied flat 5 on all difficulties: `reborn:{easy:5,standard:5,brutal:5}`.
+- **P51.10 default animation full — soft-reversal of the "respect the OS reduced-motion" default.** The user asked for animations full by default. `'auto'` stays an explicit choice (OS-query respect is one click away), so the accessibility path is preserved, only de-defaulted.
+- **P51.2 Grakk Siege heal +1→+2 — balance buff, no recorded-decision conflict** (the +1 was a P48.3 impl value, not a `### decisions` lock). Player-facing copy updated in lockstep.
+- **P51.8 Vael War-Cry removal** — aligns with the P38.3 "Vael's commander IS a planeswalker" decision; removing an incoherent +2/+0-to-a-creature card is not a reversal.
+- **P51.5 emblem damage-per-trigger** — the underlying kinds (`enemyLose` player→enemy, `youLose` enemy→you) with tunable N + a trigger selector ALREADY exist; this task surfaces them as first-class discoverable **⚔ Deal N damage (each trigger)** templates on both sides and (player side) makes the damage honour the emblem's target toggle, so it's genuinely "deal N damage to either side, each trigger."
+- **P51.1 animate-any-permanent** — scoped to **artifact / enchantment** creator types gaining a creature body (the classic MTG artifact-creature / enchantment-creature); routed into `S.my.creatures` so all combat/keyword machinery works, tagged with retained `types` for the displayed type line. Planeswalker-creatures are out of scope (dual loyalty+P/T array problem).
+- **P51.4 partner** — a SECOND player commander (`S.pcmd2`) is enabled only when the first commander card carries `partner`. Both boxes stack on the You panel (`#pcmdBox` above a new `#pcmdBox2`). Full lifecycle parity via a slot-aware `pcmd`/`pcmd2` scope.
+
+## P51.1 — Card creation: turn any permanent into a creature (retain old types)  *(user 2026-07-10)*
+
+**Grounding.** The homebrew creator is `castFormHTML()` (~2757) → `readCastForm()` (~3428) → cfg with `ctype` in {creature,instant,sorcery,artifact,enchantment,planeswalker}. On resolution `resolvePlayerItem(p)` (~2684) routes by `p.ctype`: creature → `S.my.creatures` (P/T, attacks/blocks), artifact/enchantment → `S.my.artifacts`/`S.my.enchants` (no P/T, can't attack), planeswalker → `S.my.walkers`. Combat gathers player attackers from `S.my.creatures` (`swing()` ~1542). So a non-creature permanent can't attack because it lives in a non-creature array. `readCastForm` already reads `castP`/`castT` regardless of type.
+
+**Build notes (MED).** In the creator, add a **🐾 also a creature** toggle (`castAnimate`, class `cf-permcre`, shown for artifact/enchantment) that reveals the P/T + keyword fields; store `cfg.props.animate=true`. On resolve, when `pr.animate && (t==='artifact'||t==='enchantment')`, push a **creature** into `S.my.creatures` (P/T, kw, prot, ward, dies, etc.) but stamp `types:[t,'creature']` (retained old type) + `animated:true`; render the creature tile with a small type tag. It attacks/blocks like any creature.
+
+**Verify.** jsdom: build an artifact with `animate` + P/T → submit/resolve → it lands in `S.my.creatures` with `types` including 'artifact' and 'creature', has P/T, is a legal attacker. A plain artifact (no animate) still routes to `S.my.artifacts`.
+
+## P51.2 — Grakk's Siege heals +2 + panel starts/auto-opens  *(user 2026-07-10)*
+
+**Grounding.** `DUNGEON[0].siege={name:"Siege of the Ember Gate",def:6,tick:1,note:…}` (~877). `fieldBossSiege(cfg)` (~2035) pushes a boss battle with `tick:(cfg.tick!=null?cfg.tick:1)`; `tickBossBattles()` (~2036, from upkeep ~2346) runs `bossHealLife(b.tick)` — heal amount = `b.tick` = 1. Panel `#battlesPanel` = `data-panel="p-battles"`; collapse state `S.ui.panels['p-battles']` (open unless `===false`); `defaultPanelStates()` (~3775) opens a panel only if it's its tab's first OR `data-panel==='p-attack'` → battles currently defaults CLOSED. Defaults only apply when `S.ui.panels` is empty.
+
+**Build notes (LOW-MED).** (a) `tick:1`→`tick:2` at ~877 + update the three "heals Grakk 1" copy strings + the P48.3 comment. (b) Add `p-battles` to the `defaultPanelStates()` open clause; and in `fieldBossSiege()` force `S.ui.panels['p-battles']=true` so casting a siege auto-opens the panel.
+
+**Verify.** jsdom: `enterRoom` on Grakk's room → a boss battle with `tick===2`; run upkeep → `bossHealLife(2)`; after `fieldBossSiege`, `S.ui.panels['p-battles']===true`.
+
+## P51.3 — Enemy commander (creature + walker) full card-option parity  *(user 2026-07-10)*
+
+**Grounding.** `cmdFieldCard()` (~2580) renders the enemy commander's on-board row; `if(c.isWalker)` (walker branch) vs `else` (creature branch). CSS `.crea .slay{position:absolute;top:6px;right:6px}` (~101) pins EVERY `.slay`-classed button to the same corner — the creature branch emits 4 (`Slay`/`↩hand`/`↺`/`⧉copy`) and the walker 2, so the secondaries stack over Slay. Regular `enemyCard()` (~1755) avoids this: only Slay is `.slay`, the rest are inline `.mini`. Deal-damage gap: token cards get `markerRow` (dealDmg/deathtouch/copy) inside `enemyDrawer('token')` (~1922, gated `scope==='token'`); the creature-commander's `enemyDrawer('cmd',…)` omits markerRow; the walker's `commonPermRow('cmd',…)` has markerRow but `dealDmg('cmd',…)` no-ops because `_boardArr` (~1454) has no 'cmd' case.
+
+**Build notes (MED).** Edit only `cmdFieldCard()` + small hooks (NOT renderCmd). (1) Fix overlap in both branches: keep one absolute `.slay`, demote the secondaries to plain `.mini`. (2) Walker-commander parity: add `⧉copy` (copyPermanent handles 'cmd'). (3) Creature-commander deal-damage: add a working `cmd` path to `dealDmg` (a 'cmd' case that routes a lethal to `removeRef(S.cmd)`/`slayCmdBtn()`, NOT `killMy`) + surface `markerRow('cmd',null)` in its drawer.
+
+**Verify.** jsdom: `cmdFieldCard()` for both commander kinds → single `.slay`, walker has `copyPermanent('cmd'`, creature-commander drawer has a deal-damage control; `dealDmg('cmd',null,lethal)` routes `S.cmd` off the board.
+
+## P51.4 — Partner: import + play a second commander  *(user 2026-07-10)* — **HIGH**
+
+**Grounding.** One player commander today: `S.pcmd` → `renderPlayerCmd()` (~1970, `#pcmdBox`); `castCmd()`/`deployCmd()`/`pcmdToHand()`/`pcmdToZone()`/`objPT('pcmd',…)`/`getObj('pcmd')` all hardcode `S.pcmd`. A card is a commander via `cfg.commander===true`; `setStartCommander(cfg)`→`cmdObjFromCfg(cfg)`→`S.pcmd`. Scryfall import = `buildImportedCard`. No multi-commander support.
+
+**Build notes (HIGH — save shape + commander lifecycle).** Add `S.pcmd2`. Creator: a **⚑ partner** toggle (`castPartner`) → `cfg.partner`; Scryfall import sets `cfg.partner` on "Partner" oracle text/keyword. Commander chooser: when the first pick has `partner`, allow adding a second `partner` commander → `S.pcmd2`. Slot-aware pcmd functions ('pcmd'|'pcmd2'): `getObj`/`getCre` add a `pcmd2`→`S.pcmd2` case; cast/deploy/toHand/toZone/objPT take a slot. `renderPlayerCmd` draws `#pcmdBox` then a new `#pcmdBox2`. `fresh()` seeds `S.pcmd2=null`; `migrate()` backfills; descend-reset (~2601) resets both. **Multi-lens adversarial review.**
+
+**Verify.** jsdom: mark two cards partner → set both as commanders → `S.pcmd` and `S.pcmd2` both set; both boxes render; cast/deploy each independently; legacy save (no `pcmd2`) loads without throwing.
+
+## P51.5 — Emblems/anthems: deal N damage every trigger (both sides)  *(user 2026-07-10)*
+
+**Grounding.** `PLAYER_EMBLEMS` (~2057) has `enemyLose` (deal N to enemy) with a trigger selector + value input; `ENEMY_EMBLEMS` (~2096) has `youLose` (deal N to you) with `emblemTriggerSel` + value input. So damage-per-trigger EXISTS but is labelled "Damages…/Drains…" and the PLAYER damage kind ignores the emblem's `target` toggle (`playerEmblemEffect` `enemyLose` always hits `S.boss`).
+
+**Build notes (MED).** Add a clearly-labelled **⚔ Deal N damage (each trigger)** template to both `PLAYER_EMBLEMS` (kind `enemyLose`) and `ENEMY_EMBLEMS` (kind `youLose`). Make `playerEmblemEffect` honour `emblemTarget(em)` for the damage kind so a player damage emblem can be retargeted. No new fire path — the existing loops handle it.
+
+**Verify.** jsdom: add the ⚔ player template → `firePlayerEmblems('upkeep')` deals N to `S.boss`; retarget to 'player' → hits `S.youLife`. Add the ⚔ enemy template → `fireEnemyEmblems('upkeep')` deals N to `S.youLife`.
+
+## P51.6 — Enemy attack-target intelligence  *(user 2026-07-10)* — **HIGH**
+
+**Grounding.** `aiTargets(attackers)` (~2001): all-face if `estimateSwingDamage>=youLife`, else diverts the minimal smallest-power set to kill the SINGLE highest-`threatScore` player walker, else all-face. Never hits player battles, never spreads across multiple objects. `threatScore(o)` (~1284) = `THREAT_TIER[kind]` + player strength + type bonus; `THREAT_TIER={walker:4,creature:0,perm:-3,spell:-6}` but `objKind()` (~1266) maps BOTH artifact & enchantment → 'perm' (shared −3). `aiTargets` is ungated by `enemyLuck()`. No `b:ID` (player-battle) option in the enemy target `<select>` (~1611), `combatTarget` (~1661), or `approveCombat`'s vael branch.
+
+**Build notes (HIGH — combat AI).** (1) Threat order: split 'perm' so `threatScore` ranks walker>creature>enchant>artifact (audit every 'perm' consumer; keep `combatThreat` legacy for aiBlocks). (2) Multi-object pressure: `aiTargets` ranks face + `S.my.walkers` + player battles by threat, splits attackers to finish the most-valuable object(s) while still chipping face; preserve the lethal-face short-circuit + P44.3 minimal-divert/prune; gate spread on `enemyLuck()`. (3) Enemy-side battle-target plumbing: `b:ID` in the enemy target `<select>`, `combatTarget` for `dir==='vael'`, `battleDmg` in `approveCombat`'s vael branch. **Multi-lens adversarial review.** Gate on `enemyLuck()>=0`.
+
+**Verify.** jsdom: high-threat player walker + player battle + non-lethal swing → enemy diverts to finish the walker AND hits the battle while chipping face; `threatScore(enchant) > threatScore(artifact)`; easy stays face-mostly.
+
+## P51.7 — Card "properties" button → "Actions" (yellow)  *(user 2026-07-10)*
+
+**Grounding.** The drawer-toggle label is `${c._drawer?'▾ properties':'▸ properties'}` (5 identical sites: ~1761,1858,1971,2589,2597), class `drawtoggle tiny`; `.drawtoggle` (~188) is greyish (`color:var(--bone-dim)`).
+
+**Build notes (LOW).** `replace_all` the label → `'▾ Actions'`/`'▸ Actions'`; edit `.drawtoggle` to `color:var(--gold)` (+ gold border). Optionally refresh help copy.
+
+**Verify.** jsdom: rendered creature tile contains "Actions" not "properties"; `.drawtoggle` CSS uses the gold token.
+
+## P51.8 — Remove Vael's War-Cry + planeswalker treatment  *(user 2026-07-10)*
+
+**Grounding.** Vael's pool (`DUNGEON[2].pool`, ~894) lists `warcry:1`; `FX.warcry` (~718) = sorcery `run:["cmdBuff",2]` (+2/+0 to the enemy commander). Vael's commander is the planeswalker `Ash the Guardian` (`isWalker:true`, ~889). `cmdBuff` (~1326) pumps `S.cmd.p` with no `isWalker` guard. Grakk's creature-commander pool (~878) keeps `warcry` coherently.
+
+**Build notes (LOW-MED).** Delete `warcry:1` from Vael's pool (~894, NOT Grakk's ~878); drop `firebrand:1` too (also `cmdBuff`). Harden `cmdBuff` (~1326) with a `!S.cmd.isWalker` guard.
+
+**Verify.** jsdom: Vael's built deck contains no `warcry`; `cmdBuff` on a walker-commander is a no-op (guarded); Grakk's deck still has `warcry`.
+
+## P51.9 — Attacker-selection centered target popup  *(user 2026-07-10)*
+
+**Grounding.** `swing()` (~1538) gathers `_atk` creatures → `openCombat('you',attackers,vaelDefenders(),aiBlocks(attackers))` (no target arg). The resolver renders per-attacker target `<select>`s only when `ewk.length||ebat.length`. Target map is passed to `openCombat` as its `target` arg.
+
+**Build notes (MED).** In `swing()`, compute enemy non-face targets (enemy walkers + walker-commander + boss battles). If any exist, open a **centered target-assignment popup** (`#atkTargetPicker`) listing each attacker with a target dropdown; on confirm, pass the map to `openCombat('you',…,map)`. If none, go straight to `openCombat`.
+
+**Verify.** jsdom: with an enemy walker + chosen attackers, `swing()` surfaces the picker; confirming passes the map into `S.combat.target`. With only the boss face, no picker.
+
+## P51.10 — Default animation level = full  *(user 2026-07-10)*
+
+**Grounding.** `applyAnim()` (~3782) reads `…anim||'auto'`; `settingsHTML()` (~3785) reads `s.anim||'auto'`. `'auto'` adds no `motion-*` class.
+
+**Build notes (LOW).** Flip both `||'auto'` → `||'full'`. `'auto'` stays an explicit option.
+
+**Verify.** jsdom: with no `DB.settings.anim`, `applyAnim()` adds `html.motion-full`; the "Full" segment shows selected.
+
+## P51.11 — Vael reborn heals to 5 HP  *(user 2026-07-10)* — **REVERSES P49.11 (#23), user-requested**
+
+**Grounding.** `bossDown()` (~2293) Vael branch reads `_vr.reborn[S.diff]` from `DUNGEON[…"Vael's Throne"].reborn` (~888) = `{easy:1,standard:1,brutal:1}`; `S.boss.life=Math.max(1,reborn||…)`.
+
+**Build notes (LOW, EXPLICIT REVERSAL).** `reborn:{easy:1,standard:1,brutal:1}`→`{easy:5,standard:5,brutal:5}` (~888); update the "rises ENRAGED at just 1 life" tip (~3045) + the "reborn = 1/1/1" comments. The live log prints `${S.boss.life}`.
+
+**Verify.** jsdom: `bossDown()` on a Vael room at 0 life → `S.boss.life===5` (all difficulties).
