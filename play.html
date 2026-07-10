@@ -3228,7 +3228,7 @@ function showCutscene(lines,title,eyebrow,btn,opts){if(!lines||!lines.length)ret
   $("cutSigil").innerHTML=opts.sigil?`<div class="cutsigil" style="--acc:${opts.accent||'var(--gold)'}">${opts.sigil}</div>`:"";
   $("cutEyebrow").textContent=t(eyebrow||"");$("cutEyebrow").style.color=opts.eyebrowAcc||"";$("cutTitle").textContent=t(title||"");/* P49.6 */
   $("cutLines").innerHTML=lines.map(l=>`<p>${t(l)}</p>`).join("");/* P49.6: narrative lines translate via the dictionary (English fallback) */
-  $("cutQuote").innerHTML=opts.quote?`<div class="cutquote" style="--acc:${opts.accent||'var(--ember)'}"><span class="cq-mark">\u201C</span>${opts.quote}<span class="cq-mark">\u201D</span><div class="cq-by">\u2014 ${opts.speaker||''}</div></div>`:"";
+  $("cutQuote").innerHTML=opts.quote?`<div class="cutquote" style="--acc:${opts.accent||'var(--ember)'}"><span class="cq-mark">\u201C</span>${t(opts.quote)}<span class="cq-mark">\u201D</span><div class="cq-by">\u2014 ${opts.speaker||''}</div></div>`:"";/* P49.6: spoken quote translates (speaker name stays) */
   const sp=$("cutSpoils");if(opts.spoils){sp.innerHTML=opts.spoils;sp.style.display="";}else{sp.innerHTML="";sp.style.display="none";}
   renderCutButtons(opts.buttons||[{label:btn||"Continue \u25B8",on:closeCutscene,cls:"big ok"}]);
   $("cutscene").classList.add("show");}
@@ -4007,7 +4007,42 @@ const I18N={it:{
   /* ---- onboarding / tutorial offer ---- */
   "📖 Learn the ropes":"📖 Impara le basi","▶ Just play":"▶ Gioca e basta","Two ways to play":"Due modi di giocare",
   /* ---- siege popup ---- */
-  "Got it ▸":"Ho capito ▸"
+  "Got it ▸":"Ho capito ▸",
+  /* ---- warden intros / quotes (rendered via showCutscene → t()) ---- */
+  "Smoke coils up out of the gorge. At its mouth squats the Ember Gate, and atop the wall a goblin warlord grins through the heat-haze.":"Il fumo si arriccia su dalla gola. Alla sua imboccatura è acquattata la Porta delle Braci, e in cima al muro un signore della guerra goblin sogghigna tra la foschia rovente.",
+  "“Down there's where the dead things live,” Grakk calls, hefting a torch. “You want past? Then burn — or be burned.”":"“Laggiù è dove vivono le cose morte”, grida Grakk, sollevando una torcia. “Vuoi passare? Allora brucia — o sarai bruciato.”",
+  "Burn bright, little walker. It's the only way anybody leaves my gate.":"Brucia intensamente, piccolo walker. È l'unico modo in cui qualcuno lascia la mia porta.",
+  "...cold... when did... the fire get so... cold...":"...freddo... quand'è che... il fuoco è diventato così... freddo...",
+  "The gate-fires gutter out behind you. The air turns wet and cold and sweet with rot.":"I fuochi della porta si spengono alle tue spalle. L'aria si fa umida, fredda e dolce di marciume.",
+  "Something vast shifts in the dark of the Slag Pit, and a voice like settling gravel says: “Grakk burned bright. Bright things burn out. I will take my time with you.”":"Qualcosa di immenso si muove nel buio della Fossa di Scorie, e una voce come ghiaia che si posa dice: “Grakk ardeva luminoso. Le cose luminose si consumano. Con te mi prenderò il mio tempo.”",
+  "I am in no hurry. The dead never are. Bleed for me a while — I'll grow fat on it.":"Non ho fretta. I morti non ne hanno mai. Sanguina per me un po' — io ci ingrasserò.",
+  "Spent... at last... even the Pit... runs... dry...":"Esausto... alla fine... persino la Fossa... si prosciuga...",
+  "The Pit narrows to a stair, and the stair to a throne of cooling slag. Heat and cold war in the same breath.":"La Fossa si restringe in una scala, e la scala in un trono di scorie che si raffreddano. Caldo e freddo si combattono nello stesso respiro.",
+  "Vael does not rise. “Two of my wardens, undone,” the Tyrant muses, almost fond. “You've come far enough to matter. Good. Ash should have witnesses.”":"Vael non si alza. “Due dei miei guardiani, disfatti”, medita il Tiranno, quasi con affetto. “Sei giunto abbastanza lontano da contare. Bene. La cenere dovrebbe avere testimoni.”",
+  "Ash should have witnesses. Kneel, and I will let you be one. Refuse, and you will be the ash.":"La cenere dovrebbe avere testimoni. Inginocchiati, e ti lascerò esserlo. Rifiuta, e sarai tu la cenere.",
+  "Embers... do not... choose... twice...":"Le braci... non scelgono... due volte...",
+  /* ---- victory (vaelEscape / guffFreed / epilogue) ---- */
+  "You put Vael down a second time — and a second time the slag-throne should cradle a corpse. It does not.":"Abbatti Vael una seconda volta — e una seconda volta il trono di scorie dovrebbe cullare un cadavere. Non lo fa.",
+  "His own Ember will not let its maker end. Somewhere past the Warren's reach a flame catches, drags him out through the back of his own death, and leaves only heat-shimmer and the cold print of where a tyrant stood.":"La sua stessa Brace non lascia finire il suo artefice. Da qualche parte oltre la portata della Tana una fiamma si accende, lo strappa via dal retro della sua stessa morte, e lascia solo un tremolio di calore e l'impronta fredda di dove stava un tiranno.",
+  "You could not kill the deathless thing. You only broke its hold on this place — and that, tonight, is enough. The Warren's cages have gone quiet, and one of them is not empty.":"Non hai potuto uccidere la cosa immortale. Ne hai solo spezzato la presa su questo luogo — e stanotte, questo basta. Le gabbie della Tana sono ammutolite, e una di esse non è vuota.",
+  "Past the guttering throne the Warren narrows to one last vault — grave-cold, lit only by dying goblin-fire. In a cage of ember-iron a broad-shouldered man waits: red-bearded, seamed with old scars, and in all this dark he has not knelt.":"Oltre il trono guizzante la Tana si restringe in un'ultima cripta — fredda come una tomba, illuminata solo da fuoco goblin morente. In una gabbia di ferro-brace attende un uomo dalle spalle larghe: barba rossa, segnato da vecchie cicatrici, e in tutto questo buio non si è inginocchiato.",
+  "The lock yields to your spark. The bars fall away, and <b>Commodore Guff</b> rises to his full height — slow and certain, the way a tide is certain of its shore.":"La serratura cede alla tua scintilla. Le sbarre crollano, e il <b>Commodoro Guff</b> si erge in tutta la sua statura — lento e sicuro, come una marea è sicura della sua riva.",
+  "He closes a broad, scarred hand around your wrist — not to be lifted, but to be certain you are real. He takes your measure — an outsider, off-plane, owed nothing on this burning ground — and bows his head to you all the same.":"Chiude una mano larga e sfregiata attorno al tuo polso — non per farsi sollevare, ma per essere certo che tu sia reale. Ti soppesa — un estraneo, di un altro piano, a cui nulla è dovuto su questa terra ardente — e china comunque il capo verso di te.",
+  "The Warren's fires gutter at your back, and for the first time in an age they warm nothing. <b>Guff</b> climbs free beside you, and the dark you carved through feels thinner now — a road out instead of a grave.":"I fuochi della Tana guizzano alle tue spalle, e per la prima volta da un'era non scaldano nulla. <b>Guff</b> risale libero al tuo fianco, e il buio che hai squarciato ora sembra più sottile — una via d'uscita invece di una tomba.",
+  "Somewhere in the plane's deeper dark, <b>Vael</b> nurses his deathless <b>Ember</b> and waits to burn again. Let him. You have the founder at your side now, and a cause to put back together.":"Da qualche parte nel buio più profondo del piano, <b>Vael</b> cova la sua <b>Brace</b> immortale e attende di ardere di nuovo. Lascialo fare. Ora hai il fondatore al tuo fianco, e una causa da rimettere insieme.",
+  "Far below, in the cold halls of the <b>Drowned Conclave</b>, the remnant still holds — and its scattered generals wait to be found. Guff turns toward the deep water, and for the first time in an age the grief eases out of his face — something like hope settles there instead.":"Molto più in basso, nelle fredde sale del <b>Drowned Conclave</b>, ciò che resta ancora tiene — e i suoi generali dispersi attendono di essere trovati. Guff si volge verso l'acqua profonda, e per la prima volta da un'era il dolore si scioglie dal suo volto — al suo posto si posa qualcosa di simile alla speranza.",
+  /* ---- cutscene titles / eyebrows / buttons ---- */
+  "The Ember Keeps Its Own":"La Brace Tiene i Suoi","The Tyrant slips the leash":"Il Tiranno sfugge al guinzaglio","Find Guff ▸":"Trova Guff ▸",
+  "The Commodore Rises":"Il Commodoro Si Leva","Climb out of the dark ▸":"Risali dal buio ▸","The Warren Consumes You":"La Tana Ti Consuma","↻ Try again":"↻ Riprova","Quit to Menu":"Torna al Menu",
+  "The enemy holds the field. The Warren keeps what it takes — but the gate opens again for those mad enough to return.":"Il nemico tiene il campo. La Tana trattiene ciò che prende — ma la porta si riapre per chi è abbastanza folle da tornare.",
+  /* ---- store / shop ---- */
+  "The Merchant":"Il Mercante","Buy":"Compra","Need gold":"Serve oro","common":"comune","uncommon":"non comune","rare":"raro","legendary":"leggendario",
+  "The Merchant is closed while you're in the dungeon.":"Il Mercante è chiuso mentre sei nel dungeon.",
+  /* ---- victory cutscene titles/quotes/buttons ---- */
+  "The Long Way Back":"La Lunga Via del Ritorno",
+  "I did not call for a weapon. I called into the dark — and a friend answered. I will not forget which you chose to be.":"Non ho invocato un'arma. Ho chiamato nel buio — e un amico ha risposto. Non dimenticherò ciò che hai scelto di essere.",
+  "The Conclave is not dead while one of us still stands. Walk with me.":"Il Conclave non è morto finché uno di noi resta in piedi. Cammina con me.",
+  "↻ Descend again":"↻ Scendi di nuovo","To be continued… ▸":"Continua… ▸"
 }};
 function settingsHTML(){const s=(DB&&DB.settings)||{};const ts=s.textSize||'M';const an=s.anim||'full';/* P51.10: default = full (matches applyAnim) */const vol=Math.round(((typeof _vol==='number')?_vol:1)*100);
   const seg=(cur,opts,fn)=>`<div class="seg">${opts.map(([v,l])=>`<button class="${cur===v?'on':''}" onclick="${fn}('${v}')">${t(l)}</button>`).join('')}</div>`;
