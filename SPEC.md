@@ -239,7 +239,7 @@
 | &nbsp;&nbsp;P49.10 Combat/PW UX: combat popup minimize/restore (turn stays blocked) · PW abilities off-stack + announce popup · battles/sieges side-selectable · resurgent timing | ✅ done (bullets 19·22·11·10) — **#22 reverses P38** (enemy walkers only) |
 | &nbsp;&nbsp;P49.11 Vael/Ash the Guardian: reborn at 1 HP · +1 → "Create a 1/1 Ash Soldier with haste" · −3 → graveyard exile-X + free reanimate ≤X | ✅ done (bullets 23·27·28) |
 | &nbsp;&nbsp;P49.12 Items & cards: enemy top/bottom-N reveal shows full card info · add art to saved homebrew cards | ✅ done (bullets 14·17; #13 resolved — no change) |
-| **Phase 50 — Fix batch 2026-07-08** (Undo button · live combat popup · deck-tools land→board · emblem/card tax↔ward · commander casting & options · Murglax card rename · smarter enemy AI · land mana colour · Ash-as-planeswalker · store balance · hide commander tax · pooled soundtrack music · P50.15 unified tax) | 🟢 **14 of 15 built — only P50.9 (smarter AI) remains** (`sw` v66). This session (2026-07-09/10) shipped P50.1/.2/.4/.5/.6/.7/.8/.10/.11/.12/.13/.14; the parallel session shipped P50.15 (reverses P50.5). |
+| **Phase 50 — Fix batch 2026-07-08** (Undo button · live combat popup · deck-tools land→board · emblem/card tax↔ward · commander casting & options · Murglax card rename · smarter enemy AI · land mana colour · Ash-as-planeswalker · store balance · hide commander tax · pooled soundtrack music · P50.15 unified tax) | ✅ **ALL 15 built** (`sw` v67). This session (2026-07-09/10) shipped P50.1/.2/.4/.5/.6/.7/.8/.9/.10/.11/.12/.13/.14; the parallel session shipped P50.15 (reverses P50.5) + P50.16. |
 | &nbsp;&nbsp;P50.1 Undo button in the Turn-flow box (`.flowbtns`, beside ◂ Back / ▶) wired to the existing `undo()` | ✅ **done v59** — `#undoBtn` (idset-safe add), disabled when `!_hist.length\|\|S.paused` |
 | &nbsp;&nbsp;P50.2 Combat resolver popup auto-updates in real time — every board change (flash a creature = new blocker · removal drops an attacker/blocker) recalculates the open popup | ✅ **done v66** — `_combatLivePool()` rebuilds the pool live; `_combatPrune()` runs in the render tail (even minimized) + at `approveCombat`. 4-lens adversarial review (non-mutating confirmed) |
 | &nbsp;&nbsp;P50.3 Deck-tools: a land searched/looked/revealed can go straight onto the enemy battlefield as a mana source | ✅ done — `70709f1` (`dtMoveObj` land branch + `moveActs` board button · `tests/land-to-board.test.js`) |
@@ -249,7 +249,7 @@
 | &nbsp;&nbsp;P50.6 Expand card options (kw / ±P/T / counters / drawer) to **commanders** — fill the command-zone player-cmd and enemy walker-cmd gaps | ✅ **done v61** — `pcmd` scope on getObj/getCre; `objPT`; markerRow/toggleMarker→getObj; command-zone editor + walker-cmd drawer |
 | &nbsp;&nbsp;P50.7 Rename the one card using a warden's exact name: `tyrant` "Murglax, Pit-Tyrant" → related-but-distinct | ✅ **done v58** — "Servant of the Pit-Tyrant" (key kept) |
 | &nbsp;&nbsp;P50.8 Cast the **commander** from "✦ Cast a spell" (show + cast + update command zone) · command-zone cast fires prowess | ✅ **done v62** — `castCmdFromSearch()`; walker-cmd cast fires `firePlayerProwess()` |
-| &nbsp;&nbsp;P50.9 Smarter enemy strategy — mana spend + attack/block EV that minimizes self/creature loss | ⬜ **the ONLY remaining Phase-50 task** — user directive (2026-07-09): "way smarter, strategize attacks/blocks/mana, consider all variables"; difficulty stays. HIGH-risk (combat math), full review |
+| &nbsp;&nbsp;P50.9 Smarter enemy strategy — mana spend + attack/block EV that minimizes self/creature loss | ✅ **done v67** — 3 gated (`enemyLuck()>=0`) heuristics: profitableBlock holds a bomb the player can GANG-kill favorably · aiBlocks won't throw a valuable body to chump a non-lethal hit when the boss is healthy · enemyHoldUpReserve develops instead of sandbagging when behind on board. Single-agent adversarial review = NO findings |
 | &nbsp;&nbsp;P50.10 Enemy land **mana colour** on the manual deck-tools land→board path (`dtMoveObj` still colour-blind — completes P50.3) | ✅ **done v57** — `addBossSource(prodUnits(fx,1))` |
 | &nbsp;&nbsp;P50.11 "Ash the Guardian" must be a **planeswalker** on the stack, not a creature (`type:'creature'` hardcoded ~2444) | ✅ **done v58** — `type:(S.cmd.isWalker?'planeswalker':'creature')` |
 | &nbsp;&nbsp;P50.12 Store items cost a bit more + re-tier by strength (scholar +1 card/turn, surge +1 mana/turn under-tiered) | ✅ **done v63** — in-band: scholar→rare 26g, surge→legendary 38g (no epic tier / no blanket bump) |
@@ -3244,7 +3244,7 @@ Play each difficulty a few runs and note:
 
 ---
 
-# PHASE 50 — Fix batch 2026-07-08 🟢 14 of 15 built (P50.3 v57 · P50.7/.10/.11/.13 v58 · P50.1 v59 · P50.4/.5 v60 · P50.6 v61 · P50.8 v62 · P50.12 v63 · P50.14 v64 · P50.15 v65 [parallel session, reverses P50.5] · P50.2 v66 · **only P50.9 (smarter AI) remains**)
+# PHASE 50 — Fix batch 2026-07-08 ✅ ALL 15 built (P50.3 v57 · P50.7/.10/.11/.13 v58 · P50.1 v59 · P50.4/.5 v60 · P50.6 v61 · P50.8 v62 · P50.12 v63 · P50.14 v64 · P50.15 v65 [parallel session, reverses P50.5] · P50.2 v66 · P50.9 v67 — Phase 50 DONE (only P49.6 Italian i18n deferred repo-wide))
 
 > **Goal.** Fixes reported by the user on 2026-07-08, grounded below in `play.html` (post-P49.9 code, `70709f1`). **P50.3 already shipped this session**; **P50.1–P50.2 are specced build-ready** — not yet in the code (re-grep confirmed: the Turn-flow box has only ◂ Back + ▶ `#dmBtn`, and the combat popup is static once opened).
 
@@ -3333,7 +3333,10 @@ Play each difficulty a few runs and note:
 
 **Build notes (LOW / LOW-MED).** (a) Add a "cast your commander" row to `cardSearchHTML` surfacing `S.pcmd`, calling the existing `castCmd()` (guard null / already-on-board / `S.over`). (b) Fire `firePlayerProwess()` on commander RESOLVE, gated to noncreature (walker) casts (in `resolveCmdToBoard` or the `_pcmd` branch ~2634) so a creature commander doesn't wrongly trigger it — matching `resolvePlayerItem`.
 
-## P50.9 — Smarter enemy strategy (mana + attacks + blocks)  *(user 2026-07-08, item 6)*
+## P50.9 — Smarter enemy strategy (mana + attacks + blocks)  *(user 2026-07-08, item 6)* — ✅ **DONE** (v67)
+
+**Shipped (`build/p50-9-final`, via an isolated git worktree to avoid the parallel session's live edits).** Three targeted heuristics, all gated on `enemyLuck()>=0` (easy stays legacy), addressing the user's "way smarter, strategize attacks/blocks/mana" directive on top of the already-sophisticated P34 AI (value-based casting, hold-up reserve, `gangToKill`, survival-first blocking): **(A) attacks** — `profitableBlock` (in `vaelAttackers`) now also holds a bomb back if the player can GANG-kill it at a favourable trade (`gangToKill` + a `resolveAttack` value check: the player's lost `threatScore` < the attacker's), so the enemy won't alpha-strike its best creature into a gang-block; LETHAL PUSH / wide / evasive still override. **(B) blocks** — the non-lethal chump no longer throws away a valuable body when the boss is healthy; it chumps only if the hit is genuinely dangerous (boss would drop to ≤25% max / ≤6) or the body is cheap (≤½ the threat's value). Survival-first still catches true lethal. **(C) mana** — `enemyHoldUpReserve` returns 0 (develop) when clearly behind on board (your creatures outvalue its by >1.5×+4) instead of sandbagging interaction mana. Single-agent adversarial review → NO CONFIRMED FINDINGS (verified non-mutating, no crash, gating correct, lethal-safe). Driver `tests/p50-9-ai.test.js` (13 asserts). npm test 47/47. Original spec below.
+
 
 **What.** The enemy should spend mana more wisely and make combat decisions (attacks and blocks) that consistently minimize damage to itself and preserve its creatures.
 
