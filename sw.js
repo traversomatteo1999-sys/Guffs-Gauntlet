@@ -47,7 +47,7 @@
 /* v66 (P50.2): the combat resolver recalculates LIVE — while it's open, a flashed creature appears
    as a blocker, a removed combatant drops, totals recompute (no cancel-and-reopen). _combatPrune now
    rebuilds the blocker pool from the live board and runs on every render (even minimized) + at approve. */
-const CACHE = 'gg-cache-v66';
+const CACHE = 'gg-cache-v67';
 const SHELL = [
   './index.html',
   './play.html',
