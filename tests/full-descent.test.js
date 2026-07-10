@@ -13,6 +13,8 @@ function playerAttack(){
   ev(`S.my.creatures=[{id:S.nextId++,name:'Champion',p:40,t:40,baseP:40,baseT:40,kw:['trample','haste','vigilance'],color:['G'],plus:0,minus:0,other:[],tapped:false,sick:false,phased:false,token:false,dies:'graveyard',_atk:true,strength:'top'}]`);
   ev("S.my.creatures.forEach(c=>c._atk=true)");
   try{ ev("swing()"); }catch(e){ return 'swing threw: '+e.message; }
+  /* P51.9: when the enemy has non-face targets (e.g. Grakk's siege), swing() opens a centered target picker first — confirm it (defaults each attacker to the enemy face) to proceed to combat. */
+  if(ev("!S.combat && _atkPickAttackers")){ try{ ev("confirmAtkTargets()"); }catch(e){ return 'confirmAtkTargets threw: '+e.message; } }
   if(ev("!!S.combat")){ try{ ev("approveCombat()"); }catch(e){ return 'approve threw: '+e.message; } }
   return null;
 }

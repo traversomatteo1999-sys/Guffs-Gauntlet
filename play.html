@@ -1553,8 +1553,28 @@ function swing(){ // YOUR attack -> Vael proposes blocks
   if(!attackers.length){log("sys","Select at least one untapped, non-sick attacker.");return;}
   if(PHASES[S.phase]!=='combat')log("sys",`⚠ You're attacking outside your Combat phase — allowed here, but normally you'd Continue ▸ to Combat first.`);
   const etx=enemyAttackTax();if(etx.mana||etx.life){const parts=[];if(etx.mana)parts.push(`${etx.mana} mana`);if(etx.life)parts.push(`${etx.life} life`);log("sys",`⚠ Enemy attack tax: pay <b>${parts.join(' + ')}</b> per attacker to attack ${S.boss.name} (reminder — apply it yourself).`);}/* P17.4: enemy-side Propaganda — reminder-only (you have no mana pool) */
-  openCombat('you',attackers,vaelDefenders(),aiBlocks(attackers));
+  /* P51.9: if the enemy has attackable objects beyond its face (planeswalkers, a walker-commander, a siege/battle), pop a centered target picker FIRST so the player aims each attacker; otherwise go straight to combat. */
+  const ewk=(S.enemyWalkers||[]).filter(w=>!w.phased).concat(S.cmd&&S.cmd.isWalker&&S.cmd.inPlay&&!S.cmd.phased?[S.cmd]:[]);
+  const ebat=(S.battles||[]).filter(b=>b.side==='boss'&&!b.defeated);
+  if(ewk.length||ebat.length){openAtkTargetPicker(attackers,ewk,ebat);return;}
+  _openYourCombat(attackers,{});
 }
+function _openYourCombat(attackers,target){openCombat('you',attackers,vaelDefenders(),aiBlocks(attackers),target||{});}
+/* P51.9: centered attacker-target picker — shown from swing() only when non-face targets exist. */
+let _atkPickAttackers=null;
+function openAtkTargetPicker(attackers,ewk,ebat){_atkPickAttackers=attackers;
+  const opts=`<option value="boss">⚔ ${embEsc(ENs())} (face)</option>${ewk.map(w=>`<option value="w:${w.id}">↳ ${embEsc(w.name||w.n)} (loy ${w.loyalty})</option>`).join('')}${ebat.map(b=>`<option value="b:${b.id}">🜨 ${embEsc(b.name)} (def ${b.def})</option>`).join('')}`;
+  const rows=attackers.map(a=>`<div class="blockrow"><div class="ba">${cnm(a)} ${effP(a)}/${effT(a)} ${(a.kw||[]).length?'<span class="manaline">['+a.kw.join(', ')+']</span>':''}</div><div class="btnrow"><span class="lab">target</span><select id="atkpick_${a.id}">${opts}</select></div></div>`).join('');
+  $("modalBody").innerHTML=`<h2>⚔ Choose attack targets</h2><p style="color:var(--bone-dim);font-style:italic">${embEsc(ENs())} has attackable planeswalkers / sieges. Aim each attacker at the enemy face, a planeswalker, or a siege — then confirm (you can still edit blocks in the next step).</p>${rows}<div class="btnrow" style="margin-top:12px"><button class="big azor inline" onclick="confirmAtkTargets()">⚔ Attack ▸</button><button class="mini" onclick="closeAtkTargetPicker()">cancel</button></div>`;
+  $("overlay").classList.add("show");}
+function closeAtkTargetPicker(){_atkPickAttackers=null;$("overlay").classList.remove("show");}
+function confirmAtkTargets(){const attackers=_atkPickAttackers;if(!attackers){closeOverlay();return;}
+  const map={};attackers.forEach(a=>{const sel=$("atkpick_"+a.id);if(sel&&sel.value)map[a.id]=sel.value;});
+  _atkPickAttackers=null;$("overlay").classList.remove("show");
+  _openYourCombat(attackers,map);
+  /* P39.2: preserve the enemy's siege-defense — for each attacker aimed at a boss battle, let the enemy decide to block it (mirrors combatTarget's b: branch). */
+  Object.keys(map).forEach(aid=>{const v=''+map[aid];if(v.slice(0,2)==='b:')enemyDefendSiege(aid,getBattle(+v.slice(2)));});
+  if(S.combat)renderCombat();}
 /* P34.1: rough estimate of the combat damage a swing lands on the player — evasive fliers (no fly/reach defender) connect; the player blocks its biggest ground attackers with its available bodies (a trampler spills a little); the rest connect. Feeds the enemy's lethal-push + defensive hold-back. */
 function estimateSwingDamage(atts){
   const bodies=S.my.creatures.filter(c=>!c.tapped&&!c.phased&&!kw(c,"can't block")).map(b=>({t:effT(b),fly:kw(b,'flying')||kw(b,'reach'),used:false}));
