@@ -8,7 +8,7 @@
 
 ## STATUS (update as you go)
 
-- **⏩ CURRENT FRONTIER (2026-07-10):** Phases 0–51 done. **Phase 51 (2026-07-10 fix batch, 11 sub-tasks) ✅ ALL BUILT, merged & pushed** — `sw` v80 @ `fe658f7`. Each: branch-per-task → merge `--no-ff` → push, with a `tests/p51-*.test.js` driver + syntax gate; the two HIGH-risk tasks (P51.6 enemy attack-target AI, P51.4 partner commanders) each got a 4-lens adversarial-review Workflow (2 + 6 confirmed findings fixed). `npm test` = 58/58 green. **The ONLY spec item still deferred repo-wide: P49.6 (Italian i18n).**
+- **⏩ CURRENT FRONTIER (2026-07-10):** Phases 0–51 done. **Phase 51 (2026-07-10 fix batch, 11 sub-tasks) ✅ ALL BUILT, merged & pushed** — `sw` v80 @ `fe658f7`. Each: branch-per-task → merge `--no-ff` → push, with a `tests/p51-*.test.js` driver + syntax gate; the two HIGH-risk tasks (P51.6 enemy attack-target AI, P51.4 partner commanders) each got a 4-lens adversarial-review Workflow (2 + 6 confirmed findings fixed). `npm test` = 58/58 green. **The ONLY spec item still deferred repo-wide: P49.6 (Italian i18n).** **⬜ NEW — Phase 52 (2026-07-10 batch 2, 6 items) is SPECCED below but NOT built:** command-zone commander options · siege/battle popup · enemy-commander creature-card layout · legendary-planeswalker copy discard · **creature/permanent subtypes** (MED-HIGH) · wire the new soundtracks. **P52.1 reverses P50.6 (user-requested) — flag before building.**
 - **⏩ PRIOR FRONTIER (2026-07-09):** Phases 0–48 done. **Phase 49 = 11 of 12 done** — P49.9 (enemy coloured mana + London mulligan) shipped at `70709f1`; only **P49.6 (Italian i18n)** remains, deferred to its own session. **Phase 50 (2026-07-08 fix batch, 14 sub-tasks) is IN PROGRESS this session** — see `# PHASE 50`; P50.9 (smarter enemy AI) built to the user's "way smarter, consider all variables" directive, P50.14 (story soundtrack) built against the user-committed `Soundtrack/` folder. `sw.js` moving v56→v57→…
 - **Branch:** `main` (== `origin/main`). **Phases 0–40 ALL BUILT, merged & pushed** (each: per-task jsdom driver + syntax gate + id-diff + adversarial review). **Phases 41–46 — the full-game rework (specced 2026-07-04) — ✅ ALL DONE, merged & pushed (2026-07-06):** ✅ Guff red-beard lore fix (41) · ✅ item duration & economy coherence + the immortal-passives root-cause fix (42) · ✅ Campaign & Sandbox two-mode + multi-level infra (43 — 4-lens review, 8 fixed) · ✅ enemy realism 2 + colour-pie mechanics library (44 — 5-lens review, 5 fixed) · ✅ **UI/animation/sound overhaul (45 — self-hosted fonts/tokens/legibility · card art · sound · FX layer · Moxfield desktop grid · stack dock; two 3-lens reviews, 3+4 fixed)** · ✅ **completeness & hardening + FINAL VALIDATION GATE (46 — checked-in `npm test` suite (25/25) · error toast · ⚙ Settings · a11y · onboarding · deploy files · code cleanup; the P46.8 gate passed — see the VALIDATION RECORD under `# PHASE 46`)**. **Remaining = 2 user actions only:** the balance playtest + the one-time Netlify Import-from-Git connection (checklists in §P46.8). Platform decision **D4 (stay web/PWA)** + app-strategy **D5 (one responsive app)** adopted in §3. **Post-46 shipped (in code, now back-filled into this tracker): Phase 47** (real per-warden art — icons/backdrops/menu/lore images + cutscene reveal; PNG→JPEG compression) · **Phase 48** (reverted the P45.5/6 desktop grid back to the spec's **vertical cornice tabs** at every width · fixed first-run tutorial order to fire after all cutscenes · **P48.3 renamed Vael's planeswalker to "Ash the Guardian"** (villain name stays *Vael, the Ember Tyrant*) and **moved the Siege from Vael to Grakk** ("Siege of the Ember Gate", data-driven `room.siege`+`fieldBossSiege`, heals Grakk +1/upkeep)). `sw.js` now `gg-cache-v55`. **Phase 49 = the 2026-07-07 fix batch (30 bullets → 12 themed sub-tasks) — ✅ 10 of 12 BUILT, merged & pushed (`origin/main` @ `2714681`):** ✅ P49.1 · P49.2 · P49.3 (reverses P4.2/4.4 — enemy instants auto-cast) · P49.4 · P49.5 · P49.7 · P49.8 · P49.10 (reverses P38 — enemy PW abilities off-stack) · P49.11 · P49.12. Each: branch-per-task → merge `--no-ff` → push, with a committed `tests/p49-*.test.js` driver + syntax gate (risky ones P49.2/.3/.10 got a single-agent adversarial review); **`npm test` = 35/35 green.** **Remaining = the 2 mega-tasks the user deferred to their own weekly budget windows:** ⬜ P49.6 (Italian i18n layer, net-new) · ⬜ P49.9 (enemy coloured/colourless mana + London-mulligan penalty; reverses the P44 default). See `# PHASE 49` for the narrowing defaults on both.
 - **Canonical file:** `play.html` (the deployed PWA game). ⚠ **the game moved `index.html`→`play.html` on 2026-07-06** (`72b567b`); **`index.html` is now the tiny SEO landing page** — do NOT edit it for gameplay. The test harness, `sw.js` precache, and every `tests/*.js` source-read now target `play.html` (some in-file *comments*/`tests/README.md` still say "index.html" — stale wording, they read `play.html`). ⚠ **`const ART=` is a ~1.5 MB single-line base64 blob at ~line 683 — never Read/print any range spanning it** (re-check with `grep -n 'const ART='` before trusting the number); the self-hosted **fonts are also inlined as data-URIs in the CSS**. Real JS runs from ~685 to end; **re-grep function names — line numbers drift** (they shifted vs the old `index.html`).
@@ -268,6 +268,13 @@
 | &nbsp;&nbsp;P51.9 Attacker selection: centered **target popup** — shown only when targets beyond the enemy face exist | ✅ **done v77** — `swing()` opens `openAtkTargetPicker` (centered `#overlay`) when enemy walkers/walker-cmd/sieges exist; `confirmAtkTargets` feeds the target map into `openCombat` + preserves P39.2 siege-defense; else combat opens directly |
 | &nbsp;&nbsp;P51.10 Default **animation level = full** | ✅ **done v70** — both `applyAnim`/`settingsHTML` fallbacks `'auto'`→`'full'`; `'auto'` stays an explicit OS-deferring option |
 | &nbsp;&nbsp;P51.11 Vael reborn heals to **5 HP** (was 1) | ✅ **done v71** — `reborn:{5,5,5}`; explicit reversal of P49.11 #23; tip/comments updated |
+| **Phase 52 — Fix batch 2026-07-10 (batch 2)** (command-zone commander shows no options · siege/battle popup · enemy-commander creature-card **layout** parity · legendary-planeswalker copy → legend-rule discard · **creature/permanent subtypes** on every card · wire the new soundtracks) | ⬜ **SPECCED — NOT built** — the user's 2026-07-10 *second* fix list (6 items), grounded below in `# PHASE 52` against `play.html` post-P51. **P52.1 is an explicit user-requested reversal of P50.6** (see Phase 52 decisions). |
+| &nbsp;&nbsp;P52.1 Player commander in the **command zone shows no card options** — the per-card controls appear only once it's on the battlefield (like any card) | ⬜ **SPECCED** — trims `renderOneCmd` `cz` branch to name + cast/deploy/to-hand; **reverses P50.6** (user-requested) |
+| &nbsp;&nbsp;P52.2 **Popup when a siege/battle is played**; if the enemy **starts** a turn with one in play, pop it at begin-turn | ⬜ **SPECCED** — modal on `fieldBossSiege`/battle-enter + a begin-turn check with a per-battle `_popped` flag |
+| &nbsp;&nbsp;P52.3 Enemy commander creature-card **layout** parity — top: ↩hand · ↺reset · Slay → name → abilities → **⧉copy at the bottom** | ⬜ **SPECCED** — reorders `cmdFieldCard` creature branch + `_cmdSecondaryBtns` to mirror `enemyCard()` (refines P51.3) |
+| &nbsp;&nbsp;P52.4 Copying a **legendary planeswalker** → popup: pick which duplicate goes to the **graveyard**, or tick "**copy isn't legendary**" | ⬜ **SPECCED** — extends `cloneInto`/`copyPermanent` with a legend-rule prompt |
+| &nbsp;&nbsp;P52.5 **Creature/permanent subtypes** on every card (enemy + player) — auto-migrate imported library, manual editor, walker type = its name, multi-type (e.g. Soldier Artifact), enchantment types (Aura/Elemental) | ⬜ **SPECCED (MED-HIGH — save-shape migration + all enemy data + import mapper + UI; may split 52.5a/b)** |
+| &nbsp;&nbsp;P52.6 Wire the **newly-added soundtracks** into `MUSIC_POOLS` (Grakk +2 · Murglax +2 · Vael +2) | ⬜ **SPECCED** — pure data; add the 6 new track filenames |
 
 ---
 
@@ -3588,3 +3595,165 @@ Key: `advance()` (~2270) is the **single choke point** for both Grakk→Murglax 
 **Build notes (LOW, EXPLICIT REVERSAL).** `reborn:{easy:1,standard:1,brutal:1}`→`{easy:5,standard:5,brutal:5}` (~888); update the "rises ENRAGED at just 1 life" tip (~3045) + the "reborn = 1/1/1" comments. The live log prints `${S.boss.life}`.
 
 **Verify.** jsdom: `bossDown()` on a Vael room at 0 life → `S.boss.life===5` (all difficulties).
+
+# PHASE 52 — Fix batch 2026-07-10 (batch 2) ⬜ SPECCED — NOT built
+
+> **Goal.** The user's 2026-07-10 *second* fix list (6 items), grounded below in `play.html` (post-P51,
+> `sw` v80 @ `fe658f7`) by direct greps. **NOT yet built — this entry only records the spec.** Same loop
+> when built: branch-per-task → merge `--no-ff` → push, each with a `tests/p52-*.test.js` driver + syntax
+> gate; the save-shape/board-removal tasks (P52.4 legend-rule copy, P52.5 subtypes) get a review per the
+> §1 triage. **P52.1 is an explicit, user-requested reversal of P50.6 — see decisions.**
+
+### Phase 52 decisions (recorded — confirm at build)
+
+- **P52.1 command-zone commander shows NO card options — EXPLICIT REVERSAL of P50.6 (v61).** P50.6
+  deliberately added the full editor (kw / ±P·T / counters / drawer) to the *command-zone* player
+  commander; the user now wants those controls to appear only once the commander is on the battlefield,
+  "like any other card." User-requested → allowed reversal (same footing as P51.11 reversing P49.11).
+  Coherent with the engine: `castCmd`/`deployCmd` push the *same* object, so editing it on the
+  battlefield after deploy is equivalent — nothing is lost, only relocated. `renderOneCmd`'s `onBoard`
+  branch already delegates to the card below, so only the `cz` branch is trimmed.
+- **P52.2 popup scope = boss-side sieges/battles** (the threat the player must notice). Player-cast
+  battles are knowingly played → no popup for them by default (confirm at build). The modal is
+  Esc/backdrop-dismissable — it's informational, not progression-gating (trap #11 only forbids trapping
+  *gating* overlays).
+- **P52.3 layout parity, not a new option set.** P51.3 already gave the enemy commander full option
+  *parity*; this task only reorders the creature branch to mirror `enemyCard()` (actions + Slay on top,
+  name, abilities, **⧉copy at the bottom**). Whether to also surface ⇄ take-control on the commander is
+  deferred (default: no — it's the enemy's identity card; keep ↩hand/↺reset up + move ⧉copy down).
+- **P52.4 legend-rule prompt centers on planeswalkers** (the user's example) but the mechanic is the
+  general legend rule — reuse it for any legendary if cheap. Applies to the player-driven copy flows
+  (`cloneInto` / `copyPermanent`). "Copy isn't legendary" stays available *inside* the same popup
+  (supersedes the pre-emptive `_cloneNoLeg` checkbox for this case).
+- **P52.5 field name `subtypes` (array of strings).** Walker subtype = the character name in its title
+  ("Ash the Guardian" → `["Ash"]`); multi-subtype supported (`["Soldier","Artifact"]` style);
+  enchantment subtypes (Aura / Elemental) allowed. Auto-migrate every profile's `p.library` cfg + in-`S`
+  permanents via `migrateProfiles()`/`migrate()` (+ `SAVE_V` bump). **MED-HIGH; may split into 52.5a
+  (field + migration + import + editor + display) and 52.5b (the enemy/player data pass)** — recommend
+  its own budget window.
+- **P52.6 pure data** — the mp3s already exist under `Soundtrack/<Warden>/`; only the `MUSIC_POOLS`
+  arrays are stale. SW bump still required (play.html changed); the tracks stream online and are NOT
+  precached (the P50.14 rule).
+
+## P52.1 — Command-zone commander shows no card options  *(user 2026-07-10)* — **REVERSES P50.6, user-requested**
+
+**Grounding.** `renderOneCmd(slot,boxId)` (~2015). The `cz` branch (~2017 — commander in hand or command
+zone) currently renders the FULL editor: `.acts` cast/deploy, a `.ctr` row (`objPT('slot',…)` P/T or
+loyalty + `permCtrBtns`), `kwSelect`, a `.badges` line (`permCtrChips`/`kwBadges`), and a `▸ Actions`
+drawtoggle → `enemyDrawer`/`commonPermRow`. Its trailing comment reads *"P50.6/P51.4: full card options on
+the command-zone commander — edits persist onto the battlefield since castCmd/deployCmd push this same
+object."* The `onBoard` branch (~2018) already shows only a header + "Controls are on its card below" — so
+the on-battlefield behaviour the user wants ALREADY exists; only the command-zone branch over-shows.
+
+**Build notes (LOW — UI only, reversal).** Trim the `cz` branch to: the header `.cn` (name + `in
+hand`/`command zone` tag + info button + the `→ command zone`/`↩ hand` toggle), the `.cstat` tax line,
+and the `.acts` cast/deploy row. Remove the `.ctr`, `kwSelect`, `.badges`, and the drawtoggle/drawer from
+**this branch only**. Update the trailing comment (no longer "full card options"). Do NOT touch the
+`onBoard` branch or the enemy `cmdFieldCard`.
+
+**Verify.** jsdom: seed a command-zone commander → `renderOneCmd('pcmd','pcmdBox')` → `#pcmdBox` contains
+`castCmd('pcmd'` + `deployCmd('pcmd'` but NO `toggleDrawer('pcmd'` and NO `objPT('pcmd'` P/T buttons.
+Deploy it → the on-battlefield creature/walker card still carries the full drawer.
+
+## P52.2 — Popup when a siege/battle is played (and at begin-turn if the enemy starts with one)  *(user 2026-07-10)*
+
+**Grounding.** `fieldBossSiege(cfg)` (~2098) pushes a boss battle into `S.battles`
+(`{side:'boss',_siege:true,tick,def,…}`); other battles enter `S.battles` too (Phase 7.7 battles + planar
+die; player battles carry a non-`boss` side). `tickBossBattles()` (~2101, from upkeep) heals per `b.tick`.
+P51.2 already force-opens the `p-battles` panel, but there is **no modal**. Overlay pattern to reuse:
+`$("modalBody").innerHTML=…; $("overlay").classList.add("show")` (as in `openClonePicker` ~2775).
+Begin-turn hook: `beginYourTurn()` / the upkeep `enterPhase` path.
+
+**Build notes (MED — turn-flow + overlay).** (1) A `siegeBattlePopup(b)` modal (name · type · what it does
+each upkeep · "break it to stop this") shown when a **boss-side** siege/battle enters (call at the end of
+`fieldBossSiege` and wherever a boss-side battle is added). (2) A begin-turn check: on your turn start, if
+a boss-side siege/battle is in play and unacknowledged this room, pop it; stamp `b._popped=true` so it
+fires once per battle, not every turn. (3) `_popped` is transient UI — strip it from undo snapshots if it
+churns history (mirror the `_edit`-stripping precedent). Esc/backdrop dismiss is fine (informational).
+
+**Verify.** jsdom: `fieldBossSiege(DUNGEON[0].siege)` → overlay shown + `b._popped` set; a second
+begin-turn does NOT re-pop; a room entered with a pre-placed boss siege pops once at begin-turn; no popup
+for a player-cast battle (default scope).
+
+## P52.3 — Enemy commander creature-card layout parity  *(user 2026-07-10)*
+
+**Grounding.** `cmdFieldCard()` (~2649) creature branch (~2661) emits, in order: an absolute
+`<button class="slay mini ember">Slay</button>`, `<div class="cn">♛ name</div>`,
+`<div class="btnrow">${_cmdSecondaryBtns(c)}</div>`, `.cpt` (P/T), `.badges`, `.ctr`, `kwSelect`,
+drawtoggle + drawer. `_cmdSecondaryBtns(c)` (~2648) = ↩hand · ↺reset · **⧉copy** (copy is inline,
+mid-card). The reference `enemyCard(c)` (~1792) order is: Slay (top-right absolute) + ↩hand + ⇄take **on
+top**, then art/name, then P/T, keywords, drawer — copy lives lower/in the drawer.
+
+**Build notes (LOW-MED — layout reorder, refines P51.3).** Reorder the creature branch so the **top** row
+is the zone/control actions (↩hand · ↺reset) alongside the corner Slay, then `.cn` name, then
+abilities/stats (P/T + badges + keywords), then **⧉copy at the very bottom**. Cleanest: split
+`_cmdSecondaryBtns` into a top set (hand/reset) and a bottom `⧉copy`, or add a slot param. Keep the single
+absolute `.slay` from P51.3 (don't reintroduce the overlap). The walker branch may get the same
+copy-to-bottom treatment for consistency (optional).
+
+**Verify.** jsdom: rendered `cmdFieldCard()` (creature) → the ↩hand button precedes `.cn` in source order
+and `⧉ copy` (`copyPermanent('cmd'`) is the LAST control; still exactly one `.slay`.
+
+## P52.4 — Copying a legendary planeswalker → legend-rule discard popup  *(user 2026-07-10)*
+
+**Grounding.** Copy flows: `copyPermanent(scope,id)` (the ⧉ token-copy button) and the P12.3 clone path
+`openClonePicker(p)` (~2775) → `clonePickerHTML()` (~2783, "copy won't be legendary" checkbox
+`_cloneNoLeg` ~2789) → `cloneInto(scope,id)` (~2793: refuses a legendary unless `_cloneNoLeg` ~2795; sets
+`c.legendary=_cloneNoLeg?false:!!src.legendary` ~2800). Today the only legendary handling is the
+pre-emptive "won't be legendary" toggle or a refusal — there is **no legend-rule "choose which duplicate
+to keep" prompt**.
+
+**Build notes (MED — board removal + PW handling + overlay).** When a copy would put a **second legendary
+with the same name** onto the battlefield (focus: planeswalkers), open a legend-rule popup listing the
+same-named legendary permanents (original + the incoming copy) → the player picks which one **stays**; the
+other goes to the graveyard (route via the existing death path — `killMy`/`dies`/`removeRef`, honouring
+`dies:'exile'`). Include a **"copy isn't legendary"** option in the same popup (both stay; the copy enters
+non-legendary) — supersedes the standalone `_cloneNoLeg` checkbox for this case. Generalise to any
+legendary permanent if cheap; else planeswalker-only per the user's framing.
+
+**Verify.** jsdom: put a legendary walker on the board, copy it → the legend-rule popup lists both;
+choosing "keep original" sends the copy to `S.myGy`; choosing "copy isn't legendary" leaves two walkers,
+the copy `legendary:false`; copying a non-legendary permanent still copies with no popup.
+
+## P52.5 — Creature/permanent subtypes on every card  *(user 2026-07-10)* — **MED-HIGH (save-shape + data + import + UI; may split)**
+
+**Grounding.** No subtype/creature-type field exists. `addC()` (~2117)/`addP()` (~2118)/`addW()` (~2119)
+create permanents with no subtype. Scryfall import `scryfallToCard`/`mapType` (~3718/3721) reads
+`face.type_line` only to pick the card TYPE (creature/artifact/…) and **discards the subtypes** (the
+post-`—` portion). P51.1's `types:[t,'creature']` are card SUPERtypes, not creature subtypes. Player cards
+persist as `cfg` in each profile's `p.library` (saved via `saveCardToLibrary`/`editLibrary`/import;
+~3537/3538/`buildImportedCard`). Enemy creatures are `FX` / warden-pool / `DUNGEON` data.
+
+**Build notes (MED-HIGH).** (1) **Field:** `subtypes:[]` (array of strings) on creatures + enchantments;
+walker `subtypes` defaults to the character name in its title ("Ash the Guardian" → `["Ash"]`);
+multi-subtype allowed (`["Soldier","Artifact"]`); enchantment subtypes (Aura / Elemental) allowed.
+(2) **Import:** parse `type_line`'s post-`—` subtypes (both DFC faces) into `subtypes` in
+`scryfallToCard`/`buildImportedCard`. (3) **Migration (the user's "auto-update already-imported cards"):**
+`migrateProfiles()` backfills `subtypes` onto every `p.library` cfg (derive from a stored `type_line` if
+present, else `[]`); `migrate()` backfills in-`S` permanents; bump `SAVE_V`; old saves must load without
+throwing. (4) **Manual editor:** a subtype input in `castFormHTML`/`readCastForm` (+ optionally the
+on-board drawer) so the player sets/edits subtypes. (5) **Display:** a type line on the card tile
+("Creature — Goblin"). (6) **Data pass:** add `subtypes` to every enemy creature/walker/relevant
+enchantment (`FX`, warden pools, `DUNGEON`) + sensible defaults for the player's starter/token creatures.
+**Recommend splitting: 52.5a = field + migration + import + editor + display; 52.5b = the enemy/player
+data pass.** Its own budget window.
+
+**Verify.** jsdom: import a "Creature — Goblin Warrior" → card `subtypes` = `["Goblin","Warrior"]`; a
+legacy `p.library` cfg with no `subtypes` loads and gains `subtypes:[]` after `migrateProfiles()` (no
+throw); the creator round-trips a manually-set subtype; a walker titled "Ash the Guardian" defaults to
+`["Ash"]`; the tile renders a type line.
+
+## P52.6 — Wire the newly-added soundtracks into the music pools  *(user 2026-07-10)*
+
+**Grounding.** `MUSIC_POOLS` (~3934) lists 4 Grakk / 4 Murglax / 4 Vael / 4 Menu / 2 Victory tracks;
+`_musicNext` streams `Soundtrack/<Pool>/<track>.mp3` (encodeURI-escaped). The folders now hold MORE than
+the arrays: **Grakk** also has `Burning Flame`, `Gates Of The Ember`; **Murglax** also has `Evil Spirits`,
+`Underground`; **Vael** also has `Ashveil Reliquary`, `The Hollowing`. Menu/Victory are already complete.
+
+**Build notes (LOW — pure data).** Add those 6 filenames (exact case; apostrophes/spaces are fine —
+`encodeURI` handles them) to the three arrays. No other change. SW bump required (play.html changed);
+mp3s stream online and are NOT precached (P50.14).
+
+**Verify.** jsdom: `MUSIC_POOLS.Grakk` includes `'Burning Flame'` & `'Gates Of The Ember'` (and the
+Murglax/Vael pairs); every array entry equals a real file in `Soundtrack/<Pool>/` (the array assert is a
+tiny driver; file-existence is a manual/CI check).
