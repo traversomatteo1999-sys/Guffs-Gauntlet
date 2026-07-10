@@ -2645,28 +2645,32 @@ function cmdPT(s,n){S.cmd[s]=Math.max(0,S.cmd[s]+n);render();}
 function adjLoyCmd(n){if(!S.cmd||!S.cmd.isWalker)return;S.cmd.loyalty=(S.cmd.loyalty||0)+n;log("you",`${S.cmd.n} loyalty ${n>=0?'+':''}${n} → ${S.cmd.loyalty}.`);if(S.cmd.loyalty<=0)enemyWalkerDies(S.cmd);render();}
 function damageCmdLoy(){if(!S.cmd||!S.cmd.isWalker)return;const el=$("cmdLoyDmg"),v=el?parseInt(el.value,10):NaN;if(isNaN(v)||v<=0){log("sys","Enter damage.");return;}S.cmd.loyalty=(S.cmd.loyalty||0)-v;log("you",`Hit ${S.cmd.n} for <b>${v}</b> (loyalty ${Math.max(0,S.cmd.loyalty)}).`);if(S.cmd.loyalty<=0)enemyWalkerDies(S.cmd);render();}
 /* P51.3: the enemy-commander secondary actions (↩ hand / ↺ reset / ⧉ copy) as plain inline .mini buttons — NOT .slay (which is position:absolute top-right and stacked all of them over the Slay button). One .slay corner button remains per branch. */
-function _cmdSecondaryBtns(c){return `<button class="tiny" title="return to ${ENs()}'s hand (recasts at base ${c.baseCost}, no tax — not a death)" onclick="cmdToHand()">↩ hand</button><button class="tiny" title="reset to base, clear counters" onclick="resetCard('cmd',null)">↺ reset</button><button class="tiny" title="copy — a non-commander token copy on the enemy board" onclick="copyPermanent('cmd',null)">⧉ copy</button>`;}
+/* P52.3: the TOP zone/control actions (↩hand · ↺reset). ⧉copy is split out to the BOTTOM (mirrors enemyCard's layout). */
+function _cmdSecondaryBtns(c){return `<button class="tiny" title="return to ${ENs()}'s hand (recasts at base ${c.baseCost}, no tax — not a death)" onclick="cmdToHand()">↩ hand</button><button class="tiny" title="reset to base, clear counters" onclick="resetCard('cmd',null)">↺ reset</button>`;}
+function _cmdCopyBtn(c){return `<button class="tiny" title="copy — a non-commander token copy on the enemy board" onclick="copyPermanent('cmd',null)">⧉ copy</button>`;}
 function cmdFieldCard(){const c=S.cmd;
   if(c.isWalker){const thr=c.ultThreshold||7,abil=[c.wplus,c.wminus,c.wult].filter(Boolean).map(a=>`<div class="pwrow${a.ult?' ult':''}${a.ult&&(c.loyalty||0)>=thr?' ready':''}"><span class="pwsign">${a.sign>0?'+':''}${a.sign}</span><span><b>${a.n}</b> — ${a.text}${a.ult?` <span class="pwthr">needs ${thr}${(c.loyalty||0)>=thr?' — READY':''}</span>`:''}</span></div>`).join("");
     return `<button class="slay mini ember" title="put this planeswalker-commander into ${ENs()}'s command zone (loyalty resets)" onclick="slayCmdBtn()">Slay</button>
-    <div class="cn">♛✦ ${c.n} <span class="tag" style="color:var(--ember)">planeswalker</span></div>
     <div class="btnrow">${_cmdSecondaryBtns(c)}</div>
+    <div class="cn">♛✦ ${c.n} <span class="tag" style="color:var(--ember)">planeswalker</span></div>
     <div class="cpt" style="color:var(--gold)">loyalty ${c.loyalty} ${colorDots(c)}</div>
     <div class="pwabil">${abil}</div>
     <div class="badges">${c.phased?'<span class="badge ph">phased out</span>':''}${(c.prot||[]).length?`<span class="badge prot">prot ${c.prot.join("")}</span>`:''}${(c.other||[]).map((o,oi)=>`<span class="badge" style="cursor:pointer" title="click to remove" onclick="remCtrOther('cmd',null,${oi})">${o} ✕</span>`).join("")}</div>
     <div class="ctr"><span class="dlab">loyalty</span><button onclick="adjLoyCmd(1)">+1</button><button onclick="adjLoyCmd(-1)">−1</button><input type="number" id="cmdLoyDmg" min="1" placeholder="dmg" style="width:52px"><button class="ember" onclick="damageCmdLoy()">⚔ attack</button></div>
     <div class="ctr"><span class="dlab">counters</span>${permCtrBtns('cmd',null)}</div>
     <button class="drawtoggle tiny" onclick="toggleDrawer('cmd',null)">${c._drawer?'▾ Actions':'▸ Actions'}</button>
-    ${c._drawer?commonPermRow('cmd',null,c):''}`;}/* P50.6: the enemy walker-commander now gets counters + a properties drawer (prot/keywords/markers/reset), not just loyalty */
+    ${c._drawer?commonPermRow('cmd',null,c):''}
+    <div class="btnrow">${_cmdCopyBtn(c)}</div>`;}/* P50.6/P52.3: enemy walker-commander — top actions (↩hand·↺reset) + Slay, name, abilities, drawer, then ⧉copy at the bottom */
   const buff=c.plus||0,deb=c.minus||0;return `<button class="slay mini ember" onclick="slayCmdBtn()">Slay</button>
-  <div class="cn">♛ ${c.n}${c.sick?' <span class="tag">sick</span>':''}</div>
   <div class="btnrow">${_cmdSecondaryBtns(c)}</div>
+  <div class="cn">♛ ${c.n}${c.sick?' <span class="tag">sick</span>':''}</div>
   <div class="cpt">${effP(c)}/${effT(c)}${buff?` <span class="buff">+${buff}</span>`:''}${deb?` <span class="deb">−${deb}</span>`:''} ${colorDots(c)}</div>
   <div class="badges">${c.tapped?'<span class="badge tap">tapped</span>':''}${c.phased?'<span class="badge ph">phased out</span>':''}${(c.prot||[]).length?`<span class="badge prot">prot ${c.prot.join("")}</span>`:''}${c.noAbil?'<span class="badge no">no-abil</span>':''}${kwBadges('cmd',null,c)}${(c.other||[]).map((o,oi)=>`<span class="badge" style="cursor:pointer" title="click to remove" onclick="remCtrOther('cmd',null,${oi})">${o} ✕</span>`).join("")}</div>
   <div class="ctr"><button class="${c.tapped?'on':''}" onclick="tapCmd()">tap</button><button class="${c.noAbil?'on':''}" onclick="noAbilT('cmd',null)">no-abil</button><button onclick="cmdCtr('plus',1)">+1/+1</button><button onclick="cmdCtr('minus',1)">−1/−1</button><button onclick="remCtr('cmd',null)">⊖ ctr</button><button onclick="cmdPT('p',1)">P+</button><button onclick="cmdPT('p',-1)">P−</button><button onclick="cmdPT('t',1)">T+</button><button onclick="cmdPT('t',-1)">T−</button></div>
   ${kwSelect('cmd',null)}
   <button class="drawtoggle tiny" onclick="toggleDrawer('cmd',null)">${c._drawer?'▾ Actions':'▸ Actions'}</button>
-  ${c._drawer?enemyDrawer('cmd',null,c):''}`;}
+  ${c._drawer?enemyDrawer('cmd',null,c):''}
+  <div class="btnrow">${_cmdCopyBtn(c)}</div>`;}/* P52.3: layout parity with enemyCard() — top actions (↩hand·↺reset)+Slay, name, stats/abilities/drawer, then ⧉copy at the very bottom */
 function freshGameForDungeon(){/* Fresh board each dungeon; life is the carried RPG stat (only loot moves it). The board empties, per-game counters reset (commander damage must — Vael's commander is rebuilt), and your designated commander returns to the command zone with tax reset (a new game). Life, max life, and loot persist. */
   const _resetCmd=(c,slot)=>{if(!c)return;c.kind=c.kind||(S.my.walkers.indexOf(c)>=0?'walkers':'creatures');c.plus=0;c.minus=0;c.other=[];c.tapped=false;c.sick=false;c.phased=false;c._atk=false;if(c.baseLoy!=null)c.loyalty=c.baseLoy;c.cmdTax=0;c.cmdDeaths=0;c.czCasts=0;c.cmdInHand=false;c._slot=slot;};
   const _boardCmd=slot=>S.my.creatures.concat(S.my.walkers).find(c=>c.isCmd&&(c._slot||'pcmd')===slot);
