@@ -261,7 +261,7 @@
 | &nbsp;&nbsp;P51.2 Grakk's Siege heals him **+2**/upkeep (was +1); siege panel **starts open** + auto-opens when an enemy casts a siege | ✅ **done v72** — `siege.tick 1→2` + copy; `defaultPanelStates` opens `p-battles`; `fieldBossSiege`/`addBattle` force `S.ui.panels['p-battles']=true` |
 | &nbsp;&nbsp;P51.3 Enemy commander (creature **and** walker) gets full card-option parity (deal-damage etc.); fix "put to hand"/"copy" overlapping "slay" | ⬜ |
 | &nbsp;&nbsp;P51.4 **Partner commanders** — import `partner` from Scryfall; play a 2nd commander; show both boxes stacked on the "You" panel | ⬜ |
-| &nbsp;&nbsp;P51.5 Emblems/anthems can **deal N damage every trigger** (both sides) | ⬜ |
+| &nbsp;&nbsp;P51.5 Emblems/anthems can **deal N damage every trigger** (both sides) | ✅ **done v74** — added a ⚔ Deal-N-damage template to `PLAYER_EMBLEMS`+`ENEMY_EMBLEMS` (tunable N + trigger); `playerEmblemEffect` now honours the target toggle (retargetable to either side) |
 | &nbsp;&nbsp;P51.6 Enemy attack-target intelligence — threat order PW > creature > enchant > artifact; face vs walkers/sieges/battles | ⬜ |
 | &nbsp;&nbsp;P51.7 Card "properties" button → **"Actions"**, yellow / more visible | ✅ **done v69** — label renamed at all 5 sites; `.drawtoggle` → `--gold`; tutorial copy updated |
 | &nbsp;&nbsp;P51.8 Remove Vael's **War Cry** (+2/+0 creature buff, incoherent for a walker deck); ensure Vael's commander is treated as a **planeswalker** everywhere | ✅ **done v73** — `warcry` cut from Vael's pool (Grakk keeps it); `cmdBuff` guarded with `S.cmd.isWalker` → never pumps Ash |
