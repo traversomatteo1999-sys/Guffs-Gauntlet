@@ -1,4 +1,4 @@
-// P49.11: Vael reborn at 1 HP (#23) · Ash +1 makes a 1/1 haste Ash Soldier (#27) · Ash -3 is a graveyard reanimator (#28).
+// P49.11: Vael reborn (#23, HP later raised 1->5 by P51.11) · Ash +1 makes a 1/1 haste Ash Soldier (#27) · Ash -3 is a graveyard reanimator (#28).
 const {boot}=require('./harness.js');
 const {window,errors}=boot();
 const ev=e=>window.eval(e);
@@ -6,18 +6,18 @@ let fail=0; const ok=(c,m)=>{if(!c){console.error('FAIL:',m);fail++;}else consol
 
 ev("fresh('standard')");
 
-// --- Bullet 23: reborn at exactly 1 HP on every difficulty ---
+// --- Bullet 23 (HP updated by P51.11): reborn at exactly 5 HP on every difficulty ---
 ['easy','standard','brutal'].forEach(df=>{
   ev(`S.diff='${df}';S.roomIndex=DUNGEON.length-1;S.over=false;S.phase2done=false;S.tokens=[];S.boss={isVael:true,life:0,max:60,name:'Vael',colors:['R','B']};bossDown();`);
-  ok(ev("S.boss.life")===1,`${df}: Vael reborn at 1 life`);
+  ok(ev("S.boss.life")===5,`${df}: Vael reborn at 5 life`);
   ok(ev("S.phase2done")===true,`${df}: phase2done set`);
   ok(ev("S.tokens.some(c=>c.name==='Pyre Revenant')"),`${df}: Pyre Revenant spawned`);
   // a second reduction does NOT revive again
   ev("S.boss.life=0;bossDown();");
   ok(ev("S.phase2done")===true,`${df}: still phase2done (no third life)`);
 });
-// confirm the room data really is 1/1/1
-ok(ev("var v=DUNGEON[DUNGEON.length-1];v.reborn.easy===1&&v.reborn.standard===1&&v.reborn.brutal===1"),'room.reborn is 1/1/1');
+// confirm the room data really is 5/5/5 (P51.11)
+ok(ev("var v=DUNGEON[DUNGEON.length-1];v.reborn.easy===5&&v.reborn.standard===5&&v.reborn.brutal===5"),'room.reborn is 5/5/5');
 // the room def carries the new abilities
 ok(ev("var c=DUNGEON[DUNGEON.length-1].cmd;c.plus.run&&c.plus.run[0]==='spawn'&&c.plus.run[1]==='Ash Soldier'"),'+1 = spawn Ash Soldier');
 ok(ev("var c=DUNGEON[DUNGEON.length-1].cmd;c.minus.run&&c.minus.run[0]==='ashReanimate'&&!c.minus.target"),'-3 = ashReanimate (no destroy target)');
