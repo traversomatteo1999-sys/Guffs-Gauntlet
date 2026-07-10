@@ -3116,7 +3116,7 @@ $("pwDmgIn").addEventListener("keydown",e=>{if(e.key==="Enter")damagePW();});
 function closeOverlay(){if(_wheelCtx){claimWheel();return;}/* P15.1: dismissing the wheel (backdrop click) still claims the reward + proceeds to the victory cutscene — never lose it */if(_legendCtx){legendUnleg(_legendCtx.scope,_legendCtx.copyId);return;}/* P52.4: dismissing the legend-rule popup defaults to keeping both (copy non-legendary) — never leaves two same-named legendaries */if(_cmdChooseActive){if(_cmdCreating){_cmdCreating=false;chooseCommander();return;}skipCommander();return;}$("overlay").classList.remove("show");}
 /* P3.1: a COMMITTED cast (put-on-stack / cast-from-library) is a definitive exit from the commander flow — it must not bounce back to the chooser the way a cancel does. */
 function closeOverlayCommit(){if(_cmdChooseActive){proceedAfterCommander();return;}$("overlay").classList.remove("show");}
-function openTutorial(){$("modalBody").innerHTML=TUTORIAL_HTML;$("overlay").classList.add("show");}
+function openTutorial(){$("modalBody").innerHTML=t(TUTORIAL_HTML);$("overlay").classList.add("show");if(lang()==='it')_trText($("modalBody"));}/* P49.6: tutorial translates as a whole block (dictionary) with a per-node fallback */
 /* P1.8 — ⓘ info popups: one infoBtn(key) helper + INFO_TEXT map + shared #overlay modal (showInfo). */
 const INFO_TEXT={
   info:{t:"⟡ Info tab",h:`<p>Your vitals and your foe's, side by side — life, deck colours, each commander, and your 🎒 <b>satchel</b> of loot (the button sits on your panel, above the commander box) — with the <b>Dungeon Log</b> beneath, which records every life change, spell, zone move, and roll.</p>`},
@@ -3509,7 +3509,7 @@ function latestSave(){const p=prof();if(!p)return null;const c=p.camp&&p.camp.ru
 function continueLatest(){const ls=latestSave();if(!ls){log("sys","No saved game to continue.");return;}_uiMode=(ls.slot==='sand')?'sandbox':'campaign';continueLastGame(ls.sv);}
 /* A level is cleared once EVERY room's battle is in the ledger. */
 function levelCleared(idx){const p=prof();if(!p||!p.camp||!p.camp.cleared)return false;const rooms=(LEVELS[idx]&&LEVELS[idx].rooms)||[];return rooms.length>0&&rooms.every(r=>p.camp.cleared[battleId(idx,r)]);}
-function openCampaign(){_uiMode='campaign';renderCampaign();$("campaign").classList.add("show");}
+function openCampaign(){_uiMode='campaign';renderCampaign();$("campaign").classList.add("show");if(lang()==='it')_trText($("campaign"));}/* P49.6 */
 function closeCampaign(){$("campaign").classList.remove("show");}
 function renderCampaign(){const p=prof();const g=$("campGold");if(g)g.textContent=`💰 ${(p&&p.camp&&p.camp.gold)||0} gold`;
   const box=$("campList");if(!box)return;
@@ -3524,8 +3524,8 @@ function renderCampaign(){const p=prof();const g=$("campGold");if(g)g.textConten
     else if(current)btns=`<button class="tiny azor" onclick="continueCampaign()">▶ Continue run</button><button class="tiny ember" onclick="campaignStart()">✦ New run</button><button class="tiny" onclick="abandonCampaign()" title="End this run — your gold, stash & unlocks are kept">✕ Abandon campaign</button>`;
     else if(!hasRun&&idx===0)btns=`<button class="tiny ok" onclick="campaignStart()">${done?'✦ New run':'▶ Begin campaign'}</button>`;
     else btns=`<span class="manaline">${done?'Replay in 🏟 Sandbox':'Reached by descending'}</span>`;
-    const title=locked?'??? — a warden you have not yet reached':`Level ${L.levelNo} — ${L.name}`;
-    const text=locked?'Clear the level above to unlock this descent.':L.teaser;
+    const title=locked?t('??? — a warden you have not yet reached'):`${lang()==='it'?'Livello':'Level'} ${L.levelNo} — ${t(L.name)}`;/* P49.6: level title (name via dictionary) */
+    const text=locked?t('Clear the level above to unlock this descent.'):t(L.teaser);
     return `<div class="loreent has-art${current?' cur':''}"><div class="loreframe ${locked?'locked':''}" style="--acc:var(--gold)">${cover}</div><div class="lorebody"><div class="loretitle">${title} ${badge}</div><div class="loretext">${text}</div><div class="btnrow" style="margin-top:7px;flex-wrap:wrap">${btns}</div></div></div>`;
   }).join('');}
 /* Begin/New run — a campaign always starts at Level I Room 0 (forward-only); confirm-to-abandon if a run is already live. */
@@ -3539,7 +3539,7 @@ function continueSandbox(){const p=prof();_uiMode='sandbox';continueLastGame(p&&
 let _sandDiff='standard';
 /* Every battle across every level, in descent order — the sandbox grid; locked until beaten in the campaign. */
 function allBattles(){const out=[];LEVELS.forEach((L,li)=>{(L.rooms||[]).forEach((r,ri)=>{out.push({li,ri,room:r,id:battleId(li,r)});});});return out;}
-function openSandbox(){_uiMode='sandbox';if(!_sandDiff)_sandDiff=(S&&S.diff)||'standard';renderSandbox();$("sandbox").classList.add("show");}
+function openSandbox(){_uiMode='sandbox';if(!_sandDiff)_sandDiff=(S&&S.diff)||'standard';renderSandbox();$("sandbox").classList.add("show");if(lang()==='it')_trText($("sandbox"));}/* P49.6 */
 function closeSandbox(){$("sandbox").classList.remove("show");}
 function sandSetDiff(df){_sandDiff=df;renderSandbox();}
 function sandboxFight(li,ri){startBattle({mode:'sandbox',levelIdx:li,roomIdx:ri,diff:_sandDiff});}
@@ -3568,10 +3568,10 @@ function readCastForm(){const type=$("castType").value;const defName={creature:'
   return cfg;}
 
 /* ----- library ----- */
-function openLibrary(){renderLibrary();$("library").classList.add("show");}
+function openLibrary(){renderLibrary();$("library").classList.add("show");if(lang()==='it')_trText($("library"));}/* P49.6 */
 function closeLibrary(){$("library").classList.remove("show");}
 /* P43.3: the Merchant opens hard-keyed to a mode screen's bucket — S.mode pins which purse pays and which pending receives. */
-function openStore(mode){if(mode)_uiMode=mode;renderStore();$("store").classList.add("show");}
+function openStore(mode){if(mode)_uiMode=mode;renderStore();$("store").classList.add("show");if(lang()==='it')_trText($("store"));}/* P49.6 */
 function closeStore(){$("store").classList.remove("show");}
 function renderStore(){const g=$("storeGold");if(g)g.textContent=getGold(_uiMode);const box=$("storeList");if(!box)return;const bk=bucket(_uiMode);if(bk&&!Array.isArray(bk.pending))bk.pending=[];const pend=(bk&&bk.pending)||[];const locked=descentInProgress(_uiMode);/* P43.3: the store always operates on the BROWSED _uiMode, never the live game's S.mode */
   /* P43.1: pin which purse pays / which pending receives — the store is opened hard-keyed to a mode screen's bucket. */
@@ -4042,7 +4042,18 @@ const I18N={it:{
   "The Long Way Back":"La Lunga Via del Ritorno",
   "I did not call for a weapon. I called into the dark — and a friend answered. I will not forget which you chose to be.":"Non ho invocato un'arma. Ho chiamato nel buio — e un amico ha risposto. Non dimenticherò ciò che hai scelto di essere.",
   "The Conclave is not dead while one of us still stands. Walk with me.":"Il Conclave non è morto finché uno di noi resta in piedi. Cammina con me.",
-  "↻ Descend again":"↻ Scendi di nuovo","To be continued… ▸":"Continua… ▸"
+  "↻ Descend again":"↻ Scendi di nuovo","To be continued… ▸":"Continua… ▸",
+  /* ---- campaign / sandbox screens (translated by the _trText chokepoint at open time) ---- */
+  "Level I":"Livello I","Level II":"Livello II",
+  "The Warren of Embers":"La Tana delle Braci",
+  "The downward maze of the tyrant Vael — three wardens hold the dark between you and the caged Commodore Guff.":"Il labirinto discendente del tiranno Vael — tre guardiani tengono il buio tra te e il Commodoro Guff in gabbia.",
+  "▶ Continue battle":"▶ Riprendi la battaglia","▶ Continue run":"▶ Riprendi la discesa","✦ New run":"✦ Nuova discesa","▶ Begin campaign":"▶ Inizia la campagna","✕ Abandon campaign":"✕ Abbandona la campagna",
+  "Your run position is erased, but your <b>gold, stash, purchases and unlocked levels are kept</b>. You can start a fresh descent any time.":"La tua posizione nella discesa viene cancellata, ma <b>oro, scorte, acquisti e livelli sbloccati restano</b>. Puoi iniziare una nuova discesa quando vuoi.",
+  "🃏 Card Library":"🃏 Libreria carte","🏟 Sandbox":"🏟 Prova libera","⚔ Campaign":"⚔ Campagna",
+  /* ---- combat / tools common (translated live via t() where wrapped, else _trText) ---- */
+  "Cast a spell":"Lancia una magia","✦ Cast a spell":"✦ Lancia una magia","Create a card":"Crea una carta","🎒 Satchel":"🎒 Bisaccia","Tools":"Strumenti","Notes":"Note",
+  "Slay":"Uccidi","↩ hand":"↩ mano","⇄ take":"⇄ prendi","Deploy direct":"Schiera direttamente","♛ Cast to Stack":"♛ Lancia sulla Pila",
+  "??? — a warden you have not yet reached":"??? — un guardiano che non hai ancora raggiunto","Clear the level above to unlock this descent.":"Completa il livello sopra per sbloccare questa discesa.","Reached by descending":"Raggiunto scendendo","Replay in 🏟 Sandbox":"Rigioca in 🏟 Prova libera"
 }};
 function settingsHTML(){const s=(DB&&DB.settings)||{};const ts=s.textSize||'M';const an=s.anim||'full';/* P51.10: default = full (matches applyAnim) */const vol=Math.round(((typeof _vol==='number')?_vol:1)*100);
   const seg=(cur,opts,fn)=>`<div class="seg">${opts.map(([v,l])=>`<button class="${cur===v?'on':''}" onclick="${fn}('${v}')">${t(l)}</button>`).join('')}</div>`;
