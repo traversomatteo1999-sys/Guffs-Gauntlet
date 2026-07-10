@@ -239,7 +239,7 @@
 | &nbsp;&nbsp;P49.10 Combat/PW UX: combat popup minimize/restore (turn stays blocked) · PW abilities off-stack + announce popup · battles/sieges side-selectable · resurgent timing | ✅ done (bullets 19·22·11·10) — **#22 reverses P38** (enemy walkers only) |
 | &nbsp;&nbsp;P49.11 Vael/Ash the Guardian: reborn at 1 HP · +1 → "Create a 1/1 Ash Soldier with haste" · −3 → graveyard exile-X + free reanimate ≤X | ✅ done (bullets 23·27·28) |
 | &nbsp;&nbsp;P49.12 Items & cards: enemy top/bottom-N reveal shows full card info · add art to saved homebrew cards | ✅ done (bullets 14·17; #13 resolved — no change) |
-| **Phase 50 — Fix batch 2026-07-08** (Undo button · live combat popup · deck-tools land→board · emblem/card tax↔ward · commander casting & options · Murglax card rename · smarter enemy AI · land mana colour · Ash-as-planeswalker · store balance · hide commander tax · pooled soundtrack music · P50.15 unified tax) | ✅ **ALL 15 built** (`sw` v67). This session (2026-07-09/10) shipped P50.1/.2/.4/.5/.6/.7/.8/.9/.10/.11/.12/.13/.14; the parallel session shipped P50.15 (reverses P50.5) + P50.16. |
+| **Phase 50 — Fix batch 2026-07-08** (Undo button · live combat popup · deck-tools land→board · emblem/card tax↔ward · commander casting & options · Murglax card rename · smarter enemy AI · land mana colour · Ash-as-planeswalker · store balance · hide commander tax · pooled soundtrack music · P50.15 unified tax) | ✅ **ALL 16 built** (`sw` v68). This session (2026-07-09/10) shipped P50.1/.2/.4/.5/.6/.7/.8/.9/.10/.11/.12/.13/.14; the parallel session shipped P50.15 (reverses P50.5) + P50.16. |
 | &nbsp;&nbsp;P50.1 Undo button in the Turn-flow box (`.flowbtns`, beside ◂ Back / ▶) wired to the existing `undo()` | ✅ **done v59** — `#undoBtn` (idset-safe add), disabled when `!_hist.length\|\|S.paused` |
 | &nbsp;&nbsp;P50.2 Combat resolver popup auto-updates in real time — every board change (flash a creature = new blocker · removal drops an attacker/blocker) recalculates the open popup | ✅ **done v66** — `_combatLivePool()` rebuilds the pool live; `_combatPrune()` runs in the render tail (even minimized) + at `approveCombat`. 4-lens adversarial review (non-mutating confirmed) |
 | &nbsp;&nbsp;P50.3 Deck-tools: a land searched/looked/revealed can go straight onto the enemy battlefield as a mana source | ✅ done — `70709f1` (`dtMoveObj` land branch + `moveActs` board button · `tests/land-to-board.test.js`) |
@@ -3244,7 +3244,7 @@ Play each difficulty a few runs and note:
 
 ---
 
-# PHASE 50 — Fix batch 2026-07-08 ✅ ALL 15 built (P50.3 v57 · P50.7/.10/.11/.13 v58 · P50.1 v59 · P50.4/.5 v60 · P50.6 v61 · P50.8 v62 · P50.12 v63 · P50.14 v64 · P50.15 v65 [parallel session, reverses P50.5] · P50.2 v66 · P50.9 v67 — Phase 50 DONE (only P49.6 Italian i18n deferred repo-wide))
+# PHASE 50 — Fix batch 2026-07-08 ✅ ALL 16 built (P50.3 v57 · P50.7/.10/.11/.13 v58 · P50.1 v59 · P50.4/.5 v60 · P50.6 v61 · P50.8 v62 · P50.12 v63 · P50.14 v64 · P50.15 v65 [parallel session, reverses P50.5] · P50.2 v66 · P50.16 v67 · P50.9 v68 — Phase 50 DONE (only P49.6 Italian i18n deferred repo-wide))
 
 > **Goal.** Fixes reported by the user on 2026-07-08, grounded below in `play.html` (post-P49.9 code, `70709f1`). **P50.3 already shipped this session**; **P50.1–P50.2 are specced build-ready** — not yet in the code (re-grep confirmed: the Turn-flow box has only ◂ Back + ▶ `#dmBtn`, and the combat popup is static once opened).
 

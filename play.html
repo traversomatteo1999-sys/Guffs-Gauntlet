@@ -478,7 +478,7 @@
     <h2>✶ <span id="enemyName2">Enemy</span>'s artifacts, enchantments &amp; emblems <span class="tag">persistent effects · ⚡ auto on its upkeep</span></h2>
     <div class="btnrow" style="margin-top:2px"><span class="lab">＋ emblem</span><select id="embTemplate" style="max-width:208px"></select><button class="tiny ok" onclick="addEnemyEmblem()">+ add</button><span class="manaline">artifacts/enchantments are cards the enemy casts (deck tools) — they enter the board below as real permanents</span></div>
     <div id="enemyEmbList" style="margin-top:6px"></div>
-    <div class="btnrow" style="margin-top:4px"><span class="lab" title="A per-attacker tax to declare attackers. Choose who pays and what it applies to. Enemy-pays is enforced by the AI (it holds back attackers it can't pay for); player-pays is a reminder (you have no mana pool).">⚔ attack tax</span><input type="number" id="enAtkAmt" min="0" value="0" style="width:42px"><select id="enAtkType"><option value="mana">mana</option><option value="life">life</option></select><select id="enAtkPayer" title="who pays the tax per attacker"><option value="enemy">enemy pays</option><option value="player">player pays</option></select><select id="enAtkTgt" title="which attacks the tax applies to — the defender's face, its planeswalkers, or both"><option value="both">both</option><option value="player">face</option><option value="walkers">walkers</option></select><button class="tiny ok" onclick="setAtkTaxRule(+($('enAtkAmt').value),$('enAtkType').value,$('enAtkTgt').value,$('enAtkPayer').value)">set tax</button><span class="manaline" id="atkTaxStatus">enemy-pays is enforced; player-pays is a reminder · per-card taxes in each ✎ drawer</span></div>
+    <div class="btnrow" style="margin-top:4px"><span class="lab">⚔ attack tax</span><span class="manaline">a global <b>enemy-pays</b> tax is the <b>“Attack tax — enemy pays”</b> emblem above (＋ emblem); a <b>per-permanent</b> tax (either side, any type — creatures, artifacts, enchantments, walkers) is set in each card’s <b>⚙/✎ drawer</b>, so it’s tied to that permanent.</span></div>
     <div class="btnrow" style="margin-top:4px"><span class="lab">＋ resource</span><select id="resKindE"><option value="treasure">💰 Treasure</option><option value="blood">🩸 Blood</option><option value="clue">🔍 Clue</option><option value="food">🍖 Food</option><option value="custom">🔶 custom</option></select><input type="number" id="resQtyE" min="1" value="1" style="width:44px"><button class="tiny ok" onclick="makeResFromUI('enemy')">make</button><span id="enemyResList" class="reschips"></span><span class="manaline">the enemy cracks its own Treasure for mana when short (P16.3)</span></div>
   </div>
 
@@ -1872,29 +1872,17 @@ const flagObj=flagMy;
 function toggleKwMy(cat,id,k){const o=getMy(cat,id);if(!o)return;o.kw=o.kw||[];const i=o.kw.indexOf(k);if(i>=0)o.kw.splice(i,1);else o.kw.push(k);render();}
 function toggleColorField(scope,id,field,col){const o=getObj(scope,id);if(!o)return;o[field]=o[field]||[];const i=o[field].indexOf(col);if(i>=0)o[field].splice(i,1);else o[field].push(col);render();}
 function toggleDrawer(scope,id){const o=getObj(scope,id);if(o){o._drawer=!o._drawer;render();}}
-/* P50.15: ONE attack-tax model, two payers. A per-attacker tax ({amt,type:mana|life,tgt:both|player|walkers})
-   can be levied on either side. Sources: a generic rule (setAtkTaxRule, per payer) + per-card `catk` on
-   permanents (payer inferred from board side) + a legacy P50.4 `attackTaxEnemy` emblem (still honoured for
-   old saves). tgt gates WHAT the attacker may hit: 'walkers' bites only when the DEFENDING side actually has
-   a non-phased planeswalker for the attack to divert to.
-   • enemyAttackTax() = the PLAYER pays (reminder-only — no player mana pool) = payer:'player' rules + ENEMY-board catk.
-   • attackTax()      = the ENEMY pays (enforced by payAttackTax in vaelCombat) = payer:'enemy' rules + PLAYER-board catk + legacy emblem. */
+/* P50.16: attack tax is PER-CARD ONLY — it lives on the permanents themselves (`catk`), never as an
+   S.rules "enchantment" entry (that box is for real rule-enchantments, with a Destroy button). A GLOBAL
+   enemy-pays tax is the P50.4 `attackTaxEnemy` EMBLEM (persists, ✕-removable, no Destroy). Two readers:
+   • enemyAttackTax() = the PLAYER pays (reminder — no player mana pool) = per-card catk on ENEMY permanents.
+   • attackTax()      = the ENEMY pays (enforced by payAttackTax) = per-card catk on YOUR permanents + the attackTaxEnemy emblem.
+   tgt gates WHAT the attacker may hit: 'walkers' bites only when the DEFENDING side has a non-phased walker to divert to. */
 function enemyAttackTax(){let mana=0,life=0;const enemyHasWk=(typeof enemyWalkerList==='function'&&enemyWalkerList().length>0);
   const add=t=>{if(!t||!(t.amt>0))return;const tg=t.tgt||'both';if(!(tg==='both'||tg==='player'||(tg==='walkers'&&enemyHasWk)))return;if(t.type==='life')life+=t.amt;else mana+=t.amt;};
-  (S.rules||[]).forEach(r=>{if(r.side==='boss'&&r._atkRule&&(r.payer||'player')==='player')add(r.atk);});
   [...(S.tokens||[]),(S.cmd&&S.cmd.inPlay?S.cmd:null),...(S.enemyArtifacts||[]),...(S.enemyEnchants||[]),...(S.enemyWalkers||[])].filter(Boolean).forEach(o=>{if(!o.phased)add(o.catk);});
   return{mana,life};}
-/* P50.15: unified setter — one generic attack-tax rule PER PAYER, distinguished by `payer`. Clearing (amt≤0) drops only that payer's rule. */
-function setAtkTaxRule(amt,type,tgt,payer){if(!Array.isArray(S.rules))S.rules=[];amt=Math.max(0,amt|0);payer=(payer==='enemy')?'enemy':'player';type=(type==='life')?'life':'mana';tgt=(tgt==='player'||tgt==='walkers')?tgt:'both';
-  let r=S.rules.find(x=>x.side==='boss'&&x._atkRule&&(x.payer||'player')===payer);
-  if(amt<=0){if(r)S.rules.splice(S.rules.indexOf(r),1);log("dm",`Attack tax cleared (${payer==='enemy'?ENs()+' pays':'you pay'}).`);render();return;}
-  if(!r){r={id:S.nextId++,side:'boss',_atkRule:true,payer};S.rules.push(r);}
-  r.payer=payer;r.atk={amt,type,tgt};
-  const scope=tgt==='both'?'face & walkers':(tgt==='player'?'face only':'walkers only');
-  r.name=`Attack tax — ${payer==='enemy'?ENs()+' pays':'you pay'}`;/* P50.15: payer-specific name/text so the rules panel distinguishes the two Destroy rows */
-  r.text=`${payer==='enemy'?ENs():'You'} pay ${amt} ${type} per attacker (${scope}).`;
-  log("dm",`Attack tax set — ${payer==='enemy'?ENs()+' pays':'you pay'} ${amt} ${type} per attacker (${scope}).`);render();}
-/* P50.15: per-card attack tax (catk) — restored. On YOUR permanent the enemy pays to attack; on an ENEMY permanent you pay. Setter mirrors setCward. */
+/* P50.15/16: per-card attack tax (catk) — on YOUR permanent the enemy pays to attack; on an ENEMY permanent you pay. Setter mirrors setCward. */
 function setCatk(cat,id,f,v){const o=getMy(cat,id);if(!o)return;o.catk=o.catk||{amt:0,type:'mana',tgt:'both'};o.catk[f]=v;if(!(o.catk.amt>0))o.catk=null;log("you",`✎ ${o.name}: attack tax ${o.catk?(o.catk.amt+' '+o.catk.type+' ('+o.catk.tgt+')'):'cleared'}.`);render();}
 function setObjCatk(scope,id,f,v){const o=getObj(scope,id);if(!o)return;o.catk=o.catk||{amt:0,type:'mana',tgt:'both'};o.catk[f]=v;if(!(o.catk.amt>0))o.catk=null;log("you",`✎ ${o.name||o.n}: attack tax ${o.catk?(o.catk.amt+' '+o.catk.type+' ('+o.catk.tgt+')'):'cleared'}.`);render();}
 function catkTgtSel(onchange,cur){cur=(cur==='player'||cur==='walkers')?cur:'both';return `<select title="which attacks this tax applies to — the controller's face, its planeswalkers, or both" onchange="${onchange}"><option value="both" ${cur==='both'?'selected':''}>both</option><option value="player" ${cur==='player'?'selected':''}>face only</option><option value="walkers" ${cur==='walkers'?'selected':''}>walkers only</option></select>`;}
@@ -1999,10 +1987,9 @@ function moveZoneCard(from,i,to){const src={pGy:S.myGy,pExile:S.myExile,eGy:S.gy
   else if(to==='libtop'){S.lib.unshift(c);log("you",`<b>${nm}</b> goes to the top of ${ENs()}'s library.`);}
   else if(to==='libbottom'){S.lib.push(c);log("you",`<b>${nm}</b> goes to the bottom of ${ENs()}'s library.`);}
   render();dtRenderIfOpen();/* refresh the deck-tools modal if it's showing this zone */}
-function attackTax(){let mana=0,life=0;/* P50.15: the ENEMY pays this per attacker — payer:'enemy' generic rule + per-card catk on YOUR permanents + a legacy P50.4 attackTaxEnemy emblem. Enforced by payAttackTax during vaelCombat. */
+function attackTax(){let mana=0,life=0;/* P50.16: the ENEMY pays this per attacker — per-card catk on YOUR permanents + the P50.4 attackTaxEnemy EMBLEM (global). Enforced by payAttackTax during vaelCombat. */
   const youHaveWk=(S.my&&S.my.walkers||[]).some(w=>!w.phased);
   const add=t=>{if(!t||!(t.amt>0))return;const tg=t.tgt||'both';if(!(tg==='both'||tg==='player'||(tg==='walkers'&&youHaveWk)))return;if(t.type==='life')life+=t.amt;else mana+=t.amt;};
-  (S.rules||[]).forEach(r=>{if(r.side==='boss'&&r._atkRule&&(r.payer||'player')==='enemy')add(r.atk);});
   [...(S.my&&S.my.creatures||[]),...(S.my&&S.my.artifacts||[]),...(S.my&&S.my.enchants||[]),...(S.my&&S.my.walkers||[])].forEach(o=>{if(!o.phased)add(o.catk);});
   enemyAutoSources().forEach(em=>{if(!em||!em.auto||em.auto.k!=='attackTaxEnemy'||em.autoOn===false||em.phased)return;const n=Math.max(0,em.auto.n||0);if((em.auto.type||'mana')==='life')life+=n;else mana+=n;});
   return{mana,life};}
@@ -2121,7 +2108,7 @@ const ENEMY_EMBLEMS=[
   {n:'You mill (reminder)',note:'Forces you to mill — apply manually (your library is yours).',auto:null},
   {n:'You discard (reminder)',note:'Forces you to discard — apply manually.',auto:null},
   {n:'Menace anthem (reminder)',note:'Enemy creatures have menace (must be blocked by two). Apply via each creature’s drawer.',auto:null},
-  /* P50.15: the enemy-pays attack tax moved to the unified "⚔ attack tax" row (setAtkTaxRule) + per-card catk drawers. attackTax() still READS a legacy attackTaxEnemy emblem so old saves keep working; the template is retired from the picker. */
+  {n:'Attack tax — enemy pays (per attacker)',note:'The enemy must pay N mana for EACH creature it attacks with; any attacker it can’t pay for stays home. Automated.',auto:{k:'attackTaxEnemy',n:1},static:true},/* P50.16: the GLOBAL enemy-pays attack tax is an emblem (persists, ✕-removable, no Destroy) — read by attackTax() during vaelCombat's payAttackTax. Per-permanent taxes use the ✎ drawer catk. */
   {n:'Custom',note:'',auto:null},
 ];
 function embEsc(s){return (''+(s==null?'':s)).replace(/"/g,'&quot;');}
@@ -2178,7 +2165,7 @@ function emblemAttachSel(em){const foes=[...(S.tokens||[]),(S.cmd&&S.cmd.inPlay?
 function setEmblemAttach(id,v){const em=findEnemyFx(id);if(!em)return;em.attachId=(v===''?null:parseInt(v,10));log("dm",`✦ <b>${em.name}</b> ${em.attachId==null?'now affects all enemy creatures':'attached to a creature'}.`);render();}
 /* P13.3: enemy artifacts/enchantments render from their real-permanent arrays (full toolbox: bounce/destroy/exile/copy/take/edit), mirroring the player's board; true emblems stay tracker-only (automation controls + remove). */
 function takeControlPerm(scope,id){const arr=_boardArr(scope);const i=arr.findIndex(c=>c.id===id);if(i<0)return;const c=arr.splice(i,1)[0];const dest=scope==='eart'?'artifacts':'enchants';c._controlled=true;c.color=c.color||[];c.dies=c.dies||'graveyard';c.kind='passive';/* player artifacts/enchants use kind=passive|active */S.my[dest].push(c);log("you",`⇄ You take control of <b>${c.name}</b> — it joins your ${dest==='artifacts'?'artifacts':'enchantments'}.`);render();}
-function enemyPermDrawer(scope,p){const idl=p.id;return `<div class="drawer"><div class="drow"><span class="dlab">flags</span><button class="tiny ${p.legendary?'on':''}" onclick="flagObj('${scope}',${idl},'legendary')">legendary</button><button class="tiny ${p.token?'on':''}" onclick="flagObj('${scope}',${idl},'token')">token</button></div><div class="drow"><span class="dlab">color</span><div class="setbtns">${colorToggles(scope,idl,'color')}</div></div>${commonPermRow(scope,idl,p)}<div class="drow"><span class="dlab">dies to</span><select onchange="setObjF('${scope}',${idl},'dies',this.value)"><option value="graveyard" ${p.dies!=='exile'?'selected':''}>graveyard</option><option value="exile" ${p.dies==='exile'?'selected':''}>exile</option></select></div>${moveRow(scope,idl,true)}</div>`;}
+function enemyPermDrawer(scope,p){const idl=p.id;return `<div class="drawer"><div class="drow"><span class="dlab">flags</span><button class="tiny ${p.legendary?'on':''}" onclick="flagObj('${scope}',${idl},'legendary')">legendary</button><button class="tiny ${p.token?'on':''}" onclick="flagObj('${scope}',${idl},'token')">token</button></div><div class="drow"><span class="dlab">color</span><div class="setbtns">${colorToggles(scope,idl,'color')}</div></div>${commonPermRow(scope,idl,p)}<div class="drow"><span class="dlab">dies to</span><select onchange="setObjF('${scope}',${idl},'dies',this.value)"><option value="graveyard" ${p.dies!=='exile'?'selected':''}>graveyard</option><option value="exile" ${p.dies==='exile'?'selected':''}>exile</option></select></div><div class="drow"><span class="dlab">attack tax (player pays)</span><input type="number" min="0" value="${p.catk?p.catk.amt:0}" style="width:42px" onchange="setObjCatk('${scope}',${idl},'amt',+this.value)"><select onchange="setObjCatk('${scope}',${idl},'type',this.value)"><option value="mana" ${!p.catk||p.catk.type==='mana'?'selected':''}>mana</option><option value="life" ${p.catk&&p.catk.type==='life'?'selected':''}>life</option></select>${catkTgtSel(`setObjCatk('${scope}',${idl},'tgt',this.value)`,p.catk&&p.catk.tgt)}</div>${moveRow(scope,idl,true)}</div>`;}
 /* P23.3: player emblem rows at full parity with the enemy's — name/effect edit, value tuner, auto/static toggle, trigger, attach (anthems), fire, target toggle (you/enemy), remove. A row targeting the ENEMY is blue (.vsenemy), mirroring the enemy's red .vsyou. */
 function renderMyEmblems(){const box=$("myEmb");if(!box)return;const items=S.my.emblems||[];
   box.innerHTML=items.length?"":'<span class="empty">None yet. Pick a template above to add an emblem (⚡ autos fire on your turn, ⟳ static ones apply continuously, the rest are reminders). Emblems that target the ENEMY show a blue box.</span>';
@@ -2194,7 +2181,6 @@ function renderMyEmblems(){const box=$("myEmb");if(!box)return;const items=S.my.
     box.appendChild(el);
   });}
 function renderEnemyEmblems(){fillEmblemTemplates();
-  {const st=$('atkTaxStatus');if(st){const rules=(S.rules||[]).filter(r=>r&&r.side==='boss'&&r._atkRule&&r.atk&&r.atk.amt>0);const ep=rules.find(r=>(r.payer||'player')==='enemy'),pp=rules.find(r=>(r.payer||'player')==='player');const parts=[];if(ep)parts.push(`${ENs()} pays ${ep.atk.amt} ${ep.atk.type} (${ep.atk.tgt})`);if(pp)parts.push(`you pay ${pp.atk.amt} ${pp.atk.type} (${pp.atk.tgt})`);st.textContent=parts.length?('active — '+parts.join(' · ')+' · per-card taxes in each ✎ drawer'):'enemy-pays is enforced; player-pays is a reminder · per-card taxes in each ✎ drawer';}}
   const box=$('enemyEmbList');if(!box)return;
   const groups=[{label:'⚙ Artifacts',items:S.enemyArtifacts||[],perm:true,scope:'eart'},{label:'🪶 Enchantments',items:S.enemyEnchants||[],perm:true,scope:'eench'},{label:'✶ Emblems',items:S.emblemsEnemy||[],perm:false,scope:null}];
   const total=groups.reduce((n,g)=>n+g.items.length,0);
@@ -3250,8 +3236,8 @@ function migrate(s){if(!s||typeof s!=='object')return s;
   (s.my.emblems||[]).forEach(em=>{if(em&&typeof em==='object'){if(!('auto' in em))em.auto=null;if(em.autoOn==null)em.autoOn=false;if(em.static==null)em.static=false;if(!em.trigger)em.trigger='upkeep';if(!('attachId' in em))em.attachId=null;if(!em.target)em.target='player';if(!em.kind)em.kind='emblem';}});/* P23.2/3: backfill player-emblem automation fields on old saves */
   /* P50.15: per-card attack tax (catk) restored — normalize a permanent's catk.tgt to the {both,player,walkers} enum on any save (guards a stale boolean from very old pre-P17.4 saves; P50.4/5-era saves simply have no catk). */
   [].concat(s.my.creatures||[],s.my.artifacts||[],s.my.enchants||[],s.my.walkers||[],s.tokens||[],s.enemyArtifacts||[],s.enemyEnchants||[],s.enemyWalkers||[],s.cmd?[s.cmd]:[]).forEach(o=>{if(o&&o.catk){if(!(o.catk.amt>0)){o.catk=null;return;}if(o.catk.tgt!=='player'&&o.catk.tgt!=='walkers')o.catk.tgt='both';if(o.catk.type!=='life')o.catk.type='mana';}});
-  /* P50.15: an old-save generic attack-tax rule (pre-payer) was always player-pays — stamp the payer so it reads correctly. */
-  (s.rules||[]).forEach(r=>{if(r&&r._atkRule&&!r.payer)r.payer='player';});
+  /* P50.16: attack tax is per-card/emblem now, never an S.rules entry — drop any stray generic _atkRule left in a save from the brief P50.15 window so it stops showing in the "Enchantments in play" box. */
+  if(Array.isArray(s.rules))s.rules=s.rules.filter(r=>!(r&&r._atkRule));
   /* P30: every permanent carries prot/kw/other so the universal parity options work + round-trip. */
   [].concat(s.my.artifacts||[],s.my.enchants||[],s.my.walkers||[],s.enemyArtifacts||[],s.enemyEnchants||[],s.enemyWalkers||[]).forEach(o=>{if(o&&typeof o==='object'){if(!Array.isArray(o.prot))o.prot=[];if(!Array.isArray(o.kw))o.kw=[];if(!Array.isArray(o.other))o.other=[];}});
   if(!s.counters||typeof s.counters!=='object')s.counters={};['poison','energy','experience','cmdDmg'].forEach(k=>{if(typeof s.counters[k]!=='number')s.counters[k]=0;});
