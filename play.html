@@ -1508,7 +1508,10 @@ function aiBlocks(attackers){
       let pick=elig.filter(b=>!b._cmd&&kills(b)&&survives(b)).sort(pref)[0];
       if(!pick&&smart&&ts>=4){const grp=gangToKill(att,elig);if(grp&&room(grp.length)){commit(att,grp);return;}}/* P34.2: gang-block to kill a big threat no single blocker can */
       if(!pick&&ts>=4)pick=elig.filter(b=>!b._cmd&&kills(b)).sort(pref)[0];/* trade up: a killer that dies */
-      if(!pick&&ts>=Math.max(5,S.boss.life*0.4)&&!(smart&&tramp))pick=elig.filter(b=>!b._cmd).sort((a,b)=>effP(a)-effP(b))[0];/* chump a big threat — but P34.2: don't chump a TRAMPLER (it spills over the chump anyway) at standard+ */
+      if(!pick&&ts>=Math.max(5,S.boss.life*0.4)&&!(smart&&tramp)){const body=elig.filter(b=>!b._cmd).sort((a,b)=>effP(a)-effP(b))[0];/* smallest expendable body; P34.2: don't chump a TRAMPLER at standard+ (it spills over the chump anyway) */
+        if(body){if(!smart)pick=body;/* easy: legacy — always chump a big threat */
+          else{const hit=outFace(att),dangerous=(S.boss.life-hit)<=Math.max(6,(S.boss.max||40)*0.25),cheapBody=threatScore(body)<=threatScore(att)*0.5;if(dangerous||cheapBody)pick=body;}/* P50.9: at standard+, don't THROW AWAY a body to chump a NON-lethal hit when the boss can afford it — chump only if this hit is genuinely dangerous (boss would drop to ≤25% max / ≤6) or the body is cheap vs the threat; survival-first (below) still catches true lethal */
+        }}
       if(!pick){const cb=elig.find(b=>b._cmd&&kills(b)&&survives(b));if(cb)pick=cb;}
       if(pick&&room(1))commit(att,[pick]);
     }else{const grp=elig.filter(b=>!b._cmd).sort((a,b)=>effP(a)-effP(b)).slice(0,need);if(grp.length>=need&&ts>=4&&room(grp.length))commit(att,grp);}
@@ -1565,11 +1568,19 @@ function vaelAttackers(){let a=S.tokens.filter(c=>(!c.sick||kw(c,'haste'))&&!c.t
     if(kw(at,'deathtouch'))return false;/* P34.1: deathtouch attacker is glad to be blocked — don't hold it back */
     const able=blockers.filter(b=>!(kw(at,'flying')&&!(kw(b,'flying')||kw(b,'reach'))));
     if(able.length<need(at))return false;
-    return able.some(b=>{
+    if(able.some(b=>{
       const kills=((effP(b)>=effT(at))||kw(b,'deathtouch'))&&!kw(at,'indestructible');
       const survives=(effT(b)>effP(at)&&!kw(at,'deathtouch'))||kw(b,'indestructible');
       return kills&&(survives||threatScore(b)<threatScore(at));
-    });
+    }))return true;
+    /* P50.9: also profitably-blockable if the player can GANG-kill it at a FAVOURABLE trade — no single
+       blocker suffices but 2+ bodies do, and the player loses less total value than the attacker is worth.
+       So the enemy won't alpha-strike a bomb into a gang-kill. Standard+ only (easy keeps the legacy check). */
+    if(enemyLuck()>=0&&!kw(at,'indestructible')){
+      const grp=gangToKill(at,able);/* the kill is verified via resolveAttack inside gangToKill */
+      if(grp&&grp.length>=2){const r=resolveAttack([at],{[at.id]:grp});const lost=grp.filter(b=>r.deadBlk.indexOf(b)>=0).reduce((s,b)=>s+threatScore(b),0);if(lost<threatScore(at))return true;}
+    }
+    return false;
   };
   const maxA=parseInt($("maxAtk").value,10)||0;const cap=r=>{r.sort((x,y)=>effP(y)-effP(x));return (maxA>0&&r.length>maxA)?r.slice(0,maxA):r;};
   /* P34.1: LETHAL PUSH — if swinging with everything ready is (estimated) lethal, alpha-strike regardless of profitable-block holdbacks. A lethal alpha beats "good trades". */
@@ -2453,6 +2464,11 @@ function enemyLethalReach(){const scratch=Object.assign({},bossPool());let budge
 function holdUpValue(fx){if(!fx||fx.type!=='instant')return 0;if(fx.target==='counter')return enemyActThreshold();if(fx.burn>0)return reactiveBurnValue(fx);/* P44 fix: only hold a burn for a real creature kill — a face-burn is cast at sorcery speed */return castValue(fx,{phase:'main1'});}
 function enemyHoldUpReserve(){if(enemyLuck()<0)return 0;/* easy stays tap-happy */
   if(enemyLethalReach().dmg>=S.youLife)return 0;/* racing for lethal — spend it all */
+  /* P50.9: when the enemy is clearly BEHIND on board (your creatures outvalue its), DEVELOP instead of
+     sandbagging interaction — a held counter/removal doesn't save a board that's being overrun. */
+  {const mine=[...(S.tokens||[]),(S.cmd&&S.cmd.inPlay?S.cmd:null)].filter(Boolean).reduce((s,c)=>s+threatScore(c),0);
+   const yours=(S.my.creatures||[]).filter(c=>!c.phased).reduce((s,c)=>s+threatScore(c),0);
+   if(yours>mine*1.5+4)return 0;}
   const holds=S.hand.map(c=>FX[c.key]).filter(fx=>fx&&fx.type==='instant'&&canAfford(fx)&&(fx.burn>0||fx.target||(fx.selfLoss||0)>0)).map(fx=>({fx,val:holdUpValue(fx)})).filter(o=>o.val>=enemyActThreshold()).sort((a,b)=>b.val-a.val);
   return holds.length?holds[0].fx.cost:0;}
 function vaelMain(which){
