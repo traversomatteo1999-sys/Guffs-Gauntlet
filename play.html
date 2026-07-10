@@ -3110,8 +3110,9 @@ function applyPendingPurchases(){const b=bucket();if(!b)return;if(!Array.isArray
 /* P43.3: the single parametrized battle starter — the campaign screen and the sandbox grid both route through it, collapsing the old restart/startNewDescent duplication. Always begins a FRESH board at 40/40 (the between-level HP/gold/item carry-over is the separate super-advance in P43.4). Applies the ACTIVE mode's pending+stash so campaign and sandbox inventories never mix. */
 function startBattle(opts){opts=opts||{};const mode=(opts.mode==='sandbox')?'sandbox':'campaign';const levelIdx=opts.levelIdx||0;const roomIdx=opts.roomIdx||0;const df=opts.diff||(typeof S!=='undefined'&&S&&S.diff)||'standard';
   closeCutscene();['menu','campaign','sandbox','plays','resolver','overlay','library','store'].forEach(id=>{const e=$(id);if(e){e.classList.remove("show");e.classList.remove("bootdrop");}});
-  const lg=$("log");if(lg)lg.innerHTML="";
-  fresh();S.mode=mode;_uiMode=mode;S.diff=df;setLevel(levelIdx);enterRoom(roomIdx,true);
+  fresh();
+  const lg=$("log");if(lg)lg.innerHTML="";/* P52.9: clear AFTER fresh() — fresh() bootstraps a default room-0 (Grakk) board via enterRoom(0), whose thrown-away opening-hand log ("Grakk mulligans…/keeps…") would otherwise leak in ahead of the real warden's; clearing here means the enterRoom(roomIdx) below logs ONLY the actual opponent's opening (fixes Grakk lines showing in Murglax/Vael sandbox fights). */
+  S.mode=mode;_uiMode=mode;S.diff=df;setLevel(levelIdx);enterRoom(roomIdx,true);
   applyPendingPurchases();applyStashItems();setDiff(df);_liveGame=true;render();doAutosave();playPool(roomMusicPool());/* P50.14: the descend/battle starts the current warden's soundtrack */chooseCommander();/* P3.1: re-ask the commander each new battle (fresh() clears it); proceedAfterCommander shows the intro */}
 /* Restart the current mode: campaign → a new run from Level I Room 0 (forward-only); sandbox → re-fight the same battle. */
 function restart(){const mode=(typeof S!=='undefined'&&S&&S.mode==='sandbox')?'sandbox':'campaign';if(mode==='sandbox')startBattle({mode:'sandbox',levelIdx:(S&&S.levelIdx)||0,roomIdx:(S&&S.roomIndex)||0,diff:S.diff});else startBattle({mode:'campaign',levelIdx:0,roomIdx:0,diff:(S&&S.diff)||'standard'});}
