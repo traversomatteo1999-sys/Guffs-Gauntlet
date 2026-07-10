@@ -2209,7 +2209,7 @@ const ENEMY_EMBLEMS=[
   {n:'You mill (reminder)',note:'Forces you to mill — apply manually (your library is yours).',auto:null},
   {n:'You discard (reminder)',note:'Forces you to discard — apply manually.',auto:null},
   {n:'Menace anthem (reminder)',note:'Enemy creatures have menace (must be blocked by two). Apply via each creature’s drawer.',auto:null},
-  {n:'Attack tax — enemy pays (per attacker)',note:'The enemy must pay N mana for EACH creature it attacks with; any attacker it can’t pay for stays home. Automated.',auto:{k:'attackTaxEnemy',n:1},static:true},/* P50.16: the GLOBAL enemy-pays attack tax is an emblem (persists, ✕-removable, no Destroy) — read by attackTax() during vaelCombat's payAttackTax. Per-permanent taxes use the ✎ drawer catk. */
+  {n:'Attack tax — enemy pays (per attacker)',note:'The enemy must pay N mana for EACH creature it attacks with; any attacker it can’t pay for stays home. Automated. To tax a SPECIFIC creature (or any permanent), set its attack tax in that card’s ⚙/✎ Actions drawer instead.',auto:{k:'attackTaxEnemy',n:1},static:true},/* P50.16: the GLOBAL enemy-pays attack tax is an emblem (persists, ✕-removable, no Destroy) — read by attackTax() during vaelCombat's payAttackTax. Per-permanent taxes use the ✎ drawer catk. */
   {n:'Custom',note:'',auto:null},
 ];
 function embEsc(s){return (''+(s==null?'':s)).replace(/"/g,'&quot;');}
