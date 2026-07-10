@@ -20,16 +20,14 @@ ev("addKw('pcmd',null,'flying')");ok(ev("S.pcmd.kw.includes('flying')"), 'P50.6a
 ev("setCtr('pcmd',null,'plus',2)");ok(ev("S.pcmd.plus")===2, 'P50.6a: setCtr adds +1/+1 counters to the pcmd');
 ev("toggleMarker('pcmd',null,'goad')");ok(ev("(S.pcmd.other||[]).includes('goad')"), 'P50.6a: toggleMarker (goad) works on the pcmd');
 ev("togglePermKw('pcmd',null,'hexproof')");ok(ev("S.pcmd.kw.includes('hexproof')"), 'P50.6a: a properties keyword (hexproof) toggles on the pcmd');
-// the box actually renders the editor
+// P52.1 (reverses P50.6a UI): the command-zone box no longer renders the editor — the scope
+// accessors above still work (used once the commander is on the battlefield). The box keeps
+// only name / stat / cast / deploy / hand-toggle.
 ev("renderPlayerCmd()");
 const cmdHtml=ev("document.getElementById('pcmdBox').innerHTML");
-ok(/objPT\('pcmd'/.test(cmdHtml), 'P50.6a: the command-zone box renders ±P/T controls');
-ok(/setCtr\('pcmd'|ctrCustom\('pcmd'/.test(cmdHtml), 'P50.6a: the box renders counter controls');
-ok(/kwSelect|＋kw/.test(cmdHtml) || /addKw\('pcmd'/.test(cmdHtml), 'P50.6a: the box renders a keyword add control (creature commander)');
-ok(/toggleDrawer\('pcmd'/.test(cmdHtml), 'P50.6a: the box renders a properties drawer toggle');
-// open the drawer → full editor
-ev("S.pcmd._drawer=true;renderPlayerCmd()");
-ok(/setObjF\('pcmd'|colorToggles|flagObj\('pcmd'/.test(ev("document.getElementById('pcmdBox').innerHTML")), 'P50.6a: opening properties renders the full editor');
+ok(!/objPT\('pcmd'/.test(cmdHtml), 'P52.1: the command-zone box has NO ±P/T controls');
+ok(!/toggleDrawer\('pcmd'/.test(cmdHtml), 'P52.1: the box has NO properties drawer toggle');
+ok(/castCmd\('pcmd'/.test(cmdHtml) && /deployCmd\('pcmd'/.test(cmdHtml), 'P52.1: the box keeps Cast/Deploy');
 
 // edits persist onto the battlefield when the commander is deployed
 ev("S.pcmd._drawer=false;S.pcmd.kw=['flying'];S.pcmd.plus=2;deployCmd()");
