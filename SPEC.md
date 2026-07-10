@@ -267,7 +267,7 @@
 | &nbsp;&nbsp;P51.8 Remove Vael's **War Cry** (+2/+0 creature buff, incoherent for a walker deck); ensure Vael's commander is treated as a **planeswalker** everywhere | ⬜ |
 | &nbsp;&nbsp;P51.9 Attacker selection: centered **target popup** — shown only when targets beyond the enemy face exist | ⬜ |
 | &nbsp;&nbsp;P51.10 Default **animation level = full** | ✅ **done v70** — both `applyAnim`/`settingsHTML` fallbacks `'auto'`→`'full'`; `'auto'` stays an explicit OS-deferring option |
-| &nbsp;&nbsp;P51.11 Vael reborn heals to **5 HP** (was 1) | ⬜ |
+| &nbsp;&nbsp;P51.11 Vael reborn heals to **5 HP** (was 1) | ✅ **done v71** — `reborn:{5,5,5}`; explicit reversal of P49.11 #23; tip/comments updated |
 
 ---
 
