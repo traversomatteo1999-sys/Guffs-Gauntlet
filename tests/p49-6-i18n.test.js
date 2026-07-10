@@ -45,6 +45,13 @@ ok(/Brucia intensamente/.test(ev("t(DUNGEON[0].quote)")), 'warden quote (Grakk) 
 ok(/cripta/.test(ev("t(DUNGEON[2].guffFreed[0])")), 'victory narrative (guffFreed) translates');
 ok(ev("t('legendary')")==='leggendario' && ev("t('rare')")==='raro', 'shop rarity words translate');
 
+// 7b. The campaign screen translates via the _trText chokepoint + wrapped title/teaser.
+ev("window.alert=function(){};DB.lang='it';if(!prof()){DB.profiles.T={name:'T',camp:{gold:0,pending:[],stash:[],cleared:{},level:0,run:null},sand:{gold:0,pending:[],stash:[],save:null,stats:{}},library:[],tokens:[],seenTutorial:true};DB.active='T';}");
+ev("openCampaign()");
+const camp=D.getElementById('campaign').innerHTML;
+ok(/Tana delle Braci/.test(camp), 'campaign screen: the level name translates');
+ok(/labirinto discendente/.test(camp), 'campaign screen: the teaser translates');
+
 // 8. Proper nouns + MTG keywords stay English (not in the dictionary).
 ok(ev("t('Grakk')")==='Grakk' && ev("t('deathtouch')")==='deathtouch', 'proper nouns + MTG keywords stay English');
 
