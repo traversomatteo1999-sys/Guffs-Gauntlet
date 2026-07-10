@@ -263,10 +263,10 @@
 | &nbsp;&nbsp;P51.4 **Partner commanders** — import `partner` from Scryfall; play a 2nd commander; show both boxes stacked on the "You" panel | ⬜ |
 | &nbsp;&nbsp;P51.5 Emblems/anthems can **deal N damage every trigger** (both sides) | ⬜ |
 | &nbsp;&nbsp;P51.6 Enemy attack-target intelligence — threat order PW > creature > enchant > artifact; face vs walkers/sieges/battles | ⬜ |
-| &nbsp;&nbsp;P51.7 Card "properties" button → **"Actions"**, yellow / more visible | ⬜ |
+| &nbsp;&nbsp;P51.7 Card "properties" button → **"Actions"**, yellow / more visible | ✅ **done v69** — label renamed at all 5 sites; `.drawtoggle` → `--gold`; tutorial copy updated |
 | &nbsp;&nbsp;P51.8 Remove Vael's **War Cry** (+2/+0 creature buff, incoherent for a walker deck); ensure Vael's commander is treated as a **planeswalker** everywhere | ⬜ |
 | &nbsp;&nbsp;P51.9 Attacker selection: centered **target popup** — shown only when targets beyond the enemy face exist | ⬜ |
-| &nbsp;&nbsp;P51.10 Default **animation level = full** | ⬜ |
+| &nbsp;&nbsp;P51.10 Default **animation level = full** | ✅ **done v70** — both `applyAnim`/`settingsHTML` fallbacks `'auto'`→`'full'`; `'auto'` stays an explicit OS-deferring option |
 | &nbsp;&nbsp;P51.11 Vael reborn heals to **5 HP** (was 1) | ⬜ |
 
 ---
