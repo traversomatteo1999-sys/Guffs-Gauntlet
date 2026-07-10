@@ -636,7 +636,7 @@
           <p class="manaline" style="margin:6px 0 0;font-size:.62rem">Full save = everything (profiles, gold, in-progress game). Library = only your cards &amp; tokens, to share between profiles.</p>
         </div>
       </div>
-      <div class="btnrow" style="margin-top:14px;flex-wrap:wrap"><button class="mini gold" onclick="openLibrary()">🃏 Card Library</button><button class="mini" onclick="openTutorial()">❓ How to play</button><button class="mini" onclick="openLore()">📖 Lore</button><button class="mini" id="menuMuteBtn" onclick="toggleMute()" title="Toggle sound">🔊 Sound</button><button class="mini" onclick="openSettings()" title="Volume · text size · animations · data">⚙ Settings</button></div>
+      <div class="btnrow" style="margin-top:14px;flex-wrap:wrap"><button class="mini gold" onclick="openLibrary()">🃏 Card Library</button><button class="mini" onclick="openTutorial()">❓ How to play</button><button class="mini" onclick="openLore()">📖 Lore</button><button class="mini" id="menuMuteBtn" onclick="toggleMute()" title="Toggle sound">🔊 Sound</button><button class="mini" onclick="openSettings()" title="Volume · text size · animations · data">⚙ Settings</button><button class="mini" id="menuLangBtn" onclick="setLang(lang()==='it'?'en':'it')" title="Language / Lingua">🌐 <span id="menuLangLbl">EN</span></button></div>
       <button class="big azor" id="continueBtn" style="margin-top:16px;display:none" onclick="continueLatest()">▶ Continue last game</button>
       <div class="btnrow" style="margin-top:12px;justify-content:center;gap:12px;flex-wrap:wrap"><button class="big ok" style="min-width:200px" onclick="openCampaign()">⚔ Campaign ▸</button><button class="big azor" style="min-width:200px" onclick="openSandbox()">🏟 Sandbox ▸</button></div>
       <p class="manaline" style="text-align:center;margin:8px 0 0;font-size:.6rem;opacity:.6">⟳ Autosaves as you play — close any time and pick up where you left off.</p>
@@ -2653,9 +2653,9 @@ function enemyInstant(win){if(S.over||S.activeTurn!=='you'||S.stackProposal||S.c
   _castEnemyInstant(cands[0].key,null,true);/* P49.3(#21): proactive instant-speed windows also auto-fire the best worthy play (still counterable), matching the response path */}
 
 /* --- flow / zone render --- */
-function flowLabel(){if(S.over)return"— the descent has ended —";if(S.paused)return"Descend to continue ↓";if(S.activeTurn===null)return`▶ Begin ${ENs()}'s Turn 1`;const ph=PHASES[S.phase];if(ph==='end')return S.activeTurn==='vael'?`End ${ENs()}'s turn → Your turn ▸`:`End your turn → ${ENs()}'s turn ▸`;return `Continue ▸ ${PHASE_LABEL[PHASES[S.phase+1]]}`;}
+function flowLabel(){if(S.over)return t("— the descent has ended —");if(S.paused)return t("Descend to continue ↓");if(S.activeTurn===null)return L(`▶ Begin ${ENs()}'s Turn 1`,`▶ Inizia il turno 1 di ${ENs()}`);const ph=PHASES[S.phase];if(ph==='end')return S.activeTurn==='vael'?L(`End ${ENs()}'s turn → Your turn ▸`,`Fine turno di ${ENs()} → Il tuo turno ▸`):L(`End your turn → ${ENs()}'s turn ▸`,`Fine del tuo turno → Turno di ${ENs()} ▸`);return L('Continue ▸ ','Continua ▸ ')+t(PHASE_LABEL[PHASES[S.phase+1]]);}/* P49.6 */
 function renderFlow(){const chips=$("phaseChips");if(chips){chips.innerHTML="";PHASES.forEach((ph,i)=>{const el=document.createElement("span");el.className="phasechip"+(S.activeTurn&&i===S.phase?" on":"")+(S.activeTurn&&i<S.phase?" past":"");el.textContent=PHASE_LABEL[ph];chips.appendChild(el);});}
-  const lbl=$("turnLabel");if(lbl){lbl.className="turnlabel "+(S.activeTurn||'pre');lbl.textContent=S.activeTurn===null?"Pre-game — set up your board, then begin":(S.activeTurn==='vael'?`${ENs()}'s turn · ${PHASE_LABEL[PHASES[S.phase]]}`:`Your turn · ${PHASE_LABEL[PHASES[S.phase]]}`);}
+  const lbl=$("turnLabel");if(lbl){lbl.className="turnlabel "+(S.activeTurn||'pre');lbl.textContent=S.activeTurn===null?t("Pre-game — set up your board, then begin"):(S.activeTurn==='vael'?`${ENs()}${L("'s turn"," · turno")} · ${t(PHASE_LABEL[PHASES[S.phase]])}`:`${L("Your turn","Il tuo turno")} · ${t(PHASE_LABEL[PHASES[S.phase]])}`);}/* P49.6 */
   const fm=$("flowMana");if(fm)fm.innerHTML=S.activeTurn==='vael'?`${ENs()}'s mana: <b>${usableMana()}</b> / ${S.bossManaMax}${(S.bossManaFrozen||0)>0?` ❄${S.bossManaFrozen}`:''} · hand ${S.hand.length} · library ${S.lib.length}`:`${ENs()}'s mana next turn: <b>${projBossMana()}</b> · hand ${S.hand.length} · library ${S.lib.length}`;
   const btn=$("dmBtn");if(btn){btn.disabled=S.over||!!S.combat||S.paused;btn.textContent=flowLabel();}
   const bb=$("backBtn");if(bb)bb.disabled=S.over||!!S.combat||S.paused||S.activeTurn===null||S.phase<=0;
@@ -3134,7 +3134,7 @@ const INFO_TEXT={
   battles:{t:"🜨 Battles & Planes",h:`<p>A <b>battle</b> is a permanent with <b>defense counters</b> — remove them (⚔ hit, or − / +) and at <b>0</b> it's defeated. At the <b>Ember Gate</b>, <b>Grakk fields a Siege</b> that <b>heals him each upkeep</b> until you break it — break it and the siege's defenses turn on Grakk. You can now <b>attack a boss siege in combat</b>: aim an attacker at it in the resolver (the enemy may block to defend it); this tracker stays for manual bookkeeping.</p><p>The <b>planar die</b> is a neutral Planechase roll: mostly blank, occasionally <b>✦ planeswalk</b> (turn to a new plane) or <b>⊛ chaos</b> (trigger this plane's effect). Name a <b>current plane</b> to role-play; you interpret the outcomes.</p>`},
 };
 function infoBtn(key){return `<span class="ibtn" role="button" tabindex="0" onclick="event.stopPropagation();showInfo('${key}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();showInfo('${key}')}" title="What's this?">i</span>`;}
-function showInfo(key){const o=INFO_TEXT[key];if(!o)return;$("infoBody").innerHTML=`<h2 class="loreh">${o.t}</h2>${o.h}`;$("infoOverlay").classList.add("show");}
+function showInfo(key){const o=INFO_TEXT[key];if(!o)return;$("infoBody").innerHTML=`<h2 class="loreh">${t(o.t)}</h2>${t(o.h)}`;$("infoOverlay").classList.add("show");}/* P49.6: title + body translate via the dictionary (English fallback until translated) */
 function closeInfo(){$("infoOverlay").classList.remove("show");}
 /* ⚜ Per-general "peculiarities & abilities" popup. Content is keyed by room and grounded in each deck's actual
    commander/pool/HP (DUNGEON) and the shared enemy AI (vaelMain / enemyInstant / Resurgence / lethal reach). It
@@ -3226,15 +3226,15 @@ function villainCutOpts(room,quote){return room?{sigil:room.sigil||'\u2620',spea
 function showCutscene(lines,title,eyebrow,btn,opts){if(!lines||!lines.length)return;opts=opts||{};sfx('sting');
   try{$("cutscene").style.background=cutBgCss(opts.bg||dungeonBgUrl());}catch(e){}/* P47: opaque image backdrop instead of the blurred live game */_cutReveal=!!opts.revealGame;/* P47: whether closing this beat drops the game board in */
   $("cutSigil").innerHTML=opts.sigil?`<div class="cutsigil" style="--acc:${opts.accent||'var(--gold)'}">${opts.sigil}</div>`:"";
-  $("cutEyebrow").textContent=eyebrow||"";$("cutEyebrow").style.color=opts.eyebrowAcc||"";$("cutTitle").textContent=title||"";
-  $("cutLines").innerHTML=lines.map(l=>`<p>${l}</p>`).join("");
+  $("cutEyebrow").textContent=t(eyebrow||"");$("cutEyebrow").style.color=opts.eyebrowAcc||"";$("cutTitle").textContent=t(title||"");/* P49.6 */
+  $("cutLines").innerHTML=lines.map(l=>`<p>${t(l)}</p>`).join("");/* P49.6: narrative lines translate via the dictionary (English fallback) */
   $("cutQuote").innerHTML=opts.quote?`<div class="cutquote" style="--acc:${opts.accent||'var(--ember)'}"><span class="cq-mark">\u201C</span>${opts.quote}<span class="cq-mark">\u201D</span><div class="cq-by">\u2014 ${opts.speaker||''}</div></div>`:"";
   const sp=$("cutSpoils");if(opts.spoils){sp.innerHTML=opts.spoils;sp.style.display="";}else{sp.innerHTML="";sp.style.display="none";}
   renderCutButtons(opts.buttons||[{label:btn||"Continue \u25B8",on:closeCutscene,cls:"big ok"}]);
   $("cutscene").classList.add("show");}
 let _cutActs=[];let _cutReveal=false;/* P47: set by showCutscene(opts.revealGame); consumed by closeCutscene to drop the game board in */
 function renderCutButtons(buttons){_cutActs=buttons.map(b=>b.on);
-  $("cutBtns").innerHTML=buttons.map((b,i)=>`<button class="${b.cls||'big ok'} inline"${i===0?' id="cutBtn"':''} onclick="cutAct(${i})">${b.label}</button>`).join("");}
+  $("cutBtns").innerHTML=buttons.map((b,i)=>`<button class="${b.cls||'big ok'} inline"${i===0?' id="cutBtn"':''} onclick="cutAct(${i})">${t(b.label)}</button>`).join("");}/* P49.6 */
 function cutAct(i){const fn=_cutActs[i];if(typeof fn==='function')fn();}
 function closeCutscene(){$("cutscene").classList.remove("show");if(_cutReveal){_cutReveal=false;dropInGame();}}
 /* P47: replay the menu's drop-down on the game board when a warden intro closes into gameplay. */
@@ -3497,6 +3497,7 @@ function closeMenusForRun(){['menu','campaign','sandbox'].forEach(id=>{const e=$
 function startNewDescent(){closeMenusForRun();startBattle({mode:'campaign',levelIdx:0,roomIdx:0,diff:(typeof S!=='undefined'&&S&&S.diff)||'standard'});}
 function menuSetDiff(df){setDiff(df);renderMenu();}
 function renderMenu(){
+  {const ll=$("menuLangLbl");if(ll)ll.textContent=lang()==='it'?'IT':'EN';}/* P49.6: show the current language on the menu flag button */
   const p=prof();const sel=$("menuProfileSel");if(sel){const names=Object.keys(DB.profiles);sel.innerHTML=names.map(n=>`<option value="${n}" ${n===DB.active?'selected':''}>${n}</option>`).join("");}
   const rec=$("menuRecord");if(rec)rec.innerHTML=p?`<b>${p.name}</b> — <span style="color:var(--ok)">${p.wins||0} W</span> · <span style="color:var(--ember)">${p.losses||0} L</span> · <span style="color:var(--gold)">💰 ⚔ ${(p.camp&&p.camp.gold)||0} · 🏟 ${(p.sand&&p.sand.gold)||0}</span><br><span class="manaline">${(p.library||[]).length} saved card${(p.library||[]).length===1?'':'s'} · ${(p.tokens||[]).length} token${(p.tokens||[]).length===1?'':'s'}</span>`:'no profile';/* P43.1: two purses — Campaign / Sandbox */
   const ds=$("menuDiff");if(ds)[...ds.children].forEach(b=>b.classList.toggle("on",b.dataset.d===S.diff));
@@ -3928,15 +3929,95 @@ function applyTextSize(){try{const sz=((DB&&DB.settings)||{}).textSize||'M';cons
 function setTextSize(sz){try{if(!DB.settings)DB.settings={};DB.settings.textSize=sz;saveDB();}catch(e){}applyTextSize();if($("overlay")&&$("overlay").classList.contains('show'))openSettings();}
 function applyAnim(){try{const lv=((DB&&DB.settings)||{}).anim||'full';/* P51.10: default = full (was 'auto'; 'auto' stays an explicit choice that defers to the OS reduced-motion query) */const h=document.documentElement;h.classList.remove('motion-full','motion-soft','motion-off');if(lv==='full'||lv==='soft'||lv==='off')h.classList.add('motion-'+lv);}catch(e){}}
 function setAnimLevel(lv){try{if(!DB.settings)DB.settings={};DB.settings.anim=lv;saveDB();}catch(e){}applyAnim();if($("overlay")&&$("overlay").classList.contains('show'))openSettings();}
-function loadSettings(){try{if(!DB.settings)DB.settings={};}catch(e){}applyTextSize();applyAnim();}
+function loadSettings(){try{if(!DB.settings)DB.settings={};if(DB.lang!=='it')DB.lang='en';}catch(e){}applyTextSize();applyAnim();}
+/* ===== P49.6: Italian localization (DB.lang, default 'en'). `t(en)` looks up the IT dictionary (English source string → Italiano) and falls back to English when a string isn't translated yet; `L(en,it)` is the inline form for data. JS-rendered copy reads t()/L() live; the STATIC menu/chrome is translated by a scoped tree-walker (`applyLang`) at boot + after a switch. Switching saves + reloads (autosave→Continue is lossless). Proper nouns (Grakk/Murglax/Vael/Ash/Guff/Ashveil/Warren of Embers…) and MTG rules keywords (commander/planeswalker/deathtouch/trample…) stay English by design. ===== */
+function lang(){return (typeof DB!=='undefined'&&DB&&DB.lang==='it')?'it':'en';}
+function L(en,it){return lang()==='it'?it:en;}
+function t(en){if(lang()!=='it'||en==null)return en;const m=I18N.it;return (m&&m[en]!=null)?m[en]:en;}
+function setLang(lg){try{DB.lang=(lg==='it')?'it':'en';saveDB();}catch(e){}try{location.reload();}catch(e){applyLang();if($("overlay")&&$("overlay").classList.contains('show'))openSettings();renderMenu&&renderMenu();}}
+/* translate exact-match text nodes + placeholder/title/aria-label attributes inside a static container against the IT dictionary (used only for chrome that JS never rebuilds — the board/JS-rendered copy uses t() instead). */
+function _trText(root){if(!root||lang()!=='it')return;const m=I18N.it;try{const wk=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null);const ns=[];let x;while(x=wk.nextNode())ns.push(x);ns.forEach(n=>{const raw=n.nodeValue,k=(raw||'').trim();if(k&&m[k]!=null&&m[k]!==k)n.nodeValue=raw.replace(k,m[k]);});['placeholder','title','aria-label'].forEach(a=>{root.querySelectorAll('['+a+']').forEach(e=>{const k=e.getAttribute(a);if(k&&m[k]!=null)e.setAttribute(a,m[k]);});});}catch(e){}}
+function applyLang(){if(lang()!=='it')return;/* the purely-static overlays JS never rebuilds — menu + the four tab shells' labels + header/help. JS-rendered overlays (settings/store/campaign/sandbox/cutscene/tutorial/info) translate via t() at render time. */
+  ['menu'].forEach(id=>{const e=document.getElementById(id);if(e)_trText(e);});
+  const hdr=document.getElementById('hdrRoom')?document.getElementById('hdrRoom').closest('header,.topbar,.hdr'):null;if(hdr)_trText(hdr);
+  ['tab-info','tab-action','tab-enemy','tab-you'].forEach(id=>{const e=document.getElementById(id);if(e)e.querySelectorAll('.tablabel,.tabhead,.subh,.panelhead,.lab,.dlab,.manaline,label,button,span,h2,h3,p').forEach(_trText);});}
+const I18N={it:{
+  /* ---- menu ---- */
+  "Solo Commander RPG · Engine v43":"GDR Commander in solitario · Engine v43",
+  "A solo Commander dungeon-crawl. You are an off-plane planeswalker, pulled to the plane of Ashveil by the Conclave's last cry — their founder, Commodore Guff, lies caged in the Warren of Embers, the downward maze of the tyrant Vael, who reigns by a deathless flame of his own forging. Build a library of your own cards, choose your difficulty, and descend to break Guff out. Three wardens hold the dark between you and his cage, and you learn each one's name only by beating it out of them.":"Un dungeon-crawl Commander in solitario. Sei un planeswalker venuto da un altro piano, attirato sul piano di Ashveil dall'ultimo grido del Conclave: il loro fondatore, il Commodoro Guff, giace in gabbia nella Tana delle Braci, il labirinto discendente del tiranno Vael, che regna grazie a una fiamma immortale forgiata da lui stesso. Costruisci una libreria di carte tue, scegli la difficoltà e scendi per liberare Guff. Tre guardiani tengono il buio tra te e la sua gabbia, e imparerai il nome di ciascuno solo strappandoglielo con la vittoria.",
+  "Profile":"Profilo","new profile name":"nome nuovo profilo","+ create":"+ crea",
+  "Difficulty":"Difficoltà","Easy":"Facile","Standard":"Standard","Brutal":"Brutale",
+  "Saves (offline)":"Salvataggi (offline)","⬇ Export save":"⬇ Esporta salvataggio","⬆ Import":"⬆ Importa",
+  "⬇ Export library":"⬇ Esporta libreria","⬆ Import library":"⬆ Importa libreria",
+  "Full save = everything (profiles, gold, in-progress game). Library = only your cards & tokens, to share between profiles.":"Salvataggio completo = tutto (profili, oro, partita in corso). Libreria = solo le tue carte e pedine, da condividere tra i profili.",
+  "🃏 Card Library":"🃏 Libreria carte","❓ How to play":"❓ Come si gioca","📖 Lore":"📖 Lore","🔊 Sound":"🔊 Audio","⚙ Settings":"⚙ Impostazioni",
+  "▶ Continue last game":"▶ Continua l'ultima partita","⚔ Campaign ▸":"⚔ Campagna ▸","🏟 Sandbox ▸":"🏟 Prova libera ▸",
+  "⟳ Autosaves as you play — close any time and pick up where you left off.":"⟳ Salvataggio automatico mentre giochi — chiudi quando vuoi e riprendi da dove eri.",
+  "Toggle sound":"Attiva/disattiva l'audio","Volume · text size · animations · data":"Volume · dimensione testo · animazioni · dati","Language":"Lingua",
+  /* ---- settings ---- */
+  "⚙ Settings":"⚙ Impostazioni","🔊 Sound":"🔊 Audio","🔤 Text size":"🔤 Dimensione testo","Small":"Piccolo","Medium":"Medio","Large":"Grande",
+  "🎞 Animations":"🎞 Animazioni","Full":"Piene","Soft":"Ridotte","Off":"No","Auto":"Auto",
+  "“Auto” follows your device. “Off” still shows static damage numbers.":"“Auto” segue il tuo dispositivo. “No” mostra comunque i numeri di danno statici.",
+  "💾 Data":"💾 Dati","⬇ Save":"⬇ Salva","⬆ Save":"⬆ Salva","⬇ Library":"⬇ Libreria","⬆ Library":"⬆ Libreria","⬇ Debug report":"⬇ Report di debug","Done":"Fatto",
+  "🌐 Language":"🌐 Lingua","🇬🇧 English":"🇬🇧 Inglese","🇮🇹 Italiano":"🇮🇹 Italiano",
+  "🇬🇧 EN":"🇬🇧 EN","🇮🇹 IT":"🇮🇹 IT",
+  "Muted":"Muto","🔇 Muted":"🔇 Muto","🔊 On":"🔊 Attivo",
+  /* ---- tabs ---- */
+  "Info":"Info","Action":"Azioni","Enemy Board":"Campo nemico","Your Board":"Il tuo campo",
+  /* ---- mode screens / campaign / sandbox ---- */
+  "⚔ Campaign":"⚔ Campagna","🏟 Sandbox":"🏟 Prova libera","← Menu":"← Menu","‹ Menu":"‹ Menu","Back":"Indietro",
+  "▶ Continue run":"▶ Riprendi la discesa","✦ New run":"✦ Nuova discesa","▶ Begin campaign":"▶ Inizia la campagna","✕ Abandon campaign":"✕ Abbandona la campagna",
+  "End this run — your gold, stash & unlocks are kept":"Termina questa discesa — oro, scorte e sblocchi restano tuoi",
+  /* ---- common buttons / phases ---- */
+  "Continue ▸":"Continua ▸","cancel":"annulla","Cancel":"Annulla","Got it ▸":"Ho capito ▸","Descend →":"Scendi →","▸ Resolve the stack":"▸ Risolvi la pila",
+  "untap":"stappa","upkeep":"mantenimento","draw":"pesca","main1":"principale 1","combat":"combattimento","main2":"principale 2","end":"fine",
+  "Your turn":"Il tuo turno","◂ Back":"◂ Indietro","↩ Undo":"↩ Annulla",
+  /* ---- info popup titles (INFO_TEXT.t) ---- */
+  "AI threat — enemy targeting priority":"Minaccia IA — priorità di bersaglio del nemico","Commander":"Comandante","The Stack":"La Pila","Emblems":"Emblemi","Battles & Planes":"Battaglie e Piani",
+  /* ---- cutscenes (buttons + common) ---- */
+  "Descend into the Warren ▸":"Scendi nella Tana ▸","Face the Tyrant ▸":"Affronta il Tiranno ▸","Fight ▸":"Combatti ▸",
+  "Start a new descent?":"Iniziare una nuova discesa?","⚠ A descent is already saved":"⚠ Una discesa è già salvata","▶ Continue saved descent":"▶ Riprendi la discesa salvata","✦ Start new — abandon save":"✦ Ricomincia — abbandona il salvataggio",
+  /* ---- misc ---- */
+  "empty":"vuoto","none":"nessuno","none logged":"nessuna registrata",
+  /* ---- phase labels (turn flow) ---- */
+  "Untap":"Stappa","Upkeep":"Mantenimento","Draw":"Pesca","Main 1":"Principale 1","Combat":"Combattimento","Main 2":"Principale 2","End":"Fine",
+  "Pre-game — set up your board, then begin":"Pre-partita — prepara il campo, poi inizia","Descend to continue ↓":"Scendi per continuare ↓","— the descent has ended —":"— la discesa è finita —",
+  /* ---- info popup titles ---- */
+  "⟡ Info tab":"⟡ Scheda Info","🜂 Action tab":"🜂 Scheda Azioni","⚔ Enemy Board":"⚔ Campo nemico","🛡 Your Board":"🛡 Il tuo campo","🪙 Tokens":"🪙 Pedine",
+  "✨ Between-boss life reset":"✨ Reset dei punti vita tra i boss","🜟 The Stack":"🜟 La Pila","♛ Commander":"♛ Comandante","⚔ Threat (AI hint)":"⚔ Minaccia (suggerimento IA)","🛡 Ward":"🛡 Ward","⚙ Manual mana overrides":"⚙ Override manuale della mana","❄ Freeze mana":"❄ Congela mana","🜨 Battles & Planes":"🜨 Battaglie e Piani",
+  /* ---- info popup bodies (short/high-value; the long ones fall back to English) ---- */
+  "<p>Tells the enemy AI how dangerous this permanent is. The AI works to remove or block your <b>top</b> threats ahead of <b>mid</b> and <b>low</b> ones — set it honestly so the opponent plays sensibly.</p>":"<p>Indica all'IA nemica quanto è pericoloso questo permanente. L'IA cerca di rimuovere o bloccare le tue minacce <b>alte</b> prima di quelle <b>medie</b> e <b>basse</b> — impostalo onestamente così l'avversario gioca in modo sensato.</p>",
+  "<p>Ward makes the enemy <b>pay</b> before it can target this permanent — mana or life, your choice. If the enemy can't (or won't) pay the ward, it simply can't target it.</p>":"<p>Il Ward costringe il nemico a <b>pagare</b> prima di poter bersagliare questo permanente — mana o punti vita, a tua scelta. Se il nemico non può (o non vuole) pagare il ward, semplicemente non può bersagliarlo.</p>",
+  "<p>Spells and abilities wait here before they happen. The stack resolves <b>top-down</b> — last in, first out — so the most recent thing resolves first.</p><p>While something is on the stack either side may respond by adding more on top. Resolve them one at a time: counter, redirect, or let them happen.</p>":"<p>Magie e abilità aspettano qui prima di accadere. La pila si risolve <b>dall'alto</b> — ultimo entrato, primo a uscire — quindi l'ultima cosa si risolve per prima.</p><p>Mentre qualcosa è sulla pila, entrambe le parti possono rispondere aggiungendone altre sopra. Risolvile una alla volta: neutralizza, redirigi, o lasciale accadere.</p>",
+  /* ---- mode screens ---- */
+  "your descent":"la tua discesa","Buying for:":"Acquisti per:","gold":"oro","Need gold":"Serve oro","Buy":"Compra","🔒 Locked":"🔒 Bloccato",
+  "⚔ Campaign ▸":"⚔ Campagna ▸","🏟 Sandbox ▸":"🏟 Prova libera ▸",
+  /* ---- library / creator common ---- */
+  "🃏 Card Library":"🃏 Libreria carte","✎ Create a card":"✎ Crea una carta","🔍 Search":"🔍 Cerca","★ Save to library":"★ Salva in libreria","close":"chiudi",
+  /* ---- combat resolver ---- */
+  "Approve ▸":"Conferma ▸","target":"bersaglio","assign":"assegna","unblocked":"non bloccato","Prediction:":"Previsione:",
+  "⚔ Choose attack targets":"⚔ Scegli i bersagli d'attacco","⚔ Attack ▸":"⚔ Attacca ▸",
+  /* ---- arrival narrative ---- */
+  "Your spark wakes between worlds and will not be argued with. A plea catches it — thin, far, the way water finds a crack — and drags you down through dark after dark to a plane you have never walked. <em>Ashveil</em>, where you have nothing to win and no reason to stay.":"La tua scintilla si desta tra i mondi e non ammette repliche. Una supplica la coglie — sottile, lontana, come l'acqua che trova una crepa — e ti trascina giù di buio in buio verso un piano che non hai mai calcato. <em>Ashveil</em>, dove non hai nulla da vincere e nessun motivo di restare.",
+  "The air reeks of old smoke. Beneath your boots the rock splits into a downward maze of goblin-fire and grave-cold, and at its heart a flame is burning that will not die. They call it the <em>Ember</em>; they call its maker Vael; and Vael has already won the war.":"L'aria puzza di fumo antico. Sotto i tuoi stivali la roccia si apre in un labirinto discendente di fuoco goblin e freddo di tomba, e nel suo cuore arde una fiamma che non muore. La chiamano la <em>Brace</em>; chiamano Vael il suo artefice; e Vael ha già vinto la guerra.",
+  "Yet something dragged you to this exact wound, and now you know its name. Caged in the deep, in iron of Vael's own forging, the founder of the beaten Conclave still breathes — <em>Commodore Guff</em>. Free him, and a lost cause has its keystone again.":"Eppure qualcosa ti ha trascinato proprio a questa ferita, e ora ne conosci il nome. In gabbia nel profondo, nel ferro forgiato da Vael stesso, il fondatore del Conclave sconfitto respira ancora — <em>il Commodoro Guff</em>. Liberalo, e una causa perduta ritrova la sua chiave di volta.",
+  "You owe this plane nothing. You go down anyway. Below, the Ember Gate yawns open, breathing heat up into the cold.":"Non devi nulla a questo piano. Scendi comunque. Sotto, la Porta delle Braci si spalanca, esalando calore nel gelo.",
+  "Nothing to Gain":"Niente da guadagnare","Arrival · Ashveil":"Arrivo · Ashveil","the Conclave's plea":"la supplica del Conclave",
+  "Find Guff. Free him. He is the last of us who can still build.":"Trova Guff. Liberalo. È l'ultimo di noi che sappia ancora costruire.",
+  /* ---- onboarding / tutorial offer ---- */
+  "📖 Learn the ropes":"📖 Impara le basi","▶ Just play":"▶ Gioca e basta","Two ways to play":"Due modi di giocare",
+  /* ---- siege popup ---- */
+  "Got it ▸":"Ho capito ▸"
+}};
 function settingsHTML(){const s=(DB&&DB.settings)||{};const ts=s.textSize||'M';const an=s.anim||'full';/* P51.10: default = full (matches applyAnim) */const vol=Math.round(((typeof _vol==='number')?_vol:1)*100);
-  const seg=(cur,opts,fn)=>`<div class="seg">${opts.map(([v,l])=>`<button class="${cur===v?'on':''}" onclick="${fn}('${v}')">${l}</button>`).join('')}</div>`;
-  return `<h2>⚙ Settings</h2>
-  <div class="setgrp"><div class="setlab">🔊 Sound</div><div class="btnrow" style="align-items:center;gap:8px"><button class="mini" onclick="toggleMute();openSettings()">${_muted?'🔇 Muted':'🔊 On'}</button><input type="range" min="0" max="100" value="${vol}" aria-label="Volume" oninput="setVol(this.value)" style="flex:1 1 150px;accent-color:var(--gold)"></div></div>
-  <div class="setgrp"><div class="setlab">🔤 Text size</div>${seg(ts,[['S','Small'],['M','Medium'],['L','Large']],'setTextSize')}</div>
-  <div class="setgrp"><div class="setlab">🎞 Animations</div>${seg(an,[['full','Full'],['soft','Soft'],['off','Off'],['auto','Auto']],'setAnimLevel')}<div class="manaline" style="margin-top:5px">“Auto” follows your device. “Off” still shows static damage numbers.</div></div>
-  <div class="setgrp"><div class="setlab">💾 Data</div><div class="btnrow"><button class="mini azor" onclick="exportSave()">⬇ Save</button><label class="mini" role="button" style="cursor:pointer">⬆ Save<input type="file" accept="application/json" style="display:none" onchange="importSave(this)"></label><button class="mini azor" onclick="exportLibrary()">⬇ Library</button><label class="mini" role="button" style="cursor:pointer">⬆ Library<input type="file" accept="application/json" style="display:none" onchange="importLibrary(this)"></label></div></div>
-  <div class="btnrow" style="margin-top:12px;justify-content:space-between"><button class="mini gold" onclick="downloadDebugReport()">⬇ Debug report</button><button class="big azor inline" onclick="closeOverlay()">Done</button></div>`;}
+  const seg=(cur,opts,fn)=>`<div class="seg">${opts.map(([v,l])=>`<button class="${cur===v?'on':''}" onclick="${fn}('${v}')">${t(l)}</button>`).join('')}</div>`;
+  return `<h2>${t('⚙ Settings')}</h2>
+  <div class="setgrp"><div class="setlab">${t('🌐 Language')}</div>${seg(lang(),[['en','🇬🇧 English'],['it','🇮🇹 Italiano']],'setLang')}</div>
+  <div class="setgrp"><div class="setlab">${t('🔊 Sound')}</div><div class="btnrow" style="align-items:center;gap:8px"><button class="mini" onclick="toggleMute();openSettings()">${_muted?t('🔇 Muted'):t('🔊 On')}</button><input type="range" min="0" max="100" value="${vol}" aria-label="Volume" oninput="setVol(this.value)" style="flex:1 1 150px;accent-color:var(--gold)"></div></div>
+  <div class="setgrp"><div class="setlab">${t('🔤 Text size')}</div>${seg(ts,[['S','Small'],['M','Medium'],['L','Large']],'setTextSize')}</div>
+  <div class="setgrp"><div class="setlab">${t('🎞 Animations')}</div>${seg(an,[['full','Full'],['soft','Soft'],['off','Off'],['auto','Auto']],'setAnimLevel')}<div class="manaline" style="margin-top:5px">${t('“Auto” follows your device. “Off” still shows static damage numbers.')}</div></div>
+  <div class="setgrp"><div class="setlab">${t('💾 Data')}</div><div class="btnrow"><button class="mini azor" onclick="exportSave()">${t('⬇ Save')}</button><label class="mini" role="button" style="cursor:pointer">${t('⬆ Save')}<input type="file" accept="application/json" style="display:none" onchange="importSave(this)"></label><button class="mini azor" onclick="exportLibrary()">${t('⬇ Library')}</button><label class="mini" role="button" style="cursor:pointer">${t('⬆ Library')}<input type="file" accept="application/json" style="display:none" onchange="importLibrary(this)"></label></div></div>
+  <div class="btnrow" style="margin-top:12px;justify-content:space-between"><button class="mini gold" onclick="downloadDebugReport()">${t('⬇ Debug report')}</button><button class="big azor inline" onclick="closeOverlay()">${t('Done')}</button></div>`;}
 function openSettings(){if(typeof DB==='undefined'||!DB)return;$("modalBody").innerHTML=settingsHTML();$("overlay").classList.add("show");}
 /* ===== P46.4: accessibility — dialog focus management + Esc. Overlays trap Tab while open and restore focus on close; Esc closes any open overlay EXCEPT the combat resolver (which keeps its no-accidental-dismiss Approve/Cancel rule). ===== */
 const _A11Y_OVERLAYS=['overlay','infoOverlay','store','library','campaign','sandbox','plays','cutscene','menu'];/* Esc-closable, checked topmost-first */
@@ -4036,7 +4117,7 @@ function toggleMute(){_muted=!_muted;try{DB.muted=_muted;saveDB();}catch(e){}if(
 function renderMuteBtn(){['muteBtn','menuMuteBtn'].forEach(id=>{const b=$(id);if(b)b.textContent=_muted?'🔇 Muted':'🔊 Sound';});}
 
 loadDB();loadMute();loadVol();installErrorHandlers();loadSettings();
-fresh();setDiff("standard");render();setWarrenArt();setMenuArt();buildTabs();applyTabs();renderMuteBtn();renderVolUI();installA11y();
+fresh();setDiff("standard");render();setWarrenArt();setMenuArt();buildTabs();applyTabs();renderMuteBtn();renderVolUI();installA11y();applyLang();/* P49.6: translate the static menu/tab chrome if DB.lang==='it' */
 /* P7.8: unlock WebAudio on the first user gesture (browsers block autoplay until then) */
 try{['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,unlockAudio,{once:true}));}catch(e){}
 log("sys",`The Warren breathes cold and ash from the dark below. Your chronicle begins here — every blow, spell, and bargain is remembered.`);
