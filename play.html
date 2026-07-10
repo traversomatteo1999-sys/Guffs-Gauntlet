@@ -3451,7 +3451,9 @@ function confirmNewDescent(){const sv=getSave('campaign')||{};const rn=(DUNGEON[
   showCutscene([`You have a descent already underway — <b>${rn}</b>, Turn ${tn}.`,`Starting a new descent will <b>abandon</b> it — once the new run begins, your saved game is overwritten.`],"Start a new descent?","⚠ A descent is already saved",null,
     {eyebrowAcc:'var(--ember)',buttons:[{label:"▶ Continue saved descent",on:continueLastGame,cls:"big azor"},{label:"✦ Start new — abandon save",on:startNewDescent,cls:"big ok"},{label:"Cancel",on:closeCutscene,cls:"big"}]});}
 /* Begin a brand-new descent from a clean board — works from first boot AND from a run already in progress (the latter requires the fresh() reset, which the old version omitted). Mirrors restart() but also dismisses the menu and any open overlays. */
-function startNewDescent(){startBattle({mode:'campaign',levelIdx:0,roomIdx:0,diff:(typeof S!=='undefined'&&S&&S.diff)||'standard'});}
+/* P52.8: dismiss the menu / campaign / sandbox windows IMMEDIATELY when a new run is committed — front-loaded so the window can't linger through startBattle's later fresh()/enterRoom()/render() work (startBattle also strips them, this just makes the dismissal instant + explicit). */
+function closeMenusForRun(){['menu','campaign','sandbox'].forEach(id=>{const e=$(id);if(e)e.classList.remove("show");});}
+function startNewDescent(){closeMenusForRun();startBattle({mode:'campaign',levelIdx:0,roomIdx:0,diff:(typeof S!=='undefined'&&S&&S.diff)||'standard'});}
 function menuSetDiff(df){setDiff(df);renderMenu();}
 function renderMenu(){
   const p=prof();const sel=$("menuProfileSel");if(sel){const names=Object.keys(DB.profiles);sel.innerHTML=names.map(n=>`<option value="${n}" ${n===DB.active?'selected':''}>${n}</option>`).join("");}
@@ -3485,7 +3487,7 @@ function renderCampaign(){const p=prof();const g=$("campGold");if(g)g.textConten
     return `<div class="loreent has-art${current?' cur':''}"><div class="loreframe ${locked?'locked':''}" style="--acc:var(--gold)">${cover}</div><div class="lorebody"><div class="loretitle">${title} ${badge}</div><div class="loretext">${text}</div><div class="btnrow" style="margin-top:7px;flex-wrap:wrap">${btns}</div></div></div>`;
   }).join('');}
 /* Begin/New run — a campaign always starts at Level I Room 0 (forward-only); confirm-to-abandon if a run is already live. */
-function campaignStart(){const p=prof();const run=p&&p.camp&&p.camp.run;_uiMode='campaign';if(run&&run.S&&!run.S.over)confirmNewDescent();else startBattle({mode:'campaign',levelIdx:0,roomIdx:0,diff:(S&&S.diff)||'standard'});}
+function campaignStart(){const p=prof();const run=p&&p.camp&&p.camp.run;_uiMode='campaign';if(run&&run.S&&!run.S.over)confirmNewDescent();else{closeMenusForRun();startBattle({mode:'campaign',levelIdx:0,roomIdx:0,diff:(S&&S.diff)||'standard'});}}/* P52.8: the direct (no parked run) path front-loads the window teardown too */
 function continueCampaign(){const p=prof();_uiMode='campaign';continueLastGame(p&&p.camp&&p.camp.run);}
 /* P49.7(#29): abandon the current campaign RUN only — resets the run position (p.camp.run) but preserves gold, stash, pending purchases, cleared-ledger and unlock level. Mode-explicit (setSave(null,'campaign')) so a stale live S.mode from the menu can't null the wrong slot. Gated behind a confirm. */
 function abandonCampaign(){const sv=getSave('campaign')||{};const rn=(DUNGEON[sv.room!=null?sv.room:((sv.S&&sv.S.roomIndex)||0)]||{}).name||'your descent';const tn=sv.turn!=null?sv.turn:((sv.S&&sv.S.turn)||0);
