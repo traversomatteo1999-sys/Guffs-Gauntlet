@@ -38,6 +38,8 @@ ev("DB.lang='it';fresh('standard');S.activeTurn='you';S.phase=1;render()");
 ok(ev("t('Combat')")==='Combattimento', 'phase label translates');
 ok(/Continua ▸/.test(ev("flowLabel()")), 'flowLabel translates the fixed part');
 ok(/Minaccia/.test(ev("(function(){showInfo('threat');return document.getElementById('infoBody').innerHTML})()")), 'info popup translates');
+// all 12 INFO popup bodies translate (none fall back to English)
+ok(ev("(function(){var all=true;Object.keys(INFO_TEXT).forEach(function(k){showInfo(k);var en=INFO_TEXT[k].h;if(document.getElementById('infoBody').innerHTML.indexOf(en.slice(3,40))>=0)all=false;});return all})()"), 'all 12 INFO bodies translate to Italian');
 
 // 7. Cutscene narrative translates (arrival + warden + victory).
 ok(ev("t(ARRIVAL_LINES[3])")!==ev("ARRIVAL_LINES[3]") && /Porta delle Braci/.test(ev("t(ARRIVAL_LINES[3])")), 'arrival narrative translates');
