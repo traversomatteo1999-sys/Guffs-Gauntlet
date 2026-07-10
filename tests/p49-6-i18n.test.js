@@ -22,6 +22,18 @@ ok(/id="menuLangBtn"/.test(src), 'menu has a language flag button');
 ev("DB.lang='it';renderMenu()");
 ok((D.getElementById('menuLangLbl')||{}).textContent==='IT', 'menu flag label reflects the current language (IT)');
 
+// 3b. P49.6 FIX (regression): the flag's inline onclick must NOT call a bare lang() — inside an inline
+//     handler `lang` binds to the element's built-in .lang string (shadowing the global fn), so
+//     `setLang(lang()...)` threw "lang is not a function". It now routes through a toggleLang() global.
+const langBtn=D.getElementById('menuLangBtn');
+ok(!!langBtn, 'menuLangBtn exists in the DOM');
+const oc=(langBtn&&langBtn.getAttribute('onclick'))||'';
+ok(!/\blang\s*\(/.test(oc), 'menu flag onclick has no bare lang() call (would throw in an inline handler): '+JSON.stringify(oc));
+ok(/toggleLang\s*\(\s*\)/.test(oc), 'menu flag onclick routes through toggleLang()');
+ok(ev("typeof toggleLang")==='function', 'toggleLang() is a global function');
+ok(ev("(function(){DB.lang='en';var g=null,o=setLang;setLang=function(x){g=x};try{toggleLang()}finally{setLang=o}return g})()")==='it', 'toggleLang() from EN requests IT');
+ok(ev("(function(){DB.lang='it';var g=null,o=setLang;setLang=function(x){g=x};try{toggleLang()}finally{setLang=o}return g})()")==='en', 'toggleLang() from IT requests EN');
+
 // 4. applyLang translates the static menu chrome in IT, keeping the title + proper nouns.
 ev("DB.lang='it';applyLang()");
 const menu=D.getElementById('menu').innerHTML;
@@ -85,6 +97,16 @@ ok(!ev("(function(){try{migrate(JSON.parse('{\"tokens\":[],\"my\":{\"creatures\"
 // 11. setLang persists DB.lang (runs LAST — its location.reload() is a jsdom no-op that logs a benign "not implemented" artifact).
 ev("DB.lang='en';try{setLang('it')}catch(e){}");
 ok(ev("DB.lang")==='it', 'setLang persists DB.lang');
+
+// 11b. P49.6 FIX (regression): clicking the REAL menu flag button dispatches its inline onclick
+//      without throwing "lang is not a function" (the reported bug) and toggles the language.
+//      Runs after the §9 error gate because setLang's location.reload() logs the benign jsdom
+//      navigation artifact; we only assert no "is not a function" error appears here.
+ev("DB.lang='en'");
+const _clickErr=errors.length;
+try{ D.getElementById('menuLangBtn').click(); }catch(e){ errors.push('click-threw:'+(e&&e.message)); }
+ok(ev("DB.lang")==='it', 'clicking the menu flag button toggles DB.lang en->it');
+ok(!errors.slice(_clickErr).some(m=>/is not a function/i.test(String(m))), 'clicking the flag button does not throw "lang is not a function"');
 
 console.log(fail?'P49.6 FAILED':'P49.6 PASSED');
 process.exit(fail?1:0);

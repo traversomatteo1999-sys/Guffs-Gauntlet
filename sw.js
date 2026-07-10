@@ -51,7 +51,11 @@
 /* v68 (P50.9): smarter enemy AI (standard+, easy stays legacy) — holds back a bomb the player can
    GANG-kill favorably, doesn't throw away a valuable body to chump a non-lethal hit when the boss is
    healthy, and develops instead of sandbagging interaction mana when clearly behind on board. */
-const CACHE = 'gg-cache-v96';
+/* v97 (P49.6 fix): the menu language flag toggled via inline onclick="setLang(lang()...)" —
+   inside an inline handler a bare lang() binds to the button's built-in .lang string property
+   (shadowing the global lang()), throwing "lang is not a function". Now calls a dedicated
+   toggleLang() global so the toggle runs in normal scope. play.html changed → cache bumped. */
+const CACHE = 'gg-cache-v97';
 const SHELL = [
   './index.html',
   './play.html',
