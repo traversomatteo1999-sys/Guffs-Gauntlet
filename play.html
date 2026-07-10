@@ -1620,10 +1620,14 @@ function enemyCombatTrick(){if(!S.combat||S.over)return false;S.combat._trickDon
   cands.sort((a,b)=>(b.value-a.value)||(a.cost-b.cost));
   S.stackProposal={context:'combat',forName:'a mid-combat trick',win:'combat',candidates:cands,choice:cands[0].key};
   log("dm",`⚡ ${ENs()} readies an instant mid-combat…`);renderCombat();render();return true;}
+/* P50.2: the live blocker pool for the DEFENDING side, re-derived every refresh so a flashed-in
+   creature becomes an available blocker and a removed/tapped one drops — mirrors the openCombat
+   pool derivation (enemy attacks → your untapped, can-block creatures · you attack → vaelDefenders). */
+function _combatLivePool(){if(!S.combat)return [];if(S.combat.dir==='vael')return (S.my.creatures||[]).filter(c=>!c.tapped&&!kw(c,"can't block")&&!c.phased);return vaelDefenders();}
 function _combatPrune(){if(!S.combat)return;const alive=c=>(S.my.creatures||[]).indexOf(c)>=0||(S.tokens||[]).indexOf(c)>=0||(c===S.cmd&&S.cmd.inPlay)||(S.my.walkers||[]).indexOf(c)>=0||(S.enemyWalkers||[]).indexOf(c)>=0;
   S.combat.attackers=(S.combat.attackers||[]).filter(alive);
   Object.keys(S.combat.assign||{}).forEach(k=>{S.combat.assign[k]=(S.combat.assign[k]||[]).filter(alive);if(!S.combat.attackers.some(a=>''+a.id===k))delete S.combat.assign[k];});
-  S.combat.pool=(S.combat.pool||[]).filter(alive);}
+  S.combat.pool=_combatLivePool();/* P50.2: rebuild from the live board (adds new blockers, drops gone/tapped ones) instead of only filtering the openCombat snapshot */}
 function renderCombatTrick(){const box=$("combatTrick");if(!box)return;const pr=S.stackProposal;
   if(!S.combat||!pr||pr.context!=='combat'||!Array.isArray(pr.candidates)||!pr.candidates.length){box.className="stackproposal";box.innerHTML="";return;}
   if(!pr.candidates.some(c=>c.key===pr.choice))pr.choice=pr.candidates[0].key;
@@ -1678,6 +1682,7 @@ function predictCombat(){const r=resolveAttack(S.combat.attackers,S.combat.assig
   $("combatPred").innerHTML=s;}
 function approveCombat(){
   if(!S.combat)return;
+  _combatPrune();/* P50.2: belt-and-suspenders — never resolve a combatant that has left the battlefield (covers the minimized path even if no render fired between removal and approve) */
   if(!S.combat._trickDone&&enemyCombatTrick())return;/* P44.1: the enemy gets ONE mid-combat instant window before damage — approve again to resolve combat */
   const dir=S.combat.dir,attackers=S.combat.attackers,assign=S.combat.assign;
   /* P12.2: enforce block-count restrictions before resolving. A min-N (incl. menace) attacker blocked by 1..N-1 is an illegal partial block — refuse until it's blocked by N+ or by 0. */
@@ -1820,7 +1825,7 @@ function render(){
   const rp=$("rulesPanel"),rf=$("rulesField");if(S.rules.length){rp.style.display="";rf.innerHTML="";S.rules.forEach(r=>{const el=document.createElement("div");el.className="ruleperm"+(r.side==="boss"?" bossr":"");el.innerHTML=`<div class="rn">${r.name}</div><div class="rt">${r.text}</div><div class="acts">${r.die?`<button class="mini gold" onclick="rollRule(${r.id})">Roll d${r.die}</button>`:''}<button class="mini ember" onclick="destroyRule(${r.id})">Destroy</button></div>`;rf.appendChild(el);});}else rp.style.display="none";
   const sc=$("satchelCount");if(sc)sc.textContent=S.inv.length?`${S.inv.length} item${S.inv.length===1?'':'s'}`:'empty';
   $("turnTag").textContent="Turn "+S.turn+" · "+DUNGEON[S.roomIndex].name;renderFlow();renderZones();renderMyZones();renderDeckColors();renderBoardTokens();const gn=$("goldNote");if(gn)gn.textContent="💰 "+getGold();
-  if(S.combat){renderCombat();applyCombatMin();}/* P49.10(#19): keep the minimized state across a mid-combat re-render */
+  if(S.combat){_combatPrune();renderCombat();applyCombatMin();}/* P49.10(#19): keep the minimized state across a mid-combat re-render · P50.2: _combatPrune() here (this tail already re-rendered combat every render) makes the resolver recalculate LIVE — a flashed creature becomes an available blocker, a removed combatant drops, totals recompute — AND it runs even while minimized so a combatant removed behind a minimized popup can't survive into resolution; applyCombatMin keeps it visually minimized (no force-restore) */
   else{const r=$("resolver");if(r)r.classList.remove("min");const f=$("combatFab");if(f)f.classList.remove("show");}/* P49.10 review-fix: any teardown of combat (undo/quit/new battle) that ran while minimized must clear the stale resume fab + .min on the next render */
   applyTabs();applyLog();applyPanels();applyManaBox();
 }

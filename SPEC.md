@@ -239,22 +239,22 @@
 | &nbsp;&nbsp;P49.10 Combat/PW UX: combat popup minimize/restore (turn stays blocked) · PW abilities off-stack + announce popup · battles/sieges side-selectable · resurgent timing | ✅ done (bullets 19·22·11·10) — **#22 reverses P38** (enemy walkers only) |
 | &nbsp;&nbsp;P49.11 Vael/Ash the Guardian: reborn at 1 HP · +1 → "Create a 1/1 Ash Soldier with haste" · −3 → graveyard exile-X + free reanimate ≤X | ✅ done (bullets 23·27·28) |
 | &nbsp;&nbsp;P49.12 Items & cards: enemy top/bottom-N reveal shows full card info · add art to saved homebrew cards | ✅ done (bullets 14·17; #13 resolved — no change) |
-| **Phase 50 — Fix batch 2026-07-08** (Undo button · live combat popup · deck-tools land→board · emblem/card tax↔ward · commander casting & options · Murglax card rename · smarter enemy AI · land mana colour · Ash-as-planeswalker · store balance · hide commander tax · pooled soundtrack music) | 🟡 **SPECCED — 1 of 14 built** (recorded 2026-07-08; grounded in `# PHASE 50`). ✅ P50.3 only (in `70709f1`, not version-shipped); ⬜ P50.1–.2 · P50.4–.14 planned. Ward (P50.5) and enemy-land colour on the AI's own plays (P50.10) already exist; sound-on-default (part of P50.14) already true. |
-| &nbsp;&nbsp;P50.1 Undo button in the Turn-flow box (`.flowbtns`, beside ◂ Back / ▶) wired to the existing `undo()` | ⬜ planned (user 2026-07-08) — LOW risk |
-| &nbsp;&nbsp;P50.2 Combat resolver popup auto-updates in real time — every board change (flash a creature = new blocker · removal drops an attacker/blocker) recalculates the open popup (`_combatPrune()`+`renderCombat()` driven from `render()`) | ⬜ planned (user 2026-07-08) — combat/state → HIGH-risk review when built |
+| **Phase 50 — Fix batch 2026-07-08** (Undo button · live combat popup · deck-tools land→board · emblem/card tax↔ward · commander casting & options · Murglax card rename · smarter enemy AI · land mana colour · Ash-as-planeswalker · store balance · hide commander tax · pooled soundtrack music · P50.15 unified tax) | 🟢 **14 of 15 built — only P50.9 (smarter AI) remains** (`sw` v66). This session (2026-07-09/10) shipped P50.1/.2/.4/.5/.6/.7/.8/.10/.11/.12/.13/.14; the parallel session shipped P50.15 (reverses P50.5). |
+| &nbsp;&nbsp;P50.1 Undo button in the Turn-flow box (`.flowbtns`, beside ◂ Back / ▶) wired to the existing `undo()` | ✅ **done v59** — `#undoBtn` (idset-safe add), disabled when `!_hist.length\|\|S.paused` |
+| &nbsp;&nbsp;P50.2 Combat resolver popup auto-updates in real time — every board change (flash a creature = new blocker · removal drops an attacker/blocker) recalculates the open popup | ✅ **done v66** — `_combatLivePool()` rebuilds the pool live; `_combatPrune()` runs in the render tail (even minimized) + at `approveCombat`. 4-lens adversarial review (non-mutating confirmed) |
 | &nbsp;&nbsp;P50.3 Deck-tools: a land searched/looked/revealed can go straight onto the enemy battlefield as a mana source | ✅ done — `70709f1` (`dtMoveObj` land branch + `moveActs` board button · `tests/land-to-board.test.js`) |
 | &nbsp;&nbsp;P50.4 Enemy-emblem attack tax → the **enemy** pays N mana per attacking creature, automated (unpayable ⇒ that attacker can't swing) | ✅ done — shipped `926271e`; **superseded by P50.15** (enemy-pays tax moved from the emblem into the unified `⚔ attack tax` row; the emblem is still READ for old saves) |
 | &nbsp;&nbsp;P50.5 Remove the useless per-card **attack tax** (`catk`) | ✅ done `926271e` → **⛔ REVERSED by P50.15** (user asked to restore the per-card taxes; ward `cward` remains separate) |
 | &nbsp;&nbsp;P50.15 **Unified attack-tax UI** — one `⚔ attack tax` row (amount · mana/life · **enemy-pays / player-pays** toggle · **face/walkers/both** target) via `setAtkTaxRule`, sharing the model with restored per-card `catk` drawers + cast form. `enemyAttackTax()`=player-pays (reminder), `attackTax()`=enemy-pays (enforced). Reverses P50.5, folds in P50.4's emblem. | ✅ **done this session** (user 2026-07-10) — HIGH-risk (combat + save shape); `tests/p50-4-5-attack-tax.test.js` rewritten (34 asserts); sw v64→v65 |
-| &nbsp;&nbsp;P50.6 Expand card options (kw / ±P/T / counters / drawer) to **commanders** — fill the command-zone player-cmd and enemy walker-cmd gaps | ⬜ planned (item 3) — LOW-MED, additive |
-| &nbsp;&nbsp;P50.7 Rename the one card using a warden's exact name: `tyrant` "Murglax, Pit-Tyrant" → related-but-distinct | ⬜ planned (item 4) — LOW (data) |
-| &nbsp;&nbsp;P50.8 Cast the **commander** from "✦ Cast a spell" (show + cast + update command zone) · command-zone cast fires prowess | ⬜ planned (item 5) — LOW / LOW-MED |
-| &nbsp;&nbsp;P50.9 Smarter enemy strategy — mana spend + attack/block EV that minimizes self/creature loss | ⬜ planned (item 6) — MED, HIGH-risk review (combat math); needs a balance target |
-| &nbsp;&nbsp;P50.10 Enemy land **mana colour** on the manual deck-tools land→board path (`dtMoveObj` still colour-blind — completes P50.3) | ⬜ planned (item 7) — LOW (one line); AI's own land plays ✅ already coloured (P49.9) |
-| &nbsp;&nbsp;P50.11 "Ash the Guardian" must be a **planeswalker** on the stack, not a creature (`type:'creature'` hardcoded ~2444) | ⬜ planned (item 8) — LOW (one line) |
-| &nbsp;&nbsp;P50.12 Store items cost a bit more + re-tier by strength (scholar +1 card/turn, surge +1 mana/turn under-tiered) | ⬜ planned (item 9) — LOW data / MED if new "epic" tier |
-| &nbsp;&nbsp;P50.13 Don't show **tax** on the commander card face (enemy `cmdFieldCard` ~2548/2554 · player `#pcmdBox`) | ⬜ planned (item 10) — LOW (cosmetic) |
-| &nbsp;&nbsp;P50.14 Story-driven **soundtrack system** — pooled music (menu/grakk/murglax/vael/victory), story-switched, random-no-repeat; removes the P45.4 ambient pad (sound-on-default already true) | ⬜ planned (item 11) — MED (new subsystem + sw.js precache; `soundtrack/` folder not yet in repo) |
+| &nbsp;&nbsp;P50.6 Expand card options (kw / ±P/T / counters / drawer) to **commanders** — fill the command-zone player-cmd and enemy walker-cmd gaps | ✅ **done v61** — `pcmd` scope on getObj/getCre; `objPT`; markerRow/toggleMarker→getObj; command-zone editor + walker-cmd drawer |
+| &nbsp;&nbsp;P50.7 Rename the one card using a warden's exact name: `tyrant` "Murglax, Pit-Tyrant" → related-but-distinct | ✅ **done v58** — "Servant of the Pit-Tyrant" (key kept) |
+| &nbsp;&nbsp;P50.8 Cast the **commander** from "✦ Cast a spell" (show + cast + update command zone) · command-zone cast fires prowess | ✅ **done v62** — `castCmdFromSearch()`; walker-cmd cast fires `firePlayerProwess()` |
+| &nbsp;&nbsp;P50.9 Smarter enemy strategy — mana spend + attack/block EV that minimizes self/creature loss | ⬜ **the ONLY remaining Phase-50 task** — user directive (2026-07-09): "way smarter, strategize attacks/blocks/mana, consider all variables"; difficulty stays. HIGH-risk (combat math), full review |
+| &nbsp;&nbsp;P50.10 Enemy land **mana colour** on the manual deck-tools land→board path (`dtMoveObj` still colour-blind — completes P50.3) | ✅ **done v57** — `addBossSource(prodUnits(fx,1))` |
+| &nbsp;&nbsp;P50.11 "Ash the Guardian" must be a **planeswalker** on the stack, not a creature (`type:'creature'` hardcoded ~2444) | ✅ **done v58** — `type:(S.cmd.isWalker?'planeswalker':'creature')` |
+| &nbsp;&nbsp;P50.12 Store items cost a bit more + re-tier by strength (scholar +1 card/turn, surge +1 mana/turn under-tiered) | ✅ **done v63** — in-band: scholar→rare 26g, surge→legendary 38g (no epic tier / no blanket bump) |
+| &nbsp;&nbsp;P50.13 Don't show **tax** on the commander card face (enemy `cmdFieldCard` ~2548/2554 · player `#pcmdBox`) | ✅ **done v58** — removed the two enemy-cmd tax badges (command-zone cost reminders kept) |
+| &nbsp;&nbsp;P50.14 Story-driven **soundtrack system** — pooled music (menu/grakk/murglax/vael/victory), story-switched, random-no-repeat; removes the P45.4 ambient pad (sound-on-default already true) | ✅ **done v64** — pooled `<audio>` manager (shuffle-bag), 5 story hooks, pad removed; streams online (not precached, ~100 MB); jsdom-safe |
 
 ---
 
@@ -3244,7 +3244,7 @@ Play each difficulty a few runs and note:
 
 ---
 
-# PHASE 50 — Fix batch 2026-07-08 🟡 13 of 14 built (P50.3 v57 · P50.7/.10/.11/.13 v58 · P50.1 v59 · P50.4/.5 v60 · P50.6 v61 · P50.8 v62 · P50.12 v63 · P50.14 v64 · only P50.2 + P50.9 remain)
+# PHASE 50 — Fix batch 2026-07-08 🟢 14 of 15 built (P50.3 v57 · P50.7/.10/.11/.13 v58 · P50.1 v59 · P50.4/.5 v60 · P50.6 v61 · P50.8 v62 · P50.12 v63 · P50.14 v64 · P50.15 v65 [parallel session, reverses P50.5] · P50.2 v66 · **only P50.9 (smarter AI) remains**)
 
 > **Goal.** Fixes reported by the user on 2026-07-08, grounded below in `play.html` (post-P49.9 code, `70709f1`). **P50.3 already shipped this session**; **P50.1–P50.2 are specced build-ready** — not yet in the code (re-grep confirmed: the Turn-flow box has only ◂ Back + ▶ `#dmBtn`, and the combat popup is static once opened).
 
@@ -3261,7 +3261,10 @@ Play each difficulty a few runs and note:
 
 **Verify.** jsdom: `render()` → the `#dmBtn` panel contains a button whose `onclick` calls `undo()`; do an action (e.g. `slay(id)`), click Undo → `S` restored + a `↩ Undid:` log line; with `_hist` empty the button is `disabled`.
 
-## P50.2 — Combat resolver popup recalculates live  *(user 2026-07-08)*
+## P50.2 — Combat resolver popup recalculates live  *(user 2026-07-08)* — ✅ **DONE** (v66)
+
+**Shipped (`build/p50-2-combat-live-v2`).** New `_combatLivePool()` re-derives the DEFENDING side's blocker list from the live board (enemy-attacks → your untapped can-block creatures · you-attack → `vaelDefenders()`); `_combatPrune()` now rebuilds `S.combat.pool` from it (adds flashed-in blockers, drops removed/tapped). The existing render() tail (which already re-rendered combat every render) now also calls `_combatPrune()` — so the resolver recalculates live AND stays consistent even while minimized (a combatant removed behind a minimized popup can't survive into resolution); `applyCombatMin` keeps it visually minimized. `approveCombat` prunes first too (belt-and-suspenders). **4-lens adversarial review** confirmed `resolveAttack` is non-mutating in the predict path (no phantom damage) and no recursion; its findings drove the consolidated render-tail fix (the original `!_min`-gated hook left the minimized path stale + double-rendered). Driver `tests/p50-2-combat-live.test.js` (17 asserts). **Note:** re-applied on a fresh branch after the parallel P50.15 session reverted the first attempt's uncommitted play.html; no functional overlap with P50.15. Original spec below.
+
 
 **What.** While the combat resolver popup is open, it must **auto-update in real time** as the board changes: cast/flash a creature → it becomes an available **blocker**; remove a creature with an instant/flash → it drops as an attacker or blocker; totals and legal choices recalculate — no cancel-and-reopen.
 

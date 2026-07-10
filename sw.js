@@ -41,7 +41,13 @@
 /* v64 (P50.14): story-driven soundtrack manager (pooled <audio> tied to the story phase) replaces
    the P45.4 synth pad. The Soundtrack/ tracks are NOT precached here — the pool is ~100 MB, far too
    large to bundle into every install; they stream online (silent offline). Cache bumped for play.html. */
-const CACHE = 'gg-cache-v65';
+/* v65 (P50.15, parallel session): unified attack-tax UI (one "⚔ attack tax" row via setAtkTaxRule)
+   + restored the per-card catk drawers/cast-form retired in P50.5 (reverses P50.5 per user request;
+   folds in P50.4's enemy-pays emblem, still read for old saves). */
+/* v66 (P50.2): the combat resolver recalculates LIVE — while it's open, a flashed creature appears
+   as a blocker, a removed combatant drops, totals recompute (no cancel-and-reopen). _combatPrune now
+   rebuilds the blocker pool from the live board and runs on every render (even minimized) + at approve. */
+const CACHE = 'gg-cache-v66';
 const SHELL = [
   './index.html',
   './play.html',
