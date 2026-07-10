@@ -61,6 +61,14 @@ ok(/Il tuo attacco/.test(D.getElementById('combatTitle').textContent), 'combat r
 ok(/Conferma e applica/.test(D.getElementById('resolver').innerHTML), 'combat resolver Approve button translates');
 ev("cancelCombat()");
 
+// 7d. The full tutorial has an Italian version (keeping MTG keywords + Scryfall English).
+ev("DB.lang='it';openTutorial()");
+const tut=D.getElementById('modalBody').innerHTML;
+ok(/Come funziona Guff's Gauntlet/.test(tut), 'the full tutorial translates to Italian');
+ok(/planeswalker/.test(tut) && /Scryfall/.test(tut), 'the tutorial keeps MTG keywords + Scryfall in English');
+ev("DB.lang='en';openTutorial()");
+ok(/How Guff's Gauntlet works/.test(D.getElementById('modalBody').innerHTML), 'the English tutorial is unchanged');
+
 // 8. Proper nouns + MTG keywords stay English (not in the dictionary).
 ok(ev("t('Grakk')")==='Grakk' && ev("t('deathtouch')")==='deathtouch', 'proper nouns + MTG keywords stay English');
 
