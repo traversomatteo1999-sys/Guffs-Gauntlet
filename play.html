@@ -3933,9 +3933,9 @@ function renderVolUI(){const s=$("volSlider");if(s)s.value=Math.round(_vol*100);
    there (the pool/bag selection logic still runs, so it's testable). ===== */
 const MUSIC_POOLS={
   Menu:['Ashveil Aftermath','The Afterfall','The Drowned Conclave','The Ember Dominion','The Conclave Reborn'],/* P52.7: 'The Conclave Reborn' lives in the Menu pool for now (moved out of Victory; file at Soundtrack/Menu/) — earmarked to become the Level-II victory track later. */
-  Grakk:['Grakk The Gatekeeper',"Grakk's Frenzy","Grakk's Gate",'Wall Of Goblins'],
-  Murglax:['Catacomb Pressure','Deathly Wishes','Murglax Pit','Stink Of Rot'],
-  Vael:['Ashes Under Iron','Ember Flame','The Ember Tyrant','Throne of Vael'],
+  Grakk:['Grakk The Gatekeeper',"Grakk's Frenzy","Grakk's Gate",'Wall Of Goblins','Burning Flame','Gates Of The Ember'],/* P52.6: +2 new tracks (files under Soundtrack/Grakk/) */
+  Murglax:['Catacomb Pressure','Deathly Wishes','Murglax Pit','Stink Of Rot','Evil Spirits','Underground'],/* P52.6: +2 */
+  Vael:['Ashes Under Iron','Ember Flame','The Ember Tyrant','Throne of Vael','Ashveil Reliquary','The Hollowing'],/* P52.6: +2 */
   Victory:['Guff is Free']/* P52.7: Level-I victory loops ONLY this track (a single-track pool loops via the shuffle-bag). 'The Conclave Reborn' was moved to the Menu pool (Soundtrack/Menu/) for now — do NOT re-add it to Victory without level-aware victory selection, or a Level-I win would randomly play it; it's earmarked for the Level-II victory later. */
 };
 function _musicCanPlay(){try{return typeof Audio!=='undefined'&&!/jsdom/i.test((typeof navigator!=='undefined'&&navigator.userAgent)||'');}catch(e){return false;}}
