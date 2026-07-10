@@ -2084,7 +2084,7 @@ function toggleDeckColor(col){const i=S.deckColors.indexOf(col);if(i>=0)S.deckCo
    die is a neutral Planechase roll (1 planeswalk · 1 chaos · 4 blank) the player interprets. Murglax battles and
    deeper Planechase are deferred (P7.7-opt). */
 function getBattle(id){return (S.battles||[]).find(b=>b.id===id);}
-function addBattle(side){S.battles=S.battles||[];const b={id:S.nextId++,name:side==='boss'?"Siege":"Battle",def:5,maxDef:5,side:side||'you',note:'',defeated:false,tick:0};S.battles.push(b);S.ui=S.ui||{};S.ui.panels=S.ui.panels||{};S.ui.panels['p-battles']=true;/* P51.2: fielding a siege/battle auto-opens the Battles & Planes panel */log(side==='boss'?'dm':'you',`🜨 A battle enters — <b>${b.name}</b>, defense ${b.def}.`);render();}
+function addBattle(side){S.battles=S.battles||[];const b={id:S.nextId++,name:side==='boss'?"Siege":"Battle",def:5,maxDef:5,side:side||'you',note:'',defeated:false,tick:0};S.battles.push(b);S.ui=S.ui||{};S.ui.panels=S.ui.panels||{};S.ui.panels['p-battles']=true;/* P51.2: fielding a siege/battle auto-opens the Battles & Planes panel */log(side==='boss'?'dm':'you',`🜨 A battle enters — <b>${b.name}</b>, defense ${b.def}.`);render();_maybeSiegePopup(b);/* P52.2: a boss-side siege/battle pops its info modal when played */}
 function setBattle(id,f,v){const b=getBattle(id);if(b){b[f]=v;render();}}
 function battleAdjDef(id,n){const b=getBattle(id);if(!b||b.defeated)return;b.def=Math.max(0,(b.def||0)+n);if(n>0&&b.def>b.maxDef)b.maxDef=b.def;if(b.def<=0)battleDefeat(b);else render();}
 function battleDmg(id,n){const b=getBattle(id);if(!b||b.defeated)return;n=Math.max(0,n|0);if(!n)return;b.def=Math.max(0,(b.def||0)-n);log("you",`⚔ <b>${b.name}</b> takes ${n} — defense ${b.def}/${b.maxDef}.`);if(b.def<=0)battleDefeat(b);else render();}
@@ -2097,7 +2097,16 @@ function rmBattle(id){const i=(S.battles||[]).findIndex(b=>b.id===id);if(i>=0){c
 /* P48.3: a warden fields a Siege on arrival (boss-side), configured by room.siege. It heals the enemy each upkeep while it stands — the player must break it. Grakk fields one now (was Vael). */
 function fieldBossSiege(cfg){S.battles=S.battles||[];if(!cfg||S.battles.some(b=>b.side==='boss'&&b._siege))return;const def=cfg.def||6;S.battles.push({id:S.nextId++,name:cfg.name||"Siege",def,maxDef:def,side:'boss',_siege:true,tick:(cfg.tick!=null?cfg.tick:1),defeated:false,note:cfg.note||""});
   /* P51.2: casting/fielding a siege AUTO-OPENS the Battles & Planes panel (even on saves whose S.ui.panels map is already populated, so the defaultPanelStates change alone wouldn't reopen it). */
-  S.ui=S.ui||{};S.ui.panels=S.ui.panels||{};S.ui.panels['p-battles']=true;}
+  S.ui=S.ui||{};S.ui.panels=S.ui.panels||{};S.ui.panels['p-battles']=true;
+  _maybeSiegePopup(S.battles[S.battles.length-1]);/* P52.2: pop the siege modal if fielded mid-game (during room setup it's deferred to the begin-turn check) */}
+/* ===== P52.2: an informational modal when a boss-side siege/battle enters, and a begin-turn re-pop if the enemy starts a turn with one still in play (once per battle, via b._popped). Esc/backdrop dismissable — informational, not gating. ===== */
+function siegeBattlePopup(b){if(!b)return;b._popped=true;const kind=b._siege?'Siege':'Battle';
+  const tickLine=(b.tick||0)>0?`It <b>heals ${embEsc(ENs())} ${b.tick}</b> at each of its upkeeps while it stands. `:'';
+  const breakLine=b._siege?`Break it — grind its defense to 0 by attacking it — to stop that; its own defenses then deal <b>${b.maxDef||b.def}</b> to ${embEsc(ENs())}.`:`Attack it to remove its defense counters until it's defeated.`;
+  $("modalBody").innerHTML=`<h2>🜨 ${embEsc(b.name)}</h2><p style="color:var(--bone-dim);font-style:italic">${embEsc(ENs())} fields a ${kind.toLowerCase()} — defense <b>${b.def}/${b.maxDef}</b>.</p><p style="line-height:1.5">${tickLine}${breakLine}</p><div class="btnrow" style="margin-top:12px"><button class="big azor inline" onclick="closeOverlay()">Got it ▸</button></div>`;
+  $("overlay").classList.add("show");}
+function _maybeSiegePopup(b){if(b&&b.side==='boss'&&!b.defeated&&!b._popped&&S.activeTurn)siegeBattlePopup(b);}/* pop immediately only mid-game (a turn is underway); during room setup activeTurn is null → the begin-turn check handles it */
+function _popPendingSiege(){if(S.over)return;const b=(S.battles||[]).find(x=>x.side==='boss'&&!x.defeated&&!x._popped);if(b)siegeBattlePopup(b);}/* P52.2: pop the first unacknowledged boss siege/battle at the start of your turn */
 function tickBossBattles(){if(S.over)return;(S.battles||[]).filter(b=>b.side==='boss'&&!b.defeated&&(b.tick||0)>0).forEach(b=>{bossHealLife(b.tick);log("dm",`🜨 <b>${b.name}</b> stands — ${ENs()} gains ${b.tick} life. (${S.boss.life}) Break it to stop this.`);});}
 /* neutral planar die — 1 planeswalk · 1 chaos · 4 blank (matches the real die's 4 blanks); player interprets (open-question default). */
 function rollPlaneDie(){const r=d(6);let sym,out;if(r===1){sym='✦';out='PLANESWALK — leave this plane; turn to a new one.';}else if(r===2){sym='⊛';out="CHAOS — trigger this plane's chaos effect (you interpret it).";}else{sym='—';out='blank — nothing happens this roll.';}const o=$("planeOut");if(o)o.innerHTML=`${sym} <b style="color:var(--gold)">${out}</b>`;log("sys",`🎲 Planar die → ${sym} ${out}`);}
@@ -2373,7 +2382,7 @@ function advance(){sfx('descend');const next=S.roomIndex+1;closeCutscene();S._sp
 /* ===== TURN / PHASE ENGINE ===== */
 function flowClick(){if(S.over||S.paused||S.combat)return;if(S.plays.some(p=>p.status==='pending'&&p._player)){log("sys","Resolve the spells on your stack first.");showPlays();return;}if(S.activeTurn===null){beginVaelTurn();return;}advancePhase();}
 function beginVaelTurn(){if(S.over)return;S.activeTurn='vael';S.turn++;S.phase=0;S.plays=[];S.phasesFired=[];log("sys",`— ${ENs()} · Turn ${S.turn} · ${DUNGEON[S.roomIndex].name} —`);enterPhase();}
-function beginYourTurn(){if(S.over)return;S.activeTurn='you';S.phase=0;S.phasesFired=[];log("sys",`— Your turn ·  ${DUNGEON[S.roomIndex].name} —`);enterPhase();}
+function beginYourTurn(){if(S.over)return;S.activeTurn='you';S.phase=0;S.phasesFired=[];log("sys",`— Your turn ·  ${DUNGEON[S.roomIndex].name} —`);_popPendingSiege();/* P52.2: if a boss siege/battle is in play and unacknowledged this room, pop it once at your turn start */enterPhase();}
 function advancePhase(){if(S.over||S.combat)return;S.stackProposal=null;resolveLeftoverPlays();/* P4.1: resolve any leftover ENEMY stack item before the phase advances, in BOTH turns — so an enemy instant cast during your combat/end isn't silently dropped when you press Continue. Only touches pending non-player items, so it's a no-op otherwise. */if(S.phase<PHASES.length-1){S.phase++;sfx('phase');enterPhase();}else{if(S.activeTurn==='vael')beginYourTurn();else beginVaelTurn();}}
 function enterPhase(){const ph=PHASES[S.phase];if(!S.plays.some(p=>p.status==='pending'))$("plays").classList.remove("show");
   if(!Array.isArray(S.phasesFired))S.phasesFired=[];
