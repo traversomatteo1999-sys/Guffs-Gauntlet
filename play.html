@@ -1263,13 +1263,13 @@ function kw(c,k){return (c.kw||[]).some(x=>(''+x).toLowerCase()===k);}
    Creature tier is pinned at 0 so a creature's score stays on the legacy power scale; the combat AI's
    numeric gates read combatThreat() (the verbatim legacy body) so they NEVER see tier/keyword shifts. */
 const STR_VAL={low:-2,mid:0,top:3};
-const THREAT_TIER={walker:4,creature:0,perm:-3,spell:-6};
+const THREAT_TIER={walker:4,creature:0,enchant:-2,artifact:-3,perm:-3,spell:-6};/* P51.6: threat order PW > creature > enchantment > artifact (enchantments outrank artifacts) */
 function strengthOf(o){return (o&&o.strength)||(o&&o.props&&o.props.strength)||'mid';}
 function strengthVal(o){return STR_VAL[strengthOf(o)]||0;}
 function objKind(o){ /* shape detection: declared ctype (stack item) first, else infer from board fields */
   if(!o||typeof o!=='object')return 'spell';
   const ct=o.ctype;
-  if(ct){if(ct==='creature')return 'creature';if(ct==='planeswalker')return 'walker';if(ct==='artifact'||ct==='enchantment')return 'perm';return 'spell';}
+  if(ct){if(ct==='creature')return 'creature';if(ct==='planeswalker')return 'walker';if(ct==='artifact')return 'artifact';if(ct==='enchantment')return 'enchant';return 'spell';}/* P51.6: artifacts/enchantments split so the threat order enchant > artifact holds */
   if(typeof o.maxDef==='number')return 'battle';/* P7.7: a battle is scorable in the hierarchy (feeds P6.1) */
   if(typeof o.loyalty==='number')return 'walker';
   if(typeof o.p==='number'&&typeof o.t==='number')return 'creature';
@@ -1290,7 +1290,7 @@ function threatScore(o){
   if(k==='creature')return THREAT_TIER.creature+effP(o)+s+creatureKwVal(o);
   if(k==='walker'){const L=(o.loyalty!=null?o.loyalty:(o.loy!=null?o.loy:0));const base=(o.baseLoy!=null?o.baseLoy:L);const grown=Math.max(0,L-base)*0.5;const ult=L>=7?3:(L>=5?1.5:0);return THREAT_TIER.walker+L+grown+ult+s;}
   if(k==='battle'){return THREAT_TIER.perm+(o.def||0)*0.4+s;}/* P7.7: defense-counter battle scored as a permanent-tier clock (forward hook for AI battle priority) */
-  if(k==='perm'){const dmg=(typeof o.dmg==='number'?o.dmg:0)*0.5;const atk=o.catk?1:0;return THREAT_TIER.perm+1+dmg+atk+s;}/* P50.15: per-card attack tax restored — a taxed permanent is marginally more valuable to the AI */
+  if(k==='perm'||k==='artifact'||k==='enchant'){const dmg=(typeof o.dmg==='number'?o.dmg:0)*0.5;const atk=o.catk?1:0;const tier=(THREAT_TIER[k]!=null?THREAT_TIER[k]:THREAT_TIER.perm);return tier+1+dmg+atk+s;}/* P50.15: per-card attack tax restored — a taxed permanent is marginally more valuable · P51.6: enchant (-2) outranks artifact (-3) */
   let body=0;if(o.auto&&typeof o.auto.n==='number')body=Math.min(o.auto.n,6)*0.5;
   return THREAT_TIER.spell+body+s;}
 function applyRun(run){if(!run)return;if(Array.isArray(run[0])){run.forEach(applyRun);return;}switch(run[0]){
@@ -1638,7 +1638,8 @@ function renderCombat(){
     const tgt=(S.combat.target&&S.combat.target[a.id])||(vael?'you':'boss');/* P39.1: your-swing default target is the enemy face */
     const prevented=(S.combat.prevented||[]).indexOf(a.id)>=0;/* P32 */
     let tsel='';
-    if(vael&&wks.length){tsel=`<div class="btnrow"><span class="lab">target</span><select onchange="combatTarget('${a.id}',this.value)"><option value="you" ${tgt==='you'?'selected':''}>you</option>${wks.map(w=>`<option value="${w.id}" ${''+tgt===''+w.id?'selected':''}>↳ ${w.name} (${w.loyalty})</option>`).join("")}</select></div>`;}
+    if(vael){const pbat=(S.battles||[]).filter(b=>b.side==='you'&&!b.defeated);/* P51.6: the enemy can also swing at YOUR planeswalkers or YOUR battles */
+      if(wks.length||pbat.length)tsel=`<div class="btnrow"><span class="lab">target</span><select onchange="combatTarget('${a.id}',this.value)"><option value="you" ${tgt==='you'?'selected':''}>you</option>${wks.map(w=>`<option value="${w.id}" ${''+tgt===''+w.id?'selected':''}>↳ ${w.name} (${w.loyalty})</option>`).join("")}${pbat.map(b=>`<option value="b:${b.id}" ${''+tgt==='b:'+b.id?'selected':''}>🜨 ${embEsc(b.name)} (def ${b.def})</option>`).join("")}</select></div>`;}
     else if(!vael){const ewk=(S.enemyWalkers||[]).filter(w=>!w.phased).concat(S.cmd.isWalker&&S.cmd.inPlay&&!S.cmd.phased?[S.cmd]:[]);const ebat=(S.battles||[]).filter(b=>b.side==='boss'&&!b.defeated);/* P39.1: swing at the enemy face, an enemy planeswalker, or a boss siege/battle */
       if(ewk.length||ebat.length)tsel=`<div class="btnrow"><span class="lab">target</span><select onchange="combatTarget('${a.id}',this.value)"><option value="boss" ${tgt==='boss'?'selected':''}>⚔ ${ENs()}</option>${ewk.map(w=>`<option value="w:${w.id}" ${tgt==='w:'+w.id?'selected':''}>↳ ${embEsc(w.name||w.n)} (loy ${w.loyalty})</option>`).join("")}${ebat.map(b=>`<option value="b:${b.id}" ${tgt==='b:'+b.id?'selected':''}>🜨 ${embEsc(b.name)} (def ${b.def})</option>`).join("")}</select></div>`;}
     const el=document.createElement("div");el.className="blockrow";
@@ -1709,8 +1710,8 @@ function combatPreventDmg(attId){if(!S.combat)return;const a=S.combat.attackers.
 function predictCombat(){const r=resolveAttack(S.combat.attackers,S.combat.assign);const dead=[...r.deadAtt,...r.deadBlk];let s;
   if(S.combat.dir==='you'){const tmap=S.combat.target||{};let toBoss=0;const wm={},bm={};r.perAtt.forEach(({att,toFace})=>{const tg=''+(tmap[att.id]||'boss');if(tg.slice(0,2)==='w:')wm[tg.slice(2)]=(wm[tg.slice(2)]||0)+toFace;else if(tg.slice(0,2)==='b:')bm[tg.slice(2)]=(bm[tg.slice(2)]||0)+toFace;else toBoss+=toFace;});
     const parts=[`${toBoss} to ${S.boss.name}`];Object.keys(wm).forEach(wid=>{const w=enemyWalkerList().find(x=>''+x.id===wid);if(w)parts.push(`${wm[wid]} to ${w.name||w.n}`);});Object.keys(bm).forEach(bid=>{const b=getBattle(+bid);if(b)parts.push(`${bm[bid]} to ${b.name}`);});s=`<b>Prediction:</b> ${parts.join(", ")}.`;}/* P39.1: split by target */
-  else{let toYou=0;const wmap={};r.perAtt.forEach(({att,toFace})=>{const tg=(S.combat.target&&S.combat.target[att.id])||'you';if(tg==='you')toYou+=toFace;else wmap[tg]=(wmap[tg]||0)+toFace;});
-    const parts=[`${toYou} to your life`];Object.keys(wmap).forEach(wid=>{const w=S.my.walkers.find(x=>''+x.id===wid);if(w)parts.push(`${wmap[wid]} to ${w.name}`);});s=`<b>Prediction:</b> ${parts.join(", ")}.`;}
+  else{let toYou=0;const wmap={},bmap={};r.perAtt.forEach(({att,toFace})=>{const tg=''+((S.combat.target&&S.combat.target[att.id])||'you');if(tg==='you')toYou+=toFace;else if(tg.slice(0,2)==='b:')bmap[tg.slice(2)]=(bmap[tg.slice(2)]||0)+toFace;else wmap[tg]=(wmap[tg]||0)+toFace;});/* P51.6: mirror approveCombat — preview enemy damage to YOUR battles (b:id), else the preview contradicts resolution */
+    const parts=[`${toYou} to your life`];Object.keys(wmap).forEach(wid=>{const w=S.my.walkers.find(x=>''+x.id===wid);if(w)parts.push(`${wmap[wid]} to ${w.name}`);});Object.keys(bmap).forEach(bid=>{const b=getBattle(+bid);if(b)parts.push(`${bmap[bid]} to ${b.name}`);});s=`<b>Prediction:</b> ${parts.join(", ")}.`;}
   if(dead.length)s+=` Dies: ${dead.map(cnm).join(", ")}.`;
   {const prev=(S.combat.prevented||[]).map(id=>S.combat.attackers.find(a=>a.id===id)).filter(Boolean);if(prev.length)s+=` 🛡 Damage prevented: ${prev.map(cnm).join(", ")}.`;}/* P32 */
   if(r.attLifelink)s+=` Lifelink ${S.combat.dir==='you'?'you':ENs()} +${r.attLifelink}.`;
@@ -1755,7 +1756,7 @@ function approveCombat(){
     const tmap=S.combat.target||{};
     /* P20.2: hard guard — refuse to resolve while any of your walkers is attacked by more creatures than its attackableBy cap. */
     for(const w of (S.my.walkers||[])){if(w.attackableBy>0&&walkerAtkCount(tmap,w.id)>w.attackableBy){log("sys",`⚠ ${w.name} can be attacked by at most ${w.attackableBy} — reassign attackers before approving.`);return;}}
-    let toYou=0;const wHits={};r.perAtt.forEach(({att,toFace})=>{const tg=tmap[att.id]||'you';if(tg==='you')toYou+=toFace;else wHits[tg]=(wHits[tg]||0)+toFace;});
+    let toYou=0;const wHits={},bHits={};r.perAtt.forEach(({att,toFace})=>{const tg=''+(tmap[att.id]||'you');if(tg==='you')toYou+=toFace;else if(tg.slice(0,2)==='b:')bHits[tg.slice(2)]=(bHits[tg.slice(2)]||0)+toFace;else wHits[tg]=(wHits[tg]||0)+toFace;});/* P51.6: route enemy attackers aimed at YOUR battles (b:id) to battleDmg */
     const ward=(S.inv.some(it=>it.id==="ward")?2:0)+(S.inv.some(it=>it.id==="aegis")?4:0)+(S.inv.some(it=>it.id==="buckler")?1:0);/* P15.2: Iron Buckler stacks +1 */const face=Math.max(0,toYou-ward);if(ward&&toYou>0)log("you",`Your charms soak ${Math.min(ward,toYou)}.`);
     if(face>0){S.youLife-=face;sfx('hit');fxLife('you',-face);log("dm",`<b>${face}</b> to your life. (${S.youLife})`);}
     Object.keys(wHits).forEach(wid=>{const w=S.my.walkers.find(x=>''+x.id===wid);if(w&&wHits[wid]>0){w.loyalty-=wHits[wid];log("dm",`${ENs()} hits <b>${w.name}</b> for ${wHits[wid]} (loyalty ${Math.max(0,w.loyalty)}).`);if(w.loyalty<=0){log("dm",`<b>${w.name}</b> is destroyed.`);killMy(w);}}});
@@ -1770,6 +1771,8 @@ function approveCombat(){
     if(r.deadAtt.length)log("cbt",`${ENs()} loses: ${r.deadAtt.map(cnm).join(", ")}.`);
     if(r.deadBlk.length)log("cbt",`Your losses: ${r.deadBlk.map(cnm).join(", ")}.`);
     S.combat=null;closeCombatModal();
+    /* P51.6: apply damage to YOUR battles last (battleDmg → battleDefeat may fire its flip/reward). */
+    Object.keys(bHits).forEach(bid=>{const b=getBattle(+bid);if(b&&!b.defeated&&bHits[bid]>0)battleDmg(b.id,bHits[bid]);});
     checkLose();render();
   }
 }
@@ -2028,19 +2031,34 @@ function payAttackTax(cands){const tx=attackTax();if(!tx.mana&&!tx.life)return{k
   ranked.forEach(a=>{if(manaLeft>=tx.mana&&lifeLeft>=tx.life){manaLeft-=tx.mana;lifeLeft-=tx.life;pm+=tx.mana;pl+=tx.life;kept.push(a);}else skipped.push(a);});
   if(pm)payGenericMana(pm);if(pl){S.boss.life-=pl;}/* P5.1: spend only what was paid; the frozen portion stays in the pool · P49.9: an attack tax is generic mana */
   return{kept,skipped,pm,pl,tx};}
-function aiTargets(attackers){const t={};attackers.forEach(a=>t[a.id]='you');const wks=S.my.walkers.filter(w=>!w.phased);if(!wks.length)return t;
-  if(S.youLife>0&&estimateSwingDamage(attackers)>=S.youLife)return t;/* P34.1: the swing is lethal to the face — send everything at the player, don't divert to a walker */
-  const target=wks.slice().sort((x,y)=>threatScore(y)-threatScore(x))[0];/* P6.1: attack the highest-THREAT walker (loyalty + ult-proximity + strength) */
-  /* P44.3: blocker-aware SPLIT — the player will block the biggest attackers aimed at the walker with their untapped bodies, so divert the FEWEST (smallest-first, keeping big hitters on the face) whose damage still kills the walker AFTER those blocks. If it can't be pushed through, go all-face. */
+/* P51.6: the enemy's attack-target brain. Threat order (walker > creature > enchantment > artifact) is baked into
+   threatScore; here the enemy decides FACE vs the player's planeswalkers / sieges-battles, to pressure more than one
+   thing so the player can't freely build a board. Gated on enemyLuck(): easy = legacy (single highest-threat WALKER
+   only), standard = single highest-threat OBJECT (walker or battle), brutal = SPREADS across multiple objects.
+   Preserves P34.1 (lethal-face all-in) and P44.3 (blocker-aware minimal-divert-then-prune, small attackers sneak past). */
+function aiTargets(attackers){const t={};attackers.forEach(a=>t[a.id]='you');
+  if(S.youLife>0&&estimateSwingDamage(attackers)>=S.youLife)return t;/* P34.1: lethal to the face — send everything at the player */
+  const luck=enemyLuck();
+  const walkers=(S.my.walkers||[]).filter(w=>!w.phased);
+  const battles=luck>=0?(S.battles||[]).filter(b=>b.side==='you'&&!b.defeated):[];/* P51.6: standard+ also pressures the player's battles; easy stays walkers-only (legacy) */
+  const objs=[...walkers.map(w=>({id:''+w.id,hp:Math.max(1,w.loyalty||0),o:w})),...battles.map(b=>({id:'b:'+b.id,hp:Math.max(1,b.def||0),o:b}))]
+    .sort((x,y)=>threatScore(y.o)-threatScore(x.o));/* highest threat first — the order to grind through */
+  if(!objs.length)return t;
   const blockers=S.my.creatures.filter(c=>!c.tapped&&!c.phased&&!kw(c,"can't block")).length;
-  const through=set=>{const ds=set.slice().sort((x,y)=>effP(y)-effP(x));return ds.slice(blockers).reduce((s,c)=>s+effP(c),0);};/* damage past `blockers` blocks (player blocks the biggest diverted) */
-  const asc=attackers.slice().sort((a,b)=>effP(a)-effP(b));let diverted=[];
-  for(const a of asc){if(through(diverted)>=target.loyalty)break;diverted.push(a);}
-  if(through(diverted)<target.loyalty)return t;/* even diverting all can't push loyalty past their blocks — go for the face */
-  /* P44.3 fix: PRUNE the biggest redundant attackers back to the face — the greedy adds smallest-first, but a lone big attacker can make earlier smalls unnecessary. Keep only the minimal set; the freed big hitters swing at the face. */
-  diverted.sort((a,b)=>effP(b)-effP(a));
-  for(let k=0;k<diverted.length;){const trial=diverted.slice(0,k).concat(diverted.slice(k+1));if(through(trial)>=target.loyalty)diverted=trial;else k++;}
-  diverted.forEach(a=>t[a.id]=''+target.id);
+  const maxObjs=luck>0?objs.length:1;/* brutal spreads across multiple objects; easy/standard commit to the single best */
+  const powerOf=a=>effP(a);const diverted={};/* attId -> objId */
+  const blockedIds=()=>{const dv=attackers.filter(a=>diverted[a.id]!=null).sort((a,b)=>powerOf(b)-powerOf(a));return new Set(dv.slice(0,blockers).map(a=>''+a.id));};/* the player blocks the biggest DIVERTED attackers (across all objects) */
+  const dmgTo=objId=>{const bl=blockedIds();return attackers.filter(a=>''+diverted[a.id]===''+objId&&!bl.has(''+a.id)).reduce((s,a)=>s+powerOf(a),0);};
+  let placed=0;
+  for(const obj of objs){
+    if(placed>=maxObjs)break;
+    const avail=attackers.filter(a=>diverted[a.id]==null).sort((a,b)=>powerOf(a)-powerOf(b));/* smallest-first: they sneak past the player's blocks */
+    const trial=[];for(const a of avail){diverted[a.id]=obj.id;trial.push(a);if(dmgTo(obj.id)>=obj.hp)break;}
+    if(dmgTo(obj.id)>=obj.hp){placed++;
+      trial.slice().sort((a,b)=>powerOf(b)-powerOf(a)).forEach(a=>{const save=diverted[a.id];delete diverted[a.id];if(dmgTo(obj.id)<obj.hp)diverted[a.id]=save;});/* prune the biggest redundant back to the face */
+    }else trial.forEach(a=>delete diverted[a.id]);/* can't finish this object → free them back to the face */
+  }
+  Object.keys(diverted).forEach(aid=>{t[aid]=diverted[aid];});
   return t;}
 function renderDeckColors(){const box=$("deckColorRow");if(!box)return;box.innerHTML=["W","U","B","R","G"].map(col=>`<button class="manapip ${S.deckColors.indexOf(col)>=0?'on':''}" style="--mc:${COLOR_HEX[col]}" onclick="toggleDeckColor('${col}')">${col}</button>`).join("");}
 function toggleDeckColor(col){const i=S.deckColors.indexOf(col);if(i>=0)S.deckColors.splice(i,1);else S.deckColors.push(col);render();}
@@ -2082,7 +2100,7 @@ function renderBattles(){const box=$("battleList");if(!box)return;const pn=$("pl
 function addKw(scope,id,k){if(!k)return;const c=getCre(scope,id);if(!c)return;c.kw=c.kw||[];if(!c.kw.includes(k))c.kw.push(k);render();}
 function delKw(scope,id,k){const c=getCre(scope,id);if(!c)return;c.kw=(c.kw||[]).filter(x=>x!==k);render();}
 function addC(){S.my.creatures.push({id:S.nextId++,name:"Creature",p:2,t:2,baseP:2,baseT:2,tapped:false,plus:0,minus:0,other:[],kw:[],color:[],legendary:false,token:false,dies:"graveyard",phased:false,abilP:0,abilA:0,mana:0,prot:[],catk:null,isCmd:false,strength:"mid",_drawer:false});log("you","Added a creature to your board.");render();}
-function addP(cat){S.my[cat].push({id:S.nextId++,name:cat==='artifacts'?"Artifact":"Enchantment",kind:"passive",mana:0,dmg:0,note:"",color:[],legendary:false,token:false,dies:"graveyard",phased:false,prot:[],catk:null,strength:"mid",_drawer:false});log("you",`Added ${cat==='artifacts'?'an artifact':'an enchantment'} to your board.`);render();}
+function addP(cat){S.my[cat].push({id:S.nextId++,name:cat==='artifacts'?"Artifact":"Enchantment",kind:"passive",ctype:cat==='artifacts'?'artifact':'enchantment',mana:0,dmg:0,note:"",color:[],legendary:false,token:false,dies:"graveyard",phased:false,prot:[],catk:null,strength:"mid",_drawer:false});log("you",`Added ${cat==='artifacts'?'an artifact':'an enchantment'} to your board.`);render();}/* P51.6: ctype tags the perm for threatScore's enchant>artifact order */
 function addW(){S.my.walkers.push({id:S.nextId++,name:"Planeswalker",loyalty:3,baseLoy:3,abilities:3,note:"",color:[],legendary:true,dies:"graveyard",isCmd:false,strength:"mid",_drawer:false});log("you","Added a planeswalker to your board.");render();}
 function addEm(){S.my.emblems.push({id:S.nextId++,name:"Emblem",note:"",auto:null,autoOn:false,kind:'emblem',target:'player',static:false,trigger:'upkeep',attachId:null});log("you","Added an emblem.");render();}
 /* ===== P23.2: PLAYER emblems — the same automation the enemy's have (mirror of ENEMY_EMBLEMS / emblemEffect / fireEnemyEmblems / applyStaticEmblems), for the player's benefit. Stored on S.my.emblems; effects log to the `you` channel; a player emblem that targets the ENEMY shows a blue box (P23.3). ===== */
@@ -2198,7 +2216,7 @@ function setEmblemValue(id,n){const em=findEnemyFx(id);if(!em||!em.auto)return;e
 function emblemAttachSel(em){const foes=[...(S.tokens||[]),(S.cmd&&S.cmd.inPlay?S.cmd:null)].filter(Boolean);return `<select title="attach to one enemy creature (else affects all)" onchange="setEmblemAttach(${em.id},this.value)"><option value="">▦ all enemy creatures</option>${foes.map(c=>`<option value="${c.id}" ${''+em.attachId===''+c.id?'selected':''}>↳ ${embEsc(c.name||c.n)}</option>`).join('')}</select>`;}
 function setEmblemAttach(id,v){const em=findEnemyFx(id);if(!em)return;em.attachId=(v===''?null:parseInt(v,10));log("dm",`✦ <b>${em.name}</b> ${em.attachId==null?'now affects all enemy creatures':'attached to a creature'}.`);render();}
 /* P13.3: enemy artifacts/enchantments render from their real-permanent arrays (full toolbox: bounce/destroy/exile/copy/take/edit), mirroring the player's board; true emblems stay tracker-only (automation controls + remove). */
-function takeControlPerm(scope,id){const arr=_boardArr(scope);const i=arr.findIndex(c=>c.id===id);if(i<0)return;const c=arr.splice(i,1)[0];const dest=scope==='eart'?'artifacts':'enchants';c._controlled=true;c.color=c.color||[];c.dies=c.dies||'graveyard';c.kind='passive';/* player artifacts/enchants use kind=passive|active */S.my[dest].push(c);log("you",`⇄ You take control of <b>${c.name}</b> — it joins your ${dest==='artifacts'?'artifacts':'enchantments'}.`);render();}
+function takeControlPerm(scope,id){const arr=_boardArr(scope);const i=arr.findIndex(c=>c.id===id);if(i<0)return;const c=arr.splice(i,1)[0];const dest=scope==='eart'?'artifacts':'enchants';c._controlled=true;c.color=c.color||[];c.dies=c.dies||'graveyard';c.kind='passive';c.ctype=(dest==='artifacts'?'artifact':'enchantment');/* P51.6: retag ctype so threatScore ranks it (enchant>artifact) */S.my[dest].push(c);log("you",`⇄ You take control of <b>${c.name}</b> — it joins your ${dest==='artifacts'?'artifacts':'enchantments'}.`);render();}
 function enemyPermDrawer(scope,p){const idl=p.id;return `<div class="drawer"><div class="drow"><span class="dlab">flags</span><button class="tiny ${p.legendary?'on':''}" onclick="flagObj('${scope}',${idl},'legendary')">legendary</button><button class="tiny ${p.token?'on':''}" onclick="flagObj('${scope}',${idl},'token')">token</button></div><div class="drow"><span class="dlab">color</span><div class="setbtns">${colorToggles(scope,idl,'color')}</div></div>${commonPermRow(scope,idl,p)}<div class="drow"><span class="dlab">dies to</span><select onchange="setObjF('${scope}',${idl},'dies',this.value)"><option value="graveyard" ${p.dies!=='exile'?'selected':''}>graveyard</option><option value="exile" ${p.dies==='exile'?'selected':''}>exile</option></select></div><div class="drow"><span class="dlab">attack tax (player pays)</span><input type="number" min="0" value="${p.catk?p.catk.amt:0}" style="width:42px" onchange="setObjCatk('${scope}',${idl},'amt',+this.value)"><select onchange="setObjCatk('${scope}',${idl},'type',this.value)"><option value="mana" ${!p.catk||p.catk.type==='mana'?'selected':''}>mana</option><option value="life" ${p.catk&&p.catk.type==='life'?'selected':''}>life</option></select>${catkTgtSel(`setObjCatk('${scope}',${idl},'tgt',this.value)`,p.catk&&p.catk.tgt)}</div>${moveRow(scope,idl,true)}</div>`;}
 /* P23.3: player emblem rows at full parity with the enemy's — name/effect edit, value tuner, auto/static toggle, trigger, attach (anthems), fire, target toggle (you/enemy), remove. A row targeting the ENEMY is blue (.vsenemy), mirroring the enemy's red .vsyou. */
 function renderMyEmblems(){const box=$("myEmb");if(!box)return;const items=S.my.emblems||[];
@@ -2726,7 +2744,7 @@ function resolvePlayerItem(p){const t=p.ctype;const pr=p.props||{};const tok=!!p
     const kwl=(p.kw||[]).slice();if(pr.defender&&kwl.indexOf('defender')<0)kwl.push('defender');
     S.my.creatures.push({id:S.nextId++,name:p.name,p:(p.p==null?1:p.p),t:(p.t==null?1:p.t),baseP:(p.p==null?1:p.p),baseT:(p.t==null?1:p.t),kw:kwl,color:(p.color||[]).slice(),plus:0,minus:0,other:[],tapped:!!pr.entersTapped,sick:true,token:tok,expires:false,legendary:!!pr.legendary,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',abilP:pr.abilP||0,abilA:pr.abilA||0,mana:pr.mana||0,strength:pr.strength||'mid',block:pr.block||null,isCmd:false,image:p.image||null,art:p.art||null,types:[t,'creature'],animated:true});
     log("you",`<b>${p.name}</b> resolves onto your board as a ${t} creature (${p.p==null?1:p.p}/${p.t==null?1:p.t}).`);}
-  else if(t==='artifact'||t==='enchantment'){const cat=t==='artifact'?'artifacts':'enchants';S.my[cat].push({id:S.nextId++,name:p.name,kind:'passive',mana:pr.mana||0,dmg:0,note:p.note||'',color:(p.color||[]).slice(),token:tok,legendary:!!pr.legendary,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',strength:pr.strength||'mid'});log("you",`<b>${p.name}</b> resolves into play.`);}
+  else if(t==='artifact'||t==='enchantment'){const cat=t==='artifact'?'artifacts':'enchants';S.my[cat].push({id:S.nextId++,name:p.name,kind:'passive',ctype:t,mana:pr.mana||0,dmg:0,note:p.note||'',color:(p.color||[]).slice(),token:tok,legendary:!!pr.legendary,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',strength:pr.strength||'mid'});log("you",`<b>${p.name}</b> resolves into play.`);}/* P51.6: ctype tags the perm so threatScore ranks enchant > artifact */
   else if(t==='planeswalker'){S.my.walkers.push({id:S.nextId++,name:p.name,loyalty:p.loy||3,baseLoy:p.loy||3,abilities:0,note:p.note||'',color:(p.color||[]).slice(),legendary:true,token:tok,phased:false,prot:(pr.prot||[]).slice(),cward:pr.cward||null,catk:pr.catk||null,dies:pr.dies||'graveyard',strength:pr.strength||'mid'});log("you",`<b>${p.name}</b> resolves (loyalty ${p.loy||3}).`);}
   else{if(p.auto){if(p.auto.k==='dmgBoss'){S.boss.life-=p.auto.n;log("you",`<b>${p.name}</b> resolves — ${p.auto.n} to ${S.boss.name}. (${Math.max(0,S.boss.life)})`);if(S.boss.life<=0)bossDown();}else if(p.auto.k==='gainLife'){S.youLife+=p.auto.n;/* P28.1: ordinary lifegain no longer raises the base (youMax) — life may exceed it temporarily; P16.4 trims the overheal between bosses */log("you",`<b>${p.name}</b> resolves — you gain ${p.auto.n}. (${S.youLife})`);}else if(p.auto.k==='loseLife'){S.youLife-=p.auto.n;log("you",`<b>${p.name}</b> resolves — you lose ${p.auto.n}. (${S.youLife})`);}}else log("you",`<b>${p.name}</b> resolves${p.note?` — ${p.note}`:''}. Apply its effect with the controls as needed.`);}
   if(t==='instant'||t==='sorcery'){S.myGy.push({name:p.name,color:(p.color||[]).slice(),ctype:t,_spell:true});log("you",`→ <b>${p.name}</b> rests in your graveyard.`);}/* P24.1: a resolved instant/sorcery goes to your graveyard (every spell ends in a zone, like the enemy's). _spell records return to hand, never to the battlefield. */
